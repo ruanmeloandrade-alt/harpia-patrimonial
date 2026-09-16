@@ -83,7 +83,9 @@ export interface Front05InboxAutomationAdapterOptions {
 }
 
 type ExecutionState = {
+  salesBotId?: string;
   salesBotExecutionId?: string;
+  aiAgentId?: string;
   aiAgentExecutionId?: string;
 };
 
@@ -122,14 +124,30 @@ export function createFront05InboxAutomationAdapter(
 
   return {
     async startSalesBot(input) {
-      const botId = input.botId || options.resolveSalesBotId(input);
+      const execution = getExecution(input);
+      const botId = input.botId || options.resolveSalesBotId(input) || execution.salesBotId;
       if (!botId) throw new Error('Nenhum SalesBot foi configurado para este contexto.');
+      execution.salesBotId = botId;
+
+      if (execution.salesBotExecutionId) {
+        const currentStatus = await options.salesBot.getStatus(execution.salesBotExecutionId);
+        if (currentStatus === 'running') return;
+        if (currentStatus === 'paused') {
+          const result = await options.salesBot.resume({
+            executionId: execution.salesBotExecutionId,
+            context: { leadId: input.leadId, conversationId: input.conversationId },
+          });
+          execution.salesBotExecutionId = requireAccepted(result, 'SalesBot');
+          return;
+        }
+      }
+
       const result = await options.salesBot.start({
         botId,
         leadId: input.leadId,
         conversationId: input.conversationId,
       });
-      getExecution(input).salesBotExecutionId = requireAccepted(result, 'SalesBot');
+      execution.salesBotExecutionId = requireAccepted(result, 'SalesBot');
     },
 
     async pauseSalesBot(input) {
@@ -143,14 +161,17 @@ export function createFront05InboxAutomationAdapter(
     },
 
     async startAiAgent(input) {
-      const agentId = input.agentId || options.resolveAiAgentId(input);
+      const execution = getExecution(input);
+      const agentId = input.agentId || options.resolveAiAgentId(input) || execution.aiAgentId;
       if (!agentId) throw new Error('Nenhum agente IA foi configurado para este contexto.');
+      execution.aiAgentId = agentId;
+
       const result = await options.aiAgent.invoke({
         agentId,
         leadId: input.leadId,
         conversationId: input.conversationId,
       });
-      getExecution(input).aiAgentExecutionId = requireAccepted(result, 'Agente IA');
+      execution.aiAgentExecutionId = requireAccepted(result, 'Agente IA');
     },
 
     async pauseAiAgent(input) {
@@ -164,9 +185,9 @@ export function createFront05InboxAutomationAdapter(
     },
 
     async getStatus(input): Promise<ConversationAutomationStatus> {
-      const salesBotId = options.resolveSalesBotId(input);
-      const aiAgentId = options.resolveAiAgentId(input);
       const execution = getExecution(input);
+      const salesBotId = options.resolveSalesBotId(input) || execution.salesBotId;
+      const aiAgentId = options.resolveAiAgentId(input) || execution.aiAgentId;
 
       const salesBot = !salesBotId
         ? 'unavailable'
