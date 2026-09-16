@@ -5,13 +5,14 @@ Atualizar este arquivo ao iniciar e ao concluir blocos relevantes.
 ## Frente01 — Núcleo/Auth/Usuários/Permissões
 
 - Branch: `frente-01`
-- Status inicial: NÃO INICIADA
-- Responsável: chat/agente designado pelo usuário
-- Último commit relevante: —
-- Entregue: —
-- Em andamento: —
-- Bloqueios: —
-- Próximo passo: iniciar pela leitura da documentação obrigatória.
+- Status: EM ANDAMENTO
+- Responsável: este chat
+- Último commit relevante: `bc04062932dc99dfceeadfb56014bc970056b6d7`
+- Entregue até agora: cliente Supabase desacoplado; sessão persistente; contratos de autenticação; cadastro/login/logout/recuperação; rotas protegidas; área base do cliente; shell interno; usuários; grupos; permissões por grupo; exceções individuais; configurações estruturais; métricas reais do núcleo; schema RLS; Edge Function segura para criação de usuários internos; documentação de ativação do backend.
+- Em andamento: validação estática, revisão de segurança e handoff da frente.
+- Bloqueio externo: ainda não existe projeto Supabase dedicado da Hárpia. O único projeto conectado é MKTon e não será utilizado. A criação do projeto dedicado exige escolha explícita da organização e confirmação de custo.
+- Verificação: instalação/build completo ainda NÃO VERIFICADOS porque o ambiente de execução não conseguiu acessar o registry npm; análise TypeScript sem resolução não apontou erro de sintaxe, apenas módulos ausentes no ambiente.
+- Próximo passo: criar/ligar o projeto Supabase dedicado, aplicar schema, publicar `admin-user`, rodar advisors e executar testes reais de autenticação/RLS.
 
 ## Frente02 — Site público/Área do cliente
 
@@ -79,8 +80,6 @@ Nenhuma solicitação registrada ainda.
 ---
 
 # Pendências de integração global
-
-Registrar aqui somente itens que dependem de merge ou decisão entre duas ou mais frentes.
 
 - Integrar autenticação da Frente01 com área do cliente da Frente02.
 - Integrar catálogo publicado da Frente03 com busca pública da Frente02.
