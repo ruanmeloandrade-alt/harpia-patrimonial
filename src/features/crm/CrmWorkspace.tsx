@@ -6,6 +6,8 @@ import {
   isCrmIntegrityError,
 } from './CrmWorkspaceCore';
 import type { AssigneeOption } from './CrmWorkspaceCore';
+import { PersistenceErrorNotice } from './PersistenceErrorNotice';
+import { createReadOnlyCrmService } from './readOnlyAccess';
 import { UnassignedLeadsQueue } from './UnassignedLeadsQueue';
 
 export type { AssigneeOption } from './CrmWorkspaceCore';
@@ -14,12 +16,21 @@ export { isCrmIntegrityError };
 export interface CrmWorkspaceProps {
   service?: CrmService;
   assignees?: AssigneeOption[];
+  canManage?: boolean;
 }
 
-export function CrmWorkspace({ service: injectedService, assignees = [] }: CrmWorkspaceProps) {
-  const service = useMemo(
+export function CrmWorkspace({
+  service: injectedService,
+  assignees = [],
+  canManage = true,
+}: CrmWorkspaceProps) {
+  const baseService = useMemo(
     () => injectedService ?? new CrmService(new BrowserCrmRepository()),
     [injectedService],
+  );
+  const service = useMemo(
+    () => canManage ? baseService : createReadOnlyCrmService(baseService),
+    [baseService, canManage],
   );
   const previousServiceRef = useRef(service);
   const [revision, setRevision] = useState(0);
@@ -41,9 +52,27 @@ export function CrmWorkspace({ service: injectedService, assignees = [] }: CrmWo
 
   return (
     <>
+      {!canManage && (
+        <div
+          role="status"
+          style={{
+            maxWidth: 1440,
+            margin: '12px auto',
+            padding: '10px 14px',
+            border: '1px solid #c9c1b4',
+            borderRadius: 12,
+            background: '#f8f5ef',
+            color: '#4f5b56',
+          }}
+        >
+          Modo somente leitura. Alterações no CRM exigem permissão de gestão.
+        </div>
+      )}
+      <PersistenceErrorNotice modules={['crm']} />
       <UnassignedLeadsQueue
         key={`queue-${revision}`}
         service={service}
+        canManage={canManage}
         onChanged={() => setRevision((value) => value + 1)}
       />
       <CrmWorkspaceCore
