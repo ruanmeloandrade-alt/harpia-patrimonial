@@ -168,7 +168,9 @@ async function resolveParents(
   items: Front03PublishedItem[],
 ) {
   const parents = new Map<string, Front03PublishedItem>();
-  items.forEach((item) => parents.set(item.id, item));
+  items.forEach((item) => {
+    if (item.kind === 'development') parents.set(item.id, item);
+  });
 
   const missingParentIds = unique(
     items
@@ -181,10 +183,15 @@ async function resolveParents(
   );
 
   resolved.forEach(([parentId, parent]) => {
-    if (parent) parents.set(parentId, parent);
+    if (parent?.kind === 'development') parents.set(parentId, parent);
   });
 
   return parents;
+}
+
+function isPublicEligibleItem(item: Front03PublishedItem, parents: Map<string, Front03PublishedItem>) {
+  if (item.kind !== 'unit') return true;
+  return Boolean(item.parentId && parents.has(item.parentId));
 }
 
 /**
@@ -198,35 +205,26 @@ export function createFront03PublicCatalogReader(
     async listPublished(filters) {
       const items = await service.list(toFront03Filters(filters));
       const parents = await resolveParents(service, items);
-      return items.map((item) => toPublicItem(item, item.parentId ? parents.get(item.parentId) : undefined));
+      return items
+        .filter((item) => isPublicEligibleItem(item, parents))
+        .map((item) => toPublicItem(item, item.parentId ? parents.get(item.parentId) : undefined));
     },
 
     async getPublishedBySlug(slug) {
       const item = await service.getByIdOrCode(slug);
       if (!item) return null;
-      const parent = item.kind === 'unit' && item.parentId
-        ? await service.getByIdOrCode(item.parentId)
-        : null;
+      if (item.kind !== 'unit') return toPublicItem(item);
+      if (!item.parentId) return null;
+
+      const parent = await service.getByIdOrCode(item.parentId);
+      if (!parent || parent.kind !== 'development') return null;
       return toPublicItem(item, parent);
     },
 
     async getFilterOptions() {
-      const [items, nativeOptions] = await Promise.all([
-        service.list(),
-        service.getFilterOptions?.(),
-      ]);
-      const derived = deriveFilterOptions(items);
-
-      if (!nativeOptions) return derived;
-
-      return {
-        purposes: derived.purposes,
-        cities: nativeOptions.cities,
-        locations: nativeOptions.locations,
-        lifestyleTags: nativeOptions.lifestyleTags,
-        minPrice: nativeOptions.minPrice,
-        maxPrice: nativeOptions.maxPrice,
-      };
+      const items = await service.list();
+      const parents = await resolveParents(service, items);
+      return deriveFilterOptions(items.filter((item) => isPublicEligibleItem(item, parents)));
     },
   };
 }
