@@ -24,20 +24,22 @@ function channelId() {
 
 /**
  * Decorator do repositório de produção que acrescenta sincronização entre sessões.
- * Mutações locais continuam emitindo `harpia:catalog-changed` pelo adapter base;
- * alterações recebidas pelo Supabase Realtime disparam o mesmo evento, mantendo
- * Catálogo e Dashboard desacoplados da implementação do canal.
+ * O canal é aberto somente quando algum consumidor assina o repositório e é removido
+ * quando o último consumidor sai, evitando Realtime desnecessário na experiência pública.
  */
 export class RealtimeCatalogRepository implements CatalogRepository {
   private readonly listeners = new Set<() => void>();
-  private readonly channel: CatalogRealtimeChannel;
+  private channel: CatalogRealtimeChannel | null = null;
   private disposed = false;
 
   constructor(
     private readonly inner: CatalogRepository,
     private readonly client: CatalogRealtimeSupabaseClient,
-  ) {
-    this.channel = client
+  ) {}
+
+  private ensureChannel() {
+    if (this.disposed || this.channel || this.listeners.size === 0) return;
+    this.channel = this.client
       .channel(channelId())
       .on(
         'postgres_changes',
@@ -45,6 +47,13 @@ export class RealtimeCatalogRepository implements CatalogRepository {
         () => this.notifyRealtimeChange(),
       )
       .subscribe();
+  }
+
+  private stopChannel() {
+    if (!this.channel) return;
+    const current = this.channel;
+    this.channel = null;
+    void this.client.removeChannel(current);
   }
 
   private notifyRealtimeChange() {
@@ -84,14 +93,20 @@ export class RealtimeCatalogRepository implements CatalogRepository {
   }
 
   subscribe(listener: () => void): () => void {
+    if (this.disposed) return () => undefined;
     this.listeners.add(listener);
-    return () => this.listeners.delete(listener);
+    this.ensureChannel();
+
+    return () => {
+      this.listeners.delete(listener);
+      if (this.listeners.size === 0) this.stopChannel();
+    };
   }
 
   dispose() {
     if (this.disposed) return;
     this.disposed = true;
     this.listeners.clear();
-    void this.client.removeChannel(this.channel);
+    this.stopChannel();
   }
 }
