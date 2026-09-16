@@ -13,6 +13,21 @@ export interface CatalogRepository {
   remove(id: string): Promise<void>;
 }
 
+const allowedStatusTransitions: Record<CatalogStatus, CatalogStatus[]> = {
+  draft: ['published', 'sold'],
+  published: ['paused', 'sold'],
+  paused: ['published', 'sold'],
+  sold: [],
+};
+
+export function assertCatalogStatusTransition(current: CatalogStatus, next: CatalogStatus) {
+  if (current === next) return;
+  if (!allowedStatusTransitions[current].includes(next)) {
+    if (current === 'sold') throw new Error('Item vendido é estado final e não pode voltar para outro status.');
+    throw new Error(`Transição de status inválida: ${current} → ${next}.`);
+  }
+}
+
 function nowIso() {
   return new Date().toISOString();
 }
@@ -190,6 +205,7 @@ export class LocalCatalogRepository implements CatalogRepository {
     if (index < 0) throw new Error('Item não encontrado.');
 
     const current = items[index];
+    assertCatalogStatusTransition(current.status, status);
     const timestamp = nowIso();
     const updated: CatalogItem = {
       ...current,
