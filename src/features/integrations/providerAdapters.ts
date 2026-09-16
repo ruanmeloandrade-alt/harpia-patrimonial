@@ -1,3 +1,4 @@
+import { validateSafeOutboundUrl } from '../automations/outboundUrlValidation';
 import type { AIProviderKind, AIProviderProfile } from './aiProviderTypes';
 
 export interface ProviderInvocationRequest {
@@ -19,31 +20,43 @@ interface ProviderHttpRequest {
 
 const normalizeBase = (value: string) => value.trim().replace(/\/$/, '');
 
+function safeProviderUrl(value: string): string {
+  const issue = validateSafeOutboundUrl(value);
+  if (issue) throw new Error(`Endpoint IA inválido: ${issue}`);
+  return new URL(value).toString();
+}
+
 function openAIEndpoint(value: string): string {
   const base = normalizeBase(value || 'https://api.openai.com');
-  if (base.endsWith('/responses')) return base;
-  if (base.endsWith('/v1')) return `${base}/responses`;
-  return `${base}/v1/responses`;
+  if (base.endsWith('/responses')) return safeProviderUrl(base);
+  if (base.endsWith('/v1')) return safeProviderUrl(`${base}/responses`);
+  return safeProviderUrl(`${base}/v1/responses`);
 }
 
 function anthropicEndpoint(value: string): string {
   const base = normalizeBase(value || 'https://api.anthropic.com');
-  if (base.endsWith('/v1/messages')) return base;
-  if (base.endsWith('/v1')) return `${base}/messages`;
-  return `${base}/v1/messages`;
+  if (base.endsWith('/v1/messages')) return safeProviderUrl(base);
+  if (base.endsWith('/v1')) return safeProviderUrl(`${base}/messages`);
+  return safeProviderUrl(`${base}/v1/messages`);
 }
 
 function geminiEndpoint(value: string): string {
   const base = normalizeBase(value || 'https://generativelanguage.googleapis.com');
-  if (base.endsWith('/interactions')) return base;
-  if (base.endsWith('/v1beta')) return `${base}/interactions`;
-  return `${base}/v1beta/interactions`;
+  if (base.endsWith('/interactions')) return safeProviderUrl(base);
+  if (base.endsWith('/v1beta')) return safeProviderUrl(`${base}/interactions`);
+  return safeProviderUrl(`${base}/v1beta/interactions`);
 }
+
+const baseRequestInit = (): Pick<RequestInit, 'redirect' | 'signal'> => ({
+  redirect: 'manual',
+  signal: AbortSignal.timeout(30000),
+});
 
 function buildOpenAIRequest(input: ProviderInvocationRequest): ProviderHttpRequest {
   return {
     url: openAIEndpoint(input.profile.baseUrl),
     init: {
+      ...baseRequestInit(),
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -62,6 +75,7 @@ function buildAnthropicRequest(input: ProviderInvocationRequest): ProviderHttpRe
   return {
     url: anthropicEndpoint(input.profile.baseUrl),
     init: {
+      ...baseRequestInit(),
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -85,6 +99,7 @@ function buildGeminiRequest(input: ProviderInvocationRequest): ProviderHttpReque
   return {
     url: geminiEndpoint(input.profile.baseUrl),
     init: {
+      ...baseRequestInit(),
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -101,8 +116,9 @@ function buildGeminiRequest(input: ProviderInvocationRequest): ProviderHttpReque
 function buildCustomRequest(input: ProviderInvocationRequest): ProviderHttpRequest {
   if (!input.profile.baseUrl.trim()) throw new Error('Endpoint do provedor customizado não configurado.');
   return {
-    url: input.profile.baseUrl.trim(),
+    url: safeProviderUrl(input.profile.baseUrl.trim()),
     init: {
+      ...baseRequestInit(),
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -169,6 +185,9 @@ export async function invokeConfiguredProvider(input: ProviderInvocationRequest)
 
   const request = buildProviderHttpRequest(input);
   const response = await fetch(request.url, request.init);
+  if (response.status >= 300 && response.status < 400) {
+    throw new Error('Redirecionamentos do provedor IA não são permitidos.');
+  }
   const raw = await response.json().catch(() => null);
 
   if (!response.ok) {
