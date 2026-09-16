@@ -26,26 +26,70 @@ const navigation = [
   { label: 'Área do cliente', path: '/cliente' },
 ];
 
+const auxiliaryPublicPaths = ['/vender', '/alugar'];
+
+function normalizePath(path: string) {
+  if (path === '/') return path;
+  return path.replace(/\/+$/, '') || '/';
+}
+
+function isKnownPublicPath(path: string) {
+  const normalized = normalizePath(path);
+  return (
+    navigation.some((item) => item.path === normalized) ||
+    auxiliaryPublicPaths.includes(normalized) ||
+    /^\/imoveis\/[^/]+$/.test(normalized)
+  );
+}
+
 function navigatePublic(path: string) {
   window.history.pushState({}, '', path);
-  window.dispatchEvent(new PopStateEvent('popstate'));
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 export default function PublicExperience(props: PublicExperienceProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [path, setPath] = useState(() => window.location.pathname);
+  const [path, setPath] = useState(() => normalizePath(window.location.pathname));
   const [pendingConversion, setPendingConversion] = useState<PublicSiteConversion | null>(null);
   const [contactBusy, setContactBusy] = useState(false);
   const [contactError, setContactError] = useState('');
 
   useEffect(() => {
+    const history = window.history;
+    const originalPushState = history.pushState;
+    const originalReplaceState = history.replaceState;
+
+    const emitNavigation = () => window.dispatchEvent(new PopStateEvent('popstate'));
+
+    history.pushState = function pushState(...args: Parameters<History['pushState']>) {
+      originalPushState.apply(history, args);
+      emitNavigation();
+    };
+
+    history.replaceState = function replaceState(...args: Parameters<History['replaceState']>) {
+      originalReplaceState.apply(history, args);
+      emitNavigation();
+    };
+
+    return () => {
+      history.pushState = originalPushState;
+      history.replaceState = originalReplaceState;
+    };
+  }, []);
+
+  useEffect(() => {
     const onPopState = () => {
-      setPath(window.location.pathname);
+      const nextPath = normalizePath(window.location.pathname);
+      setPath(nextPath);
       setMobileOpen(false);
+
+      if (nextPath !== window.location.pathname && isKnownPublicPath(nextPath)) {
+        window.history.replaceState({}, '', nextPath);
+      }
     };
 
     window.addEventListener('popstate', onPopState);
+    onPopState();
     return () => window.removeEventListener('popstate', onPopState);
   }, []);
 
@@ -102,6 +146,22 @@ export default function PublicExperience(props: PublicExperienceProps) {
       setContactBusy(false);
     }
   };
+
+  if (!isKnownPublicPath(path)) {
+    return (
+      <main className="public-not-found">
+        <div className="public-not-found__card">
+          <p>PÁGINA NÃO ENCONTRADA</p>
+          <h1>Este endereço não faz parte da experiência pública da Hárpia.</h1>
+          <span>Volte ao início ou consulte os imóveis publicados.</span>
+          <div>
+            <button type="button" onClick={() => navigatePublic('/')}>Ir para o início</button>
+            <button type="button" onClick={() => navigatePublic('/imoveis')}>Ver imóveis</button>
+          </div>
+        </div>
+      </main>
+    );
+  }
 
   return (
     <>
