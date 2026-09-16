@@ -20,6 +20,20 @@ function mapSalesBotRunResult(executionId: string, result: Awaited<ReturnType<ty
   return { status: 'accepted', executionId, reason: result.reason, data: { runtimeStatus: 'paused' } };
 }
 
+function buildRuntimeContext(input: {
+  leadId?: string;
+  conversationId?: string;
+  previous?: Record<string, unknown>;
+  incoming?: Record<string, unknown>;
+}): Record<string, unknown> {
+  return {
+    ...(input.previous ?? {}),
+    ...(input.incoming ?? {}),
+    ...(input.leadId ? { leadId: input.leadId } : {}),
+    ...(input.conversationId ? { conversationId: input.conversationId } : {}),
+  };
+}
+
 export function createSalesBotCommandPort(
   dependencies: SalesBotRuntimeDependencies = unconfiguredSalesBotRuntimeDependencies,
 ): SalesBotCommandPort {
@@ -34,10 +48,20 @@ export function createSalesBotCommandPort(
       const issues = validateSalesBotForActivation(bot);
       if (issues.length > 0) return { status: 'rejected', reason: issues.join(' ') };
 
-      const execution = startExecution({ botId: bot.id, leadId: input.leadId, conversationId: input.conversationId });
+      const runtimeContext = buildRuntimeContext({
+        leadId: input.leadId,
+        conversationId: input.conversationId,
+        incoming: input.context,
+      });
+      const execution = startExecution({
+        botId: bot.id,
+        leadId: input.leadId,
+        conversationId: input.conversationId,
+        runtimeContext,
+      });
       const result = await runSalesBotExecution(
         execution.id,
-        { leadId: input.leadId, conversationId: input.conversationId, data: input.context },
+        { leadId: input.leadId, conversationId: input.conversationId, data: runtimeContext },
         resolvedDependencies(),
       );
       return mapSalesBotRunResult(execution.id, result);
@@ -63,9 +87,17 @@ export function createSalesBotCommandPort(
       if (execution.status !== 'paused') {
         return { status: 'rejected', executionId: execution.id, reason: `Apenas execução pausada pode ser retomada; status atual: ${execution.status}.` };
       }
+
+      const runtimeContext = buildRuntimeContext({
+        leadId: execution.leadId,
+        conversationId: execution.conversationId,
+        previous: execution.runtimeContext,
+        incoming: input.context,
+      });
+      updateExecution(execution.id, { runtimeContext });
       const result = await runSalesBotExecution(
         execution.id,
-        { leadId: execution.leadId, conversationId: execution.conversationId, data: input.context },
+        { leadId: execution.leadId, conversationId: execution.conversationId, data: runtimeContext },
         resolvedDependencies(),
       );
       return mapSalesBotRunResult(execution.id, result);
