@@ -54,6 +54,16 @@ const acceptedMimeTypes = new Set([
   'application/pdf',
 ]);
 
+const extensionByMimeType: Record<string, string> = {
+  'image/jpeg': 'jpg',
+  'image/png': 'png',
+  'image/webp': 'webp',
+  'image/gif': 'gif',
+  'video/mp4': 'mp4',
+  'video/webm': 'webm',
+  'application/pdf': 'pdf',
+};
+
 const maxFileSize = 50 * 1024 * 1024;
 
 function randomToken() {
@@ -62,10 +72,12 @@ function randomToken() {
 }
 
 function extensionFrom(file: File) {
-  const fromName = file.name.split('.').pop()?.toLowerCase().replace(/[^a-z0-9]/g, '');
-  if (fromName) return fromName;
-  const subtype = file.type.split('/')[1]?.toLowerCase().replace(/[^a-z0-9]/g, '');
-  return subtype || 'bin';
+  const lastDot = file.name.lastIndexOf('.');
+  if (lastDot > 0 && lastDot < file.name.length - 1) {
+    const fromName = file.name.slice(lastDot + 1).toLowerCase().replace(/[^a-z0-9]/g, '');
+    if (fromName) return fromName;
+  }
+  return extensionByMimeType[file.type] ?? 'bin';
 }
 
 function validateFile(file: File, type: CatalogMediaType) {
