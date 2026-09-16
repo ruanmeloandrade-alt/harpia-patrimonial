@@ -29,6 +29,8 @@ export type {
 export { createAIAgentCommandPort } from '../ai-agents/runtime';
 export type { AIAgentExecutionLog, AIAgentExecutionStatus } from '../ai-agents/executionTypes';
 export type { AICredentialVaultPort, AICredentialSaveResult } from '../integrations/aiCredentialPort';
+export { unconfiguredAICredentialResolver } from '../integrations/aiCredentialResolverPort';
+export type { AICredentialResolveResult, AICredentialResolverPort } from '../integrations/aiCredentialResolverPort';
 export type {
   AIProviderCatalogItem,
   AIProviderKind,
@@ -41,5 +43,6 @@ export type {
   AIModelInvocationResult,
   AIModelRuntimePort,
 } from '../integrations/aiRuntimePort';
+export { createProviderAIModelRuntime } from '../integrations/providerRuntime';
 export { buildProviderHttpRequest, invokeConfiguredProvider } from '../integrations/providerAdapters';
 export type { ProviderInvocationRequest, ProviderInvocationResponse } from '../integrations/providerAdapters';
