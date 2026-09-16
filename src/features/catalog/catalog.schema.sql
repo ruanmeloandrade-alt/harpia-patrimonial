@@ -31,12 +31,19 @@ create table public.catalog_items (
   deleted_at timestamptz,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
+  constraint catalog_code_not_blank check (nullif(btrim(code), '') is not null),
+  constraint catalog_name_not_blank check (nullif(btrim(name), '') is not null),
+  constraint catalog_city_not_blank check (nullif(btrim(city), '') is not null),
+  constraint catalog_media_array_check check (jsonb_typeof(media) = 'array'),
   constraint catalog_unit_parent_check check (
     (kind = 'unit' and parent_id is not null)
     or (kind <> 'unit' and parent_id is null)
   ),
   constraint catalog_unit_typology_check check (
     kind <> 'unit' or nullif(btrim(typology), '') is not null
+  ),
+  constraint catalog_non_unit_typology_check check (
+    kind = 'unit' or typology is null
   )
 );
 
@@ -87,6 +94,9 @@ begin
     if nullif(btrim(new.typology), '') is null then
       raise exception 'catalog unit requires typology';
     end if;
+  else
+    new.parent_id = null;
+    new.typology = null;
   end if;
 
   if old.kind = 'development'::public.catalog_item_kind
@@ -144,6 +154,9 @@ begin
     if nullif(btrim(new.typology), '') is null then
       raise exception 'catalog unit requires typology';
     end if;
+  else
+    new.parent_id = null;
+    new.typology = null;
   end if;
 
   if new.status <> 'draft'::public.catalog_status then
