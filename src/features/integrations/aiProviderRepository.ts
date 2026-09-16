@@ -74,6 +74,19 @@ export function deleteAIProviderProfile(id: string): void {
   writeStoredList(STORAGE_KEY, listAIProviderProfiles().filter((item) => item.id !== id));
 }
 
+export async function deleteAIProviderProfileConfirmed(id: string): Promise<AIProviderProfile> {
+  const items = listAIProviderProfiles();
+  const current = items.find((item) => item.id === id);
+  if (!current) throw new Error('Perfil de IA não encontrado.');
+  await writeStoredListConfirmed(STORAGE_KEY, items.filter((item) => item.id !== id));
+  return current;
+}
+
+export async function restoreAIProviderProfileConfirmed(profile: AIProviderProfile): Promise<void> {
+  const items = listAIProviderProfiles().filter((item) => item.id !== profile.id);
+  await writeStoredListConfirmed(STORAGE_KEY, [{ ...profile, updatedAt: now() }, ...items]);
+}
+
 export function setAIProviderProfileStatus(id: string, status: AIProviderProfileStatus): AIProviderProfile {
   const current = listAIProviderProfiles().find((item) => item.id === id);
   if (!current) throw new Error('Perfil de IA não encontrado.');
