@@ -15,7 +15,7 @@ interface IntegrationsWorkspaceProps {
   canManage?: boolean;
 }
 
-export function IntegrationsWorkspace({ credentialVault, canManage = true }: IntegrationsWorkspaceProps) {
+export function IntegrationsWorkspace({ credentialVault, canManage = false }: IntegrationsWorkspaceProps) {
   const [items, setItems] = useState(() => listIntegrations());
   const refresh = () => setItems(listIntegrations());
   useF05StorageListener(refresh);
