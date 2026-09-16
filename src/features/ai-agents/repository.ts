@@ -5,7 +5,9 @@ const STORAGE_KEY = 'harpia:f05:ai-agents';
 const now = () => new Date().toISOString();
 
 export function listAIAgents(): AIAgentDefinition[] {
-  return readStoredList<AIAgentDefinition>(STORAGE_KEY).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+  return readStoredList<AIAgentDefinition>(STORAGE_KEY)
+    .map((agent) => ({ ...agent, providerProfileId: agent.providerProfileId ?? '' }))
+    .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
 }
 
 export function createAIAgent(name: string): AIAgentDefinition {
@@ -19,6 +21,7 @@ export function createAIAgent(name: string): AIAgentDefinition {
     context: '',
     accessScopes: [],
     activationPoints: [],
+    providerProfileId: '',
     status: 'draft',
     createdAt: timestamp,
     updatedAt: timestamp,
