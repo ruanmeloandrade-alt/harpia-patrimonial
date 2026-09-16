@@ -38,6 +38,7 @@ export function usePublicFavoritesBridge(options: {
   const [error, setError] = useState('');
   const requestVersionRef = useRef(0);
   const activeClientRef = useRef(clientId);
+  const pendingOperationsRef = useRef(new Set<string>());
   activeClientRef.current = clientId;
 
   const reload = useCallback(async () => {
@@ -94,6 +95,10 @@ export function usePublicFavoritesBridge(options: {
       }
 
       const operationClientId = clientId;
+      const operationKey = `${operationClientId}:${item.id}`;
+      if (pendingOperationsRef.current.has(operationKey)) return;
+
+      pendingOperationsRef.current.add(operationKey);
       setError('');
       const exists = favoriteIds.has(item.id);
 
@@ -111,6 +116,8 @@ export function usePublicFavoritesBridge(options: {
       } catch (cause) {
         if (activeClientRef.current !== operationClientId) return;
         setError(cause instanceof Error ? cause.message : 'Não foi possível atualizar este favorito.');
+      } finally {
+        pendingOperationsRef.current.delete(operationKey);
       }
     },
   }), [clientId, favoriteIds, items, store]);
