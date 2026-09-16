@@ -126,10 +126,10 @@ export function createFront05InboxAutomationAdapter(
     async startSalesBot(input) {
       const execution = getExecution(input);
       const botId = input.botId || options.resolveSalesBotId(input) || execution.salesBotId;
-      if (!botId) throw new Error('Nenhum SalesBot foi configurado para este contexto.');
-      execution.salesBotId = botId;
+      if (!botId) throw new Error('Selecione um SalesBot antes de iniciar.');
 
-      if (execution.salesBotExecutionId) {
+      const isSameBot = execution.salesBotId === botId;
+      if (isSameBot && execution.salesBotExecutionId) {
         const currentStatus = await options.salesBot.getStatus(execution.salesBotExecutionId);
         if (currentStatus === 'running') return;
         if (currentStatus === 'paused') {
@@ -137,6 +137,7 @@ export function createFront05InboxAutomationAdapter(
             executionId: execution.salesBotExecutionId,
             context: { leadId: input.leadId, conversationId: input.conversationId },
           });
+          execution.salesBotId = botId;
           execution.salesBotExecutionId = requireAccepted(result, 'SalesBot');
           return;
         }
@@ -147,11 +148,13 @@ export function createFront05InboxAutomationAdapter(
         leadId: input.leadId,
         conversationId: input.conversationId,
       });
+      execution.salesBotId = botId;
       execution.salesBotExecutionId = requireAccepted(result, 'SalesBot');
     },
 
     async pauseSalesBot(input) {
-      const executionId = getExecution(input).salesBotExecutionId;
+      const execution = getExecution(input);
+      const executionId = execution.salesBotExecutionId;
       if (!executionId) throw new Error('Não existe execução ativa de SalesBot neste contexto.');
       const result = await options.salesBot.pause({
         executionId,
@@ -163,19 +166,25 @@ export function createFront05InboxAutomationAdapter(
     async startAiAgent(input) {
       const execution = getExecution(input);
       const agentId = input.agentId || options.resolveAiAgentId(input) || execution.aiAgentId;
-      if (!agentId) throw new Error('Nenhum agente IA foi configurado para este contexto.');
-      execution.aiAgentId = agentId;
+      if (!agentId) throw new Error('Selecione um agente IA antes de iniciar.');
+
+      if (execution.aiAgentId === agentId && execution.aiAgentExecutionId) {
+        const currentStatus = await options.aiAgent.getStatus(execution.aiAgentExecutionId);
+        if (currentStatus === 'running') return;
+      }
 
       const result = await options.aiAgent.invoke({
         agentId,
         leadId: input.leadId,
         conversationId: input.conversationId,
       });
+      execution.aiAgentId = agentId;
       execution.aiAgentExecutionId = requireAccepted(result, 'Agente IA');
     },
 
     async pauseAiAgent(input) {
-      const executionId = getExecution(input).aiAgentExecutionId;
+      const execution = getExecution(input);
+      const executionId = execution.aiAgentExecutionId;
       if (!executionId) throw new Error('Não existe execução ativa de agente IA neste contexto.');
       const result = await options.aiAgent.pause({
         executionId,
@@ -186,20 +195,20 @@ export function createFront05InboxAutomationAdapter(
 
     async getStatus(input): Promise<ConversationAutomationStatus> {
       const execution = getExecution(input);
-      const salesBotId = options.resolveSalesBotId(input) || execution.salesBotId;
-      const aiAgentId = options.resolveAiAgentId(input) || execution.aiAgentId;
+      const requestedSalesBotId = input.botId || execution.salesBotId || options.resolveSalesBotId(input);
+      const requestedAiAgentId = input.agentId || execution.aiAgentId || options.resolveAiAgentId(input);
 
-      const salesBot = !salesBotId
-        ? 'unavailable'
-        : execution.salesBotExecutionId
-          ? mapRuntimeStatus(await options.salesBot.getStatus(execution.salesBotExecutionId))
-          : 'idle';
+      const salesBot = execution.salesBotExecutionId && requestedSalesBotId === execution.salesBotId
+        ? mapRuntimeStatus(await options.salesBot.getStatus(execution.salesBotExecutionId))
+        : requestedSalesBotId
+          ? 'idle'
+          : 'unavailable';
 
-      const aiAgent = !aiAgentId
-        ? 'unavailable'
-        : execution.aiAgentExecutionId
-          ? mapRuntimeStatus(await options.aiAgent.getStatus(execution.aiAgentExecutionId))
-          : 'idle';
+      const aiAgent = execution.aiAgentExecutionId && requestedAiAgentId === execution.aiAgentId
+        ? mapRuntimeStatus(await options.aiAgent.getStatus(execution.aiAgentExecutionId))
+        : requestedAiAgentId
+          ? 'idle'
+          : 'unavailable';
 
       return { salesBot, aiAgent };
     },
