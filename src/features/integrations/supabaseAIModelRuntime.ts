@@ -15,14 +15,14 @@ interface SupabaseFunctionsLike {
 }
 
 /**
- * Adapter browser -> Edge Function `ai-provider-runtime`.
- * A chave API não passa pelo navegador: o servidor recebe apenas o profileId,
- * resolve o segredo pelo Vault e executa o provedor.
+ * Adapter browser -> Edge Function canônica `ai-model-invoke` da integração
+ * F01/F05. A chave API nunca passa pelo navegador: o servidor recebe apenas o
+ * profileId, carrega o perfil compartilhado e resolve o segredo no Vault.
  */
 export function createSupabaseAIModelRuntime(client: SupabaseFunctionsLike): AIModelRuntimePort {
   return createRemoteAIModelRuntime({
     async invoke(input) {
-      const { data, error } = await client.functions.invoke('ai-provider-runtime', {
+      const { data, error } = await client.functions.invoke('ai-model-invoke', {
         body: {
           executionId: input.executionId,
           profileId: input.profileId,
