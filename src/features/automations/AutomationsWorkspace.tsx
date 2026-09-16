@@ -46,7 +46,7 @@ function ActionConfig({ automationId, action, onChange }: { automationId: string
   return <div className="f05-block-config">{(fields[action.type] ?? []).map(([key, label, placeholder]) => <label className="f05-inline-field" key={key}>{label}<input value={get(key)} onChange={(e) => set(key, e.target.value)} placeholder={placeholder}/></label>)}</div>;
 }
 
-export function AutomationsWorkspace({ canManage = true }: { canManage?: boolean }) {
+export function AutomationsWorkspace({ canManage = false }: { canManage?: boolean }) {
   const [items, setItems] = useState(() => listAutomations());
   const [selectedId, setSelectedId] = useState<string | null>(() => items[0]?.id ?? null);
   const [newName, setNewName] = useState('');
