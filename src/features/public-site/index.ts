@@ -38,6 +38,10 @@ export {
   type WhatsAppContinuationOptions,
 } from './whatsappContinuation';
 export {
+  createPublicConversionPipeline,
+  type PublicConversionPipelineOptions,
+} from './conversionPipeline';
+export {
   hasCatalogFilters,
   readCatalogFilters,
   writeCatalogFilters,
