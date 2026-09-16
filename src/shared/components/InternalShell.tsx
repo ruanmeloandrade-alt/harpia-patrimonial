@@ -13,8 +13,8 @@ type NavItem = {
 const links: NavItem[] = [
   { href: '/interno', label: 'Visão geral', permission: PERMISSIONS.DASHBOARD_VIEW },
   { href: '/interno/catalogo', label: 'Catálogo', permissions: [PERMISSIONS.CATALOG_VIEW, PERMISSIONS.CATALOG_MANAGE, PERMISSIONS.CATALOG_PUBLISH] },
-  { href: '/interno/crm', label: 'CRM', permission: PERMISSIONS.CRM_MANAGE },
-  { href: '/interno/inbox', label: 'Inbox', permission: PERMISSIONS.INBOX_MANAGE },
+  { href: '/interno/crm', label: 'CRM', permissions: [PERMISSIONS.CRM_VIEW, PERMISSIONS.CRM_MANAGE] },
+  { href: '/interno/inbox', label: 'Inbox', permissions: [PERMISSIONS.INBOX_VIEW, PERMISSIONS.INBOX_MANAGE] },
   { href: '/interno/salesbot', label: 'SalesBot', permissions: [PERMISSIONS.SALESBOT_VIEW, PERMISSIONS.SALESBOT_MANAGE] },
   { href: '/interno/automatize', label: 'Automatize', permissions: [PERMISSIONS.AUTOMATIONS_VIEW, PERMISSIONS.AUTOMATIONS_MANAGE] },
   { href: '/interno/agentes-ia', label: 'Agentes IA', permissions: [PERMISSIONS.AI_VIEW, PERMISSIONS.AI_MANAGE] },
