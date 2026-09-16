@@ -28,29 +28,93 @@ function normalizeBase(value: string) {
   return value.trim().replace(/\/$/, '');
 }
 
-function isPrivateIpv4(hostname: string) {
-  const parts = hostname.split('.').map(Number);
-  if (parts.length !== 4 || parts.some((part) => !Number.isInteger(part) || part < 0 || part > 255)) return false;
-  if (parts[0] === 10 || parts[0] === 127 || parts[0] === 0) return true;
-  if (parts[0] === 169 && parts[1] === 254) return true;
-  if (parts[0] === 192 && parts[1] === 168) return true;
-  if (parts[0] === 172 && parts[1] >= 16 && parts[1] <= 31) return true;
+function normalizeHostname(hostname: string) {
+  return hostname.trim().toLowerCase().replace(/^\[|\]$/g, '').replace(/\.$/, '');
+}
+
+function isIpv4(value: string) {
+  const parts = value.split('.').map(Number);
+  return parts.length === 4 && parts.every((part) => Number.isInteger(part) && part >= 0 && part <= 255);
+}
+
+function isPrivateOrReservedIpv4(value: string) {
+  if (!isIpv4(value)) return false;
+  const parts = value.split('.').map(Number);
+  const [a, b, c] = parts;
+
+  if (a === 0 || a === 10 || a === 127) return true;
+  if (a === 100 && b >= 64 && b <= 127) return true;
+  if (a === 169 && b === 254) return true;
+  if (a === 172 && b >= 16 && b <= 31) return true;
+  if (a === 192 && b === 168) return true;
+  if (a === 192 && b === 0 && c === 0) return true;
+  if (a === 192 && b === 0 && c === 2) return true;
+  if (a === 198 && (b === 18 || b === 19)) return true;
+  if (a === 198 && b === 51 && c === 100) return true;
+  if (a === 203 && b === 0 && c === 113) return true;
+  if (a >= 224) return true;
   return false;
+}
+
+function isPrivateOrReservedIpv6(value: string) {
+  const address = normalizeHostname(value);
+  if (!address.includes(':')) return false;
+  if (address === '::' || address === '::1') return true;
+  if (address.startsWith('fc') || address.startsWith('fd')) return true;
+  if (/^fe[89ab]/.test(address)) return true;
+  if (address.startsWith('ff')) return true;
+  if (address.startsWith('2001:db8:') || address === '2001:db8::') return true;
+
+  const mapped = address.match(/^::ffff:(\d{1,3}(?:\.\d{1,3}){3})$/);
+  if (mapped) return isPrivateOrReservedIpv4(mapped[1]);
+  return false;
+}
+
+function assertPublicAddress(address: string) {
+  const normalized = normalizeHostname(address);
+  if (isPrivateOrReservedIpv4(normalized) || isPrivateOrReservedIpv6(normalized)) {
+    throw new Error('Endpoint IA privado/interno não é permitido.');
+  }
+}
+
+async function resolveAndValidateHostname(hostname: string) {
+  const normalized = normalizeHostname(hostname);
+  if (!normalized) throw new Error('Hostname IA inválido.');
+  if (
+    normalized === 'localhost'
+    || normalized.endsWith('.localhost')
+    || normalized.endsWith('.local')
+  ) throw new Error('Endpoint IA privado/interno não é permitido.');
+
+  if (isIpv4(normalized) || normalized.includes(':')) {
+    assertPublicAddress(normalized);
+    return;
+  }
+
+  const [ipv4Result, ipv6Result] = await Promise.allSettled([
+    Deno.resolveDns(normalized, 'A'),
+    Deno.resolveDns(normalized, 'AAAA'),
+  ]);
+  const addresses = [
+    ...(ipv4Result.status === 'fulfilled' ? ipv4Result.value : []),
+    ...(ipv6Result.status === 'fulfilled' ? ipv6Result.value : []),
+  ];
+
+  if (!addresses.length) throw new Error('Não foi possível resolver o endpoint do provedor IA.');
+  addresses.forEach(assertPublicAddress);
 }
 
 function assertSafeExternalUrl(value: string) {
   const url = new URL(value);
-  const hostname = url.hostname.toLowerCase();
   if (url.protocol !== 'https:') throw new Error('Endpoint IA precisa usar HTTPS.');
+  if (url.username || url.password) throw new Error('Credenciais na URL do provedor IA não são permitidas.');
+  const hostname = normalizeHostname(url.hostname);
   if (
     hostname === 'localhost'
     || hostname.endsWith('.localhost')
     || hostname.endsWith('.local')
-    || hostname === '::1'
-    || hostname.startsWith('fc')
-    || hostname.startsWith('fd')
-    || hostname.startsWith('fe80:')
-    || isPrivateIpv4(hostname)
+    || isPrivateOrReservedIpv4(hostname)
+    || isPrivateOrReservedIpv6(hostname)
   ) {
     throw new Error('Endpoint IA privado/interno não é permitido.');
   }
@@ -70,6 +134,11 @@ type ProviderProfile = {
   secretRef?: string;
 };
 
+const safeFetchInit = (): Pick<RequestInit, 'redirect' | 'signal'> => ({
+  redirect: 'manual',
+  signal: AbortSignal.timeout(30000),
+});
+
 function providerRequest(profile: ProviderProfile, apiKey: string, instructions: string, input: string) {
   if (profile.provider === 'openai' || profile.provider === 'openai_codex') {
     const base = normalizeBase(profile.baseUrl || 'https://api.openai.com');
@@ -77,6 +146,7 @@ function providerRequest(profile: ProviderProfile, apiKey: string, instructions:
     return {
       url: assertSafeExternalUrl(endpoint),
       init: {
+        ...safeFetchInit(),
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
         body: JSON.stringify({ model: profile.model, instructions: instructions || undefined, input }),
@@ -90,6 +160,7 @@ function providerRequest(profile: ProviderProfile, apiKey: string, instructions:
     return {
       url: assertSafeExternalUrl(endpoint),
       init: {
+        ...safeFetchInit(),
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -113,6 +184,7 @@ function providerRequest(profile: ProviderProfile, apiKey: string, instructions:
     return {
       url: assertSafeExternalUrl(endpoint),
       init: {
+        ...safeFetchInit(),
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
         body: JSON.stringify({ model: profile.model, input: composedInput }),
@@ -125,6 +197,7 @@ function providerRequest(profile: ProviderProfile, apiKey: string, instructions:
     return {
       url: assertSafeExternalUrl(profile.baseUrl.trim()),
       init: {
+        ...safeFetchInit(),
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
         body: JSON.stringify({ model: profile.model, instructions, input }),
@@ -231,7 +304,11 @@ Deno.serve(async (req) => {
 
   try {
     const request = providerRequest(profile, String(apiKey), instructions, input);
+    await resolveAndValidateHostname(new URL(request.url).hostname);
     const providerResponse = await fetch(request.url, request.init);
+    if (providerResponse.status >= 300 && providerResponse.status < 400) {
+      return response({ status: 'failed', reason: 'Redirecionamentos do provedor IA não são permitidos.' }, 502);
+    }
     const raw = await providerResponse.json().catch(() => null);
     if (!providerResponse.ok) {
       const detail = typeof raw?.error?.message === 'string' ? raw.error.message : `HTTP ${providerResponse.status}`;
