@@ -69,10 +69,12 @@ export function AppRouter() {
       permissions = [PERMISSIONS.CATALOG_VIEW, PERMISSIONS.CATALOG_MANAGE, PERMISSIONS.CATALOG_PUBLISH];
     } else if (pathname === '/interno/crm') {
       page = <IntegratedCrm />;
-      permission = PERMISSIONS.CRM_MANAGE;
+      permission = undefined;
+      permissions = [PERMISSIONS.CRM_VIEW, PERMISSIONS.CRM_MANAGE];
     } else if (pathname === '/interno/inbox') {
       page = <IntegratedInbox />;
-      permission = PERMISSIONS.INBOX_MANAGE;
+      permission = undefined;
+      permissions = [PERMISSIONS.INBOX_VIEW, PERMISSIONS.INBOX_MANAGE];
     } else if (pathname === '/interno/salesbot') {
       page = <IntegratedSalesBot />;
       permission = undefined;
