@@ -1,5 +1,8 @@
 -- Hárpia Patrimonial — controle otimista para estado compartilhado CRM/Inbox.
 
+revoke all on public.platform_module_state from anon, authenticated;
+grant select, update on public.platform_module_state to authenticated;
+
 create or replace function public.save_platform_module_state(
   p_module text,
   p_state jsonb,
@@ -7,7 +10,7 @@ create or replace function public.save_platform_module_state(
 )
 returns bigint
 language plpgsql
-security definer
+security invoker
 set search_path = ''
 as $$
 declare
