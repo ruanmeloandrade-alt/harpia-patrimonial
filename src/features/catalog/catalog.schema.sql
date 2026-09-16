@@ -68,18 +68,32 @@ set search_path = ''
 as $$
 declare
   parent_kind public.catalog_item_kind;
+  is_service_role boolean;
   can_manage boolean;
   can_publish boolean;
 begin
-  can_manage := private.user_has_permission((select auth.uid()), 'catalog.manage');
-  can_publish := private.user_has_permission((select auth.uid()), 'catalog.publish');
+  is_service_role := coalesce(current_setting('request.jwt.claim.role', true), '') = 'service_role';
+  can_manage := is_service_role or private.user_has_permission((select auth.uid()), 'catalog.manage');
+  can_publish := is_service_role or private.user_has_permission((select auth.uid()), 'catalog.publish');
 
   if not can_manage and can_publish then
-    if (to_jsonb(new) - array['status', 'published_at', 'sold_at', 'updated_at'])
+    if (to_jsonb(new) - array['status', 'updated_at'])
        is distinct from
-       (to_jsonb(old) - array['status', 'published_at', 'sold_at', 'updated_at']) then
+       (to_jsonb(old) - array['status', 'updated_at']) then
       raise exception 'catalog.manage permission required for catalog data changes';
     end if;
+  end if;
+
+  if not is_service_role
+     and new.published_at is distinct from old.published_at
+     and not (new.status = 'published'::public.catalog_status and old.status is distinct from new.status) then
+    raise exception 'published_at is managed by catalog status transitions';
+  end if;
+
+  if not is_service_role
+     and new.sold_at is distinct from old.sold_at
+     and not (new.status = 'sold'::public.catalog_status and old.status is distinct from new.status) then
+    raise exception 'sold_at is managed by catalog status transitions';
   end if;
 
   if new.kind = 'unit' then
@@ -163,6 +177,9 @@ begin
     raise exception 'new catalog items must start as draft';
   end if;
 
+  new.published_at = null;
+  new.sold_at = null;
+  new.deleted_at = null;
   return new;
 end;
 $$;
