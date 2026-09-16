@@ -3,6 +3,69 @@
   display: none;
 }
 
+.public-not-found {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 28px;
+  background: #f4f0e8;
+  color: #17221e;
+}
+
+.public-not-found__card {
+  width: min(760px, 100%);
+  padding: clamp(32px, 7vw, 72px);
+  border: 1px solid rgba(23, 34, 30, .14);
+  border-radius: 28px;
+  background: #fffdf8;
+  box-shadow: 0 28px 90px rgba(17, 38, 31, .08);
+}
+
+.public-not-found__card > p {
+  margin: 0 0 14px;
+  color: #b99455;
+  font: 800 .7rem/1.3 Inter, ui-sans-serif, system-ui, sans-serif;
+  letter-spacing: .16em;
+}
+
+.public-not-found__card h1 {
+  max-width: 680px;
+  margin: 0 0 18px;
+  font: 500 clamp(2.4rem, 7vw, 5.2rem)/.96 Georgia, "Times New Roman", serif;
+  letter-spacing: -.045em;
+}
+
+.public-not-found__card > span {
+  display: block;
+  max-width: 560px;
+  color: #68716c;
+  font: 500 1rem/1.7 Inter, ui-sans-serif, system-ui, sans-serif;
+}
+
+.public-not-found__card > div {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 28px;
+}
+
+.public-not-found__card button {
+  min-height: 48px;
+  padding: 0 20px;
+  border: 1px solid rgba(23, 34, 30, .14);
+  border-radius: 999px;
+  background: transparent;
+  color: #17221e;
+  font: 800 .82rem/1 Inter, ui-sans-serif, system-ui, sans-serif;
+  cursor: pointer;
+}
+
+.public-not-found__card button:first-child {
+  border-color: #1f3a31;
+  background: #1f3a31;
+  color: white;
+}
+
 .public-contact-backdrop {
   position: fixed;
   inset: 0;
@@ -255,6 +318,15 @@
 }
 
 @media (max-width: 600px) {
+  .public-not-found {
+    padding: 14px;
+  }
+
+  .public-not-found__card {
+    padding: 34px 22px;
+    border-radius: 22px;
+  }
+
   .public-contact-backdrop {
     align-items: end;
     padding: 10px;
