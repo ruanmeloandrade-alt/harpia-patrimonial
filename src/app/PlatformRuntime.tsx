@@ -21,13 +21,15 @@ import {
 import type { CommercialMetricsProvider } from '../features/dashboard/dashboardService';
 import { InboxService } from '../features/inbox/service';
 import {
-  aiAgentCommandPort,
+  createAIAgentCommandPort,
+  createSalesBotCommandPort,
   processCrmAutomationEvent,
-  salesBotCommandPort,
   unconfiguredAutomationEngineDependencies,
+  unconfiguredSalesBotRuntimeDependencies,
 } from '../features/automations';
 import { resetF05SharedStorage } from '../features/automations/f05Storage';
 import { SupabaseAICredentialVault } from './integrations/supabaseAICredentialVault';
+import { SupabaseAIModelRuntime } from './integrations/supabaseAIModelRuntime';
 import { SupabaseFavoritesStore } from './integrations/supabaseFavoritesStore';
 import { loadInternalAssignees } from './integrations/internalAssignees';
 import { hydrateSharedF05Storage } from './integrations/sharedF05Storage';
@@ -65,6 +67,7 @@ export function PlatformRuntimeProvider({ children }: PropsWithChildren) {
   const publicCatalogService = useMemo(() => new PublicCatalogService(catalogRepository), [catalogRepository]);
   const favoritesStore = useMemo(() => new SupabaseFavoritesStore(), []);
   const credentialVault = useMemo(() => new SupabaseAICredentialVault(), []);
+  const aiModelRuntime = useMemo(() => new SupabaseAIModelRuntime(), []);
 
   const [crmService, setCrmService] = useState<CrmService | null>(null);
   const [inboxService, setInboxService] = useState<InboxService | null>(null);
@@ -158,10 +161,16 @@ export function PlatformRuntimeProvider({ children }: PropsWithChildren) {
         const crm = new CrmService(crmRepository);
         const inbox = new InboxService(inboxRepository);
         const crmActions = createFront05CrmActionPort(crm);
+        const aiCommandPort = createAIAgentCommandPort(aiModelRuntime);
+        const salesBotCommandPort = createSalesBotCommandPort({
+          ...unconfiguredSalesBotRuntimeDependencies,
+          crm: crmActions,
+          ai: aiCommandPort,
+        });
         const automationDependencies = {
           ...unconfiguredAutomationEngineDependencies,
           salesbot: salesBotCommandPort,
-          ai: aiAgentCommandPort,
+          ai: aiCommandPort,
           crm: crmActions,
         };
         const sink = new Front05CrmEventSink((event) => processCrmAutomationEvent(event, automationDependencies));
@@ -169,7 +178,7 @@ export function PlatformRuntimeProvider({ children }: PropsWithChildren) {
 
         const automationPort = createFront05InboxAutomationAdapter({
           salesBot: salesBotCommandPort,
-          aiAgent: aiAgentCommandPort,
+          aiAgent: aiCommandPort,
           resolveSalesBotId: () => undefined,
           resolveAiAgentId: () => undefined,
         });
@@ -199,7 +208,7 @@ export function PlatformRuntimeProvider({ children }: PropsWithChildren) {
       active = false;
       unsubscribeEvents?.();
     };
-  }, [canUseCrm, catalogRepository]);
+  }, [aiModelRuntime, canUseCrm, catalogRepository]);
 
   const value = useMemo<PlatformRuntimeValue>(() => ({
     catalogRepository,
