@@ -11,6 +11,7 @@ export type CommercialMetricKey =
   | 'conversionRate'
   | 'leadOrigins'
   | 'demandByRegion'
+  | 'performanceByProduct'
   | 'nextActions';
 
 export type CommercialMetricAvailability = Record<CommercialMetricKey, boolean>;
@@ -26,6 +27,7 @@ export interface CommercialDashboardMetrics {
   conversionRate: number;
   leadOrigins: Array<{ label: string; value: number }>;
   demandByRegion: Array<{ label: string; value: number }>;
+  performanceByProduct: Array<{ label: string; value: number }>;
   nextActions: Array<{ id: string; label: string; date?: string }>;
 }
 
@@ -60,6 +62,7 @@ const commercialMetricKeys: CommercialMetricKey[] = [
   'conversionRate',
   'leadOrigins',
   'demandByRegion',
+  'performanceByProduct',
   'nextActions',
 ];
 
@@ -74,6 +77,7 @@ export const emptyCommercialMetrics = (): CommercialDashboardMetrics => ({
   conversionRate: 0,
   leadOrigins: [],
   demandByRegion: [],
+  performanceByProduct: [],
   nextActions: [],
 });
 
