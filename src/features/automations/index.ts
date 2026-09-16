@@ -16,3 +16,5 @@ export type {
   AIProviderProfileStatus,
 } from '../integrations/aiProviderTypes';
 export type { AIModelInvocationInput, AIModelInvocationResult, AIModelRuntimePort } from '../integrations/aiRuntimePort';
+export { buildProviderHttpRequest, invokeConfiguredProvider } from '../integrations/providerAdapters';
+export type { ProviderInvocationRequest, ProviderInvocationResponse } from '../integrations/providerAdapters';
