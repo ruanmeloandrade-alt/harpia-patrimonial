@@ -23,6 +23,7 @@ export interface AutomationCommandResult {
   status: AutomationCommandStatus;
   executionId?: string;
   reason?: string;
+  data?: Record<string, unknown>;
 }
 
 export interface SalesBotCommandPort {
@@ -33,7 +34,7 @@ export interface SalesBotCommandPort {
 }
 
 export interface AIAgentCommandPort {
-  invoke(input: { agentId: string; leadId?: string; conversationId?: string; context?: Record<string, unknown> }): Promise<AutomationCommandResult>;
+  invoke(input: { agentId: string; leadId?: string; conversationId?: string; input?: string; context?: Record<string, unknown> }): Promise<AutomationCommandResult>;
   pause(input: { executionId: string; reason?: string }): Promise<AutomationCommandResult>;
   getStatus(executionId: string): Promise<'running' | 'paused' | 'completed' | 'failed' | 'not_found'>;
 }
