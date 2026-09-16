@@ -19,6 +19,7 @@ interface FormState {
   name: string;
   kind: CatalogItemKind;
   parentId: string;
+  typology: string;
   purpose: 'sale' | 'rent';
   description: string;
   city: string;
@@ -36,7 +37,7 @@ interface FormState {
 }
 
 const emptyForm = (): FormState => ({
-  code: '', name: '', kind: 'standalone', parentId: '', purpose: 'sale', description: '', city: '', neighborhood: '', condominium: '', address: '', price: '', isLaunch: false, features: '', lifestyleTags: '', developer: '', imageUrls: '', videoUrls: '', floorplanUrls: '',
+  code: '', name: '', kind: 'standalone', parentId: '', typology: '', purpose: 'sale', description: '', city: '', neighborhood: '', condominium: '', address: '', price: '', isLaunch: false, features: '', lifestyleTags: '', developer: '', imageUrls: '', videoUrls: '', floorplanUrls: '',
 });
 
 function splitList(value: string) {
@@ -67,6 +68,7 @@ function formFromItem(item: CatalogItem): FormState {
     name: item.name,
     kind: item.kind,
     parentId: item.parentId ?? '',
+    typology: item.typology ?? '',
     purpose: item.purpose,
     description: item.description,
     city: item.location.city,
@@ -90,6 +92,7 @@ function draftFromForm(form: FormState): CatalogItemDraft {
     name: form.name,
     kind: form.kind,
     parentId: form.kind === 'unit' ? form.parentId || undefined : undefined,
+    typology: form.typology.trim() || undefined,
     purpose: form.purpose,
     description: form.description.trim(),
     location: {
@@ -201,7 +204,7 @@ export function CatalogAdminPage({ access, repository }: CatalogAdminPageProps) 
               <label>Tipo<select value={form.kind} onChange={(event) => setForm({ ...form, kind: event.target.value as CatalogItemKind })}><option value="standalone">Imóvel avulso</option><option value="development">Empreendimento</option><option value="unit">Unidade</option></select></label>
               <label>Finalidade<select value={form.purpose} onChange={(event) => setForm({ ...form, purpose: event.target.value as 'sale' | 'rent' })}><option value="sale">Venda</option><option value="rent">Locação</option></select></label>
             </div>
-            {form.kind === 'unit' && <label>Empreendimento<select value={form.parentId} onChange={(event) => setForm({ ...form, parentId: event.target.value })} required><option value="">Selecione</option>{developments.map((item) => <option key={item.id} value={item.id}>{item.name} — {item.code}</option>)}</select></label>}
+            {form.kind === 'unit' && <div className="f03-grid-2"><label>Empreendimento<select value={form.parentId} onChange={(event) => setForm({ ...form, parentId: event.target.value })} required><option value="">Selecione</option>{developments.map((item) => <option key={item.id} value={item.id}>{item.name} — {item.code}</option>)}</select></label><label>Tipologia<input value={form.typology} onChange={(event) => setForm({ ...form, typology: event.target.value })} placeholder="Ex.: 2 quartos, 68 m²" required /></label></div>}
 
             <div className="f03-grid-2">
               <label>Código<input value={form.code} onChange={(event) => setForm({ ...form, code: event.target.value })} required /></label>
@@ -224,7 +227,7 @@ export function CatalogAdminPage({ access, repository }: CatalogAdminPageProps) 
               <label>Estilo de vida<textarea rows={3} value={form.lifestyleTags} onChange={(event) => setForm({ ...form, lifestyleTags: event.target.value })} placeholder="praia, família, investimento" /></label>
             </div>
             <div className="f03-media-box">
-              <div><strong>Mídia</strong><p>Use URLs permanentes do storage. Upload binário será conectado pela infraestrutura.</p></div>
+              <div><strong>Mídia</strong><p>Use URLs permanentes do storage. A primeira foto da lista é tratada como capa. Upload binário será conectado pela infraestrutura.</p></div>
               <label>Fotos — uma URL por linha<textarea rows={3} value={form.imageUrls} onChange={(event) => setForm({ ...form, imageUrls: event.target.value })} /></label>
               <label>Vídeos — uma URL por linha<textarea rows={3} value={form.videoUrls} onChange={(event) => setForm({ ...form, videoUrls: event.target.value })} /></label>
               <label>Plantas / arquivos — uma URL por linha<textarea rows={3} value={form.floorplanUrls} onChange={(event) => setForm({ ...form, floorplanUrls: event.target.value })} /></label>
@@ -244,7 +247,7 @@ export function CatalogAdminPage({ access, repository }: CatalogAdminPageProps) 
 
         <div className="f03-list-column">
           <div className="f03-card f03-toolbar">
-            <input placeholder="Buscar por nome, código ou localização" value={search} onChange={(event) => setSearch(event.target.value)} />
+            <input placeholder="Buscar por nome, código, tipologia ou localização" value={search} onChange={(event) => setSearch(event.target.value)} />
             <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}><option value="all">Todos os status</option><option value="draft">Rascunho</option><option value="published">Publicado</option><option value="paused">Pausado</option><option value="sold">Vendido</option></select>
             <select value={kindFilter} onChange={(event) => setKindFilter(event.target.value)}><option value="all">Todos os tipos</option><option value="development">Empreendimentos</option><option value="unit">Unidades</option><option value="standalone">Avulsos</option></select>
           </div>
@@ -252,7 +255,7 @@ export function CatalogAdminPage({ access, repository }: CatalogAdminPageProps) 
           {visibleItems.length === 0 ? <div className="f03-card f03-empty"><div className="f03-empty-icon">0</div><h2>Nenhum item encontrado</h2><p>O catálogo começa vazio e só exibe dados realmente cadastrados.</p></div> : (
             <div className="f03-item-list">{visibleItems.map((item) => (
               <article className="f03-card f03-item" key={item.id}>
-                <div className="f03-item-top"><div><div className="f03-badges"><span className={`f03-badge status-${item.status}`}>{statusLabel[item.status]}</span><span className="f03-badge f03-badge-muted">{kindLabel[item.kind]}</span></div><h3>{item.name}</h3><p>{item.code} · {item.location.city}{item.location.neighborhood ? ` / ${item.location.neighborhood}` : ''}</p></div><strong>{money(item.price)}</strong></div>
+                <div className="f03-item-top"><div><div className="f03-badges"><span className={`f03-badge status-${item.status}`}>{statusLabel[item.status]}</span><span className="f03-badge f03-badge-muted">{kindLabel[item.kind]}</span>{item.typology && <span className="f03-badge f03-badge-muted">{item.typology}</span>}</div><h3>{item.name}</h3><p>{item.code} · {item.location.city}{item.location.neighborhood ? ` / ${item.location.neighborhood}` : ''}</p></div><strong>{money(item.price)}</strong></div>
                 <div className="f03-item-meta"><span>{item.purpose === 'sale' ? 'Venda' : 'Locação'}</span><span>{item.isLaunch ? 'Lançamento' : 'Estoque'}</span><span>{item.media.filter((media) => media.type === 'image').length} fotos</span><span>{item.media.filter((media) => media.type === 'video').length} vídeos</span></div>
                 {(access.canManage || access.canPublish) && <div className="f03-actions">
                   {access.canManage && <button className="f03-button f03-button-ghost" onClick={() => startEdit(item)}>Editar</button>}
