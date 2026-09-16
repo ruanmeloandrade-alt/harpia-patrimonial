@@ -212,6 +212,23 @@ function isPublicEligibleItem(item: Front03PublishedItem, parents: Map<string, F
   return Boolean(item.parentId && parents.has(item.parentId));
 }
 
+async function findPublishedItem(
+  service: Front03PublicCatalogServicePort,
+  value: string,
+): Promise<Front03PublishedItem | null> {
+  const direct = await service.getByIdOrCode(value);
+  if (direct) return direct;
+
+  const normalized = value.trim().toLocaleLowerCase('pt-BR');
+  if (!normalized) return null;
+
+  const items = await service.list();
+  return items.find((item) => (
+    item.id === value
+    || item.code.trim().toLocaleLowerCase('pt-BR') === normalized
+  )) ?? null;
+}
+
 /**
  * Creates the concrete read adapter expected by the public experience.
  * After branch integration, pass Frente03's PublicCatalogService instance here.
@@ -229,7 +246,7 @@ export function createFront03PublicCatalogReader(
     },
 
     async getPublishedBySlug(slug) {
-      const item = await service.getByIdOrCode(slug);
+      const item = await findPublishedItem(service, slug);
       if (!item) return null;
       if (item.kind !== 'unit') return toPublicItem(item);
       if (!item.parentId) return null;
