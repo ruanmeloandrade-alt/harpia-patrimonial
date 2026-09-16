@@ -13,7 +13,7 @@ export function LoginPage({ internal = false }: { internal?: boolean }) {
 
   useEffect(() => {
     if (!auth.loading && auth.isAuthenticated) {
-      navigate(internal ? '/interno' : '/conta', { replace: true });
+      navigate(internal ? '/interno' : '/cliente', { replace: true });
     }
   }, [auth.isAuthenticated, auth.loading, internal, navigate]);
 
@@ -24,7 +24,7 @@ export function LoginPage({ internal = false }: { internal?: boolean }) {
     const result = await auth.signIn({ email, password });
     setBusy(false);
     if (!result.ok) setError(result.message || 'Não foi possível entrar.');
-    else navigate(internal ? '/interno' : '/conta', { replace: true });
+    else navigate(internal ? '/interno' : '/cliente', { replace: true });
   }
 
   return (
