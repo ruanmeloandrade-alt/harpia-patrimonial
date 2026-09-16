@@ -2,7 +2,6 @@ import { createF05Id, readStoredList, writeStoredList } from '../automations/f05
 import type { SalesBotBlock, SalesBotDefinition, SalesBotStatus } from './types';
 
 const STORAGE_KEY = 'harpia:f05:salesbots';
-
 const now = () => new Date().toISOString();
 
 export function listSalesBots(): SalesBotDefinition[] {
@@ -24,8 +23,7 @@ export function createSalesBot(input: { name: string; description?: string }): S
     createdAt: timestamp,
     updatedAt: timestamp,
   };
-  const items = listSalesBots();
-  writeStoredList(STORAGE_KEY, [bot, ...items]);
+  writeStoredList(STORAGE_KEY, [bot, ...listSalesBots()]);
   return bot;
 }
 
@@ -36,20 +34,13 @@ export function updateSalesBot(
   const items = listSalesBots();
   const current = items.find((item) => item.id === id);
   if (!current) throw new Error('SalesBot não encontrado.');
-  const updated: SalesBotDefinition = {
-    ...current,
-    ...patch,
-    updatedAt: now(),
-  };
+  const updated: SalesBotDefinition = { ...current, ...patch, updatedAt: now() };
   writeStoredList(STORAGE_KEY, items.map((item) => (item.id === id ? updated : item)));
   return updated;
 }
 
 export function deleteSalesBot(id: string): void {
-  writeStoredList(
-    STORAGE_KEY,
-    listSalesBots().filter((item) => item.id !== id),
-  );
+  writeStoredList(STORAGE_KEY, listSalesBots().filter((item) => item.id !== id));
 }
 
 export function duplicateSalesBot(id: string): SalesBotDefinition {
@@ -70,14 +61,29 @@ export function duplicateSalesBot(id: string): SalesBotDefinition {
 }
 
 export function setSalesBotStatus(id: string, status: SalesBotStatus): SalesBotDefinition {
+  const current = getSalesBot(id);
+  if (!current) throw new Error('SalesBot não encontrado.');
+  if (status === 'active' && current.blocks.length === 0) throw new Error('Adicione pelo menos um bloco antes de ativar o SalesBot.');
   return updateSalesBot(id, { status });
 }
 
 export function addSalesBotBlock(id: string, block: Omit<SalesBotBlock, 'id'>): SalesBotDefinition {
   const current = getSalesBot(id);
   if (!current) throw new Error('SalesBot não encontrado.');
+  return updateSalesBot(id, { blocks: [...current.blocks, { ...block, id: createF05Id('block') }] });
+}
+
+export function updateSalesBotBlock(
+  id: string,
+  blockId: string,
+  patch: Partial<Pick<SalesBotBlock, 'label' | 'config'>>,
+): SalesBotDefinition {
+  const current = getSalesBot(id);
+  if (!current) throw new Error('SalesBot não encontrado.');
+  const exists = current.blocks.some((block) => block.id === blockId);
+  if (!exists) throw new Error('Bloco não encontrado.');
   return updateSalesBot(id, {
-    blocks: [...current.blocks, { ...block, id: createF05Id('block') }],
+    blocks: current.blocks.map((block) => block.id === blockId ? { ...block, ...patch } : block),
   });
 }
 
