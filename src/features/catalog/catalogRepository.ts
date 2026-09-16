@@ -11,6 +11,7 @@ export interface CatalogRepository {
   setStatus(id: string, status: CatalogStatus): Promise<CatalogItem>;
   duplicate(id: string): Promise<CatalogItem>;
   remove(id: string): Promise<void>;
+  subscribe?(listener: () => void): () => void;
 }
 
 const allowedStatusTransitions: Record<CatalogStatus, CatalogStatus[]> = {
@@ -79,6 +80,13 @@ export class LocalCatalogRepository implements CatalogRepository {
     if (typeof window === 'undefined') return;
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
     window.dispatchEvent(new CustomEvent(CATALOG_CHANGED_EVENT));
+  }
+
+  subscribe(listener: () => void): () => void {
+    if (typeof window === 'undefined') return () => undefined;
+    const handler = () => listener();
+    window.addEventListener(CATALOG_CHANGED_EVENT, handler);
+    return () => window.removeEventListener(CATALOG_CHANGED_EVENT, handler);
   }
 
   private validateDraft(
