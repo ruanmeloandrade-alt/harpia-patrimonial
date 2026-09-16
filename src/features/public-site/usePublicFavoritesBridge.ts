@@ -17,6 +17,7 @@ export interface PublicFavoritesBridgeState {
   bridge: PublicFavoritesBridge;
   loading: boolean;
   error: string;
+  clearError: () => void;
   reload: () => Promise<void>;
 }
 
@@ -40,6 +41,8 @@ export function usePublicFavoritesBridge(options: {
   const activeClientRef = useRef(clientId);
   const pendingOperationsRef = useRef(new Set<string>());
   activeClientRef.current = clientId;
+
+  const clearError = useCallback(() => setError(''), []);
 
   const reload = useCallback(async () => {
     const requestVersion = ++requestVersionRef.current;
@@ -124,5 +127,5 @@ export function usePublicFavoritesBridge(options: {
     },
   }), [clientId, favoriteIds, items, store]);
 
-  return { bridge, loading, error, reload };
+  return { bridge, loading, error, clearError, reload };
 }
