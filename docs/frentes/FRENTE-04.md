@@ -6,6 +6,81 @@ Branch obrigatória: `frente-04`
 
 Construir o núcleo comercial/operacional da Hárpia: CRM configurável e Inbox integrada ao contexto do lead, sem conectar WhatsApp real nesta fase.
 
+## Modo obrigatório de apresentação de progresso
+
+Sempre que o usuário pedir status, acompanhamento ou entrega desta frente, apresentar o escopo usando estes indicadores:
+
+- 🔴 **Não iniciado** — nenhum trabalho relevante foi implementado.
+- 🟠 **Parcial / em andamento** — existe implementação, mas ainda falta escopo, integração ou validação para o usuário testar como concluído.
+- 🟢 **Completo e testável** — o bloco foi implementado, integrado no escopo necessário e está liberado para teste do usuário.
+
+Regra: nunca usar 🟢 apenas porque o código foi escrito. Verde exige condição real de teste. Se build, integração ou fluxo principal não tiver sido validado, manter 🟠 e declarar o que falta.
+
+## Escopo executivo e acompanhamento
+
+### Bloco A — Fundação do CRM
+- 🟠 Modelo de dados: funil, etapa, lead, tag, campo personalizado, tarefa e histórico.
+- 🟠 Persistência real vazia por padrão, sem dados fictícios.
+- 🟠 Serviço CRUD e regras de integridade.
+- 🟠 Eventos de domínio para integração com Automatize.
+
+### Bloco B — Funis, etapas e Kanban
+- 🔴 Criar/renomear/ativar/desativar funil.
+- 🔴 Criar/renomear/reordenar/remover etapa com integridade.
+- 🔴 Kanban por funil.
+- 🔴 Movimentação manual de lead.
+
+### Bloco C — Lead 360º
+- 🔴 Criar/editar lead.
+- 🔴 Origem e contexto de imóvel/produto/serviço.
+- 🔴 Responsável.
+- 🔴 Tags.
+- 🔴 Campos personalizados.
+- 🔴 Observações.
+- 🔴 Tarefas/próximos passos.
+- 🔴 Histórico/timestamps.
+
+### Bloco D — Entrada de leads por contrato
+- 🔴 Contrato para eventos do site/conta.
+- 🔴 Registro de origem, página/ação e contexto.
+- 🔴 Garantia de que criar lead não dispara mensagem automaticamente.
+
+### Bloco E — Inbox operacional
+- 🔴 Layout de três colunas.
+- 🔴 Lista de conversas.
+- 🔴 Área central da conversa.
+- 🔴 Contexto CRM à direita.
+- 🔴 Empty state e estado de canal não conectado.
+
+### Bloco F — Recursos de mensagem preparados
+- 🔴 Texto.
+- 🔴 Áudio.
+- 🔴 Imagem.
+- 🔴 Vídeo.
+- 🔴 Documento/anexo.
+- 🔴 Formulário.
+- 🔴 Sem simular envio real enquanto WhatsApp não estiver conectado.
+
+### Bloco G — Operação de CRM pela Inbox
+- 🔴 Alterar etapa.
+- 🔴 Alterar responsável.
+- 🔴 Editar campo personalizado.
+- 🔴 Adicionar/remover tags.
+- 🔴 Criar tarefa/próxima ação.
+
+### Bloco H — Contratos com SalesBot/IA
+- 🔴 Interface para iniciar/pausar SalesBot.
+- 🔴 Interface para acionar/pausar IA.
+- 🔴 Consulta de status.
+- 🔴 Sem implementar motor da Frente05.
+
+### Bloco I — Validação e handoff
+- 🔴 Build/TypeScript/imports do que estiver disponível.
+- 🔴 Fluxos CRUD principais.
+- 🔴 Empty states.
+- 🔴 Persistência/refresh quando aplicável.
+- 🔴 Handoff final e atualização de status.
+
 ## Ler antes de começar
 
 1. `AGENTS.md`
