@@ -34,27 +34,33 @@ interface FormState {
   imageUrls: string;
   videoUrls: string;
   floorplanUrls: string;
+  documentUrls: string;
 }
 
 const emptyForm = (): FormState => ({
-  code: '', name: '', kind: 'standalone', parentId: '', typology: '', purpose: 'sale', description: '', city: '', neighborhood: '', condominium: '', address: '', price: '', isLaunch: false, features: '', lifestyleTags: '', developer: '', imageUrls: '', videoUrls: '', floorplanUrls: '',
+  code: '', name: '', kind: 'standalone', parentId: '', typology: '', purpose: 'sale', description: '', city: '', neighborhood: '', condominium: '', address: '', price: '', isLaunch: false, features: '', lifestyleTags: '', developer: '', imageUrls: '', videoUrls: '', floorplanUrls: '', documentUrls: '',
 });
 
 function splitList(value: string) {
   return value.split(/[\n,]/).map((item) => item.trim()).filter(Boolean);
 }
 
-function mediaFromForm(form: FormState): CatalogMedia[] {
-  const create = (type: CatalogMedia['type'], urls: string[]) => urls.map((url, index) => ({
-    id: `media_${type}_${Date.now()}_${index}_${Math.random().toString(36).slice(2, 7)}`,
-    type,
-    url,
-    isCover: type === 'image' && index === 0,
-  }));
+function mediaFromForm(form: FormState, existing: CatalogMedia[] = []): CatalogMedia[] {
+  const create = (type: CatalogMedia['type'], urls: string[]) => urls.map((url, index) => {
+    const previous = existing.find((media) => media.type === type && media.url === url);
+    return {
+      ...previous,
+      id: previous?.id ?? `media_${type}_${Date.now()}_${index}_${Math.random().toString(36).slice(2, 7)}`,
+      type,
+      url,
+      isCover: type === 'image' && index === 0,
+    };
+  });
   return [
     ...create('image', splitList(form.imageUrls)),
     ...create('video', splitList(form.videoUrls)),
     ...create('floorplan', splitList(form.floorplanUrls)),
+    ...create('document', splitList(form.documentUrls)),
   ];
 }
 
@@ -83,10 +89,11 @@ function formFromItem(item: CatalogItem): FormState {
     imageUrls: mediaToText(item, 'image'),
     videoUrls: mediaToText(item, 'video'),
     floorplanUrls: mediaToText(item, 'floorplan'),
+    documentUrls: mediaToText(item, 'document'),
   };
 }
 
-function draftFromForm(form: FormState): CatalogItemDraft {
+function draftFromForm(form: FormState, existingMedia: CatalogMedia[] = []): CatalogItemDraft {
   return {
     code: form.code,
     name: form.name,
@@ -106,7 +113,7 @@ function draftFromForm(form: FormState): CatalogItemDraft {
     features: splitList(form.features),
     lifestyleTags: splitList(form.lifestyleTags),
     developer: form.developer.trim() || undefined,
-    media: mediaFromForm(form),
+    media: mediaFromForm(form, existingMedia),
   };
 }
 
@@ -126,11 +133,22 @@ export function CatalogAdminPage({ access, repository }: CatalogAdminPageProps) 
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [kindFilter, setKindFilter] = useState('all');
+  const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
 
-  const reload = async () => setItems(await catalog.list({ search }));
+  const reload = async () => {
+    try {
+      setLoading(true);
+      setError('');
+      setItems(await catalog.list({ search }));
+    } catch (loadError) {
+      setError(loadError instanceof Error ? loadError.message : 'Não foi possível carregar o catálogo.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => { if (access.canView) void reload(); }, [access.canView, catalog, search]);
   useEffect(() => {
@@ -163,7 +181,8 @@ export function CatalogAdminPage({ access, repository }: CatalogAdminPageProps) 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
     if (!access.canManage) { setError('Permissão catalog.manage necessária.'); return; }
-    const draft = draftFromForm(form);
+    const current = editingId ? items.find((item) => item.id === editingId) : undefined;
+    const draft = draftFromForm(form, current?.media ?? []);
     await runAction(async () => {
       if (editingId) await catalog.update(editingId, draft); else await catalog.create(draft);
       resetForm();
@@ -230,7 +249,8 @@ export function CatalogAdminPage({ access, repository }: CatalogAdminPageProps) 
               <div><strong>Mídia</strong><p>Use URLs permanentes do storage. A primeira foto da lista é tratada como capa. Upload binário será conectado pela infraestrutura.</p></div>
               <label>Fotos — uma URL por linha<textarea rows={3} value={form.imageUrls} onChange={(event) => setForm({ ...form, imageUrls: event.target.value })} /></label>
               <label>Vídeos — uma URL por linha<textarea rows={3} value={form.videoUrls} onChange={(event) => setForm({ ...form, videoUrls: event.target.value })} /></label>
-              <label>Plantas / arquivos — uma URL por linha<textarea rows={3} value={form.floorplanUrls} onChange={(event) => setForm({ ...form, floorplanUrls: event.target.value })} /></label>
+              <label>Plantas — uma URL por linha<textarea rows={3} value={form.floorplanUrls} onChange={(event) => setForm({ ...form, floorplanUrls: event.target.value })} /></label>
+              <label>Documentos — uma URL por linha<textarea rows={3} value={form.documentUrls} onChange={(event) => setForm({ ...form, documentUrls: event.target.value })} /></label>
             </div>
             <button className="f03-button f03-button-primary" type="submit" disabled={busy}>{busy ? 'Salvando…' : editingId ? 'Salvar alterações' : 'Criar rascunho'}</button>
           </form>
@@ -252,11 +272,11 @@ export function CatalogAdminPage({ access, repository }: CatalogAdminPageProps) 
             <select value={kindFilter} onChange={(event) => setKindFilter(event.target.value)}><option value="all">Todos os tipos</option><option value="development">Empreendimentos</option><option value="unit">Unidades</option><option value="standalone">Avulsos</option></select>
           </div>
 
-          {visibleItems.length === 0 ? <div className="f03-card f03-empty"><div className="f03-empty-icon">0</div><h2>Nenhum item encontrado</h2><p>O catálogo começa vazio e só exibe dados realmente cadastrados.</p></div> : (
+          {loading ? <div className="f03-card f03-empty"><h2>Carregando catálogo…</h2><p>Buscando os dados reais do repositório.</p></div> : visibleItems.length === 0 ? <div className="f03-card f03-empty"><div className="f03-empty-icon">0</div><h2>Nenhum item encontrado</h2><p>O catálogo começa vazio e só exibe dados realmente cadastrados.</p></div> : (
             <div className="f03-item-list">{visibleItems.map((item) => (
               <article className="f03-card f03-item" key={item.id}>
                 <div className="f03-item-top"><div><div className="f03-badges"><span className={`f03-badge status-${item.status}`}>{statusLabel[item.status]}</span><span className="f03-badge f03-badge-muted">{kindLabel[item.kind]}</span>{item.typology && <span className="f03-badge f03-badge-muted">{item.typology}</span>}</div><h3>{item.name}</h3><p>{item.code} · {item.location.city}{item.location.neighborhood ? ` / ${item.location.neighborhood}` : ''}</p></div><strong>{money(item.price)}</strong></div>
-                <div className="f03-item-meta"><span>{item.purpose === 'sale' ? 'Venda' : 'Locação'}</span><span>{item.isLaunch ? 'Lançamento' : 'Estoque'}</span><span>{item.media.filter((media) => media.type === 'image').length} fotos</span><span>{item.media.filter((media) => media.type === 'video').length} vídeos</span></div>
+                <div className="f03-item-meta"><span>{item.purpose === 'sale' ? 'Venda' : 'Locação'}</span><span>{item.isLaunch ? 'Lançamento' : 'Estoque'}</span><span>{item.media.filter((media) => media.type === 'image').length} fotos</span><span>{item.media.filter((media) => media.type === 'video').length} vídeos</span><span>{item.media.filter((media) => media.type === 'document' || media.type === 'floorplan').length} arquivos</span></div>
                 {(access.canManage || access.canPublish) && <div className="f03-actions">
                   {access.canManage && <button className="f03-button f03-button-ghost" onClick={() => startEdit(item)}>Editar</button>}
                   {access.canPublish && item.status !== 'published' && item.status !== 'sold' && <button className="f03-button f03-button-primary" onClick={() => void setStatus(item, 'published', 'Item publicado.')}>Publicar</button>}
