@@ -1,5 +1,6 @@
 import type { CatalogRepository } from './catalogRepository';
 import type {
+  CatalogItem,
   PublicCatalogDevelopmentBundle,
   PublicCatalogFilters,
   PublicCatalogItem,
@@ -36,7 +37,7 @@ function toPublicItem(item: RepositoryItem): PublicCatalogItem {
   };
 }
 
-function publicEligibleItems(items: RepositoryItem[]) {
+export function filterPublicEligibleCatalogItems<T extends Pick<CatalogItem, 'id' | 'kind' | 'parentId'>>(items: T[]): T[] {
   const publishedDevelopmentIds = new Set(
     items.filter((item) => item.kind === 'development').map((item) => item.id),
   );
@@ -95,7 +96,7 @@ export class PublicCatalogService {
   constructor(private readonly repository: CatalogRepository) {}
 
   private async publishedItems() {
-    return publicEligibleItems(await this.repository.list({ status: 'published' }));
+    return filterPublicEligibleCatalogItems(await this.repository.list({ status: 'published' }));
   }
 
   async list(filters: PublicCatalogFilters = {}): Promise<PublicCatalogItem[]> {
