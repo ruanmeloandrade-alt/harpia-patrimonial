@@ -51,13 +51,15 @@ Atualizar este arquivo ao iniciar e ao concluir blocos relevantes.
 - Branch: `frente-05`
 - Status: EM ANDAMENTO
 - Responsável: chat atual — Frente05
-- Último commit relevante de código: `6f5f26386dd757c0788d6ce64d5212971c520c10`
-- Entregue: contratos CRM/Inbox; persistência local sem dados fictícios; CRUD de SalesBot; catálogo completo de blocos; configuração por bloco; duplicar/ativar/pausar/excluir; Automatize com gatilhos, condições e ações configuráveis; CRUD/configuração de agentes IA; estrutura e tela de integrações; logs/execuções; workspace consolidado; API pública da Frente05.
-- Validações executadas: parse/sintaxe dos componentes SalesBot, Automatize, Agentes IA, Integrações e workspace = OK; checagem TypeScript isolada dos módulos F05 = OK; teste de comportamento dos repositórios/contratos = OK para criar/configurar/ativar/duplicar SalesBot, iniciar/pausar/retomar execução, criar log, validar Automação sem ação, ativar Automação configurada, criar/ativar agente, retorno `not_configured` sem provedor IA e estados das integrações.
-- NÃO VERIFICADO: build Vite completo da branch dentro do shell final; teste visual integrado na navegação da plataforma; integração ponta a ponta com CRM/Inbox reais. Motivo: shell/roteador pertence à Frente01 e CRM/Inbox pertence à Frente04.
-- Em andamento: integração visual com shell, integração com CRM/Inbox e pente fino após montagem.
-- Bloqueios: a Frente05 não pode editar o shell/roteador raiz da Frente01. Integração real com CRM/Inbox depende da Frente04. WhatsApp/Meta/provedor IA reais permanecem fora desta fase por decisão de produto.
-- Próximo passo: Frente01 montar `Front05Workspace`; Frente04 consumir/expor os contratos; então executar build e teste visual conjunto.
+- Último commit relevante de código: `c17ce0a57a74f463c05aad1dcff956efe829b81c`
+- Entregue: contratos CRM/Inbox; persistência local sem dados fictícios; CRUD de SalesBot; catálogo completo de blocos; configuração por bloco; duplicar/ativar/pausar/excluir; Automatize com gatilhos, condições e ações configuráveis; CRUD/configuração de agentes IA; logs/execuções; workspace consolidado; API pública da Frente05; tela de integrações; perfis configuráveis de provedor/modelo IA; seleção de provedor por agente; contratos de cofre seguro e runtime de IA.
+- Provedores IA preparados: OpenAI; OpenAI/Codex; Anthropic/Claude; Google Gemini; provedor customizado. Modelo e endpoint ficam configuráveis, sem lista rígida de modelos.
+- Segurança de chave API: chave não é salva em `localStorage`, código ou documentação. A UI recebe a chave e usa o contrato `AICredentialVaultPort`; só marca a credencial como configurada quando o cofre/backend seguro confirma armazenamento.
+- Validações executadas: parse/sintaxe dos componentes SalesBot, Automatize, Agentes IA, Integrações e workspace = OK; checagem TypeScript isolada dos módulos F05 = OK; teste de comportamento dos repositórios/contratos = OK para criar/configurar/ativar/duplicar SalesBot, iniciar/pausar/retomar execução, criar log, validar Automação sem ação, ativar Automação configurada, criar perfil de provedor IA, exigir modelo/chave, impedir ativação de agente sem provedor pronto, ativar agente com perfil pronto e manter execução externa como `not_configured` enquanto não houver adaptador real.
+- NÃO VERIFICADO: build Vite completo da branch dentro do shell final; teste visual integrado na navegação da plataforma; integração ponta a ponta com CRM/Inbox reais; persistência real de segredo/API key no backend. Motivo: shell/roteador e camada base de persistência segura pertencem à Frente01; CRM/Inbox pertence à Frente04.
+- Em andamento: integração visual com shell, cofre seguro de credenciais, integração CRM/Inbox e pente fino após montagem.
+- Bloqueios: a Frente05 não pode editar o shell/roteador raiz da Frente01. Persistência segura de chave precisa de backend/cofre. Integração real com CRM/Inbox depende da Frente04. WhatsApp e Meta reais permanecem fora desta fase por decisão de produto.
+- Próximo passo: Frente01 montar `Front05Workspace` e fornecer implementação de `AICredentialVaultPort`; Frente04 consumir/expor os contratos; então executar build e teste visual conjunto.
 
 ---
 
@@ -83,6 +85,15 @@ Use esta seção quando uma frente precisar que outra altere um arquivo ou contr
 - Urgência: alta para integração final.
 - Status: PENDENTE
 
+- Data/hora: 16/09/2026 12:24 BRT
+- Origem: Frente05
+- Destino: Frente01
+- Necessidade: implementar cofre/backend seguro compatível com `AICredentialVaultPort` e injetá-lo em `Front05Workspace`.
+- Arquivo/contrato afetado: `src/features/integrations/aiCredentialPort.ts` e API pública `src/features/automations/index.ts`; backend/persistência segura da Frente01.
+- Motivo: permitir que o administrador cole a chave API do provedor escolhido sem armazenar segredo no navegador, GitHub ou documentação.
+- Urgência: alta antes de conectar provedor IA real.
+- Status: PENDENTE
+
 ---
 
 # Pendências de integração global
@@ -96,6 +107,7 @@ Registrar aqui somente itens que dependem de merge ou decisão entre duas ou mai
 - Integrar comandos Inbox da Frente04 com SalesBot/IA da Frente05.
 - Integrar eventos CRM da Frente04 com Automatize da Frente05.
 - Montar `Front05Workspace` no shell/roteador da Frente01.
+- Implementar e injetar cofre seguro de credenciais IA pelo contrato `AICredentialVaultPort`.
 - Conectar WhatsApp e Meta somente na fase final.
 
 ---
