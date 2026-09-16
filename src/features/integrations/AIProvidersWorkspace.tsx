@@ -16,7 +16,7 @@ interface AIProvidersWorkspaceProps {
   canManage?: boolean;
 }
 
-export function AIProvidersWorkspace({ credentialVault = unconfiguredAICredentialVault, canManage = true }: AIProvidersWorkspaceProps) {
+export function AIProvidersWorkspace({ credentialVault = unconfiguredAICredentialVault, canManage = false }: AIProvidersWorkspaceProps) {
   const [profiles, setProfiles] = useState(() => listAIProviderProfiles());
   const [selectedId, setSelectedId] = useState<string | null>(() => profiles[0]?.id ?? null);
   const [newName, setNewName] = useState('');
