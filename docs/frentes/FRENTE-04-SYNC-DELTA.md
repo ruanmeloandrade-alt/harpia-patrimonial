@@ -3,77 +3,96 @@
 Data-base: 16/09/2026
 Branch proprietária: `frente-04`
 
-Este arquivo registra somente diferenças da Frente04 que ainda precisam ser preservadas quando o integrador consolidar as branches.
+Este arquivo registra somente diferenças da Frente04 que precisam ser preservadas no merge final.
 
-## 1. CRM canônico com fila de leads sem etapa
+## 1. CRM canônico inclui fila sem etapa
 
-A partir dos commits:
-
-- `338855c29232a3047510b65b87585c6d99666a7a`
-- `866606c28a198503fcbc77b2d568db44850646ec`
-- `ed1828cc7640c97024208dc8e18909efadfc8650`
-- `5ff635f422259fdb40bdfc494c71923b011ac29a`
-
-`src/features/crm/CrmWorkspace.tsx` passou a ser a entrada canônica e sempre inclui a fila de leads sem etapa.
-
-A implementação visual anterior foi preservada em `src/features/crm/CrmWorkspaceCore.tsx`.
-
-Consequências:
-
-- qualquer import existente de `CrmWorkspace` continua funcionando;
-- conversões públicas sem `stageId` deixam de ficar invisíveis;
-- não é necessário criar etapa fictícia;
-- classificação só pode apontar para etapa pertencente a funil ativo;
-- `Front04CrmScreen` não duplica mais a fila.
-
-No merge final, preservar os três arquivos juntos:
+Preservar juntos:
 
 - `src/features/crm/CrmWorkspace.tsx`;
 - `src/features/crm/CrmWorkspaceCore.tsx`;
 - `src/features/crm/UnassignedLeadsQueue.tsx`.
 
-## 2. Inbox desacoplada da implementação da Frente05
+Resultado:
 
-A versão atual da Frente04 de `src/features/inbox/InboxWorkspace.tsx` recebe por props:
+- imports existentes de `CrmWorkspace` continuam válidos;
+- conversões públicas sem `stageId` permanecem visíveis;
+- não existe etapa fictícia/default inventada;
+- classificação só oferece etapas de funis ativos;
+- troca de `CrmService` causada pelo realtime remonta o core e atualiza o snapshot visual.
+
+Não é mais obrigatório trocar o import da Frente01 por `Front04CrmScreen`; a proteção está no `CrmWorkspace` canônico.
+
+## 2. Inbox canônica acompanha runtime realtime
+
+Preservar juntos:
+
+- `src/features/inbox/InboxWorkspace.tsx`;
+- `src/features/inbox/InboxWorkspaceCore.tsx`.
+
+`InboxWorkspace.tsx` mantém o caminho de importação atual, mas remonta o core quando mudam:
+
+- `crmService`;
+- `inboxService`;
+- `automationPort`.
+
+Isso evita continuar exibindo conversa/CRM/status de automação de um runtime substituído pelo realtime da Frente01.
+
+## 3. Inbox desacoplada da Frente05
+
+A versão F04 recebe por props:
 
 - `salesBots`;
-- `aiAgents`.
+- `aiAgents`;
+- `automationPort`.
 
-A Inbox não deve importar diretamente repositories da Frente05. O integrador fornece somente opções ativas no formato `{ id, name }`.
+Não preservar a versão integrada antiga que importa diretamente repositories internos da Frente05. O integrador deve montar as opções ativas e fornecê-las no formato `{ id, name }`.
 
-Motivo: CRM/Inbox é propriedade da Frente04 e não deve conhecer a persistência interna da Frente05.
+## 4. Adapter F04↔F05 mais novo
 
-## 3. Adapter F04↔F05 mais novo
+Preservar a versão da Frente04 de `src/features/crm/front05Adapter.ts`.
 
-Preservar a versão da branch Frente04 de `src/features/crm/front05Adapter.ts`.
+Ela evita:
 
-Ela contém correções que evitam:
+- retomar execução pausada de outro SalesBot;
+- exibir status de execução antiga para outro `botId`/`agentId`;
+- invocar novamente o mesmo agente IA quando já está `running`.
 
-- retomar execução pausada de um SalesBot diferente do atualmente selecionado;
-- apresentar status de execução antiga para outro `botId`/`agentId`;
-- invocar novamente o mesmo agente IA quando a execução observada já está `running`.
+A Frente01 continua responsável por fornecer os ports reais.
 
-A composição da Frente01 pode continuar fornecendo os ports reais de SalesBot/IA; apenas o adapter deve permanecer o da Frente04.
+## 5. Persistência integrada: somente Frente01
 
-## 4. Estado atual das dependências
+A Frente01 já possui:
 
-Já observado na Frente01:
+- Supabase compartilhado;
+- `platform_module_state`;
+- optimistic locking;
+- merge seguro de conversões públicas;
+- realtime entre sessões.
 
-- CRM/Inbox com persistência compartilhada Supabase;
-- site público chamando `public-lead-ingest`;
-- dashboard usando a mesma fonte CRM;
-- CRM events ligados ao Automatize;
-- SalesBot com CRM actions reais;
-- IA com runtime seguro;
-- rotas internas CRM/Inbox existentes.
+Por isso:
 
-Portanto esses pontos não devem voltar a ser listados como bloqueios de implementação. O que resta é QA integrado, usuário real/RBAC, build/typecheck e sincronização destes deltas.
+- `sharedStatePersistence.ts` foi removido da Frente04;
+- o export correspondente foi removido de `src/features/crm/index.ts`;
+- não restaurar esse caminho no merge.
 
-## 5. Semáforo
+## 6. Backend/segurança observado
 
-- 🟠 CRM/Kanban/Lead 360: funcionalidade própria fechada; falta sync/build/E2E integrado.
-- 🟠 Inbox: funcionalidade própria e seleção explícita fechadas; falta sync/build/E2E integrado.
-- 🟠 Site→CRM, Dashboard CRM e F05: contratos/composição já existem; falta teste ponta a ponta.
-- 🔴 Validação final do usuário: ainda indisponível sem usuário interno real e ambiente executável.
+- Security Advisor do Supabase dedicado: `0` lints no QA mais recente;
+- Performance Advisor: somente INFO de índices ainda não utilizados;
+- ambiente continua sem CRM/Inbox fictícios.
 
-Nenhum item deve ser marcado 🟢 apenas pela existência do código.
+## 7. Pendente fora da Frente04
+
+- branch Frente01 ainda foi observada com versões anteriores de `CrmWorkspace`, `InboxWorkspace` e `front05Adapter`;
+- `/interno/crm` ainda exige `crm.manage` e `/interno/inbox` exige `inbox.manage`, sem acesso para perfis somente `*.view`;
+- ainda não existe usuário interno real para E2E autenticado;
+- build/typecheck consolidado ainda não foi executado;
+- F05 ainda precisa de recursos reais configurados para E2E.
+
+## Semáforo
+
+- 🟠 CRM/Kanban/Lead 360 — escopo próprio fechado, inclusive realtime visual; falta sync/build/E2E.
+- 🟠 Inbox — escopo próprio fechado, inclusive troca de runtime; falta sync/build/E2E.
+- 🟠 Site→CRM/Dashboard/F05 — composição disponível; falta ensaio ponta a ponta.
+- 🔴 Validação final — depende de usuário real, ambiente integrado executável e QA do usuário.
