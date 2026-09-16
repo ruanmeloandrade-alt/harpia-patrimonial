@@ -1,4 +1,4 @@
-import { createF05Id, readStoredList, writeStoredList } from '../automations/f05Storage';
+import { createF05Id, readStoredList, writeStoredList, writeStoredListConfirmed } from '../automations/f05Storage';
 import type { AIProviderKind, AIProviderProfile, AIProviderProfileStatus } from './aiProviderTypes';
 
 const STORAGE_KEY = 'harpia:f05:ai-provider-profiles';
@@ -35,6 +35,17 @@ export function validateAIProviderProfile(profile: AIProviderProfile): string[] 
   return issues;
 }
 
+function buildUpdatedProfile(
+  current: AIProviderProfile,
+  patch: Partial<Omit<AIProviderProfile, 'id' | 'createdAt'>>,
+): AIProviderProfile {
+  let updated: AIProviderProfile = { ...current, ...patch, updatedAt: now() };
+  if (current.status === 'ready' && patch.status === undefined && validateAIProviderProfile(updated).length > 0) {
+    updated = { ...updated, status: 'draft' };
+  }
+  return updated;
+}
+
 export function updateAIProviderProfile(
   id: string,
   patch: Partial<Omit<AIProviderProfile, 'id' | 'createdAt'>>,
@@ -42,11 +53,20 @@ export function updateAIProviderProfile(
   const items = listAIProviderProfiles();
   const current = items.find((item) => item.id === id);
   if (!current) throw new Error('Perfil de IA não encontrado.');
-  let updated: AIProviderProfile = { ...current, ...patch, updatedAt: now() };
-  if (current.status === 'ready' && patch.status === undefined && validateAIProviderProfile(updated).length > 0) {
-    updated = { ...updated, status: 'draft' };
-  }
+  const updated = buildUpdatedProfile(current, patch);
   writeStoredList(STORAGE_KEY, items.map((item) => (item.id === id ? updated : item)));
+  return updated;
+}
+
+export async function updateAIProviderProfileConfirmed(
+  id: string,
+  patch: Partial<Omit<AIProviderProfile, 'id' | 'createdAt'>>,
+): Promise<AIProviderProfile> {
+  const items = listAIProviderProfiles();
+  const current = items.find((item) => item.id === id);
+  if (!current) throw new Error('Perfil de IA não encontrado.');
+  const updated = buildUpdatedProfile(current, patch);
+  await writeStoredListConfirmed(STORAGE_KEY, items.map((item) => (item.id === id ? updated : item)));
   return updated;
 }
 
