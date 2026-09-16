@@ -19,22 +19,34 @@ export function useClientAreaData(options: {
   const { clientId, source } = options;
   const [state, setState] = useState<ClientAreaDataState>({ data: emptyData });
   const requestVersionRef = useRef(0);
+  const stateClientRef = useRef<string | null>(null);
 
   const reload = useCallback(async () => {
     const requestVersion = ++requestVersionRef.current;
+    const requestClientId = clientId;
 
-    if (!clientId || !source) {
+    if (!requestClientId || !source) {
+      stateClientRef.current = null;
       setState({ data: emptyData });
       return;
     }
 
-    setState((current) => ({ ...current, loading: true, error: '' }));
+    const changedClient = stateClientRef.current !== requestClientId;
+    stateClientRef.current = requestClientId;
+    setState((current) => ({
+      data: changedClient ? emptyData : current.data,
+      loading: true,
+      error: '',
+    }));
+
     try {
-      const data = await source.load(clientId);
-      if (requestVersion !== requestVersionRef.current) return;
+      const data = await source.load(requestClientId);
+      if (requestVersion !== requestVersionRef.current || clientId !== requestClientId) return;
+      stateClientRef.current = requestClientId;
       setState({ data, loading: false, error: '' });
     } catch (cause) {
-      if (requestVersion !== requestVersionRef.current) return;
+      if (requestVersion !== requestVersionRef.current || clientId !== requestClientId) return;
+      stateClientRef.current = requestClientId;
       setState({
         data: emptyData,
         loading: false,
@@ -47,5 +59,14 @@ export function useClientAreaData(options: {
     void reload();
   }, [reload]);
 
-  return { ...state, reload };
+  const belongsToCurrentClient = stateClientRef.current === clientId;
+  const visibleState: ClientAreaDataState = belongsToCurrentClient
+    ? state
+    : {
+        data: emptyData,
+        loading: Boolean(clientId && source),
+        error: '',
+      };
+
+  return { ...visibleState, reload };
 }
