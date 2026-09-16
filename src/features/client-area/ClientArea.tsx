@@ -1,3 +1,4 @@
+import { createContext, PropsWithChildren, useContext } from 'react';
 import type { PublicCatalogItem } from '../public-catalog/contracts';
 
 export interface ClientProfileView {
@@ -26,6 +27,26 @@ export interface ClientAreaDataView {
   history: ClientHistoryView[];
 }
 
+export interface ClientAreaDataState {
+  data: ClientAreaDataView;
+  loading?: boolean;
+  error?: string;
+}
+
+const emptyClientData: ClientAreaDataView = { interests: [], history: [] };
+const ClientAreaDataContext = createContext<ClientAreaDataState>({ data: emptyClientData });
+
+export function ClientAreaDataProvider({
+  value,
+  children,
+}: PropsWithChildren<{ value?: ClientAreaDataState }>) {
+  return (
+    <ClientAreaDataContext.Provider value={value ?? { data: emptyClientData }}>
+      {children}
+    </ClientAreaDataContext.Provider>
+  );
+}
+
 interface ClientAreaProps {
   profile: ClientProfileView | null;
   favorites: PublicCatalogItem[];
@@ -52,14 +73,19 @@ function formatHistoryDate(value?: string) {
 export function ClientArea({
   profile,
   favorites,
-  data = { interests: [], history: [] },
-  dataLoading = false,
-  dataError = '',
+  data,
+  dataLoading,
+  dataError,
   onRequestLogin,
   onOpenProperty,
   onGoToCatalog,
   onRequestService,
 }: ClientAreaProps) {
+  const contextual = useContext(ClientAreaDataContext);
+  const resolvedData = data ?? contextual.data;
+  const resolvedLoading = dataLoading ?? contextual.loading ?? false;
+  const resolvedError = dataError ?? contextual.error ?? '';
+
   if (!profile) {
     return (
       <section className="client-gate section-shell" aria-labelledby="client-gate-title">
@@ -90,9 +116,9 @@ export function ClientArea({
         </div>
       </header>
 
-      {dataError ? <div className="error-state client-data-error" role="alert">{dataError}</div> : null}
+      {resolvedError ? <div className="error-state client-data-error" role="alert">{resolvedError}</div> : null}
 
-      <div className="client-grid" aria-busy={dataLoading}>
+      <div className="client-grid" aria-busy={resolvedLoading}>
         <article className="client-panel client-panel--wide">
           <div className="panel-heading">
             <div>
@@ -135,16 +161,16 @@ export function ClientArea({
         <article className="client-panel">
           <p className="section-kicker">Interesses</p>
           <h2>Seu contexto patrimonial</h2>
-          {dataLoading ? (
+          {resolvedLoading ? (
             <div className="loading-state empty-state--compact">Carregando interesses…</div>
-          ) : data.interests.length === 0 ? (
+          ) : resolvedData.interests.length === 0 ? (
             <div className="empty-state empty-state--compact">
               <strong>Nenhum interesse registrado.</strong>
               <p>Os interesses aparecerão aqui quando houver dados reais vinculados à sua conta.</p>
             </div>
           ) : (
             <div className="client-record-list">
-              {data.interests.map((interest) => (
+              {resolvedData.interests.map((interest) => (
                 <div className="client-record" key={interest.id}>
                   <strong>{interest.label}</strong>
                   {interest.type ? <small>{interest.type}</small> : null}
@@ -158,16 +184,16 @@ export function ClientArea({
         <article className="client-panel">
           <p className="section-kicker">Histórico</p>
           <h2>Itens e serviços relacionados</h2>
-          {dataLoading ? (
+          {resolvedLoading ? (
             <div className="loading-state empty-state--compact">Carregando histórico…</div>
-          ) : data.history.length === 0 ? (
+          ) : resolvedData.history.length === 0 ? (
             <div className="empty-state empty-state--compact">
               <strong>Sem histórico disponível.</strong>
               <p>Atividades reais vinculadas ao seu atendimento aparecerão neste espaço.</p>
             </div>
           ) : (
             <div className="client-record-list">
-              {data.history.map((entry) => {
+              {resolvedData.history.map((entry) => {
                 const content = (
                   <>
                     <strong>{entry.title}</strong>
