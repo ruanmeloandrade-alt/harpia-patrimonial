@@ -1,4 +1,4 @@
-import type { AICredentialVaultPort } from './aiCredentialPort';
+import type { AICredentialSaveResult, AICredentialVaultPort } from './aiCredentialPort';
 
 interface FunctionInvokeError {
   message?: string;
@@ -13,43 +13,47 @@ interface SupabaseFunctionsLike {
   };
 }
 
-interface SaveResponse {
-  ok?: boolean;
-  secretRef?: string;
-  message?: string;
+type VaultResponse =
+  | { status: 'stored'; secretRef: string }
+  | { status: 'rejected'; reason: string }
+  | { status: 'not_configured'; reason: string };
+
+function normalizeResult(data: unknown, error?: FunctionInvokeError | null): AICredentialSaveResult {
+  if (error) return { status: 'rejected', reason: error.message?.trim() || 'Falha ao acessar o cofre seguro.' };
+  if (!data || typeof data !== 'object') {
+    return { status: 'rejected', reason: 'Resposta inválida do cofre seguro.' };
+  }
+  const result = data as VaultResponse;
+  if (result.status === 'stored') {
+    return { status: 'stored', secretRef: result.secretRef || '' };
+  }
+  if (result.status === 'not_configured') return result;
+  if (result.status === 'rejected') return result;
+  return { status: 'rejected', reason: 'Estado de resposta do cofre não reconhecido.' };
 }
 
-interface RemoveResponse {
-  ok?: boolean;
-  removed?: boolean;
-  message?: string;
-}
-
-const reason = (message?: string, fallback = 'Falha ao acessar o cofre seguro de credenciais.') =>
-  message?.trim() || fallback;
-
+/**
+ * Adapter para a Edge Function canônica `ai-credential-vault` criada na
+ * integração com a Frente01. A sessão/JWT é fornecida pelo cliente Supabase.
+ */
 export function createSupabaseAICredentialVault(client: SupabaseFunctionsLike): AICredentialVaultPort {
   return {
     async saveApiKey(input) {
-      const { data, error } = await client.functions.invoke<SaveResponse>('ai-credentials', {
+      const { data, error } = await client.functions.invoke<VaultResponse>('ai-credential-vault', {
         body: { action: 'save', profileId: input.profileId, apiKey: input.apiKey },
       });
-
-      if (error) return { status: 'rejected', reason: reason(error.message) };
-      if (!data?.ok || !data.secretRef) {
-        return { status: 'rejected', reason: reason(data?.message, 'O backend não confirmou o armazenamento da credencial.') };
-      }
-      return { status: 'stored', secretRef: data.secretRef };
+      return normalizeResult(data, error);
     },
 
     async removeApiKey(input) {
-      const { data, error } = await client.functions.invoke<RemoveResponse>('ai-credentials', {
-        body: { action: 'remove', profileId: input.profileId },
+      const { data, error } = await client.functions.invoke<VaultResponse>('ai-credential-vault', {
+        body: {
+          action: 'remove',
+          profileId: input.profileId,
+          secretRef: input.secretRef,
+        },
       });
-
-      if (error) return { status: 'rejected', reason: reason(error.message) };
-      if (!data?.ok) return { status: 'rejected', reason: reason(data?.message, 'O backend não confirmou a remoção da credencial.') };
-      return { status: 'stored', secretRef: input.secretRef ?? 'removed' };
+      return normalizeResult(data, error);
     },
   };
 }
