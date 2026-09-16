@@ -6,7 +6,6 @@ import type { CrmRepository } from './repository';
 import { CrmService } from './service';
 import { CrmWorkspace } from './CrmWorkspace';
 import type { AssigneeOption } from './CrmWorkspace';
-import { UnassignedLeadsQueue } from './UnassignedLeadsQueue';
 import { InboxWorkspace } from '../inbox/InboxWorkspace';
 import type { AutomationOption } from '../inbox/InboxWorkspace';
 import { BrowserInboxRepository } from '../inbox/repository';
@@ -67,21 +66,8 @@ export function Front04CrmScreen({
     crmRepository,
     crmEventSinks,
   });
-  const [crmRevision, setCrmRevision] = useState(0);
 
-  return (
-    <>
-      <UnassignedLeadsQueue
-        service={crmService}
-        onChanged={() => setCrmRevision((value) => value + 1)}
-      />
-      <CrmWorkspace
-        key={crmRevision}
-        service={crmService}
-        assignees={assignees}
-      />
-    </>
-  );
+  return <CrmWorkspace service={crmService} assignees={assignees} />;
 }
 
 export function Front04InboxScreen({
