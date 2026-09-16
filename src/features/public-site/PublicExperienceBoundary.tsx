@@ -31,6 +31,10 @@ export class PublicExperienceBoundary extends Component<
     // Não simulamos logging remoto nesta frente.
   }
 
+  private navigate(path: string) {
+    window.location.assign(path);
+  }
+
   render() {
     if (!this.state.failed) return this.props.children;
 
@@ -41,8 +45,8 @@ export class PublicExperienceBoundary extends Component<
           <h1>O endereço informado não pôde ser processado com segurança.</h1>
           <span>Use um dos acessos abaixo para continuar na experiência pública.</span>
           <div>
-            <a href="/">Ir para o início</a>
-            <a href="/imoveis">Ver imóveis</a>
+            <button type="button" onClick={() => this.navigate('/')}>Ir para o início</button>
+            <button type="button" onClick={() => this.navigate('/imoveis')}>Ver imóveis</button>
           </div>
         </div>
       </main>
