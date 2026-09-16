@@ -28,6 +28,33 @@ export interface CrmMetricSnapshot {
 
 export interface CrmSnapshotPort {
   snapshot(): CrmMetricSnapshot;
+  subscribe?(listener: () => void): () => void;
+}
+
+export interface CrmRepositorySnapshotPort {
+  load(): CrmMetricSnapshot;
+}
+
+/**
+ * Adapter estrutural para repositórios como BrowserCrmRepository da Frente04.
+ * Lê o estado mais recente em cada snapshot, evitando depender da mesma instância de CrmService.
+ */
+export class CrmRepositorySnapshotSource implements CrmSnapshotPort {
+  constructor(
+    private readonly repository: CrmRepositorySnapshotPort,
+    private readonly changedEventName = 'harpia:crm-updated',
+  ) {}
+
+  snapshot(): CrmMetricSnapshot {
+    return this.repository.load();
+  }
+
+  subscribe(listener: () => void): () => void {
+    if (typeof window === 'undefined') return () => undefined;
+    const handler = () => listener();
+    window.addEventListener(this.changedEventName, handler);
+    return () => window.removeEventListener(this.changedEventName, handler);
+  }
 }
 
 function countLabels(values: Array<string | undefined>) {
@@ -46,7 +73,7 @@ function countLabels(values: Array<string | undefined>) {
  * Adapta somente métricas que o CRM da Frente04 expõe de forma objetiva hoje.
  * Não tenta inferir visita, proposta, negociação ou venda pelo nome configurável das etapas.
  * Quando recebe o catálogo, cruza o referenceId real do interesse do lead para derivar
- * demanda por região e performance por produto sem duplicar dados.
+ * demanda por região e interesse por produto sem duplicar dados.
  */
 export class CrmSnapshotMetricsProvider implements CommercialMetricsProvider {
   constructor(
@@ -58,6 +85,10 @@ export class CrmSnapshotMetricsProvider implements CommercialMetricsProvider {
     const metrics: CommercialMetricKey[] = ['leads', 'leadOrigins', 'nextActions'];
     if (this.catalog) metrics.push('demandByRegion', 'performanceByProduct');
     return metrics;
+  }
+
+  subscribe(listener: () => void): () => void {
+    return this.crm.subscribe?.(listener) ?? (() => undefined);
   }
 
   async getMetrics(): Promise<CommercialDashboardMetrics> {
