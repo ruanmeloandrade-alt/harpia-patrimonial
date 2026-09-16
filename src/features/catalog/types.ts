@@ -83,7 +83,13 @@ export interface PublicCatalogItem {
   status: 'published';
 }
 
+export interface PublicCatalogPriceRange {
+  min: number;
+  max: number;
+}
+
 export interface PublicCatalogDevelopmentBundle {
   development: PublicCatalogItem;
   units: PublicCatalogItem[];
+  priceRange: PublicCatalogPriceRange | null;
 }
