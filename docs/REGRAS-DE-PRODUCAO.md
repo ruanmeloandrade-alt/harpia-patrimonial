@@ -104,3 +104,21 @@ Funcionamento → integridade dos dados → não quebrar outra frente → briefi
 Antes: **ler → conferir branch → status → contratos → arquivos atuais**.
 Durante: **escopo próprio → commits pequenos → sem mock permanente → sem sobrescrever outra frente**.
 Depois: **build/testes → revisar requisito → atualizar status → handoff → declarar exatamente o que está pronto e o que falta**.
+
+## 21. Status visual obrigatório nos relatórios ao usuário
+
+Todo chat/agente deve apresentar o andamento do próprio escopo usando estes três estados visuais:
+
+- 🔴 **NÃO INICIADO** — nenhum trabalho relevante foi realizado naquele item.
+- 🟠 **PARCIAL / EM ANDAMENTO** — existe implementação ou avanço real, mas ainda falta código, integração, validação, teste ou algum requisito para o usuário poder considerar o item concluído.
+- 🟢 **COMPLETO E TESTÁVEL** — implementação concluída no escopo da frente, validações relevantes executadas e o usuário já pode testar o item conforme o handoff.
+
+Regras obrigatórias:
+
+1. Nunca usar 🟢 somente porque a interface existe.
+2. Item com teste essencial marcado `NÃO VERIFICADO` não pode receber 🟢.
+3. Se um módulo tiver partes em estados diferentes, quebrar o relatório em subitens e marcar cada um separadamente.
+4. Não usar 🟢 para algo que ainda dependa de integração obrigatória para funcionar no produto.
+5. Todo relatório de entrega/progresso deve trazer a legenda ou deixar o significado dos emojis inequívoco.
+6. O estado visual apresentado ao usuário deve ser coerente com `docs/STATUS-FRENTES.md` e com o handoff da frente.
+7. É proibido melhorar artificialmente o status para transmitir sensação de avanço; o emoji deve refletir o estado real e verificável.
