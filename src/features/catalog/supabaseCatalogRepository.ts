@@ -1,4 +1,4 @@
-import type { CatalogRepository } from './catalogRepository';
+import { CATALOG_CHANGED_EVENT, type CatalogRepository } from './catalogRepository';
 import type { CatalogItem, CatalogItemDraft, CatalogMedia, CatalogQuery, CatalogStatus } from './types';
 
 interface SupabaseErrorLike {
@@ -47,6 +47,11 @@ interface CatalogRow {
 
 function fail(error: SupabaseErrorLike | null, fallback: string): never {
   throw new Error(error?.message || fallback);
+}
+
+function notifyCatalogChanged() {
+  if (typeof window === 'undefined') return;
+  window.dispatchEvent(new CustomEvent(CATALOG_CHANGED_EVENT));
 }
 
 function makeId(prefix = 'media') {
@@ -118,6 +123,15 @@ function draftPayload(input: CatalogItemDraft) {
   };
 }
 
+function validateDraft(input: CatalogItemDraft) {
+  if (!input.code.trim()) throw new Error('Informe um código para o item.');
+  if (!input.name.trim()) throw new Error('Informe um nome para o item.');
+  if (!input.location.city.trim()) throw new Error('Informe a cidade do item.');
+  if (input.price !== null && input.price < 0) throw new Error('O preço não pode ser negativo.');
+  if (input.kind === 'unit' && !input.parentId) throw new Error('Selecione o empreendimento desta unidade.');
+  if (input.kind === 'unit' && !input.typology?.trim()) throw new Error('Informe a tipologia desta unidade.');
+}
+
 function applyLocalQuery(items: CatalogItem[], query: CatalogQuery) {
   const search = query.search?.trim().toLocaleLowerCase('pt-BR');
   return items
@@ -168,10 +182,7 @@ export class SupabaseCatalogRepository implements CatalogRepository {
   }
 
   async create(input: CatalogItemDraft): Promise<CatalogItem> {
-    if (input.kind === 'unit' && !input.typology?.trim()) {
-      throw new Error('Informe a tipologia desta unidade.');
-    }
-
+    validateDraft(input);
     const result = await this.client
       .from('catalog_items')
       .insert({ ...draftPayload(input), status: 'draft' })
@@ -179,6 +190,7 @@ export class SupabaseCatalogRepository implements CatalogRepository {
       .single() as SupabaseResultLike<CatalogRow>;
 
     if (result.error || !result.data) fail(result.error, 'Não foi possível criar o item.');
+    notifyCatalogChanged();
     return fromRow(result.data!);
   }
 
@@ -202,10 +214,7 @@ export class SupabaseCatalogRepository implements CatalogRepository {
       developer: input.developer ?? current.developer,
       media: input.media ?? current.media,
     };
-
-    if (merged.kind === 'unit' && !merged.typology?.trim()) {
-      throw new Error('Informe a tipologia desta unidade.');
-    }
+    validateDraft(merged);
 
     const result = await this.client
       .from('catalog_items')
@@ -216,6 +225,7 @@ export class SupabaseCatalogRepository implements CatalogRepository {
       .single() as SupabaseResultLike<CatalogRow>;
 
     if (result.error || !result.data) fail(result.error, 'Não foi possível atualizar o item.');
+    notifyCatalogChanged();
     return fromRow(result.data!);
   }
 
@@ -229,6 +239,7 @@ export class SupabaseCatalogRepository implements CatalogRepository {
       .single() as SupabaseResultLike<CatalogRow>;
 
     if (result.error || !result.data) fail(result.error, 'Não foi possível alterar o status.');
+    notifyCatalogChanged();
     return fromRow(result.data!);
   }
 
@@ -271,5 +282,6 @@ export class SupabaseCatalogRepository implements CatalogRepository {
       .is('deleted_at', null) as SupabaseResultLike<unknown>;
 
     if (result.error) fail(result.error, 'Não foi possível excluir o item.');
+    notifyCatalogChanged();
   }
 }
