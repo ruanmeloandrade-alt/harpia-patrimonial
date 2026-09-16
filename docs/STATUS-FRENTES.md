@@ -40,11 +40,11 @@ Atualizar este arquivo ao iniciar e ao concluir blocos relevantes.
 - Branch: `frente-04`
 - Status: EM ANDAMENTO
 - Responsável: chat atual — Frente04
-- Último commit relevante: —
-- Entregue: documentação obrigatória lida; escopo, contratos, regras e estado atual da branch conferidos.
-- Em andamento: preparação do núcleo CRM configurável e Inbox operacional conforme escopo exclusivo da Frente04.
+- Último commit relevante: `7bf0dcbc66c704f6bddc95288738d3b5d6d4037b`
+- Entregue: documentação obrigatória lida; escopo executivo dividido em blocos; semáforo de progresso definido para apresentação ao usuário.
+- Em andamento: Bloco A — fundação do CRM (modelo de dados, persistência, serviços e eventos).
 - Bloqueios: nenhum bloqueio para iniciar o escopo próprio; integrações com Frente01, Frente02, Frente03 e Frente05 permanecem por contrato.
-- Próximo passo: estruturar `src/features/crm/**` e `src/features/inbox/**` sem alterar arquivos globais da Frente01 e sem implementar motor de SalesBot/IA ou WhatsApp real.
+- Próximo passo: implementar `src/features/crm/**` e depois `src/features/inbox/**`, sem alterar arquivos globais da Frente01 e sem implementar motor de SalesBot/IA ou WhatsApp real.
 
 ## Frente05 — SalesBot/Automatize/IA/Integrações
 
@@ -74,7 +74,14 @@ Formato obrigatório:
 - Urgência:
 - Status: PENDENTE / EM ANDAMENTO / RESOLVIDO
 
-Nenhuma solicitação registrada ainda.
+- Data/hora: 16/09/2026 11:51 BRT
+- Origem: Frente04
+- Destino: Frente01 / integração global
+- Necessidade: incorporar às regras gerais do projeto o semáforo obrigatório de apresentação de progresso ao usuário: 🔴 não iniciado, 🟠 parcial/em andamento, 🟢 completo e testável.
+- Arquivo/contrato afetado: `AGENTS.md` e/ou `docs/REGRAS-DE-PRODUCAO.md`.
+- Motivo: solicitação explícita do usuário para que esse formato passe a valer como regra geral e não somente na Frente04.
+- Urgência: ALTA
+- Status: PENDENTE
 
 ---
 
@@ -89,6 +96,7 @@ Registrar aqui somente itens que dependem de merge ou decisão entre duas ou mai
 - Integrar comandos Inbox da Frente04 com SalesBot/IA da Frente05.
 - Integrar eventos CRM da Frente04 com Automatize da Frente05.
 - Conectar WhatsApp e Meta somente na fase final.
+- Propagar o semáforo de progresso 🔴/🟠/🟢 para as regras gerais compartilhadas do projeto.
 
 ---
 
