@@ -1,4 +1,5 @@
 import { ClientRoute, InternalRoute } from '../core/auth/guards';
+import { PERMISSIONS } from '../core/auth/permissions';
 import { AppLink, useAppRouter } from '../core/router/router';
 import { ClientAccountShell } from '../features/auth/ClientAccountShell';
 import { LoginPage } from '../features/auth/LoginPage';
@@ -34,10 +35,10 @@ export function AppRouter() {
 
   if (pathname.startsWith('/interno')) {
     let page = <InternalHome />;
-    let permission: string | undefined;
-    if (pathname === '/interno/usuarios') { page = <UsersPage />; permission = 'users.view'; }
-    else if (pathname === '/interno/permissoes') { page = <PermissionsPage />; permission = 'roles.view'; }
-    else if (pathname === '/interno/configuracoes') { page = <CoreSettingsPage />; permission = 'settings.view'; }
+    let permission: string | undefined = PERMISSIONS.DASHBOARD_VIEW;
+    if (pathname === '/interno/usuarios') { page = <UsersPage />; permission = PERMISSIONS.USERS_VIEW; }
+    else if (pathname === '/interno/permissoes') { page = <PermissionsPage />; permission = PERMISSIONS.ROLES_VIEW; }
+    else if (pathname === '/interno/configuracoes') { page = <CoreSettingsPage />; permission = PERMISSIONS.SETTINGS_VIEW; }
     else if (pathname !== '/interno') return <FullPageState title="Página não encontrada" actionHref="/interno" actionLabel="Voltar ao painel" />;
     return <InternalRoute permission={permission}><InternalShell>{page}</InternalShell></InternalRoute>;
   }
