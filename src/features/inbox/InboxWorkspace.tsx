@@ -1,13 +1,16 @@
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import {
-  InboxAutomationPort,
   UnavailableInboxAutomationPort,
 } from '../crm/contracts';
+import type {
+  ConversationAutomationStatus,
+  InboxAutomationPort,
+} from '../crm/contracts';
 import { CrmService } from '../crm/service';
-import { AssigneeOption } from '../crm/CrmWorkspace';
+import type { AssigneeOption } from '../crm/CrmWorkspace';
 import { BrowserInboxRepository } from './repository';
 import { InboxService } from './service';
-import { InboxConversation, InboxState, MessageType } from './domain';
+import type { InboxConversation, InboxState, MessageType } from './domain';
 import styles from './inbox.module.css';
 
 export interface InboxWorkspaceProps {
@@ -38,7 +41,10 @@ export function InboxWorkspace({
     () => inboxService.snapshot().conversations[0]?.id,
   );
   const [feedback, setFeedback] = useState('');
-  const [automationStatus, setAutomationStatus] = useState({ salesBot: 'unavailable', aiAgent: 'unavailable' } as const);
+  const [automationStatus, setAutomationStatus] = useState<ConversationAutomationStatus>({
+    salesBot: 'unavailable',
+    aiAgent: 'unavailable',
+  });
 
   const refresh = () => {
     setInboxState(inboxService.snapshot());
