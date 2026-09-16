@@ -42,6 +42,7 @@ export interface DashboardSnapshot {
   catalog: {
     active: number;
     hiddenPublished: number;
+    inventoryCount: number;
     drafts: number;
     paused: number;
     sold: number;
@@ -119,6 +120,7 @@ export async function getDashboardSnapshot(
   const catalog = {
     active: activeItems.length,
     hiddenPublished: Math.max(0, publishedItems.length - activeItems.length),
+    inventoryCount: inventoryItems.length,
     drafts: items.filter((item) => item.status === 'draft').length,
     paused: items.filter((item) => item.status === 'paused').length,
     sold: items.filter((item) => item.status === 'sold').length,
