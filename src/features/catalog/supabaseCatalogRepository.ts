@@ -1,4 +1,4 @@
-import { CATALOG_CHANGED_EVENT, type CatalogRepository } from './catalogRepository';
+import { CATALOG_CHANGED_EVENT, assertCatalogStatusTransition, type CatalogRepository } from './catalogRepository';
 import type { CatalogItem, CatalogItemDraft, CatalogMedia, CatalogQuery, CatalogStatus } from './types';
 
 interface SupabaseErrorLike {
@@ -236,6 +236,10 @@ export class SupabaseCatalogRepository implements CatalogRepository {
   }
 
   async setStatus(id: string, status: CatalogStatus): Promise<CatalogItem> {
+    const current = await this.getById(id);
+    if (!current) throw new Error('Item não encontrado.');
+    assertCatalogStatusTransition(current.status, status);
+
     const result = await this.client
       .from('catalog_items')
       .update({ status })
