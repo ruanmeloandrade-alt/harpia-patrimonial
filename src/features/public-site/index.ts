@@ -16,6 +16,11 @@ export type {
 } from '../public-catalog/contracts';
 
 export { emptyPublicCatalogReader } from '../public-catalog/contracts';
+export {
+  createFront03PublicCatalogReader,
+  type Front03PublicCatalogServicePort,
+  type Front03PublishedItem,
+} from '../public-catalog/front03Adapter';
 
 /**
  * Rotas de propriedade da Frente02. O roteador global pertence à Frente01;
