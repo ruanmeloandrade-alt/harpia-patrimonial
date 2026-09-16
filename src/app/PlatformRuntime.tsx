@@ -2,10 +2,11 @@ import { createContext, PropsWithChildren, useContext, useEffect, useMemo, useSt
 import { useAuth } from '../core/auth/AuthProvider';
 import { PERMISSIONS } from '../core/auth/permissions';
 import { isSupabaseConfigured, supabase } from '../core/supabase/client';
+import type { CatalogMediaStorage } from '../features/catalog/catalogMediaStorage';
+import { createCatalogRuntime } from '../features/catalog/catalogRuntime';
 import { LocalCatalogRepository } from '../features/catalog/catalogRepository';
 import type { CatalogRepository } from '../features/catalog/catalogRepository';
 import { PublicCatalogService } from '../features/catalog/publicCatalog';
-import { SupabaseCatalogRepository } from '../features/catalog/supabaseCatalogRepository';
 import { CrmService } from '../features/crm/service';
 import type { AssigneeOption } from '../features/crm/CrmWorkspace';
 import type { InboxAutomationPort } from '../features/crm/contracts';
@@ -43,6 +44,7 @@ import {
 interface PlatformRuntimeValue {
   catalogRepository: CatalogRepository;
   publicCatalogService: PublicCatalogService;
+  catalogMediaStorage: CatalogMediaStorage | null;
   favoritesStore: SupabaseFavoritesStore;
   credentialVault: SupabaseAICredentialVault;
   crmService: CrmService | null;
@@ -64,15 +66,25 @@ const PlatformRuntimeContext = createContext<PlatformRuntimeValue | null>(null);
 export function PlatformRuntimeProvider({ children }: PropsWithChildren) {
   const auth = useAuth();
 
-  const catalogRepository = useMemo<CatalogRepository>(() => {
-    if (isSupabaseConfigured && supabase) return new SupabaseCatalogRepository(supabase as any);
-    return new LocalCatalogRepository();
+  const catalogRuntime = useMemo(() => {
+    if (isSupabaseConfigured && supabase) return createCatalogRuntime(supabase as any);
+    return null;
   }, []);
-  const publicCatalogService = useMemo(() => new PublicCatalogService(catalogRepository), [catalogRepository]);
+  const catalogRepository = useMemo<CatalogRepository>(
+    () => catalogRuntime?.repository ?? new LocalCatalogRepository(),
+    [catalogRuntime],
+  );
+  const publicCatalogService = useMemo(
+    () => catalogRuntime?.publicCatalogService ?? new PublicCatalogService(catalogRepository),
+    [catalogRepository, catalogRuntime],
+  );
+  const catalogMediaStorage = catalogRuntime?.mediaStorage ?? null;
   const favoritesStore = useMemo(() => new SupabaseFavoritesStore(), []);
   const credentialVault = useMemo(() => new SupabaseAICredentialVault(), []);
   const aiModelRuntime = useMemo(() => new SupabaseAIModelRuntime(), []);
   const automationWebhook = useMemo(() => new SupabaseAutomationWebhook(), []);
+
+  useEffect(() => () => catalogRuntime?.dispose(), [catalogRuntime]);
 
   const [crmService, setCrmService] = useState<CrmService | null>(null);
   const [inboxService, setInboxService] = useState<InboxService | null>(null);
@@ -281,6 +293,7 @@ export function PlatformRuntimeProvider({ children }: PropsWithChildren) {
   const value = useMemo<PlatformRuntimeValue>(() => ({
     catalogRepository,
     publicCatalogService,
+    catalogMediaStorage,
     favoritesStore,
     credentialVault,
     crmService,
@@ -297,6 +310,7 @@ export function PlatformRuntimeProvider({ children }: PropsWithChildren) {
     f05Revision,
   }), [
     assignees,
+    catalogMediaStorage,
     catalogRepository,
     commercialMetricsProvider,
     credentialVault,
