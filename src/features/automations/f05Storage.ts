@@ -65,6 +65,21 @@ export function isF05SharedStorageReady() {
   return sharedReady;
 }
 
+/**
+ * Notifica workspaces quando o snapshot compartilhado termina de hidratar ou
+ * quando a sessão atual conclui uma escrita compartilhada.
+ */
+export function subscribeF05StorageEvents(listener: () => void) {
+  if (typeof window === 'undefined') return () => undefined;
+  const handler = () => listener();
+  window.addEventListener('harpia:f05-storage-ready', handler);
+  window.addEventListener('harpia:f05-updated', handler);
+  return () => {
+    window.removeEventListener('harpia:f05-storage-ready', handler);
+    window.removeEventListener('harpia:f05-updated', handler);
+  };
+}
+
 export function readStoredList<T>(key: string): T[] {
   if (sharedReady) {
     const value = memory.get(key);
