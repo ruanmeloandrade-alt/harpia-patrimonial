@@ -27,12 +27,24 @@ export function InboxWorkspace(props: InboxWorkspaceProps) {
       return;
     }
 
+    const crmContentChanged = previous.crmService !== props.crmService
+      && JSON.stringify(previous.crmService.snapshot()) !== JSON.stringify(props.crmService.snapshot());
+    const previousInboxSnapshot = previous.inboxService?.snapshot() ?? null;
+    const nextInboxSnapshot = props.inboxService?.snapshot() ?? null;
+    const inboxContentChanged = previous.inboxService !== props.inboxService
+      && JSON.stringify(previousInboxSnapshot) !== JSON.stringify(nextInboxSnapshot);
+
     previousRuntimeRef.current = {
       crmService: props.crmService,
       inboxService: props.inboxService,
       automationPort: props.automationPort,
     };
-    setRuntimeRevision((value) => value + 1);
+
+    // Trocar somente o port de automação ou receber o eco realtime do próprio
+    // save não deve fechar a conversa selecionada. Remount só com dado novo.
+    if (crmContentChanged || inboxContentChanged) {
+      setRuntimeRevision((value) => value + 1);
+    }
   }, [props.automationPort, props.crmService, props.inboxService]);
 
   return <InboxWorkspaceCore key={`inbox-runtime-${runtimeRevision}`} {...props} />;
