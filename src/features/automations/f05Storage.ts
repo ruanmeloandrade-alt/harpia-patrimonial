@@ -45,6 +45,13 @@ export function readStoredList<T>(key: string): T[] {
   return Array.isArray(value) ? clone(value as T[]) : [];
 }
 
+export function replaceStoredListFromRemote<T>(key: string, value: T[]): void {
+  memory.set(key, clone(value) as unknown[]);
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('harpia:f05-remote-refresh', { detail: { key } }));
+  }
+}
+
 export function writeStoredList<T>(key: string, value: T[]): void {
   const safe = clone(value);
   memory.set(key, safe as unknown[]);
