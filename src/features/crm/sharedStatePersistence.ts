@@ -31,7 +31,7 @@ export interface SharedModuleStatePort {
   load(module: SharedModuleName): Promise<SharedModuleStateSnapshot>;
   save(
     module: SharedModuleName,
-    state: Record<string, unknown>,
+    state: unknown,
     expectedRevision: number,
   ): Promise<number | null>;
 }
@@ -47,7 +47,7 @@ export interface SharedStateRepositoryOptions {
   onPersistenceError?: (error: Error, module: SharedModuleName) => void;
 }
 
-abstract class SharedStateRepositoryBase<TState extends Record<string, unknown>> {
+abstract class SharedStateRepositoryBase<TState extends object> {
   private writeChain: Promise<void> = Promise.resolve();
   private lastPersistenceError: Error | null = null;
 
