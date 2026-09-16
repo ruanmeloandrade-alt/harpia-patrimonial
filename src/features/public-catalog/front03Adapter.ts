@@ -1,4 +1,5 @@
 import type {
+  PublicCatalogFilterOptions,
   PublicCatalogFilters,
   PublicCatalogItem,
   PublicCatalogReader,
@@ -57,9 +58,18 @@ interface Front03Filters {
   lifestyleTag?: string;
 }
 
+interface Front03FilterOptions {
+  cities: string[];
+  locations: string[];
+  lifestyleTags: string[];
+  minPrice: number | null;
+  maxPrice: number | null;
+}
+
 export interface Front03PublicCatalogServicePort {
   list(filters?: Front03Filters): Promise<Front03PublishedItem[]>;
   getByIdOrCode(value: string): Promise<Front03PublishedItem | null>;
+  getFilterOptions?(): Promise<Front03FilterOptions>;
 }
 
 function mapPurposeToFront03(purpose?: string): Front03Purpose | undefined {
@@ -119,6 +129,23 @@ function toFront03Filters(filters: PublicCatalogFilters = {}): Front03Filters {
     isLaunch: filters.launch,
     minPrice: filters.minPrice,
     maxPrice: filters.maxPrice,
+    lifestyleTag: filters.lifestyleTag,
+  };
+}
+
+function unique(values: string[]) {
+  return [...new Set(values.filter(Boolean))].sort((a, b) => a.localeCompare(b, 'pt-BR'));
+}
+
+function deriveFilterOptions(items: Front03PublishedItem[]): PublicCatalogFilterOptions {
+  const prices = items.map((item) => item.price).filter((value): value is number => value !== null);
+  return {
+    purposes: unique(items.map((item) => mapPurposeToPublic(item.purpose))),
+    cities: unique(items.map((item) => item.location.city)),
+    locations: unique(items.flatMap((item) => [item.location.neighborhood, item.location.condominium ?? ''])),
+    lifestyleTags: unique(items.flatMap((item) => item.lifestyleTags)),
+    minPrice: prices.length ? Math.min(...prices) : null,
+    maxPrice: prices.length ? Math.max(...prices) : null,
   };
 }
 
@@ -138,6 +165,25 @@ export function createFront03PublicCatalogReader(
     async getPublishedBySlug(slug) {
       const item = await service.getByIdOrCode(slug);
       return item ? toPublicItem(item) : null;
+    },
+
+    async getFilterOptions() {
+      const [items, nativeOptions] = await Promise.all([
+        service.list(),
+        service.getFilterOptions?.(),
+      ]);
+      const derived = deriveFilterOptions(items);
+
+      if (!nativeOptions) return derived;
+
+      return {
+        purposes: derived.purposes,
+        cities: nativeOptions.cities,
+        locations: nativeOptions.locations,
+        lifestyleTags: nativeOptions.lifestyleTags,
+        minPrice: nativeOptions.minPrice,
+        maxPrice: nativeOptions.maxPrice,
+      };
     },
   };
 }
