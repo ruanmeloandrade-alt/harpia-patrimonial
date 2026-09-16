@@ -1,4 +1,4 @@
-import { AnchorHTMLAttributes, createContext, MouseEvent, PropsWithChildren, useContext, useEffect, useMemo, useState } from 'react';
+import { AnchorHTMLAttributes, createContext, MouseEvent, PropsWithChildren, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 
 type NavigateOptions = { replace?: boolean };
 
@@ -23,15 +23,16 @@ export function RouterProvider({ children }: PropsWithChildren) {
     return () => window.removeEventListener('popstate', onPopState);
   }, []);
 
-  const value = useMemo<RouterContextValue>(() => ({
-    ...location,
-    navigate(to, options) {
-      if (options?.replace) window.history.replaceState({}, '', to);
-      else window.history.pushState({}, '', to);
-      setLocation(currentLocation());
-      window.scrollTo({ top: 0, behavior: 'auto' });
-    },
-  }), [location]);
+  const navigate = useCallback((to: string, options?: NavigateOptions) => {
+    const current = `${window.location.pathname}${window.location.search}`;
+    if (current === to) return;
+    if (options?.replace) window.history.replaceState({}, '', to);
+    else window.history.pushState({}, '', to);
+    setLocation(currentLocation());
+    window.scrollTo({ top: 0, behavior: 'auto' });
+  }, []);
+
+  const value = useMemo<RouterContextValue>(() => ({ ...location, navigate }), [location, navigate]);
 
   return <RouterContext.Provider value={value}>{children}</RouterContext.Provider>;
 }
