@@ -23,10 +23,22 @@ export function UnassignedLeadsQueue({ service, onChanged }: UnassignedLeadsQueu
   }, [service]);
 
   const unassigned = state.leads.filter((lead) => !lead.stageId);
+  const activePipelines = state.pipelines.filter((pipeline) => pipeline.active);
+  const activeStageIds = new Set(
+    state.stages
+      .filter((stage) => activePipelines.some((pipeline) => pipeline.id === stage.pipelineId))
+      .map((stage) => stage.id),
+  );
+  const hasActiveStage = activeStageIds.size > 0;
+
   if (unassigned.length === 0) return null;
 
   const moveToStage = (leadId: string, stageId: string) => {
     if (!stageId) return;
+    if (!activeStageIds.has(stageId)) {
+      setFeedback('A etapa selecionada não pertence a um funil ativo.');
+      return;
+    }
     try {
       service.moveLead(leadId, stageId);
       refresh();
@@ -56,24 +68,28 @@ export function UnassignedLeadsQueue({ service, onChanged }: UnassignedLeadsQueu
               <select
                 defaultValue=""
                 aria-label={`Definir etapa de ${lead.name}`}
+                disabled={!hasActiveStage}
                 onChange={(event) => moveToStage(lead.id, event.target.value)}
               >
                 <option value="">Encaminhar para etapa…</option>
-                {state.pipelines.map((pipeline) => (
-                  <optgroup key={pipeline.id} label={pipeline.name}>
-                    {state.stages
-                      .filter((stage) => stage.pipelineId === pipeline.id)
-                      .sort((a, b) => a.position - b.position)
-                      .map((stage) => <option key={stage.id} value={stage.id}>{stage.name}</option>)}
-                  </optgroup>
-                ))}
+                {activePipelines.map((pipeline) => {
+                  const stages = state.stages
+                    .filter((stage) => stage.pipelineId === pipeline.id)
+                    .sort((a, b) => a.position - b.position);
+                  if (stages.length === 0) return null;
+                  return (
+                    <optgroup key={pipeline.id} label={pipeline.name}>
+                      {stages.map((stage) => <option key={stage.id} value={stage.id}>{stage.name}</option>)}
+                    </optgroup>
+                  );
+                })}
               </select>
             </article>
           ))}
         </div>
 
-        {state.stages.length === 0 && (
-          <small>Crie ao menos uma etapa em um funil para classificar estes leads.</small>
+        {!hasActiveStage && (
+          <small>Crie ao menos uma etapa em um funil ativo para classificar estes leads.</small>
         )}
       </div>
     </section>
