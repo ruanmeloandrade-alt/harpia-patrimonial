@@ -25,9 +25,18 @@ export function CrmWorkspace({ service: injectedService, assignees = [] }: CrmWo
   const [revision, setRevision] = useState(0);
 
   useEffect(() => {
-    if (previousServiceRef.current === service) return;
+    const previousService = previousServiceRef.current;
+    if (previousService === service) return;
+
+    const previousSnapshot = JSON.stringify(previousService.snapshot());
+    const nextSnapshot = JSON.stringify(service.snapshot());
     previousServiceRef.current = service;
-    setRevision((value) => value + 1);
+
+    // O realtime da própria sessão pode recriar o service após um save local.
+    // Nesse caso o conteúdo é igual e não devemos resetar seleção/drawer da UI.
+    if (previousSnapshot !== nextSnapshot) {
+      setRevision((value) => value + 1);
+    }
   }, [service]);
 
   return (
