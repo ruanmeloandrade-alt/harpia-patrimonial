@@ -153,10 +153,10 @@
   gap: 8px;
 }
 
-input,
-select,
-textarea,
-button {
+.workspace input,
+.workspace select,
+.workspace textarea,
+.workspace button {
   font: inherit;
 }
 
