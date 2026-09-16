@@ -6,7 +6,7 @@ Atualizar este arquivo ao iniciar e ao concluir blocos relevantes.
 
 - Branch: `frente-01`
 - Status: **INTEGRADA ESTRUTURALMENTE — F02/F03/F04/F05 LIBERADAS PARA CONTINUAR**
-- Último commit funcional antes deste status: `7b7462a0d0466a4e04cfa40260c90e97c603ddbd`.
+- Último commit funcional antes deste status: `3b5c3cc5d3e15e4c51bbb93cef15cc1558d78f51`.
 - Backend dedicado Hárpia ativo.
 - Núcleo entregue: autenticação cliente/equipe, sessão, cadastro/login/logout/recuperação, guards, usuários, grupos, permissões, overrides individuais, configurações, shell e roteador global.
 - Integração F02: experiência pública ligada ao Auth, catálogo, favoritos, área do cliente e ingestão de leads reais; `/conta` protegido antes do caminho legado `/cliente`.
@@ -16,6 +16,7 @@ Atualizar este arquivo ao iniciar e ao concluir blocos relevantes.
 - Conversão F02 → F04 ligada; criação de lead não envia mensagem automaticamente.
 - Métricas F04 → F03 ligadas sem inventar métricas indisponíveis.
 - Eventos/comandos F04 ↔ F05 ligados.
+- `src/core/supabase/database.types.ts` regenerado a partir do schema real integrado, incluindo catálogo, favoritos e tabelas/RPCs do worker de automação.
 
 ### Liberação
 
@@ -25,7 +26,6 @@ As Frentes02, 03, 04 e 05 **não precisam mais aguardar a Frente01 para continua
 
 Estas pendências permanecem para QA/fase final e **não bloqueiam o avanço das outras frentes**:
 
-- sincronizar `src/core/supabase/database.types.ts` com o schema mais recente;
 - executar build/typecheck quando houver ambiente Node/npm disponível;
 - criar os dois usuários temporários de QA já autorizados quando houver caminho seguro pelo Auth;
 - executar E2E autenticado, persistência e concorrência entre sessões;
@@ -81,6 +81,7 @@ Estas pendências permanecem para QA/fase final e **não bloqueiam o avanço das
 - [x] Eventos CRM F04 ↔ Automatize F05.
 - [x] RBAC F05 ↔ shell F01.
 - [x] Realtime/Storage do catálogo F03 ↔ runtime F01.
+- [x] Tipos Supabase sincronizados com o schema integrado.
 
 ## QA/fase final
 
