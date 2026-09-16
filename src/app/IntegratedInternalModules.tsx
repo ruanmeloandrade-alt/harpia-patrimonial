@@ -7,7 +7,9 @@ import { DashboardPage } from '../features/dashboard/DashboardPage';
 import { InboxWorkspace } from '../features/inbox/InboxWorkspace';
 import { SalesBotWorkspace } from '../features/salesbot/SalesBotWorkspace';
 import { ExecutionLogsPanel } from '../features/salesbot/ExecutionLogsPanel';
+import { listSalesBots } from '../features/salesbot/repository';
 import { AIAgentsWorkspace } from '../features/ai-agents/AIAgentsWorkspace';
+import { listAIAgents } from '../features/ai-agents/repository';
 import { AutomationsWorkspace } from '../features/automations/AutomationsWorkspace';
 import { IntegrationsWorkspace } from '../features/integrations/IntegrationsWorkspace';
 import '../features/automations/front05.css';
@@ -55,8 +57,33 @@ export function IntegratedCrm() {
 }
 
 export function IntegratedInbox() {
+  const auth = useAuth();
   const runtime = usePlatformRuntime();
-  return <OperationalGate>{runtime.crmService && runtime.inboxService && runtime.inboxAutomationPort ? <InboxWorkspace crmService={runtime.crmService} inboxService={runtime.inboxService} automationPort={runtime.inboxAutomationPort} assignees={runtime.assignees} /> : <FullPageState title="Inbox indisponível" description="CRM ou Inbox compartilhados não foram carregados." />}</OperationalGate>;
+  const canReadSalesBots = auth.hasPermission(PERMISSIONS.SALESBOT_VIEW) || auth.hasPermission(PERMISSIONS.SALESBOT_MANAGE);
+  const canReadAiAgents = auth.hasPermission(PERMISSIONS.AI_VIEW) || auth.hasPermission(PERMISSIONS.AI_MANAGE);
+  const salesBots = runtime.f05Ready && canReadSalesBots
+    ? listSalesBots().filter((bot) => bot.status === 'active').map((bot) => ({ id: bot.id, name: bot.name }))
+    : [];
+  const aiAgents = runtime.f05Ready && canReadAiAgents
+    ? listAIAgents().filter((agent) => agent.status === 'active').map((agent) => ({ id: agent.id, name: agent.name }))
+    : [];
+
+  return (
+    <OperationalGate>
+      {runtime.crmService && runtime.inboxService && runtime.inboxAutomationPort
+        ? (
+          <InboxWorkspace
+            crmService={runtime.crmService}
+            inboxService={runtime.inboxService}
+            automationPort={runtime.inboxAutomationPort}
+            assignees={runtime.assignees}
+            salesBots={salesBots}
+            aiAgents={aiAgents}
+          />
+        )
+        : <FullPageState title="Inbox indisponível" description="CRM ou Inbox compartilhados não foram carregados." />}
+    </OperationalGate>
+  );
 }
 
 function Front05Shell({ children }: { children: ReactNode }) {
