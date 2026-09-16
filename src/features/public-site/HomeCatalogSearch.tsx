@@ -12,7 +12,8 @@ export function HomeCatalogSearch({ options, onNavigate }: HomeCatalogSearchProp
   const [filters, setFilters] = useState<PublicCatalogFilters>({});
   const locationOptions = useMemo(() => {
     if (!filters.city) return options.locations;
-    return options.locationsByCity?.[filters.city] ?? [];
+    if (!options.locationsByCity) return options.locations;
+    return options.locationsByCity[filters.city] ?? [];
   }, [filters.city, options.locations, options.locationsByCity]);
 
   const submit = (event: FormEvent<HTMLFormElement>) => {
