@@ -193,17 +193,21 @@ alter table public.catalog_items enable row level security;
 
 create policy "catalog_public_read_published"
 on public.catalog_items for select
-to anon, authenticated
+to anon
 using (
   deleted_at is null
   and status = 'published'::public.catalog_status
 );
 
-create policy "catalog_internal_read"
+create policy "catalog_authenticated_read"
 on public.catalog_items for select
 to authenticated
 using (
-  private.user_has_permission((select auth.uid()), 'catalog.view')
+  (
+    deleted_at is null
+    and status = 'published'::public.catalog_status
+  )
+  or private.user_has_permission((select auth.uid()), 'catalog.view')
   or private.user_has_permission((select auth.uid()), 'catalog.manage')
   or private.user_has_permission((select auth.uid()), 'catalog.publish')
 );
