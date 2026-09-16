@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { listAIAgents } from '../ai-agents/repository';
+import { useF05StorageListener } from '../automations/useF05StorageListener';
 import { SALESBOT_BLOCK_CATALOG } from './blockCatalog';
 import {
   addSalesBotBlock,
@@ -58,8 +59,10 @@ export function SalesBotWorkspace({ canManage = true }: { canManage?: boolean })
   const refresh = (focusId?: string) => {
     const next = listSalesBots(); setBots(next);
     if (focusId) setSelectedId(focusId);
-    else if (selectedId && !next.some((bot) => bot.id === selectedId)) setSelectedId(next[0]?.id ?? null);
+    else setSelectedId((current) => current && next.some((bot) => bot.id === current) ? current : next[0]?.id ?? null);
   };
+  useF05StorageListener(() => refresh());
+
   const create = () => {
     const name = newName.trim(); if (!name || !canManage) return;
     const bot = createSalesBot({ name }); setNewName(''); setError(''); refresh(bot.id);
