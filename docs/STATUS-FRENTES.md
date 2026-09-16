@@ -38,13 +38,13 @@ Atualizar este arquivo ao iniciar e ao concluir blocos relevantes.
 ## Frente04 — CRM/Inbox
 
 - Branch: `frente-04`
-- Status inicial: NÃO INICIADA
-- Responsável: chat/agente designado pelo usuário
+- Status: EM ANDAMENTO
+- Responsável: chat atual — Frente04
 - Último commit relevante: —
-- Entregue: —
-- Em andamento: —
-- Bloqueios: —
-- Próximo passo: iniciar pela leitura da documentação obrigatória.
+- Entregue: documentação obrigatória lida; escopo, contratos, regras e estado atual da branch conferidos.
+- Em andamento: preparação do núcleo CRM configurável e Inbox operacional conforme escopo exclusivo da Frente04.
+- Bloqueios: nenhum bloqueio para iniciar o escopo próprio; integrações com Frente01, Frente02, Frente03 e Frente05 permanecem por contrato.
+- Próximo passo: estruturar `src/features/crm/**` e `src/features/inbox/**` sem alterar arquivos globais da Frente01 e sem implementar motor de SalesBot/IA ou WhatsApp real.
 
 ## Frente05 — SalesBot/Automatize/IA/Integrações
 
