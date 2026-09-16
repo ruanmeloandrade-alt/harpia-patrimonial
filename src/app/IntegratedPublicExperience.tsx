@@ -13,18 +13,7 @@ export function IntegratedPublicExperience() {
   const runtime = usePlatformRuntime();
   const clientAreaDataSource = useMemo(() => new SupabaseClientAreaDataSource(), []);
 
-  const crmIngest = useMemo(() => async (event: Front04LeadConversionEventPort) => {
-    const clientId = auth.profile?.account_type === 'client' && auth.profile.is_active
-      ? auth.user?.id
-      : undefined;
-    return ingestPublicLead({
-      ...event,
-      metadata: {
-        ...(event.metadata ?? {}),
-        ...(clientId ? { clientId } : {}),
-      },
-    });
-  }, [auth.profile?.account_type, auth.profile?.is_active, auth.user?.id]);
+  const crmIngest = useMemo(() => async (event: Front04LeadConversionEventPort) => ingestPublicLead(event), []);
 
   return (
     <Front02IntegrationShell
