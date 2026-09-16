@@ -1,7 +1,7 @@
 import { createAIAgentCommandPort } from '../ai-agents/runtime';
 import { unconfiguredAIModelRuntime } from '../integrations/aiRuntimePort';
 import { getSalesBot, validateSalesBotForActivation } from '../salesbot/repository';
-import { listSalesBotExecutions, startExecution, updateExecution } from '../salesbot/executionRepository';
+import { listDueSalesBotExecutions, listSalesBotExecutions, startExecution, updateExecution } from '../salesbot/executionRepository';
 import { runSalesBotExecution, unconfiguredSalesBotRuntimeDependencies, type SalesBotRuntimeDependencies } from '../salesbot/runtime';
 import type { AutomationCommandResult, SalesBotCommandPort } from './contracts';
 
@@ -76,6 +76,7 @@ export function createSalesBotCommandPort(
       updateExecution(input.executionId, {
         status: 'paused',
         resumeMode: 'retry_current',
+        resumeAt: undefined,
         action: input.reason ?? 'Pausado por comando externo.',
       });
       return { status: 'accepted', executionId: input.executionId };
@@ -94,7 +95,7 @@ export function createSalesBotCommandPort(
         previous: execution.runtimeContext,
         incoming: input.context,
       });
-      updateExecution(execution.id, { runtimeContext });
+      updateExecution(execution.id, { runtimeContext, resumeAt: undefined });
       const result = await runSalesBotExecution(
         execution.id,
         { leadId: execution.leadId, conversationId: execution.conversationId, data: runtimeContext },
@@ -109,6 +110,18 @@ export function createSalesBotCommandPort(
   };
 
   return commandPort;
+}
+
+export async function resumeDueSalesBotExecutions(
+  commandPort: SalesBotCommandPort,
+  now = new Date(),
+): Promise<Array<{ executionId: string; result: AutomationCommandResult }>> {
+  const results: Array<{ executionId: string; result: AutomationCommandResult }> = [];
+  for (const execution of listDueSalesBotExecutions(now)) {
+    const result = await commandPort.resume({ executionId: execution.id });
+    results.push({ executionId: execution.id, result });
+  }
+  return results;
 }
 
 export const salesBotCommandPort = createSalesBotCommandPort(unconfiguredSalesBotRuntimeDependencies);
