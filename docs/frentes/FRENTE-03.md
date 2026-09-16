@@ -4,117 +4,52 @@ Branch obrigatória: `frente-03`
 
 ## Missão
 
-Construir a operação interna de produtos/imóveis da Hárpia e o dashboard real, garantindo que um cadastro interno possa alimentar o catálogo público somente após publicação explícita.
-
-## Ler antes de começar
-
-1. `AGENTS.md`
-2. `docs/BRIEFING-CONSOLIDADO.md`
-3. `docs/ESCOPO-DE-TRABALHO.md`
-4. `docs/CONVERSA-E-DECISOES.md`
-5. `docs/FRENTES-DE-TRABALHO.md`
-6. `docs/CONTRATOS-ENTRE-MODULOS.md`
-7. `docs/STATUS-FRENTES.md`
+Construir a operação interna de produtos/imóveis da Hárpia e o dashboard real, garantindo que um cadastro interno alimente o catálogo público somente após publicação explícita.
 
 ## Escopo exclusivo
 
-### 1. Catálogo administrativo
+### Catálogo administrativo
 
-Criar área `Catálogo` para administrar:
+Administrar:
 
 - empreendimento/produto;
 - unidades de empreendimento;
 - imóvel avulso.
 
-### 2. Campos mínimos
+Campos mínimos:
 
-Estruturar suporte para:
-
-- código;
-- nome;
-- tipo;
-- finalidade;
-- descrição;
-- cidade;
-- bairro/condomínio/localização;
-- endereço quando necessário;
+- código, nome, tipo, finalidade e descrição;
+- cidade, bairro/condomínio/localização e endereço;
 - preço/faixa de preço;
-- lançamento sim/não;
-- características do imóvel;
+- lançamento;
+- características e atributos de estilo de vida;
 - incorporadora/origem;
-- fotos;
-- vídeos;
-- plantas/arquivos quando aplicável;
-- status;
-- publicação;
-- classificação/atributos usados pelo recurso `Encontre pelo estilo de vida` quando houver.
+- fotos, vídeos, plantas e arquivos;
+- status/publicação.
 
-### 3. Mídia
-
-Permitir associação de:
-
-- foto de capa;
-- galeria de fotos;
-- vídeos;
-- mídia por produto e, quando aplicável, por unidade.
-
-Não armazenar segredo ou URL temporária hardcoded.
-
-### 4. Ações obrigatórias
+Ações:
 
 - criar;
 - editar;
 - duplicar;
 - publicar;
 - pausar;
-- marcar como vendido;
+- marcar vendido;
 - excluir com confirmação.
 
-### 5. Regras de estado
+### Relação empreendimento/unidades
 
-- cadastro nasce sem publicação pública automática;
-- `publicado` torna elegível para o catálogo público;
-- `pausado` remove da exposição pública sem perder histórico;
-- `vendido` preserva informação histórica e reflete o estado real;
-- `excluído` deve ser uma ação protegida e não pode acontecer sem confirmação;
-- duplicação não deve clonar identificadores únicos de forma inválida.
+Unidade suporta código, tipologia, preço, status, dados específicos e mídia própria. Imóvel avulso não exige pai.
 
-### 6. Relação empreendimento/unidades
+### Contrato público
 
-Um produto pode conter unidades.
+Expor somente itens publicamente elegíveis, com listagem, filtros, detalhe, cidades/localizações derivadas, relação empreendimento/unidade, status e mídia.
 
-Cada unidade deve poder ter, no mínimo:
+### Dashboard
 
-- identificação/código;
-- tipologia;
-- preço;
-- status;
-- dados específicos;
-- mídia própria quando necessário.
+Usar apenas dados reais para:
 
-Também deve ser possível cadastrar imóvel sem empreendimento pai.
-
-### 7. Contrato de leitura pública
-
-Expor camada clara para Frente02 consumir somente itens publicados.
-
-Deve permitir:
-
-- listagem;
-- filtros;
-- detalhe;
-- cidades/localizações derivadas dos dados reais;
-- relação produto/unidade;
-- status;
-- mídias.
-
-### 8. Dashboard interno
-
-Criar dashboard com métricas alimentadas exclusivamente por dados reais.
-
-Métricas previstas:
-
-- produtos/imóveis ativos;
+- estoque/produtos ativos;
 - leads;
 - visitas;
 - propostas;
@@ -124,135 +59,219 @@ Métricas previstas:
 - ticket;
 - conversão;
 - origem dos leads;
-- performance por produto;
+- performance/interesse por produto;
 - demanda por região;
 - agenda/próximas ações.
 
-Nem todas as métricas dependem desta frente. Métricas CRM devem consumir dados da Frente04 quando integradas.
+Métricas não suportadas objetivamente pela Frente04 permanecem em zero/indisponíveis; nunca inferir por nome de etapa.
 
-### 9. Regra de zero mocks
+## Regras obrigatórias
 
-Enquanto não houver dado:
+- nenhum mock permanente;
+- cadastro nasce `draft`;
+- publicação é explícita;
+- `paused` sai da exposição pública preservando histórico;
+- `sold` é histórico e terminal;
+- exclusão é lógica/protegida;
+- duplicação cria identificadores/código válidos;
+- unidade publicada só é pública se o empreendimento pai também estiver publicado e ativo;
+- não cadastrar estoque real nesta fase;
+- não implementar CRM/SalesBot/Meta/WhatsApp nesta frente.
 
-- mostrar `0`;
-- mostrar lista vazia;
-- usar empty state;
-- nunca preencher dashboard com números demonstrativos fingindo serem reais.
-
-## Pastas sob responsabilidade
+## Ownership
 
 Preferencialmente:
 
-- `src/features/catalog/**`
-- `src/features/dashboard/**`
-- tipos/serviços/repositórios específicos do domínio imobiliário e mídia do catálogo.
+- `src/features/catalog/**`;
+- `src/features/dashboard/**`;
+- serviços/repositórios/tipos específicos do domínio imobiliário e mídia.
 
-## Não editar sem coordenação
+Não editar sem coordenação:
 
 - auth/RBAC;
+- roteador/shell global;
 - site público;
-- CRM;
-- Inbox;
-- SalesBot;
-- automações;
-- agentes IA;
-- arquivos globais pertencentes à Frente01.
-
-## Dependências
-
-- Frente01: autenticação/permissão para proteger administração.
-- Frente02: consumidora do catálogo publicado.
-- Frente04: fonte das métricas comerciais do dashboard.
-
-Se Frente04 ainda não estiver integrada, exibir zeros/empty states para métricas CRM.
-
-## Fora do escopo
-
-Não cadastrar imóveis reais nesta fase.
-Não inventar estoque para apresentação.
-Não implementar CRM.
-Não implementar SalesBot.
-Não conectar Meta ou WhatsApp.
+- CRM/Inbox;
+- SalesBot/Automatize/IA;
+- configuração global pertencente à Frente01.
 
 ## Critérios de aceite
 
-- administrador autorizado consegue acessar catálogo;
-- é possível criar empreendimento/produto;
-- é possível criar unidades;
-- é possível criar imóvel avulso;
-- fotos e vídeos estão contemplados;
-- publicar é ação explícita;
-- pausar/vendido/duplicar/excluir funcionam de forma coerente;
-- catálogo público pode consumir somente publicados;
-- filtros podem ser derivados dos dados reais;
-- dashboard não contém números fictícios;
-- estados vazios são claros;
-- build funciona na branch.
+- usuário autorizado acessa o catálogo;
+- empreendimento, unidade e avulso podem ser criados;
+- fotos/vídeos/arquivos estão contemplados;
+- publicar/pausar/vender/duplicar/excluir são coerentes;
+- catálogo público só consome elegíveis;
+- filtros vêm dos dados reais;
+- Dashboard não contém números fictícios;
+- empty states claros;
+- build integrado funciona.
 
-## Handoff — atualizado em 16/09/2026
+---
 
-Legenda obrigatória: 🟢 completo e testável | 🟠 parcial/em andamento | 🔴 não iniciado.
+# Handoff atual — 16/09/2026
 
-- Status geral: 🟠 **PARCIAL / EM ANDAMENTO**. A camada funcional própria da Frente03 avançou e já possui blocos validados, mas a frente ainda não é `PRONTA PARA INTEGRAÇÃO` porque faltam build Vite completo, teste visual integrado, persistência compartilhada/storage e integrações obrigatórias com outras frentes.
-- Último commit funcional relevante: `aa0e1fc66248e58343393a7b8bec49163b4d7528` (`[F03] catalogo: proteger integridade entre empreendimentos e unidades`).
-- Último commit de status/handoff antes deste registro: `95a401ee0846c107d9da9dac5fd6254cd6168586`.
+Legenda: 🟢 completo/testado no nível indicado | 🟠 parcial/aguardando integração essencial | 🔴 não iniciado.
 
-### Estado por bloco
+## Status geral
 
-- 🟢 **Modelo de domínio do catálogo** — empreendimento, unidade, imóvel avulso, finalidade, localização, preço, lançamento, características, estilo de vida, incorporadora/origem, mídia e estados.
-- 🟢 **Repositório/contrato do catálogo** — CRUD, busca, filtros internos, publicação explícita, pausa, vendido, duplicação segura e exclusão lógica.
-- 🟢 **Integridade empreendimento/unidades** — criação de unidade exige empreendimento válido; empreendimento com unidades ativas não pode ser excluído nem convertido para outro tipo deixando unidades órfãs.
-- 🟢 **Contrato de leitura pública** — `PublicCatalogService` expõe somente itens publicados, detalhe por id/código, filtros e opções de cidade/localização derivadas dos dados reais.
-- 🟢 **Serviço de dashboard de catálogo** — métricas derivadas do repositório real e fallback comercial zerado quando CRM não está conectado.
-- 🟠 **CatalogAdminPage** — implementada com formulário, edição, busca, filtros, ações e empty states; typecheck TSX isolado passou, mas build Vite real e teste visual no shell ainda não foram executados.
-- 🟠 **DashboardPage** — implementada com métricas do catálogo, estado de CRM não conectado e empty states; typecheck TSX isolado passou, mas build Vite real e teste visual no shell ainda não foram executados.
-- 🟠 **Front03Workspace** — Dashboard + Catálogo desacoplados e prontos para encaixe; integração real depende do shell/roteador da Frente01.
-- 🟠 **Persistência de produção** — interface `CatalogRepository` permite substituição; adaptador atual usa `localStorage` e não é a persistência compartilhada final.
-- 🟠 **Mídia** — associação de fotos, vídeos e plantas/arquivos por URL permanente está pronta; upload/storage binário real ainda depende da infraestrutura compartilhada.
-- 🟠 **Métricas comerciais** — `CommercialMetricsProvider` está definido; dados reais dependem da Frente04.
+🟠 **TRABALHO PRÓPRIO FUNCIONAL FECHADO NOS BLOCOS PRINCIPAIS; AGUARDANDO SINCRONIZAÇÃO NA FRENTE01 + BUILD/BROWSER/E2E.**
 
-### Testes realmente executados
+## 🟢 Domínio, persistência e estado
 
-- 🟢 Typecheck estrito da camada central (`types.ts`, `catalogRepository.ts`, `publicCatalog.ts`, `dashboardService.ts`): **PASSOU**.
-- 🟢 Teste de execução de criação de empreendimento, unidade e imóvel avulso: **PASSOU**.
-- 🟢 Confirmação de que rascunhos não aparecem no catálogo público: **PASSOU**.
-- 🟢 Publicação e leitura pública somente de publicados: **PASSOU**.
-- 🟢 Filtros públicos por cidade e finalidade e opções derivadas dos dados reais: **PASSOU**.
-- 🟢 Dashboard com contagem real do catálogo e métricas comerciais zeradas sem CRM: **PASSOU**.
-- 🟢 Duplicação gerando novo id, novo código e status rascunho: **PASSOU**.
-- 🟢 Bloqueio de exclusão de empreendimento com unidades ativas: **PASSOU**.
-- 🟢 Bloqueio de alteração de tipo de empreendimento que deixaria unidade órfã: **PASSOU**.
-- 🟢 Exclusão lógica de unidade e posterior exclusão válida do empreendimento: **PASSOU**.
-- 🟢 Marcação de vendido e reflexo nas métricas: **PASSOU**.
-- 🟢 Typecheck isolado dos componentes React/TSX da Frente03 com seus contratos: **PASSOU**.
+- modelos de empreendimento, unidade e avulso;
+- tipologia, finalidade, localização, preço, lifestyle tags e mídia;
+- `LocalCatalogRepository` e `SupabaseCatalogRepository`;
+- CRUD, busca, duplicação segura e soft-delete;
+- código ativo único;
+- máquina de estados real: `draft→published|sold`, `published→paused|sold`, `paused→published|sold`, `sold` terminal;
+- `published_at` e `sold_at` controlados no banco;
+- unidade nova/realocada não aponta para empreendimento vendido;
+- unidade histórica sob pai vendido continua editável;
+- empreendimento só é vendido depois das unidades ativas;
+- pai com unidades ativas não pode ser excluído/convertido deixando órfãos.
 
-### Ainda não verificado
+## 🟢 Supabase/RLS/RBAC real
 
-- 🟠 Build Vite completo da branch: **NÃO VERIFICADO**.
-- 🟠 Lint global: **NÃO VERIFICADO** porque o projeto não possui script/configuração de lint disponível nesta branch.
-- 🟠 Teste visual em navegador real integrado ao shell: **NÃO VERIFICADO**.
-- 🟠 Integração do `canManage` com RBAC real da Frente01: **NÃO VERIFICADO**.
-- 🟠 Persistência compartilhada/backend: **NÃO VERIFICADO**.
-- 🟠 Storage/upload real de mídia: **NÃO VERIFICADO**.
-- 🟠 Consumo real pela Frente02: **NÃO VERIFICADO**.
-- 🟠 Métricas reais da Frente04: **NÃO VERIFICADO**.
+Projeto dedicado: `desxomqvtjaymwwxivwq`.
 
-### Modelo de dados e contratos
+Migrations Frente03 aplicadas:
 
-- Modelo de dados: `CatalogItem`, `CatalogItemDraft`, `CatalogLocation`, `CatalogMedia`, `CatalogStatus`, `CatalogItemKind`, `PublicCatalogItem` e filtros públicos em `src/features/catalog/types.ts`.
-- Contrato público: `PublicCatalogService.list`, `getByIdOrCode` e `getFilterOptions`.
-- Contrato de dashboard comercial: `CommercialMetricsProvider`.
-- Contrato para persistência substituível: `CatalogRepository`.
+1. `catalog_front03`;
+2. `catalog_front03_grants_hardening`;
+3. `catalog_front03_select_policy_performance`;
+4. `catalog_front03_status_transitions`;
+5. `catalog_front03_media_storage`;
+6. `catalog_front03_public_unit_parent_visibility`;
+7. `catalog_front03_sold_development_integrity`;
+8. `catalog_front03_realtime`;
+9. `catalog_front03_media_payload_validation`.
 
-### Riscos conhecidos
+QA real:
 
-- `localStorage` é adaptador transitório por navegador e não substitui banco compartilhado.
-- mídia por URL depende de storage permanente.
-- a Frente03 não deve editar roteador, providers, `package.json` ou CSS global para forçar integração.
+- anon só vê publicamente elegíveis;
+- cliente autenticado comum não ganha acesso interno;
+- `catalog.view/manage/publish` testados separadamente;
+- código duplicado/tipologia ausente/transições inválidas bloqueados;
+- integridade pai/unidade validada;
+- payload de mídia inseguro/tipo inválido bloqueados;
+- 0 resíduos `QA-%` após testes;
+- Security Advisor = 0 findings.
 
-### Instruções para integração
+## 🟢 Catálogo público
 
-- Frente01 deve integrar `Front03Workspace` ou, separadamente, `DashboardPage` e `CatalogAdminPage`, fornecendo RBAC real e roteamento.
-- A persistência final deve implementar `CatalogRepository` sem alterar o contrato dos consumidores.
-- Frente02 deve consumir `PublicCatalogService`/contrato equivalente, sem criar segunda fonte de catálogo.
-- Frente04 deve fornecer `CommercialMetricsProvider` para alimentar métricas comerciais reais.
+`PublicCatalogService` entrega:
+
+- listagem/filtros;
+- detalhe id/código;
+- unidades por empreendimento;
+- bundle de empreendimento;
+- opções reais de filtro;
+- faixa de preço derivada das unidades publicadas;
+- preço público do empreendimento como menor preço das unidades publicadas quando existirem;
+- fallback ao preço do pai quando não houver unidade publicada com preço;
+- mídia sem `storagePath` operacional.
+
+Teste da coerência de preço público: `PUBLIC_DEVELOPMENT_PRICE_OK`.
+
+## 🟢 Dashboard
+
+Patrimonial:
+
+- publicados/elegíveis;
+- publicados ocultos pelo pai (`hiddenPublished`);
+- estoque ativo (`inventoryCount`);
+- rascunhos, pausados e vendidos;
+- valor de estoque sem dupla contagem;
+- cidade e finalidade.
+
+Testes isolados:
+
+- `DASHBOARD_HIDDEN_PUBLISHED_OK`;
+- `DASHBOARD_INVENTORY_COUNT_OK`.
+
+CRM objetivo atual:
+
+- leads;
+- origem;
+- próximas ações;
+- demanda regional quando há `interest.referenceId`;
+- interesse por produto.
+
+Visitas/propostas/negociações/vendas/VGV/ticket/conversão continuam sem fonte semântica objetiva na Frente04 e não são inventadas.
+
+## 🟢 Mídia / Storage
+
+Bucket real `catalog-media`:
+
+- serving público;
+- gestão sob `catalog.manage`;
+- limite 50 MB;
+- JPEG/PNG/WebP/GIF/MP4/WebM/PDF;
+- nomes opacos e `upsert:false`.
+
+Lifecycle:
+
+- upload direto opcional + URL manual;
+- URL manual limitada a HTTP(S);
+- lote parcial limpo em erro;
+- uploads não salvos limpos em cancelamento/troca;
+- `storagePath` interno;
+- remoção só apaga objeto quando nenhuma referência ativa ou histórica permanece;
+- duplicatas podem compartilhar mídia com segurança.
+
+Testes:
+
+- `CATALOG_MEDIA_VALIDATION_OK`;
+- `MEDIA_REFERENCE_GUARD_OK`;
+- QA SQL real de payload de mídia.
+
+## 🟢 Realtime
+
+- `catalog_items` incluído em `supabase_realtime`;
+- `RealtimeCatalogRepository` para área interna;
+- público usa repositório base sem canal Realtime;
+- canal abre apenas com uso interno e possui `dispose()`;
+- eventos remotos convertem para `harpia:catalog-changed`.
+
+Testes:
+
+- `REALTIME_CATALOG_RUNTIME_OK`;
+- `REALTIME_CATALOG_LAZY_OK`.
+
+## 🟢 Integração estrutural já existente
+
+Na Frente01 já foram observados:
+
+- Supabase/Auth/RBAC;
+- `PlatformRuntimeProvider`;
+- `IntegratedCatalog` / `IntegratedDashboard`;
+- rota `/interno/catalogo` e menu;
+- OR entre `catalog.view/manage/publish`;
+- catálogo público repassado à Frente02;
+- CRM compartilhado repassado ao Dashboard.
+
+## 🟠 Dependências externas restantes
+
+Frente01/integrador ainda precisa:
+
+1. sincronizar a versão atual dos módulos Frente03;
+2. usar `createCatalogRuntime(requireSupabase())` ou composição equivalente;
+3. expor `mediaStorage` no runtime global;
+4. chamar `catalogRuntime.dispose()` no ciclo de vida do runtime;
+5. regenerar/conferir `database.types.ts` com o schema atual;
+6. rodar typecheck/build integrado.
+
+QA conjunto ainda necessário:
+
+- upload real pelo navegador;
+- Realtime real entre duas sessões;
+- criar → editar → mídia → publicar → site → pausar → republicar → vender unidades → vender empreendimento;
+- validação visual do Dashboard/site;
+- teste final pelo usuário.
+
+## Estado final desta frente agora
+
+🟢 Não há bloco obrigatório do escopo próprio identificado como totalmente não iniciado.
+
+🟠 O verde geral depende de integração sincronizada + build/browser/E2E real; nenhum desses pontos é declarado aprovado sem execução.
