@@ -1,4 +1,4 @@
-import { CrmEvent, CrmEventSink, LeadInterest } from './domain';
+import type { CrmEvent, CrmEventSink, LeadInterest } from './domain';
 import { CrmService } from './service';
 
 export interface LeadConversionContact {
@@ -69,12 +69,22 @@ export interface ConversationAutomationStatus {
   aiAgent: AutomationResourceStatus;
 }
 
+export interface InboxAutomationContext {
+  leadId: string;
+  conversationId?: string;
+}
+
+export interface InboxAutomationStatusContext extends InboxAutomationContext {
+  botId?: string;
+  agentId?: string;
+}
+
 export interface InboxAutomationPort {
-  startSalesBot(input: { leadId: string; conversationId?: string; botId?: string }): Promise<void>;
-  pauseSalesBot(input: { leadId: string; conversationId?: string }): Promise<void>;
-  startAiAgent(input: { leadId: string; conversationId?: string; agentId?: string }): Promise<void>;
-  pauseAiAgent(input: { leadId: string; conversationId?: string }): Promise<void>;
-  getStatus(input: { leadId: string; conversationId?: string }): Promise<ConversationAutomationStatus>;
+  startSalesBot(input: InboxAutomationContext & { botId?: string }): Promise<void>;
+  pauseSalesBot(input: InboxAutomationContext): Promise<void>;
+  startAiAgent(input: InboxAutomationContext & { agentId?: string }): Promise<void>;
+  pauseAiAgent(input: InboxAutomationContext): Promise<void>;
+  getStatus(input: InboxAutomationStatusContext): Promise<ConversationAutomationStatus>;
 }
 
 export class UnavailableInboxAutomationPort implements InboxAutomationPort {
