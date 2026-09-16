@@ -31,6 +31,8 @@ export interface CreateLeadInput {
   source?: string;
   sourceAction?: string;
   sourcePage?: string;
+  sourceOccurredAt?: string;
+  sourceMetadata?: Record<string, unknown>;
   interest?: LeadInterest;
   assigneeId?: string;
   pipelineId?: CrmId;
@@ -173,6 +175,8 @@ export class CrmService {
       source: this.cleanOptional(input.source),
       sourceAction: this.cleanOptional(input.sourceAction),
       sourcePage: this.cleanOptional(input.sourcePage),
+      sourceOccurredAt: this.cleanOptional(input.sourceOccurredAt),
+      sourceMetadata: input.sourceMetadata ? { ...input.sourceMetadata } : undefined,
       interest: input.interest,
       assigneeId: this.cleanOptional(input.assigneeId),
       pipelineId: placement.pipelineId,
@@ -189,10 +193,17 @@ export class CrmService {
       source: lead.source,
       sourceAction: lead.sourceAction,
       sourcePage: lead.sourcePage,
+      sourceOccurredAt: lead.sourceOccurredAt,
+      sourceMetadata: lead.sourceMetadata,
     });
     this.persist();
     this.publish('lead.created', lead.id, {
       source: lead.source ?? null,
+      sourceAction: lead.sourceAction ?? null,
+      sourcePage: lead.sourcePage ?? null,
+      sourceOccurredAt: lead.sourceOccurredAt ?? null,
+      sourceMetadata: lead.sourceMetadata ?? null,
+      interest: lead.interest ?? null,
       pipelineId: lead.pipelineId ?? null,
       stageId: lead.stageId ?? null,
     });
@@ -221,6 +232,8 @@ export class CrmService {
   moveLead(leadId: CrmId, stageId: CrmId): Lead {
     const lead = this.requireLead(leadId);
     const stage = this.requireStage(stageId);
+    if (lead.stageId === stage.id && lead.pipelineId === stage.pipelineId) return lead;
+
     const previousStageId = lead.stageId ?? null;
     lead.pipelineId = stage.pipelineId;
     lead.stageId = stage.id;
@@ -242,8 +255,11 @@ export class CrmService {
 
   assignLead(leadId: CrmId, assigneeId?: string): Lead {
     const lead = this.requireLead(leadId);
+    const normalizedAssigneeId = this.cleanOptional(assigneeId);
+    if (lead.assigneeId === normalizedAssigneeId) return lead;
+
     const previousAssigneeId = lead.assigneeId ?? null;
-    lead.assigneeId = this.cleanOptional(assigneeId);
+    lead.assigneeId = normalizedAssigneeId;
     lead.updatedAt = nowIso();
     this.addHistory(lead.id, 'assignee_changed', 'Responsável do lead alterado.', {
       previousAssigneeId,
@@ -319,6 +335,8 @@ export class CrmService {
     const lead = this.requireLead(leadId);
     const field = this.requireCustomField(fieldId);
     const previousValue = lead.customFields[fieldId] ?? null;
+    if (this.sameCustomFieldValue(previousValue, value)) return lead;
+
     lead.customFields[fieldId] = value;
     lead.updatedAt = nowIso();
     this.addHistory(lead.id, 'custom_field_changed', `Campo “${field.name}” alterado.`, {
@@ -355,6 +373,8 @@ export class CrmService {
   updateTaskStatus(taskId: CrmId, status: LeadTask['status']): LeadTask {
     const task = this.state.tasks.find((item) => item.id === taskId);
     if (!task) throw new CrmIntegrityError('Tarefa não encontrada.');
+    if (task.status === status) return task;
+
     task.status = status;
     task.updatedAt = nowIso();
     this.addHistory(task.leadId, 'task_updated', 'Status da tarefa alterado.', { taskId, status });
@@ -475,5 +495,15 @@ export class CrmService {
   private cleanOptional(value?: string): string | undefined {
     const clean = value?.trim();
     return clean || undefined;
+  }
+
+  private sameCustomFieldValue(left: CustomFieldValue, right: CustomFieldValue): boolean {
+    if (Array.isArray(left) || Array.isArray(right)) {
+      return Array.isArray(left)
+        && Array.isArray(right)
+        && left.length === right.length
+        && left.every((item, index) => item === right[index]);
+    }
+    return left === right;
   }
 }
