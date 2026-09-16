@@ -127,6 +127,7 @@ const statusLabel = { draft: 'Rascunho', published: 'Publicado', paused: 'Pausad
 
 export function CatalogAdminPage({ access, repository }: CatalogAdminPageProps) {
   const catalog = useMemo(() => repository ?? new LocalCatalogRepository(), [repository]);
+  const canRead = access.canView || access.canManage || access.canPublish;
   const [items, setItems] = useState<CatalogItem[]>([]);
   const [form, setForm] = useState<FormState>(emptyForm);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -150,13 +151,13 @@ export function CatalogAdminPage({ access, repository }: CatalogAdminPageProps) 
     }
   };
 
-  useEffect(() => { if (access.canView) void reload(); }, [access.canView, catalog, search]);
+  useEffect(() => { if (canRead) void reload(); }, [canRead, catalog, search]);
   useEffect(() => {
-    if (!access.canView) return undefined;
+    if (!canRead) return undefined;
     const listener = () => void reload();
     window.addEventListener(CATALOG_CHANGED_EVENT, listener);
     return () => window.removeEventListener(CATALOG_CHANGED_EVENT, listener);
-  }, [access.canView, catalog, search]);
+  }, [canRead, catalog, search]);
 
   const developments = items.filter((item) => item.kind === 'development');
   const visibleItems = items.filter((item) => {
@@ -165,8 +166,8 @@ export function CatalogAdminPage({ access, repository }: CatalogAdminPageProps) 
     return true;
   });
 
-  if (!access.canView) {
-    return <section className="f03-shell f03-access-denied"><p className="f03-kicker">Catálogo interno</p><h1>Acesso restrito</h1><p>É necessária a permissão <code>catalog.view</code> para consultar este módulo.</p></section>;
+  if (!canRead) {
+    return <section className="f03-shell f03-access-denied"><p className="f03-kicker">Catálogo interno</p><h1>Acesso restrito</h1><p>É necessária uma permissão de catálogo para consultar este módulo.</p></section>;
   }
 
   const resetForm = () => { setEditingId(null); setForm(emptyForm()); setError(''); };
