@@ -15,6 +15,35 @@ export function getSalesBot(id: string): SalesBotDefinition | undefined {
   return listSalesBots().find((bot) => bot.id === id);
 }
 
+const chainTargets = (bot: SalesBotDefinition) => bot.blocks
+  .filter((block) => block.type === 'chain_flow')
+  .map((block) => String(block.config.botId ?? '').trim())
+  .filter(Boolean);
+
+function hasReachableChainCycle(candidate: SalesBotDefinition, storedBots: SalesBotDefinition[]): boolean {
+  const graph = new Map(storedBots.map((bot) => [bot.id, bot]));
+  graph.set(candidate.id, candidate);
+  const visiting = new Set<string>();
+  const visited = new Set<string>();
+
+  const visit = (botId: string): boolean => {
+    if (visiting.has(botId)) return true;
+    if (visited.has(botId)) return false;
+    const bot = graph.get(botId);
+    if (!bot) return false;
+
+    visiting.add(botId);
+    for (const targetId of chainTargets(bot)) {
+      if (graph.has(targetId) && visit(targetId)) return true;
+    }
+    visiting.delete(botId);
+    visited.add(botId);
+    return false;
+  };
+
+  return visit(candidate.id);
+}
+
 function validateSalesBotReferences(bot: SalesBotDefinition): string[] {
   const issues: string[] = [];
   const agents = listAIAgents();
@@ -39,6 +68,10 @@ function validateSalesBotReferences(bot: SalesBotDefinition): string[] {
       }
     }
   });
+
+  if (hasReachableChainCycle(bot, bots)) {
+    issues.push('Encadeamento de SalesBots contém um ciclo. Remova o caminho circular antes de ativar.');
+  }
 
   return issues;
 }
