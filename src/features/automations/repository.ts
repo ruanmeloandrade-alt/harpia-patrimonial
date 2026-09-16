@@ -38,14 +38,24 @@ export function deleteAutomation(id: string): void {
 }
 
 export function setAutomationStatus(id: string, status: AutomationStatus): AutomationDefinition {
+  const current = listAutomations().find((item) => item.id === id);
+  if (!current) throw new Error('Automação não encontrada.');
+  if (status === 'active' && current.actions.length === 0) throw new Error('Adicione pelo menos uma ação antes de ativar a automação.');
   return updateAutomation(id, { status });
 }
 
 export function addAutomationAction(id: string, action: Omit<AutomationAction, 'id'>): AutomationDefinition {
   const current = listAutomations().find((item) => item.id === id);
   if (!current) throw new Error('Automação não encontrada.');
+  return updateAutomation(id, { actions: [...current.actions, { ...action, id: createF05Id('action') }] });
+}
+
+export function updateAutomationAction(id: string, actionId: string, config: AutomationAction['config']): AutomationDefinition {
+  const current = listAutomations().find((item) => item.id === id);
+  if (!current) throw new Error('Automação não encontrada.');
+  if (!current.actions.some((action) => action.id === actionId)) throw new Error('Ação não encontrada.');
   return updateAutomation(id, {
-    actions: [...current.actions, { ...action, id: createF05Id('action') }],
+    actions: current.actions.map((action) => action.id === actionId ? { ...action, config } : action),
   });
 }
 
