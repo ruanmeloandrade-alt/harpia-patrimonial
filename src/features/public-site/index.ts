@@ -4,10 +4,6 @@ export {
   Front02IntegrationShell,
   type Front02IntegrationShellProps,
 } from './Front02IntegrationShell';
-export {
-  Front02ClientAccountShell,
-  type Front02ClientAccountShellProps,
-} from './Front02ClientAccountShell';
 
 export type {
   PublicAuthBridge,
@@ -25,7 +21,6 @@ export type {
 } from '../public-catalog/contracts';
 
 export {
-  ClientArea,
   ClientAreaDataProvider,
   type ClientAreaDataState,
   type ClientAreaDataView,
@@ -75,7 +70,22 @@ export {
   readCatalogFilters,
   writeCatalogFilters,
 } from './catalogQuery';
-export {
-  matchesFront02PublicRoute,
-  publicRouteManifest,
-} from './routes';
+
+/**
+ * Rotas de propriedade da Frente02. O roteador global pertence à Frente01;
+ * esta lista existe apenas para a integração registrar o conjunto correto
+ * sem duplicar descoberta de rotas ou mover ownership.
+ */
+export const publicRouteManifest = [
+  '/',
+  '/sobre',
+  '/investimentos',
+  '/leiloes',
+  '/assessoria-juridica',
+  '/arquitetura',
+  '/imoveis',
+  '/imoveis/:slug',
+  '/vender',
+  '/alugar',
+  '/cliente',
+] as const;
