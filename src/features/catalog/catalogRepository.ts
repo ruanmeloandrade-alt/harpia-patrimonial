@@ -21,6 +21,30 @@ const allowedStatusTransitions: Record<CatalogStatus, CatalogStatus[]> = {
   sold: [],
 };
 
+const allowedMediaTypes = new Set(['image', 'video', 'document', 'floorplan']);
+
+export function isCatalogMediaUrlAllowed(value: string) {
+  try {
+    const parsed = new URL(value);
+    return parsed.protocol === 'http:' || parsed.protocol === 'https:';
+  } catch {
+    return false;
+  }
+}
+
+export function assertCatalogMedia(media: CatalogItemDraft['media']) {
+  if (!Array.isArray(media)) throw new Error('A mídia do catálogo precisa ser uma lista.');
+
+  for (const item of media) {
+    if (!item || typeof item !== 'object') throw new Error('Mídia do catálogo inválida.');
+    if (!item.id?.trim()) throw new Error('Cada mídia precisa de um identificador.');
+    if (!allowedMediaTypes.has(String(item.type))) throw new Error('Tipo de mídia não permitido.');
+    if (!item.url?.trim() || !isCatalogMediaUrlAllowed(item.url.trim())) {
+      throw new Error('URLs de mídia devem usar http ou https.');
+    }
+  }
+}
+
 export function assertCatalogStatusTransition(current: CatalogStatus, next: CatalogStatus) {
   if (current === next) return;
   if (!allowedStatusTransitions[current].includes(next)) {
@@ -103,6 +127,7 @@ export class LocalCatalogRepository implements CatalogRepository {
     if (!name) throw new Error('Informe um nome para o item.');
     if (!city) throw new Error('Informe a cidade do item.');
     if (input.price !== null && input.price < 0) throw new Error('O preço não pode ser negativo.');
+    assertCatalogMedia(input.media);
 
     const codeExists = items.some(
       (item) => !item.deletedAt && item.id !== ignoreId && item.code.toLowerCase() === code.toLowerCase(),
