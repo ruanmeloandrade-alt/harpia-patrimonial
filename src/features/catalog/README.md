@@ -2,11 +2,11 @@
 
 Este diretório pertence à Frente03.
 
-## Composição atual com a Frente01
+## Composição preferida com a Frente01
 
 A Frente01 já possui `PlatformRuntimeProvider`, `IntegratedCatalog`, `IntegratedDashboard`, rota `/interno/catalogo` e navegação interna com permissões alternativas.
 
-A forma preferida de integrar a Frente03 é usar um único cliente Supabase oficial através de `createCatalogRuntime`:
+Use um único cliente Supabase oficial através de `createCatalogRuntime`:
 
 ```tsx
 import { createCatalogRuntime } from '../features/catalog';
@@ -15,11 +15,12 @@ import { requireSupabase } from '../core/supabase/client';
 const catalogRuntime = createCatalogRuntime(requireSupabase());
 ```
 
-O factory entrega, todos usando a mesma instância do cliente:
+O factory entrega:
 
-- `catalogRuntime.repository`;
-- `catalogRuntime.publicCatalogService`;
-- `catalogRuntime.mediaStorage`.
+- `catalogRuntime.repository` — Supabase + Realtime para a área interna;
+- `catalogRuntime.publicCatalogService` — repositório base, sem abrir Realtime para visitante público;
+- `catalogRuntime.mediaStorage` — upload/remoção com proteção de referências compartilhadas;
+- `catalogRuntime.dispose()` — encerra o canal Realtime interno.
 
 Na tela administrativa:
 
@@ -40,109 +41,130 @@ Na tela administrativa:
 
 A Frente03 não cria outro cliente Supabase e não armazena segredo.
 
-## Persistência
+## Persistência e migrations
 
-- `CatalogRepository`: contrato do domínio.
-- `LocalCatalogRepository`: adapter transitório local, vazio por padrão.
-- `SupabaseCatalogRepository`: adapter de produção que recebe o cliente oficial da Frente01.
-- `catalog.schema.sql`: schema/RLS consolidado para ambiente novo.
-- `catalog.public-visibility.sql`: migration incremental de visibilidade hierárquica para ambiente existente.
-- `catalog.sold-integrity.sql`: migration incremental de integridade para empreendimentos vendidos.
-- `catalog.storage.sql`: bucket e policies de referência para mídia.
-
-Os adapters de catálogo emitem `harpia:catalog-changed` após mutações para atualizar consumidores no navegador.
+- `CatalogRepository`: contrato do domínio;
+- `LocalCatalogRepository`: adapter transitório local, vazio por padrão;
+- `SupabaseCatalogRepository`: persistência de produção;
+- `RealtimeCatalogRepository`: decorator interno para sincronização entre sessões;
+- `catalog.schema.sql`: schema/RLS consolidado para ambiente novo;
+- `catalog.public-visibility.sql`: visibilidade hierárquica incremental;
+- `catalog.sold-integrity.sql`: integridade de empreendimento vendido;
+- `catalog.storage.sql`: bucket/policies;
+- `catalog.realtime.sql`: publication `supabase_realtime`;
+- `catalog.media-validation.sql`: validação server-side do payload de mídia.
 
 ## RBAC
 
 - `catalog.view`: consultar catálogo interno;
-- `catalog.manage`: criar, editar, duplicar, excluir logicamente e enviar/remover mídia;
+- `catalog.manage`: criar, editar, duplicar, excluir logicamente e gerir mídia;
 - `catalog.publish`: publicar, pausar e marcar vendido.
 
-`catalog.manage` e `catalog.publish` também permitem leitura do módulo. A UI não substitui RLS; o banco valida as ações.
+`catalog.manage` e `catalog.publish` também permitem leitura. A UI não substitui RLS; o banco valida as ações.
 
-A matriz real já foi testada no Supabase dedicado:
+Matriz real já testada:
 
-- usuário somente `catalog.manage`: cria/edita, mas não publica;
-- usuário somente `catalog.publish`: lê e altera status, mas não edita conteúdo nem cria;
-- usuário somente `catalog.view`: lê inclusive rascunhos internos, mas UPDATE afeta zero linhas e INSERT é bloqueado;
-- cliente autenticado comum enxerga somente itens publicamente elegíveis e não ganha escrita interna.
+- somente `catalog.manage`: cria/edita, não publica;
+- somente `catalog.publish`: lê e muda status, não cria/edita conteúdo;
+- somente `catalog.view`: lê rascunhos internos, não grava;
+- cliente autenticado comum: apenas superfície pública.
 
 ## Máquina de estados
-
-Transições válidas:
 
 - `draft` → `published` ou `sold`;
 - `published` → `paused` ou `sold`;
 - `paused` → `published` ou `sold`;
 - `sold` é terminal.
 
-A regra existe no adapter local, no adapter Supabase e no trigger real do banco. Chamadas diretas à API não conseguem furar a regra visual.
+A regra existe no local, adapter Supabase e trigger real.
 
 ## Regras de domínio
 
-- todo cadastro nasce em `draft`;
-- unidade exige empreendimento pai ativo e tipologia explícita;
-- unidade nova ou realocada não pode ser vinculada a empreendimento vendido;
-- unidade histórica que já pertence a empreendimento vendido pode continuar sendo editada para correção cadastral;
-- empreendimento só pode ser marcado como vendido quando todas as unidades ativas também estiverem vendidas;
-- empreendimento com unidades ativas não pode ser excluído nem convertido para outro tipo;
-- duplicação de unidade é bloqueada se o empreendimento pai estiver vendido ou indisponível;
-- tipologia é removida quando item deixa de ser unidade;
+- cadastro nasce em `draft`;
+- unidade exige empreendimento ativo e tipologia;
+- unidade nova/realocada não pode apontar para empreendimento vendido;
+- unidade histórica sob pai vendido permanece editável para correção;
+- empreendimento só pode ser vendido depois de todas as unidades ativas estarem vendidas;
+- empreendimento com unidades ativas não pode ser excluído/convertido deixando órfãos;
+- duplicação de unidade é bloqueada quando o pai estiver vendido/indisponível;
+- tipologia é removida quando o item deixa de ser unidade;
 - código ativo é único;
 - preço não pode ser negativo;
 - código, nome e cidade não podem ser vazios;
-- primeira foto cadastrada é a capa;
-- fotos, vídeos, plantas e documentos são suportados;
+- primeira foto é a capa;
 - publicação, venda e exclusão preservam histórico;
-- `published_at` e `sold_at` são controlados por transições no banco.
-
-Essas regras foram testadas no Supabase real com transações revertidas após o QA.
+- `published_at`/`sold_at` são controlados pelo banco.
 
 ## Visibilidade pública hierárquica
 
-Uma unidade com `status = published` só é publicamente elegível quando seu empreendimento pai também está publicado e ativo.
+Unidade `published` só é publicamente elegível se o empreendimento pai também estiver `published` e ativo.
 
 Consequências:
 
-- pausar/vender o empreendimento retira suas unidades da exposição pública sem destruir o histórico interno;
-- equipe com permissão interna continua vendo pai e unidades para administração;
-- `PublicCatalogService`, RLS e Dashboard usam o mesmo conceito de elegibilidade pública;
-- cliente autenticado comum segue a mesma regra pública.
+- pausar/vender pai esconde unidades sem apagar histórico;
+- equipe interna continua vendo os registros;
+- RLS, `PublicCatalogService` e Dashboard usam o mesmo critério;
+- Dashboard separa `active` de `hiddenPublished`.
+
+## Realtime
+
+`catalog_items` pertence à publication `supabase_realtime`.
+
+`RealtimeCatalogRepository`:
+
+- escuta `INSERT/UPDATE/DELETE` de `catalog_items`;
+- converte mudanças remotas em `harpia:catalog-changed`;
+- só abre canal quando o repositório interno é utilizado;
+- não é usado pelo `PublicCatalogService` público;
+- possui `dispose()` para remover o canal.
+
+Testes isolados executados:
+
+- `REALTIME_CATALOG_RUNTIME_OK`;
+- `REALTIME_CATALOG_LAZY_OK`.
 
 ## Mídia / Storage
 
-O projeto real possui o bucket público `catalog-media`.
+Bucket real: `catalog-media`.
 
-Configuração:
-
-- limite por arquivo: 50 MB;
-- formatos: JPEG, PNG, WebP, GIF, MP4, WebM e PDF;
-- URLs públicas e estáveis para uso no site;
-- INSERT/SELECT operacional/UPDATE/DELETE no Storage restritos a usuários com `catalog.manage`;
-- nomes de objeto opacos e únicos;
-- upload usa `upsert: false`.
+- limite 50 MB;
+- JPEG, PNG, WebP, GIF, MP4, WebM e PDF;
+- serving público;
+- gestão protegida por `catalog.manage`;
+- nomes opacos e `upsert:false`.
 
 `SupabaseCatalogMediaStorage` fornece:
 
 - `upload(file, type)`;
 - `remove(path)`.
 
-`CatalogAdminPage` aceita `mediaStorage`. Quando presente, mostra upload direto para fotos, vídeos, plantas e documentos; quando ausente, mantém URLs manuais como fallback.
+Hardening do payload:
 
-O fluxo administrativo rastreia uploads pendentes para:
+- URL manual deve usar HTTP(S);
+- tipos válidos: `image`, `video`, `document`, `floorplan`;
+- validação existe em domínio, adapter Supabase e trigger SQL;
+- leitura do adapter descarta mídia inválida antiga em vez de expor payload inseguro.
 
-- remover um lote parcial quando o upload falha;
-- limpar uploads ainda não salvos ao trocar/cancelar uma edição;
-- persistir o caminho de Storage de mídia criada pelo upload interno;
-- remover objetos antigos do Storage quando uma mídia interna é retirada de um cadastro salvo.
+Lifecycle:
 
-O caminho operacional de Storage não faz parte do contrato `PublicCatalogItem`; o serviço público retorna somente a mídia necessária ao consumidor.
+- lote parcial é limpo se upload falha;
+- uploads não salvos são limpos em troca/cancelamento;
+- `storagePath` é persistido apenas para gestão interna;
+- `storagePath` não faz parte de `PublicCatalogItem`;
+- ao remover mídia persistida, o Storage consulta todo o catálogo com histórico;
+- o objeto só é apagado se nenhum item ainda referenciar o mesmo `storagePath` ou URL;
+- duplicatas podem compartilhar mídia sem quebrar umas às outras.
 
-O adapter passou typecheck estrito e teste de execução com cliente Supabase simulado em validação isolada anterior. O upload real pelo navegador ainda precisa ser validado depois que a Frente01 injetar `mediaStorage` na composição integrada.
+Testes isolados:
+
+- `CATALOG_MEDIA_VALIDATION_OK`;
+- `MEDIA_REFERENCE_GUARD_OK`.
+
+QA SQL real confirmou URL insegura/tipo inválido bloqueados e HTTPS válido aceito.
 
 ## Catálogo público
 
-`PublicCatalogService` expõe:
+`PublicCatalogService`:
 
 - `list(filters)`;
 - `listUnits(parentId, filters)`;
@@ -152,68 +174,57 @@ O adapter passou typecheck estrito e teste de execução com cliente Supabase si
 
 Garantias:
 
-- somente itens publicamente elegíveis são expostos;
-- unidade exige pai publicado para exposição;
-- cidades/localizações/estilos vêm de dados reais;
-- relação empreendimento/unidades é explícita;
-- faixa de preço do empreendimento é derivada das unidades publicadas;
-- filtro de preço usa preços reais das unidades;
-- o preço do pai só é usado quando não há unidade publicada com preço;
-- os limites globais também evitam teto artificial do pai;
-- `storagePath` não é exposto pelo contrato público;
-- a Frente02 deve consumir esta fonte, sem duplicar catálogo.
+- somente publicamente elegíveis;
+- relação empreendimento/unidade;
+- faixa de preço derivada das unidades publicadas;
+- filtros/opções derivados de dados reais;
+- preço do pai apenas como fallback;
+- nenhum `storagePath` público.
 
 ## Dashboard + Frente04
 
-`CrmRepositorySnapshotSource` aceita repositório com `load()` compatível com a Frente04 e pode reagir a `harpia:crm-updated`.
+Patrimonial:
 
-Métricas objetivamente suportadas:
+- publicados/elegíveis;
+- publicados ocultos;
+- rascunhos, pausados e vendidos;
+- estoque sem dupla contagem;
+- cidade e finalidade.
+
+CRM objetivo:
 
 - leads;
-- origem dos leads;
+- origem;
 - próximas tarefas;
-- demanda por região quando existe `interest.referenceId`;
-- interesse por produto medido por leads/interesses referenciados.
+- demanda regional quando existe `interest.referenceId`;
+- interesse por produto.
 
-Não inferir pelo nome configurável de etapa:
-
-- visitas;
-- propostas;
-- negociações;
-- vendas;
-- VGV/pipeline;
-- ticket;
-- conversão.
-
-## Valor do estoque
-
-Quando um empreendimento possui unidades ativas, o dashboard soma as unidades e não soma novamente o preço do empreendimento. Vendidos ficam fora do estoque.
-
-A métrica de publicados do Dashboard usa a mesma elegibilidade hierárquica do catálogo público para não contar unidade cujo pai esteja pausado/vendido.
+Não inferir por nome configurável de etapa: visitas, propostas, negociações, vendas, VGV, ticket e conversão.
 
 ## Estado de integração
 
 Já resolvido:
 
-- Supabase dedicado ativo;
-- schema/RLS real do catálogo aplicado;
-- grants mínimos;
+- Supabase dedicado;
+- schema/RLS e 9 migrations Frente03 aplicadas;
 - RBAC real testado;
-- máquina de estados real testada;
-- visibilidade pública hierárquica testada;
-- integridade de empreendimento vendido testada;
-- Storage/bucket real criado;
-- runtime da Frente01 usando `SupabaseCatalogRepository`;
-- Dashboard integrado ao repositório CRM compartilhado;
-- rota `/interno/catalogo` e menu criados pela Frente01;
-- experiência pública da Frente02 usando `runtime.publicCatalogService`.
+- máquina de estados;
+- visibilidade hierárquica;
+- integridade de empreendimento vendido;
+- bucket/Storage;
+- Realtime do catálogo habilitado;
+- validação server-side de mídia;
+- rota/menu internos da Frente01;
+- catálogo público compartilhado com Frente02;
+- CRM compartilhado com Dashboard.
 
 Ainda requer integração/QA:
 
-- sincronizar a cópia mais recente dos arquivos da Frente03 dentro da branch integradora;
-- preferencialmente trocar a composição manual por `createCatalogRuntime(requireSupabase())`;
-- expor `mediaStorage` no `PlatformRuntime` da Frente01 e passá-lo ao `IntegratedCatalog`;
-- regenerar `src/core/supabase/database.types.ts`, que ainda não contém `catalog_items` na branch Frente01;
-- validar upload real em navegador;
-- executar build Vite e QA visual/E2E no ambiente final;
-- definir semântica explícita para métricas comerciais avançadas.
+- sincronizar os arquivos atuais da Frente03 na branch integradora;
+- adotar `createCatalogRuntime(requireSupabase())`;
+- expor `mediaStorage` no runtime global;
+- chamar `catalogRuntime.dispose()` no ciclo de vida global;
+- regenerar/conferir `src/core/supabase/database.types.ts`;
+- rodar typecheck/build integrado;
+- validar upload real e Realtime entre dois navegadores;
+- executar QA visual/E2E final.
