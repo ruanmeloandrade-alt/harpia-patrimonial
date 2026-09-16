@@ -1,7 +1,9 @@
 import { useMemo, useState } from 'react';
+import type { CSSProperties } from 'react';
 import { BrowserCrmRepository } from './repository';
 import { CrmService } from './service';
-import { CrmWorkspace, AssigneeOption } from './CrmWorkspace';
+import { CrmWorkspace } from './CrmWorkspace';
+import type { AssigneeOption } from './CrmWorkspace';
 import { InboxWorkspace } from '../inbox/InboxWorkspace';
 import { BrowserInboxRepository } from '../inbox/repository';
 import { InboxService } from '../inbox/service';
@@ -61,7 +63,7 @@ export function Front04Workspace({ assignees = [], automationPort }: Front04Work
   );
 }
 
-const buttonStyle = (active: boolean) => ({
+const buttonStyle = (active: boolean): CSSProperties => ({
   border: active ? '1px solid #233b32' : '1px solid #cbc5ba',
   borderRadius: 10,
   background: active ? '#233b32' : 'white',
