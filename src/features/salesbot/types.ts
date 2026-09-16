@@ -35,6 +35,7 @@ export interface SalesBotDefinition {
 }
 
 export type SalesBotExecutionStatus = 'running' | 'paused' | 'completed' | 'failed';
+export type SalesBotResumeMode = 'retry_current' | 'next_block';
 
 export interface SalesBotExecutionLog {
   id: string;
@@ -45,6 +46,7 @@ export interface SalesBotExecutionLog {
   finishedAt?: string;
   status: SalesBotExecutionStatus;
   currentBlockId?: string;
+  resumeMode?: SalesBotResumeMode;
   error?: string;
   action?: string;
   aiAgentId?: string;
