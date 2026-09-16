@@ -41,11 +41,22 @@ export interface PublicCatalogFilters {
   launch?: boolean;
   minPrice?: number;
   maxPrice?: number;
+  lifestyleTag?: string;
+}
+
+export interface PublicCatalogFilterOptions {
+  purposes: string[];
+  cities: string[];
+  locations: string[];
+  lifestyleTags: string[];
+  minPrice: number | null;
+  maxPrice: number | null;
 }
 
 export interface PublicCatalogReader {
   listPublished(filters?: PublicCatalogFilters): Promise<PublicCatalogItem[]>;
   getPublishedBySlug(slug: string): Promise<PublicCatalogItem | null>;
+  getFilterOptions?(): Promise<PublicCatalogFilterOptions>;
 }
 
 /**
@@ -59,5 +70,15 @@ export const emptyPublicCatalogReader: PublicCatalogReader = {
   },
   async getPublishedBySlug() {
     return null;
+  },
+  async getFilterOptions() {
+    return {
+      purposes: [],
+      cities: [],
+      locations: [],
+      lifestyleTags: [],
+      minPrice: null,
+      maxPrice: null,
+    };
   },
 };
