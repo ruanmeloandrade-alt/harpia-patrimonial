@@ -29,21 +29,24 @@ Atualizar este arquivo ao iniciar e ao concluir blocos relevantes.
 - Branch: `frente-03`
 - Status geral: 🟠 PARCIAL / EM ANDAMENTO
 - Responsável: ChatGPT — Frente03
-- Último commit funcional relevante: `aa0e1fc66248e58343393a7b8bec49163b4d7528`
+- Último commit funcional relevante: `ed0957e283a6533e1f297502d912725a303d9803`
 - Regra visual: 🟢 completo e testável | 🟠 parcial/em andamento | 🔴 não iniciado.
 - 🟢 Modelo de domínio do catálogo: empreendimento, unidade, imóvel avulso, estados e mídia.
-- 🟢 Repositório/contrato do catálogo: CRUD, publicação explícita, pausa, vendido, duplicação segura, exclusão lógica e proteção contra unidades órfãs.
+- 🟢 Repositório local/contrato do catálogo: CRUD, publicação explícita, pausa, vendido, duplicação segura, exclusão lógica e proteção contra unidades órfãs.
 - 🟢 Contrato público: somente publicados, detalhe, filtros e opções de cidade/localização derivados dos dados reais.
-- 🟢 Serviço de métricas do catálogo/dashboard: sem mocks e com fallback real para CRM não conectado.
-- 🟠 `CatalogAdminPage`: implementada, mas build React/Vite completo e teste visual integrado ainda não foram concluídos.
-- 🟠 `DashboardPage`: implementada, mas build React/Vite completo e teste visual integrado ainda não foram concluídos.
+- 🟢 Serviço de métricas do catálogo/dashboard: sem mocks e com disponibilidade explícita por métrica comercial.
+- 🟢 Adapter de métricas CRM: quantidade de leads, origem e próximas tarefas derivadas da `snapshot()` real; typecheck e teste de execução passaram.
+- 🟢 Adapter `SupabaseCatalogRepository`: contrato de produção injetável; typecheck e teste de execução com cliente Supabase simulado passaram.
+- 🟠 Schema Supabase/RLS do catálogo: implementado com `catalog.view`, `catalog.manage` e `catalog.publish`, integridade pai/unidade e proteção de alteração; ainda precisa ser aplicado e testado no Supabase dedicado real.
+- 🟠 `CatalogAdminPage`: CRUD/UI implementados e RBAC granular separado em leitura, edição e publicação; build React/Vite completo e teste visual integrado ainda não foram concluídos depois do ajuste final de RBAC.
+- 🟠 `DashboardPage`: implementado e atualizado para não apresentar métricas CRM não suportadas como se fossem dados reais; build React/Vite completo e teste visual integrado ainda não foram concluídos.
 - 🟠 `Front03Workspace`: implementado para integração, mas depende do shell/roteamento da Frente01 para funcionar no produto conjunto.
-- 🟠 Persistência de produção: contrato desacoplado pronto; adaptador atual usa `localStorage` até a infraestrutura compartilhada ser definida.
+- 🟠 Persistência multiusuário real: adapter e schema prontos; depende da Frente01 aplicar o schema no projeto Supabase dedicado e injetar o cliente oficial.
 - 🟠 Mídia: associação por URL permanente implementada; storage/upload binário real ainda depende da infraestrutura comum.
-- 🟠 Métricas comerciais: contrato pronto; dados reais dependem da Frente04.
-- Validação executada: typecheck estrito da camada central passou; testes de execução passaram para criação, publicação, filtros públicos, dashboard, duplicação, exclusão lógica, bloqueio de exclusão de empreendimento com unidades e bloqueio de alteração de tipo que geraria unidade órfã.
-- NÃO VERIFICADO: build Vite completo da branch; lint global; teste visual em navegador integrado ao shell; RBAC real; persistência compartilhada; storage real.
-- Próximo passo: fechar validação do bloco React da Frente03 e preparar integração sem editar arquivos globais pertencentes à Frente01.
+- 🟠 Métricas comerciais avançadas: visitas, propostas, negociações, vendas, VGV/pipeline, ticket, conversão e demanda por região dependem de configuração/contrato explícito; não são inferidas pelo nome das etapas.
+- Validação executada: typecheck estrito e testes de execução do domínio/repositório público/dashboard; adapter CRM testado; adapter Supabase testado com cliente simulado.
+- NÃO VERIFICADO: aplicação real do SQL/RLS no Supabase; build Vite completo da branch; lint global; teste visual em navegador integrado ao shell; storage real.
+- Próximo passo: validar integração real com Supabase/RBAC/roteamento e fechar build/teste visual sem invadir arquivos globais pertencentes à Frente01.
 
 ## Frente04 — CRM/Inbox
 
@@ -87,10 +90,46 @@ Formato obrigatório:
 - Data/hora: 16/09/2026 — sessão atual
 - Origem: Frente03
 - Destino: Frente01
-- Necessidade: integrar os módulos exportados pela Frente03 ao shell/roteador interno quando disponíveis.
+- Necessidade: integrar os módulos exportados pela Frente03 ao shell/roteador interno.
 - Arquivo/contrato afetado: roteador raiz / navegação interna (propriedade da Frente01)
 - Motivo: a Frente03 não deve alterar arquivos globais protegidos; entrega `CatalogAdminPage`, `DashboardPage` e `Front03Workspace` desacoplados.
 - Urgência: alta para demonstração.
+- Status: PENDENTE
+
+- Data/hora: 16/09/2026 — sessão atual
+- Origem: Frente03
+- Destino: Frente01
+- Necessidade: aplicar `src/features/catalog/catalog.schema.sql` no projeto Supabase dedicado da Hárpia após `core_auth.sql` e injetar o cliente oficial no `SupabaseCatalogRepository`.
+- Arquivo/contrato afetado: Supabase compartilhado / persistência do catálogo.
+- Motivo: finalizar persistência multiusuário e validar RLS sem a Frente03 criar outro cliente Supabase ou editar configuração global.
+- Urgência: alta.
+- Status: PENDENTE
+
+- Data/hora: 16/09/2026 — sessão atual
+- Origem: Frente03
+- Destino: Frente01
+- Necessidade: mapear `useAuth().hasPermission()` para `catalog.view`, `catalog.manage` e `catalog.publish` ao montar a Frente03.
+- Arquivo/contrato afetado: composição do shell/RBAC.
+- Motivo: a UI da Frente03 já separa leitura, gestão e publicação; falta ligar às permissões reais.
+- Urgência: alta.
+- Status: PENDENTE
+
+- Data/hora: 16/09/2026 — sessão atual
+- Origem: Frente03
+- Destino: Frente04 / Integrador
+- Necessidade: permitir composição compartilhada do `CrmService` ou fonte de persistência comum para que `CrmSnapshotMetricsProvider` leia exatamente o mesmo estado usado pela Frente04.
+- Arquivo/contrato afetado: `Front04Workspace` / criação da instância `CrmService`.
+- Motivo: o `Front04Workspace` atual instancia o serviço internamente; o dashboard precisa consumir a mesma fonte sem duplicar CRM.
+- Urgência: média/alta.
+- Status: PENDENTE
+
+- Data/hora: 16/09/2026 — sessão atual
+- Origem: Frente03
+- Destino: Frente02 / Integrador
+- Necessidade: consumir `PublicCatalogService`/contrato publicado em vez de criar outra fonte de catálogo.
+- Arquivo/contrato afetado: busca e detalhe públicos.
+- Motivo: manter uma única fonte de verdade e expor apenas itens publicados.
+- Urgência: alta.
 - Status: PENDENTE
 
 ---
