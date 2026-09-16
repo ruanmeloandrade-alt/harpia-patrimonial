@@ -225,6 +225,14 @@ with check (
   or private.user_has_permission((select auth.uid()), 'catalog.publish')
 );
 
-grant select on public.catalog_items to anon;
-grant select, insert, update on public.catalog_items to authenticated;
-grant select, insert, update, delete on public.catalog_items to service_role;
+-- Novos projetos Supabase podem preservar privilégios padrão do Data API mesmo
+-- quando os GRANTs desejados são mais restritos. Revogamos primeiro para garantir
+-- que grants e RLS expressem a mesma superfície de acesso.
+revoke all on table public.catalog_items from anon;
+grant select on table public.catalog_items to anon;
+
+revoke all on table public.catalog_items from authenticated;
+grant select, insert, update on table public.catalog_items to authenticated;
+
+revoke all on table public.catalog_items from service_role;
+grant select, insert, update, delete on table public.catalog_items to service_role;
