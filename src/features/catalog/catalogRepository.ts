@@ -53,6 +53,15 @@ function hasActiveUnits(items: CatalogItem[], developmentId: string) {
   );
 }
 
+function hasUnsoldActiveUnits(items: CatalogItem[], developmentId: string) {
+  return items.some(
+    (item) => item.kind === 'unit'
+      && item.parentId === developmentId
+      && !item.deletedAt
+      && item.status !== 'sold',
+  );
+}
+
 export class LocalCatalogRepository implements CatalogRepository {
   private readAll(): CatalogItem[] {
     if (typeof window === 'undefined') return [];
@@ -94,6 +103,7 @@ export class LocalCatalogRepository implements CatalogRepository {
         (item) => item.id === input.parentId && item.kind === 'development' && !item.deletedAt,
       );
       if (!parent) throw new Error('O empreendimento selecionado não está disponível.');
+      if (parent.status === 'sold') throw new Error('Não é possível vincular unidade a um empreendimento vendido.');
     }
   }
 
@@ -205,6 +215,9 @@ export class LocalCatalogRepository implements CatalogRepository {
     if (index < 0) throw new Error('Item não encontrado.');
 
     const current = items[index];
+    if (current.kind === 'development' && status === 'sold' && hasUnsoldActiveUnits(items, id)) {
+      throw new Error('Marque todas as unidades ativas como vendidas antes de vender o empreendimento.');
+    }
     assertCatalogStatusTransition(current.status, status);
     const timestamp = nowIso();
     const updated: CatalogItem = {
