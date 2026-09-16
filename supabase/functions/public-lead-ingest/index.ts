@@ -31,7 +31,7 @@ Deno.serve(async (req) => {
   if (req.method !== 'POST') return response({ ok: false, message: 'Método não permitido.' }, 405);
 
   const supabaseUrl = Deno.env.get('SUPABASE_URL');
-  const serverKey = namedKey('SUPABASE_SECRET_KEYS') || Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+  const serverKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || namedKey('SUPABASE_SECRET_KEYS');
   if (!supabaseUrl || !serverKey) return response({ ok: false, message: 'Servidor indisponível.' }, 503);
 
   const body = await req.json().catch(() => ({}));
