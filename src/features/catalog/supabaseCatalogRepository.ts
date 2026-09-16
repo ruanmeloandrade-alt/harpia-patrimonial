@@ -107,7 +107,7 @@ function draftPayload(input: CatalogItemDraft) {
     name: input.name.trim(),
     kind: input.kind,
     parent_id: input.kind === 'unit' ? input.parentId ?? null : null,
-    typology: input.typology?.trim() || null,
+    typology: input.kind === 'unit' ? input.typology?.trim() || null : null,
     purpose: input.purpose,
     description: input.description,
     city: input.location.city.trim(),
@@ -214,6 +214,10 @@ export class SupabaseCatalogRepository implements CatalogRepository {
       developer: input.developer ?? current.developer,
       media: input.media ?? current.media,
     };
+    if (merged.kind !== 'unit') {
+      merged.parentId = undefined;
+      merged.typology = undefined;
+    }
     validateDraft(merged);
 
     const result = await this.client
