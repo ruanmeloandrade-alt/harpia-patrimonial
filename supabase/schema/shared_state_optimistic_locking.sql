@@ -1,5 +1,9 @@
 -- Hárpia Patrimonial — controle otimista para estado compartilhado CRM/Inbox.
 
+create index if not exists platform_module_state_updated_by_idx
+on public.platform_module_state(updated_by)
+where updated_by is not null;
+
 revoke all on public.platform_module_state from anon, authenticated;
 grant select, update on public.platform_module_state to authenticated;
 
