@@ -74,17 +74,34 @@ export function isF05SharedStorageReady() {
 }
 
 /**
- * Notifica workspaces quando o snapshot compartilhado termina de hidratar ou
- * quando a sessão atual conclui uma escrita compartilhada.
+ * Substitui o valor local pelo snapshot autoritativo carregado do backend.
+ * Incrementar a geração invalida rollbacks assíncronos de escritas anteriores,
+ * impedindo que uma falha atrasada sobrescreva o estado remoto restaurado.
+ */
+export function replaceStoredListFromRemote<T>(key: string, value: T[]): void {
+  const generation = (writeGeneration.get(key) ?? 0) + 1;
+  writeGeneration.set(key, generation);
+  memory.set(key, clone(value) as unknown[]);
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('harpia:f05-remote-refresh', { detail: { key } }));
+  }
+  emitStorageUpdated(key);
+}
+
+/**
+ * Notifica workspaces quando o snapshot compartilhado termina de hidratar,
+ * quando há refresh remoto ou quando a sessão conclui/recupera uma escrita.
  */
 export function subscribeF05StorageEvents(listener: () => void) {
   if (typeof window === 'undefined') return () => undefined;
   const handler = () => listener();
   window.addEventListener('harpia:f05-storage-ready', handler);
   window.addEventListener('harpia:f05-updated', handler);
+  window.addEventListener('harpia:f05-remote-refresh', handler);
   return () => {
     window.removeEventListener('harpia:f05-storage-ready', handler);
     window.removeEventListener('harpia:f05-updated', handler);
+    window.removeEventListener('harpia:f05-remote-refresh', handler);
   };
 }
 
@@ -114,8 +131,9 @@ export function writeStoredList<T>(key: string, value: T[]): void {
       if (writeGeneration.get(key) === generation) emitStorageUpdated(key);
     })
     .catch((error) => {
-      // Só desfaz esta alteração se nenhuma escrita mais nova tiver ocorrido.
-      // Isso evita que uma rejeição atrasada apague uma edição posterior válida.
+      // Só desfaz esta alteração se nenhuma escrita/recarga mais nova tiver ocorrido.
+      // Um replaceStoredListFromRemote incrementa a geração e preserva o snapshot
+      // autoritativo recebido do backend em caso de conflito de revisão.
       if (writeGeneration.get(key) === generation) {
         memory.set(key, previous);
         emitStorageUpdated(key);
