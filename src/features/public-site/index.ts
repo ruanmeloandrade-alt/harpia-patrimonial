@@ -24,6 +24,10 @@ export {
   type ClientInterestView,
   type ClientProfileView,
 } from '../client-area/ClientArea';
+export {
+  useClientAreaData,
+  type ClientAreaDataSourcePort,
+} from '../client-area/useClientAreaData';
 
 export { emptyPublicCatalogReader } from '../public-catalog/contracts';
 export {
