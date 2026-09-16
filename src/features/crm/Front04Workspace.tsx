@@ -13,14 +13,101 @@ import type { InboxRepository } from '../inbox/repository';
 import { InboxService } from '../inbox/service';
 import type { InboxAutomationPort } from './contracts';
 
-export interface Front04WorkspaceProps {
+interface CrmCompositionProps {
   assignees?: AssigneeOption[];
-  automationPort?: InboxAutomationPort;
   crmService?: CrmService;
-  inboxService?: InboxService;
   crmRepository?: CrmRepository;
-  inboxRepository?: InboxRepository;
   crmEventSinks?: CrmEventSink[];
+}
+
+interface InboxCompositionProps extends CrmCompositionProps {
+  automationPort?: InboxAutomationPort;
+  inboxService?: InboxService;
+  inboxRepository?: InboxRepository;
+}
+
+export interface Front04WorkspaceProps extends InboxCompositionProps {
+  initialView?: 'crm' | 'inbox';
+}
+
+function useCrmService({
+  crmService: injectedCrmService,
+  crmRepository,
+  crmEventSinks = [],
+}: CrmCompositionProps): CrmService {
+  const [crmService] = useState(
+    () => injectedCrmService
+      ?? new CrmService(crmRepository ?? new BrowserCrmRepository(), crmEventSinks),
+  );
+  return crmService;
+}
+
+function useInboxService({
+  inboxService: injectedInboxService,
+  inboxRepository,
+}: InboxCompositionProps): InboxService {
+  const [inboxService] = useState(
+    () => injectedInboxService
+      ?? new InboxService(inboxRepository ?? new BrowserInboxRepository()),
+  );
+  return inboxService;
+}
+
+export function Front04CrmScreen({
+  assignees = [],
+  crmService: injectedCrmService,
+  crmRepository,
+  crmEventSinks = [],
+}: CrmCompositionProps) {
+  const crmService = useCrmService({
+    crmService: injectedCrmService,
+    crmRepository,
+    crmEventSinks,
+  });
+  const [crmRevision, setCrmRevision] = useState(0);
+
+  return (
+    <>
+      <UnassignedLeadsQueue
+        service={crmService}
+        onChanged={() => setCrmRevision((value) => value + 1)}
+      />
+      <CrmWorkspace
+        key={crmRevision}
+        service={crmService}
+        assignees={assignees}
+      />
+    </>
+  );
+}
+
+export function Front04InboxScreen({
+  assignees = [],
+  automationPort,
+  crmService: injectedCrmService,
+  crmRepository,
+  crmEventSinks = [],
+  inboxService: injectedInboxService,
+  inboxRepository,
+}: InboxCompositionProps) {
+  const crmService = useCrmService({
+    crmService: injectedCrmService,
+    crmRepository,
+    crmEventSinks,
+  });
+  const inboxService = useInboxService({
+    inboxService: injectedInboxService,
+    inboxRepository,
+  });
+
+  return (
+    <InboxWorkspace
+      crmService={crmService}
+      inboxService={inboxService}
+      automationPort={automationPort}
+      assignees={assignees}
+    />
+  );
 }
 
 export function Front04Workspace({
@@ -31,17 +118,18 @@ export function Front04Workspace({
   crmRepository,
   inboxRepository,
   crmEventSinks = [],
+  initialView = 'crm',
 }: Front04WorkspaceProps) {
-  const [crmService] = useState(
-    () => injectedCrmService
-      ?? new CrmService(crmRepository ?? new BrowserCrmRepository(), crmEventSinks),
-  );
-  const [inboxService] = useState(
-    () => injectedInboxService
-      ?? new InboxService(inboxRepository ?? new BrowserInboxRepository()),
-  );
-  const [view, setView] = useState<'crm' | 'inbox'>('crm');
-  const [crmRevision, setCrmRevision] = useState(0);
+  const crmService = useCrmService({
+    crmService: injectedCrmService,
+    crmRepository,
+    crmEventSinks,
+  });
+  const inboxService = useInboxService({
+    inboxService: injectedInboxService,
+    inboxRepository,
+  });
+  const [view, setView] = useState<'crm' | 'inbox'>(initialView);
 
   return (
     <div>
@@ -74,19 +162,12 @@ export function Front04Workspace({
       </nav>
 
       {view === 'crm' ? (
-        <>
-          <UnassignedLeadsQueue
-            service={crmService}
-            onChanged={() => setCrmRevision((value) => value + 1)}
-          />
-          <CrmWorkspace
-            key={crmRevision}
-            service={crmService}
-            assignees={assignees}
-          />
-        </>
+        <Front04CrmScreen
+          crmService={crmService}
+          assignees={assignees}
+        />
       ) : (
-        <InboxWorkspace
+        <Front04InboxScreen
           crmService={crmService}
           inboxService={inboxService}
           automationPort={automationPort}
