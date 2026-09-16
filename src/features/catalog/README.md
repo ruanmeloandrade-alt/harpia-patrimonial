@@ -2,119 +2,148 @@
 
 Este diretório pertence à Frente03.
 
-## Ponto visual recomendado
+## Composição atual com a Frente01
+
+A Frente01 já possui `PlatformRuntimeProvider`, `IntegratedCatalog`, `IntegratedDashboard`, rota `/interno/catalogo` e navegação interna com permissões alternativas.
+
+A composição esperada usa o cliente Supabase oficial e os adapters da Frente03:
 
 ```tsx
-import { Front03Workspace, SupabaseCatalogRepository } from './features/catalog';
 import {
-  CrmRepositorySnapshotSource,
-  CrmSnapshotMetricsProvider,
-} from './features/dashboard';
-import { BrowserCrmRepository } from './features/crm';
-import { requireSupabase } from './core/supabase/client';
-import { useAuth } from './core/auth/AuthProvider';
+  SupabaseCatalogMediaStorage,
+  SupabaseCatalogRepository,
+} from '../features/catalog';
+import { requireSupabase } from '../core/supabase/client';
 
-const auth = useAuth();
-const catalogRepository = new SupabaseCatalogRepository(requireSupabase());
+const client = requireSupabase();
+const catalogRepository = new SupabaseCatalogRepository(client);
+const catalogMediaStorage = new SupabaseCatalogMediaStorage(client);
+```
 
-// Enquanto a Frente04 usar BrowserCrmRepository, outra instância do repositório
-// lê o mesmo storage e carrega o estado atual a cada snapshot.
-const crmMetricSource = new CrmRepositorySnapshotSource(new BrowserCrmRepository());
-const commercialProvider = new CrmSnapshotMetricsProvider(crmMetricSource, catalogRepository);
+Na tela administrativa:
 
-<Front03Workspace
-  catalogAccess={{
-    canView: auth.hasPermission('catalog.view'),
+```tsx
+<CatalogAdminPage
+  repository={catalogRepository}
+  mediaStorage={catalogMediaStorage}
+  access={{
+    canView:
+      auth.hasPermission('catalog.view')
+      || auth.hasPermission('catalog.manage')
+      || auth.hasPermission('catalog.publish'),
     canManage: auth.hasPermission('catalog.manage'),
     canPublish: auth.hasPermission('catalog.publish'),
   }}
-  catalogRepository={catalogRepository}
-  commercialProvider={commercialProvider}
 />
 ```
 
-O exemplo acima é de integração. A Frente03 não deve mover `requireSupabase`, `useAuth`, `BrowserCrmRepository` ou o roteamento global para dentro deste módulo.
+A Frente03 não cria outro cliente Supabase e não armazena segredo.
 
 ## Persistência
 
 - `CatalogRepository`: contrato do domínio.
 - `LocalCatalogRepository`: adapter transitório local, vazio por padrão.
 - `SupabaseCatalogRepository`: adapter de produção que recebe o cliente oficial da Frente01.
-- `catalog.schema.sql`: schema/RLS do catálogo; aplicar após `core_auth.sql` da Frente01.
+- `catalog.schema.sql`: schema/RLS de referência do catálogo.
+- `catalog.storage.sql`: bucket e policies de referência para mídia.
 
-Os dois adapters seguem o mesmo contrato e disparam `harpia:catalog-changed` depois de mutações para manter telas consumidoras sincronizadas no mesmo navegador.
-
-Não criar outro cliente Supabase e não inserir credenciais neste módulo.
+Os adapters de catálogo emitem `harpia:catalog-changed` após mutações para atualizar consumidores no navegador.
 
 ## RBAC
 
-A UI e o schema tratam permissões separadamente:
-
 - `catalog.view`: consultar catálogo interno;
-- `catalog.manage`: criar, editar, duplicar e excluir logicamente;
+- `catalog.manage`: criar, editar, duplicar, excluir logicamente e enviar/remover mídia;
 - `catalog.publish`: publicar, pausar e marcar vendido.
 
-`catalog.manage` e `catalog.publish` também implicam capacidade de leitura dentro da tela, coerente com o RLS. A UI não substitui RLS: o banco também valida as ações.
+`catalog.manage` e `catalog.publish` também permitem leitura do módulo. A UI não substitui RLS; o banco valida as ações.
+
+A matriz real já foi testada no Supabase dedicado:
+
+- usuário somente `catalog.manage`: cria/edita, mas não publica;
+- usuário somente `catalog.publish`: lê e altera status, mas não edita conteúdo nem cria;
+- usuário somente `catalog.view`: lê inclusive rascunhos internos, mas UPDATE afeta zero linhas e INSERT é bloqueado.
+
+## Máquina de estados
+
+Transições válidas:
+
+- `draft` → `published` ou `sold`;
+- `published` → `paused` ou `sold`;
+- `paused` → `published` ou `sold`;
+- `sold` é terminal.
+
+A regra existe no adapter local, no adapter Supabase e no trigger real do banco. Chamadas diretas à API não conseguem furar a regra visual.
 
 ## Regras de domínio
 
 - todo cadastro nasce em `draft`;
 - unidade exige empreendimento pai ativo e tipologia explícita;
 - empreendimento com unidades ativas não pode ser excluído nem convertido para outro tipo;
-- tipologia é removida quando um item deixa de ser unidade;
+- tipologia é removida quando item deixa de ser unidade;
 - código ativo é único;
 - preço não pode ser negativo;
 - código, nome e cidade não podem ser vazios;
 - primeira foto cadastrada é a capa;
-- fotos, vídeos, plantas e documentos são suportados como mídia;
-- publicação, venda e exclusão preservam histórico por status/timestamps/exclusão lógica;
-- `published_at` e `sold_at` são controlados por transições de status no banco para usuários autenticados.
+- fotos, vídeos, plantas e documentos são suportados;
+- publicação, venda e exclusão preservam histórico;
+- `published_at` e `sold_at` são controlados por transições no banco.
+
+## Mídia / Storage
+
+O projeto real possui o bucket público `catalog-media`.
+
+Configuração:
+
+- limite por arquivo: 50 MB;
+- formatos: JPEG, PNG, WebP, GIF, MP4, WebM e PDF;
+- URLs públicas e estáveis para uso no site;
+- INSERT/SELECT operacional/UPDATE/DELETE no Storage restritos a usuários com `catalog.manage`;
+- nomes de objeto opacos e únicos;
+- upload usa `upsert: false`.
+
+`SupabaseCatalogMediaStorage` fornece:
+
+- `upload(file, type)`;
+- `remove(path)`.
+
+`CatalogAdminPage` aceita `mediaStorage`. Quando presente, mostra upload direto para fotos, vídeos, plantas e documentos; quando ausente, mantém URLs manuais como fallback.
+
+O adapter passou typecheck estrito e teste de execução com cliente Supabase simulado. O upload real pelo navegador ainda precisa ser validado depois que a Frente01 injetar o adapter na composição integrada.
 
 ## Catálogo público
 
-A Frente02 deve consumir `PublicCatalogService` ou o contrato equivalente do repositório integrado.
+`PublicCatalogService` expõe:
 
-API preparada:
+- `list(filters)`;
+- `listUnits(parentId, filters)`;
+- `getByIdOrCode(value)`;
+- `getDevelopmentWithUnits(value)`;
+- `getFilterOptions()`.
 
-- `list(filters)` — somente itens publicados;
-- `listUnits(parentId, filters)` — unidades publicadas de um empreendimento;
-- `getByIdOrCode(value)` — detalhe publicado;
-- `getDevelopmentWithUnits(value)` — empreendimento + unidades publicadas + faixa de preço real;
-- `getFilterOptions()` — cidades, localizações, estilos de vida e limites de preço derivados dos dados publicados.
+Garantias:
 
-Regras:
-
-- somente status `published` é elegível para exposição pública;
-- cidades/localizações/filtros vêm dos dados realmente cadastrados;
-- filtro de preço de um empreendimento considera os preços das unidades publicadas; o preço do pai só é usado quando não há unidade publicada com preço;
-- a faixa de preço do empreendimento é derivada das unidades publicadas, evitando duplicação de fonte de verdade;
-- os limites globais de preço também ignoram o preço do pai quando existem unidades publicadas, evitando teto artificial;
-- o adapter `front03Adapter.ts` já existente na Frente02 é estruturalmente compatível com `list`, `getByIdOrCode`, `getFilterOptions`, tipologia e mídia;
-- se a experiência pública precisar exibir a faixa completa de um empreendimento, deve consumir `getDevelopmentWithUnits()` em vez de criar cálculo paralelo;
-- não manter segunda base de imóveis no site público.
+- somente `published` é exposto;
+- cidades/localizações/estilos vêm de dados reais;
+- relação empreendimento/unidades é explícita;
+- faixa de preço do empreendimento é derivada das unidades publicadas;
+- filtro de preço usa preços reais das unidades;
+- o preço do pai só é usado quando não há unidade publicada com preço;
+- os limites globais também evitam teto artificial do pai;
+- a Frente02 deve consumir esta fonte, sem duplicar catálogo.
 
 ## Dashboard + Frente04
 
-`CrmSnapshotMetricsProvider` aceita qualquer fonte estrutural com `snapshot()`.
+`CrmRepositorySnapshotSource` aceita repositório com `load()` compatível com a Frente04 e pode reagir a `harpia:crm-updated`.
 
-Também existe `CrmRepositorySnapshotSource`, que aceita um repositório com `load()` compatível com a Frente04. Isso permite ler o estado mais recente sem depender da mesma instância de `CrmService`.
+Métricas objetivamente suportadas:
 
-No adapter transitório atual da Frente04, `BrowserCrmRepository` dispara `harpia:crm-updated`. `CrmRepositorySnapshotSource` escuta esse evento por padrão e `DashboardPage` recarrega as métricas automaticamente. Um adapter de produção pode fornecer a própria fonte/assinatura sem mudar o contrato visual.
-
-Sem catálogo injetado, é seguro derivar do CRM:
-
-- quantidade de leads;
+- leads;
 - origem dos leads;
-- próximas tarefas pendentes.
+- próximas tarefas;
+- demanda por região quando existe `interest.referenceId`;
+- interesse por produto medido por leads/interesses referenciados.
 
-Com o mesmo `CatalogRepository` injetado e `Lead.interest.referenceId` real, também é seguro derivar:
-
-- demanda por região do imóvel referenciado;
-- interesse por produto medido por quantidade de leads/interesses referenciados.
-
-Esse último indicador não é venda/conversão por produto; é explicitamente um sinal de interesse baseado em leads.
-
-Não inferir automaticamente pelo nome das etapas:
+Não inferir pelo nome configurável de etapa:
 
 - visitas;
 - propostas;
@@ -124,23 +153,28 @@ Não inferir automaticamente pelo nome das etapas:
 - ticket;
 - conversão.
 
-Essas métricas permanecem indisponíveis/zeradas até existir configuração ou contrato explícito.
-
 ## Valor do estoque
 
-O dashboard evita dupla contagem: quando um empreendimento possui unidades ativas, o valor de estoque considera as unidades e não soma novamente o preço do empreendimento pai. Empreendimento sem unidades pode usar seu próprio preço.
+Quando um empreendimento possui unidades ativas, o dashboard soma as unidades e não soma novamente o preço do empreendimento. Vendidos ficam fora do estoque.
 
-## Dependência de integração com Frente04
+## Estado de integração
 
-Para a persistência local transitória, o dashboard já pode consumir uma nova instância de `BrowserCrmRepository` através de `CrmRepositorySnapshotSource`, porque o estado real é lido do storage a cada snapshot.
+Já resolvido:
 
-Quando a Frente04 migrar para persistência multiusuário/backend, o integrador deve fornecer um repositório/fonte que continue expondo `load()`/`snapshot()` e, quando aplicável, assinatura de mudanças. Não duplicar dados do CRM dentro da Frente03.
+- Supabase dedicado ativo;
+- schema/RLS real do catálogo aplicado;
+- grants mínimos;
+- RBAC real testado;
+- máquina de estados real testada;
+- runtime da Frente01 usando `SupabaseCatalogRepository`;
+- Dashboard integrado ao repositório CRM compartilhado;
+- rota `/interno/catalogo` e menu criados pela Frente01.
 
-## Pendências externas da Frente03
+Ainda requer integração/QA:
 
-- aplicar e validar `catalog.schema.sql` no Supabase dedicado real;
-- injetar cliente Supabase oficial e permissões reais pela Frente01;
-- conectar `Front03Workspace` ao shell/roteador da Frente01;
-- consumir o contrato público na Frente02;
-- montar a fonte real de CRM da Frente04 no produto integrado;
-- conectar storage/upload binário real quando a infraestrutura comum estiver pronta.
+- sincronizar a cópia mais recente dos arquivos da Frente03 dentro da branch integradora;
+- injetar `SupabaseCatalogMediaStorage` no `IntegratedCatalog`;
+- validar upload real em navegador;
+- executar build Vite e QA visual/E2E no ambiente final;
+- validar consumo público pela Frente02;
+- definir semântica explícita para métricas comerciais avançadas.
