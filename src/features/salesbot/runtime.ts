@@ -86,7 +86,7 @@ const haltOnCommand = (
   if (result.status === 'accepted') return null;
   const reason = result.reason ?? 'Ação não executada.';
   if (result.status === 'not_configured') {
-    updateExecution(executionId, { status: 'paused', currentBlockId: block.id, action: reason });
+    updateExecution(executionId, { status: 'paused', currentBlockId: block.id, resumeMode: 'retry_current', action: reason });
     return { status: 'paused', blockId: block.id, reason };
   }
   finishExecution(executionId, 'failed', reason);
@@ -112,7 +112,7 @@ async function executeBlock(
   if (block.type === 'condition') {
     const result = await deps.condition.evaluate({ expression: stringConfig(block, 'expression'), context: data });
     if (result.status === 'not_configured') {
-      updateExecution(executionId, { status: 'paused', currentBlockId: block.id, action: result.reason });
+      updateExecution(executionId, { status: 'paused', currentBlockId: block.id, resumeMode: 'retry_current', action: result.reason });
       return { status: 'paused', blockId: block.id, reason: result.reason };
     }
     if (result.status === 'failed') {
@@ -131,7 +131,7 @@ async function executeBlock(
     const halted = haltOnCommand(executionId, block, result);
     if (halted) return halted;
     const reason = `Aguardando ${stringConfig(block, 'duration')}.`;
-    updateExecution(executionId, { status: 'paused', currentBlockId: block.id, action: reason });
+    updateExecution(executionId, { status: 'paused', currentBlockId: block.id, resumeMode: 'next_block', action: reason });
     return { status: 'paused', blockId: block.id, reason };
   }
 
@@ -192,15 +192,18 @@ export async function runSalesBotExecution(
     return { status: 'failed', reason: 'SalesBot não encontrado.' };
   }
 
-  updateExecution(executionId, { status: 'running', error: undefined, action: 'Execução iniciada/retomada.' });
-  const startIndex = execution.currentBlockId
-    ? Math.max(0, bot.blocks.findIndex((block) => block.id === execution.currentBlockId))
-    : 0;
+  let startIndex = 0;
+  if (execution.currentBlockId) {
+    const currentIndex = bot.blocks.findIndex((block) => block.id === execution.currentBlockId);
+    if (currentIndex >= 0) startIndex = currentIndex + (execution.resumeMode === 'next_block' ? 1 : 0);
+  }
+
+  updateExecution(executionId, { status: 'running', resumeMode: undefined, error: undefined, action: 'Execução iniciada/retomada.' });
 
   try {
     for (let index = startIndex; index < bot.blocks.length; index += 1) {
       const block = bot.blocks[index];
-      updateExecution(executionId, { currentBlockId: block.id, action: `Executando: ${block.label}` });
+      updateExecution(executionId, { currentBlockId: block.id, resumeMode: undefined, action: `Executando: ${block.label}` });
       const halted = await executeBlock(executionId, block, context, deps);
       if (halted) return halted;
     }
