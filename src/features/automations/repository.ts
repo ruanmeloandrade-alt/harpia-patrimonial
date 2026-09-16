@@ -29,7 +29,10 @@ export function updateAutomation(id: string, patch: Partial<Omit<AutomationDefin
   const items = listAutomations();
   const current = items.find((item) => item.id === id);
   if (!current) throw new Error('Automação não encontrada.');
-  const updated = { ...current, ...patch, updatedAt: now() };
+  let updated: AutomationDefinition = { ...current, ...patch, updatedAt: now() };
+  if (current.status === 'active' && patch.status === undefined && validateAutomation(updated).length > 0) {
+    updated = { ...updated, status: 'paused' };
+  }
   writeStoredList(STORAGE_KEY, items.map((item) => (item.id === id ? updated : item)));
   return updated;
 }
