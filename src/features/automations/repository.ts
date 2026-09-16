@@ -1,5 +1,6 @@
 import { createF05Id, readStoredList, writeStoredList } from './f05Storage';
 import type { AutomationAction, AutomationDefinition, AutomationStatus } from './types';
+import { validateAutomation } from './validation';
 
 const STORAGE_KEY = 'harpia:f05:automations';
 const now = () => new Date().toISOString();
@@ -37,10 +38,34 @@ export function deleteAutomation(id: string): void {
   writeStoredList(STORAGE_KEY, listAutomations().filter((item) => item.id !== id));
 }
 
+export function duplicateAutomation(id: string): AutomationDefinition {
+  const source = listAutomations().find((item) => item.id === id);
+  if (!source) throw new Error('Automação não encontrada.');
+  const timestamp = now();
+  const copy: AutomationDefinition = {
+    ...source,
+    id: createF05Id('automation'),
+    name: `${source.name} — cópia`,
+    status: 'draft',
+    trigger: {
+      ...source.trigger,
+      conditions: source.trigger.conditions.map((condition) => ({ ...condition })),
+    },
+    actions: source.actions.map((action) => ({ ...action, id: createF05Id('action'), config: { ...action.config } })),
+    createdAt: timestamp,
+    updatedAt: timestamp,
+  };
+  writeStoredList(STORAGE_KEY, [copy, ...listAutomations()]);
+  return copy;
+}
+
 export function setAutomationStatus(id: string, status: AutomationStatus): AutomationDefinition {
   const current = listAutomations().find((item) => item.id === id);
   if (!current) throw new Error('Automação não encontrada.');
-  if (status === 'active' && current.actions.length === 0) throw new Error('Adicione pelo menos uma ação antes de ativar a automação.');
+  if (status === 'active') {
+    const issues = validateAutomation(current);
+    if (issues.length > 0) throw new Error(issues.join(' '));
+  }
   return updateAutomation(id, { status });
 }
 
@@ -63,4 +88,15 @@ export function removeAutomationAction(id: string, actionId: string): Automation
   const current = listAutomations().find((item) => item.id === id);
   if (!current) throw new Error('Automação não encontrada.');
   return updateAutomation(id, { actions: current.actions.filter((action) => action.id !== actionId) });
+}
+
+export function moveAutomationAction(id: string, actionId: string, direction: -1 | 1): AutomationDefinition {
+  const current = listAutomations().find((item) => item.id === id);
+  if (!current) throw new Error('Automação não encontrada.');
+  const index = current.actions.findIndex((action) => action.id === actionId);
+  const target = index + direction;
+  if (index < 0 || target < 0 || target >= current.actions.length) return current;
+  const actions = [...current.actions];
+  [actions[index], actions[target]] = [actions[target], actions[index]];
+  return updateAutomation(id, { actions });
 }
