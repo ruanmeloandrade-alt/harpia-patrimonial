@@ -5,6 +5,10 @@ import PublicSiteApp, {
   type PublicSiteConversion,
 } from './PublicSiteApp';
 import type { PublicCatalogReader } from '../public-catalog/contracts';
+import {
+  ClientAreaDataProvider,
+  type ClientAreaDataState,
+} from '../client-area/ClientArea';
 import './public-experience.css';
 import './public-polish.css';
 
@@ -12,6 +16,7 @@ interface PublicExperienceProps {
   catalog?: PublicCatalogReader;
   auth?: PublicAuthBridge;
   favorites?: PublicFavoritesBridge;
+  clientAreaData?: ClientAreaDataState;
   onConversion?: (event: PublicSiteConversion) => void | Promise<void>;
   internalAreaHref?: string;
 }
@@ -279,10 +284,12 @@ export default function PublicExperience(props: PublicExperienceProps) {
 
   return (
     <>
-      <PublicSiteApp
-        {...props}
-        onConversion={props.onConversion ? forwardConversion : undefined}
-      />
+      <ClientAreaDataProvider value={props.clientAreaData}>
+        <PublicSiteApp
+          {...props}
+          onConversion={props.onConversion ? forwardConversion : undefined}
+        />
+      </ClientAreaDataProvider>
 
       <button
         className="mobile-public-menu-trigger"
