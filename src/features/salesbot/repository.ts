@@ -35,7 +35,10 @@ export function updateSalesBot(
   const items = listSalesBots();
   const current = items.find((item) => item.id === id);
   if (!current) throw new Error('SalesBot não encontrado.');
-  const updated: SalesBotDefinition = { ...current, ...patch, updatedAt: now() };
+  let updated: SalesBotDefinition = { ...current, ...patch, updatedAt: now() };
+  if (current.status === 'active' && patch.status === undefined && validateSalesBot(updated).length > 0) {
+    updated = { ...updated, status: 'paused' };
+  }
   writeStoredList(STORAGE_KEY, items.map((item) => (item.id === id ? updated : item)));
   return updated;
 }
