@@ -15,6 +15,16 @@ alter table public.automation_action_runs enable row level security;
 revoke all on public.automation_action_runs from public, anon, authenticated;
 grant select, insert, update, delete on public.automation_action_runs to service_role;
 
+-- Estado interno do worker: nenhum cliente lê ou escreve esta tabela.
+-- A policy explícita preserva default-deny mesmo se um GRANT for ampliado no futuro.
+drop policy if exists automation_action_runs_client_deny on public.automation_action_runs;
+create policy automation_action_runs_client_deny
+on public.automation_action_runs
+for all
+to anon, authenticated
+using (false)
+with check (false);
+
 create or replace function public.admin_apply_crm_automation_action(
   p_lead_id text,
   p_action_type text,
