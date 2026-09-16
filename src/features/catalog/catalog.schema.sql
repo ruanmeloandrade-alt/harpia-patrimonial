@@ -68,6 +68,7 @@ set search_path = ''
 as $$
 declare
   parent_kind public.catalog_item_kind;
+  parent_status public.catalog_status;
   is_service_role boolean;
   can_manage boolean;
   can_publish boolean;
@@ -97,12 +98,17 @@ begin
   end if;
 
   if new.kind = 'unit' then
-    select ci.kind into parent_kind
+    select ci.kind, ci.status into parent_kind, parent_status
     from public.catalog_items ci
     where ci.id = new.parent_id and ci.deleted_at is null;
 
     if parent_kind is distinct from 'development'::public.catalog_item_kind then
       raise exception 'catalog unit requires an active development parent';
+    end if;
+
+    if parent_status = 'sold'::public.catalog_status
+       and not (old.kind = 'unit'::public.catalog_item_kind and old.parent_id = new.parent_id) then
+      raise exception 'catalog unit cannot be linked to a sold development';
     end if;
 
     if nullif(btrim(new.typology), '') is null then
@@ -124,6 +130,18 @@ begin
          and child.deleted_at is null
      ) then
     raise exception 'development has active units';
+  end if;
+
+  if new.kind = 'development'::public.catalog_item_kind
+     and new.status = 'sold'::public.catalog_status
+     and old.status is distinct from new.status
+     and exists (
+       select 1 from public.catalog_items child
+       where child.parent_id = new.id
+         and child.deleted_at is null
+         and child.status <> 'sold'::public.catalog_status
+     ) then
+    raise exception 'development has active unsold units';
   end if;
 
   if new.status is distinct from old.status then
@@ -170,14 +188,19 @@ set search_path = ''
 as $$
 declare
   parent_kind public.catalog_item_kind;
+  parent_status public.catalog_status;
 begin
   if new.kind = 'unit' then
-    select ci.kind into parent_kind
+    select ci.kind, ci.status into parent_kind, parent_status
     from public.catalog_items ci
     where ci.id = new.parent_id and ci.deleted_at is null;
 
     if parent_kind is distinct from 'development'::public.catalog_item_kind then
       raise exception 'catalog unit requires an active development parent';
+    end if;
+
+    if parent_status = 'sold'::public.catalog_status then
+      raise exception 'catalog unit cannot be linked to a sold development';
     end if;
 
     if nullif(btrim(new.typology), '') is null then
@@ -204,6 +227,27 @@ create trigger validate_catalog_insert
 before insert on public.catalog_items
 for each row execute function private.validate_catalog_insert();
 
+create or replace function private.catalog_parent_is_published(p_parent_id uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select exists (
+    select 1
+    from public.catalog_items parent
+    where parent.id = p_parent_id
+      and parent.kind = 'development'::public.catalog_item_kind
+      and parent.status = 'published'::public.catalog_status
+      and parent.deleted_at is null
+  );
+$$;
+
+revoke all on function private.catalog_parent_is_published(uuid) from public;
+grant usage on schema private to anon;
+grant execute on function private.catalog_parent_is_published(uuid) to anon, authenticated;
+
 alter table public.catalog_items enable row level security;
 
 create policy "catalog_public_read_published"
@@ -212,6 +256,10 @@ to anon
 using (
   deleted_at is null
   and status = 'published'::public.catalog_status
+  and (
+    kind <> 'unit'::public.catalog_item_kind
+    or private.catalog_parent_is_published(parent_id)
+  )
 );
 
 create policy "catalog_authenticated_read"
@@ -221,6 +269,10 @@ using (
   (
     deleted_at is null
     and status = 'published'::public.catalog_status
+    and (
+      kind <> 'unit'::public.catalog_item_kind
+      or private.catalog_parent_is_published(parent_id)
+    )
   )
   or private.user_has_permission((select auth.uid()), 'catalog.view')
   or private.user_has_permission((select auth.uid()), 'catalog.manage')
