@@ -8,12 +8,6 @@ export {
   Front02ClientAccountShell,
   type Front02ClientAccountShellProps,
 } from './Front02ClientAccountShell';
-export {
-  Front02SupabaseIntegrationShell,
-  Front02SupabaseClientAccountShell,
-  type Front02SupabaseIntegrationShellProps,
-  type Front02SupabaseClientAccountShellProps,
-} from './Front02SupabaseShells';
 
 export type {
   PublicAuthBridge,
@@ -75,19 +69,6 @@ export {
   type PublicFavoritesBridgeState,
   type PublicFavoritesStorePort,
 } from './usePublicFavoritesBridge';
-export {
-  createSupabaseFavoritesStore,
-  type SupabaseFavoritesClientPort,
-} from './supabaseFavoritesStore';
-export {
-  createSupabaseClientAreaDataSource,
-  createSupabasePublicLeadIngest,
-  type SupabaseFunctionsClientPort,
-} from './supabaseEdgeAdapters';
-export {
-  createFront02SupabasePorts,
-  type Front02SupabaseClientPort,
-} from './supabaseRuntime';
 export {
   hasCatalogFilters,
   normalizeCatalogFilters,
