@@ -41,6 +41,7 @@ export function usePublicFavoritesBridge(options: {
     if (!clientId) {
       setItems([]);
       setError('');
+      setLoading(false);
       return;
     }
 
@@ -72,17 +73,26 @@ export function usePublicFavoritesBridge(options: {
       return favoriteIds.has(itemId);
     },
     async toggle(item) {
-      if (!clientId) throw new Error('É necessário entrar na conta para salvar imóveis.');
-
-      const exists = favoriteIds.has(item.id);
-      if (exists) {
-        await store.remove(clientId, item.id);
-        setItems((current) => current.filter((candidate) => candidate.id !== item.id));
+      if (!clientId) {
+        setError('É necessário entrar na conta para salvar imóveis.');
         return;
       }
 
-      await store.add(clientId, { itemId: item.id, itemSlug: item.slug });
-      setItems((current) => current.some((candidate) => candidate.id === item.id) ? current : [...current, item]);
+      setError('');
+      const exists = favoriteIds.has(item.id);
+
+      try {
+        if (exists) {
+          await store.remove(clientId, item.id);
+          setItems((current) => current.filter((candidate) => candidate.id !== item.id));
+          return;
+        }
+
+        await store.add(clientId, { itemId: item.id, itemSlug: item.slug });
+        setItems((current) => current.some((candidate) => candidate.id === item.id) ? current : [...current, item]);
+      } catch (cause) {
+        setError(cause instanceof Error ? cause.message : 'Não foi possível atualizar este favorito.');
+      }
     },
   }), [clientId, favoriteIds, items, store]);
 
