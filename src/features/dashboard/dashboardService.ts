@@ -34,6 +34,7 @@ export interface CommercialDashboardMetrics {
 export interface CommercialMetricsProvider {
   getMetrics(): Promise<CommercialDashboardMetrics>;
   getAvailableMetrics?(): CommercialMetricKey[];
+  subscribe?(listener: () => void): () => void;
 }
 
 export interface DashboardSnapshot {
