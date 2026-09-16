@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { useF05StorageListener } from '../automations/useF05StorageListener';
 import { AI_PROVIDER_CATALOG, getAIProviderCatalogItem, type AIProviderKind } from './aiProviderTypes';
 import {
   createAIProviderProfile,
@@ -31,8 +32,9 @@ export function AIProvidersWorkspace({ credentialVault = unconfiguredAICredentia
     const next = listAIProviderProfiles();
     setProfiles(next);
     if (focusId) setSelectedId(focusId);
-    else if (selectedId && !next.some((profile) => profile.id === selectedId)) setSelectedId(next[0]?.id ?? null);
+    else setSelectedId((current) => current && next.some((profile) => profile.id === current) ? current : next[0]?.id ?? null);
   };
+  useF05StorageListener(() => refresh());
 
   const create = () => {
     if (!newName.trim() || !canManage) return;
