@@ -6,15 +6,21 @@ Este diretório pertence à Frente03.
 
 ```tsx
 import { Front03Workspace, SupabaseCatalogRepository } from './features/catalog';
-import { CrmSnapshotMetricsProvider } from './features/dashboard';
+import {
+  CrmRepositorySnapshotSource,
+  CrmSnapshotMetricsProvider,
+} from './features/dashboard';
+import { BrowserCrmRepository } from './features/crm';
 import { requireSupabase } from './core/supabase/client';
 import { useAuth } from './core/auth/AuthProvider';
 
 const auth = useAuth();
 const catalogRepository = new SupabaseCatalogRepository(requireSupabase());
-const commercialProvider = crmService
-  ? new CrmSnapshotMetricsProvider(crmService, catalogRepository)
-  : undefined;
+
+// Enquanto a Frente04 usar BrowserCrmRepository, outra instância do repositório
+// lê o mesmo storage e carrega o estado atual a cada snapshot.
+const crmMetricSource = new CrmRepositorySnapshotSource(new BrowserCrmRepository());
+const commercialProvider = new CrmSnapshotMetricsProvider(crmMetricSource, catalogRepository);
 
 <Front03Workspace
   catalogAccess={{
@@ -27,7 +33,7 @@ const commercialProvider = crmService
 />
 ```
 
-O exemplo acima é de integração. A Frente03 não deve mover `requireSupabase`, `useAuth` ou o roteamento global para dentro deste módulo.
+O exemplo acima é de integração. A Frente03 não deve mover `requireSupabase`, `useAuth`, `BrowserCrmRepository` ou o roteamento global para dentro deste módulo.
 
 ## Persistência
 
@@ -61,7 +67,8 @@ A UI e o schema tratam permissões separadamente:
 - código, nome e cidade não podem ser vazios;
 - primeira foto cadastrada é a capa;
 - fotos, vídeos, plantas e documentos são suportados como mídia;
-- publicação, venda e exclusão preservam histórico por status/timestamps/exclusão lógica.
+- publicação, venda e exclusão preservam histórico por status/timestamps/exclusão lógica;
+- `published_at` e `sold_at` são controlados por transições de status no banco para usuários autenticados.
 
 ## Catálogo público
 
@@ -81,11 +88,18 @@ Regras:
 - cidades/localizações/filtros vêm dos dados realmente cadastrados;
 - filtro de preço de um empreendimento considera os preços das unidades publicadas; o preço do pai só é usado quando não há unidade publicada com preço;
 - a faixa de preço do empreendimento é derivada das unidades publicadas, evitando duplicação de fonte de verdade;
+- os limites globais de preço também ignoram o preço do pai quando existem unidades publicadas, evitando teto artificial;
+- o adapter `front03Adapter.ts` já existente na Frente02 é estruturalmente compatível com `list`, `getByIdOrCode`, `getFilterOptions`, tipologia e mídia;
+- se a experiência pública precisar exibir a faixa completa de um empreendimento, deve consumir `getDevelopmentWithUnits()` em vez de criar cálculo paralelo;
 - não manter segunda base de imóveis no site público.
 
 ## Dashboard + Frente04
 
-`CrmSnapshotMetricsProvider` aceita estruturalmente um objeto com `snapshot()`, como o `CrmService` da Frente04.
+`CrmSnapshotMetricsProvider` aceita qualquer fonte estrutural com `snapshot()`.
+
+Também existe `CrmRepositorySnapshotSource`, que aceita um repositório com `load()` compatível com a Frente04. Isso permite ler o estado mais recente sem depender da mesma instância de `CrmService`.
+
+No adapter transitório atual da Frente04, `BrowserCrmRepository` dispara `harpia:crm-updated`. `CrmRepositorySnapshotSource` escuta esse evento por padrão e `DashboardPage` recarrega as métricas automaticamente. Um adapter de produção pode fornecer a própria fonte/assinatura sem mudar o contrato visual.
 
 Sem catálogo injetado, é seguro derivar do CRM:
 
@@ -118,9 +132,9 @@ O dashboard evita dupla contagem: quando um empreendimento possui unidades ativa
 
 ## Dependência de integração com Frente04
 
-A implementação atual de `Front04Workspace` cria o próprio `CrmService` internamente. Para o dashboard compartilhar exatamente o mesmo estado, o integrador deve preferir uma composição em que a instância do CRM seja criada no nível comum e fornecida tanto à Frente04 quanto ao `CrmSnapshotMetricsProvider`, ou usar o adapter de persistência compartilhada como fonte comum.
+Para a persistência local transitória, o dashboard já pode consumir uma nova instância de `BrowserCrmRepository` através de `CrmRepositorySnapshotSource`, porque o estado real é lido do storage a cada snapshot.
 
-Não duplicar dados do CRM dentro da Frente03.
+Quando a Frente04 migrar para persistência multiusuário/backend, o integrador deve fornecer um repositório/fonte que continue expondo `load()`/`snapshot()` e, quando aplicável, assinatura de mudanças. Não duplicar dados do CRM dentro da Frente03.
 
 ## Pendências externas da Frente03
 
@@ -128,5 +142,5 @@ Não duplicar dados do CRM dentro da Frente03.
 - injetar cliente Supabase oficial e permissões reais pela Frente01;
 - conectar `Front03Workspace` ao shell/roteador da Frente01;
 - consumir o contrato público na Frente02;
-- compartilhar a fonte real do CRM com a Frente04;
+- montar a fonte real de CRM da Frente04 no produto integrado;
 - conectar storage/upload binário real quando a infraestrutura comum estiver pronta.
