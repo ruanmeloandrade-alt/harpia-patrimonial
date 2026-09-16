@@ -162,6 +162,17 @@ function applyLocalQuery(items: CatalogItem[], query: CatalogQuery) {
 export class SupabaseCatalogRepository implements CatalogRepository {
   constructor(private readonly client: CatalogSupabaseClient) {}
 
+  private async validateUnitParent(input: CatalogItemDraft) {
+    if (input.kind !== 'unit' || !input.parentId) return;
+    const parent = await this.getById(input.parentId);
+    if (!parent || parent.kind !== 'development') {
+      throw new Error('O empreendimento selecionado não está disponível.');
+    }
+    if (parent.status === 'sold') {
+      throw new Error('Não é possível vincular unidade a um empreendimento vendido.');
+    }
+  }
+
   async list(query: CatalogQuery = {}): Promise<CatalogItem[]> {
     let builder = this.client.from('catalog_items').select('*');
     if (!query.includeDeleted) builder = builder.is('deleted_at', null);
@@ -185,6 +196,7 @@ export class SupabaseCatalogRepository implements CatalogRepository {
 
   async create(input: CatalogItemDraft): Promise<CatalogItem> {
     validateDraft(input);
+    await this.validateUnitParent(input);
     const result = await this.client
       .from('catalog_items')
       .insert({ ...draftPayload(input), status: 'draft' })
@@ -221,6 +233,7 @@ export class SupabaseCatalogRepository implements CatalogRepository {
       merged.typology = undefined;
     }
     validateDraft(merged);
+    await this.validateUnitParent(merged);
 
     const result = await this.client
       .from('catalog_items')
@@ -238,6 +251,12 @@ export class SupabaseCatalogRepository implements CatalogRepository {
   async setStatus(id: string, status: CatalogStatus): Promise<CatalogItem> {
     const current = await this.getById(id);
     if (!current) throw new Error('Item não encontrado.');
+    if (current.kind === 'development' && status === 'sold') {
+      const units = await this.list({ kind: 'unit' });
+      if (units.some((unit) => unit.parentId === id && unit.status !== 'sold')) {
+        throw new Error('Marque todas as unidades ativas como vendidas antes de vender o empreendimento.');
+      }
+    }
     assertCatalogStatusTransition(current.status, status);
 
     const result = await this.client
