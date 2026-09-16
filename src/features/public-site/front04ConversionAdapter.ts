@@ -79,9 +79,9 @@ function resolveContact(
  * Adapter entre os eventos produzidos pela experiência pública (Frente02)
  * e o contrato de ingestão de lead atualmente exposto pela Frente04.
  *
- * Quando existe cliente autenticado, `clientId` é anexado ao metadata com a
- * identidade fornecida pela Frente01. Esse vínculo é usado pela área do cliente
- * para recuperar somente interesses/histórico pertencentes à própria conta.
+ * O handler devolvido é compatível diretamente com `PublicSiteApp.onConversion`.
+ * Resultados de ingestão são expostos por `onResult`, sem alterar a assinatura
+ * pública usada pelos componentes.
  *
  * Falta de contato é uma falha explícita. Isso garante que um pipeline
  * CRM -> WhatsApp nunca avance sem que a captura do lead tenha sido aceita.
@@ -89,7 +89,6 @@ function resolveContact(
 export function createFront04ConversionHandler(options: {
   ingest: Front04LeadConversionIngestPort;
   getCurrentClient?: () => ClientProfileView | null;
-  getCurrentClientId?: () => string | null;
   onContactRequired?: (event: PublicSiteConversion) => void | Promise<void>;
   onResult?: (
     result: PublicConversionHandlingResult,
@@ -98,7 +97,6 @@ export function createFront04ConversionHandler(options: {
 }): (event: PublicSiteConversion) => Promise<void> {
   return async (event: PublicSiteConversion): Promise<void> => {
     const currentClient = options.getCurrentClient?.() ?? null;
-    const currentClientId = options.getCurrentClientId?.()?.trim() || null;
     const contact = resolveContact(event, currentClient);
 
     if (!contact) {
@@ -112,9 +110,6 @@ export function createFront04ConversionHandler(options: {
       throw new Error('Nome do contato é obrigatório para registrar o atendimento.');
     }
 
-    const metadata: Record<string, unknown> = { ...(event.metadata ?? {}) };
-    if (currentClientId) metadata.clientId = currentClientId;
-
     const result = await options.ingest({
       contact,
       origin: event.source,
@@ -122,7 +117,7 @@ export function createFront04ConversionHandler(options: {
       page: event.page,
       interest: resolveInterest(event),
       occurredAt: new Date().toISOString(),
-      metadata,
+      metadata: event.metadata,
     });
 
     await options.onResult?.(
