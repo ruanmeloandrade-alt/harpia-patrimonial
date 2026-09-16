@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { SalesBotWorkspace } from '../salesbot/SalesBotWorkspace';
 import { ExecutionLogsPanel } from '../salesbot/ExecutionLogsPanel';
 import { AIAgentsWorkspace } from '../ai-agents/AIAgentsWorkspace';
+import type { AICredentialVaultPort } from '../integrations/aiCredentialPort';
 import { IntegrationsWorkspace } from '../integrations/IntegrationsWorkspace';
 import { AutomationsWorkspace } from './AutomationsWorkspace';
 import './front05.css';
@@ -16,7 +17,11 @@ const TABS: Array<{ id: Tab; label: string }> = [
   { id: 'integrations', label: 'Integrações' },
 ];
 
-export function Front05Workspace() {
+interface Front05WorkspaceProps {
+  credentialVault?: AICredentialVaultPort;
+}
+
+export function Front05Workspace({ credentialVault }: Front05WorkspaceProps) {
   const [tab, setTab] = useState<Tab>('salesbot');
 
   return <div className="f05-shell">
@@ -31,6 +36,6 @@ export function Front05Workspace() {
     {tab === 'automations' && <AutomationsWorkspace />}
     {tab === 'ai' && <AIAgentsWorkspace />}
     {tab === 'logs' && <ExecutionLogsPanel />}
-    {tab === 'integrations' && <IntegrationsWorkspace />}
+    {tab === 'integrations' && <IntegrationsWorkspace credentialVault={credentialVault} />}
   </div>;
 }
