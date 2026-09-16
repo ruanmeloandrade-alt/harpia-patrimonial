@@ -1,6 +1,7 @@
 import { FormEvent, useState } from 'react';
 import type { PublicCatalogFilterOptions, PublicCatalogFilters } from '../public-catalog/contracts';
 import { writeCatalogFilters } from './catalogQuery';
+import './public-polish.css';
 
 interface HomeCatalogSearchProps {
   options: PublicCatalogFilterOptions;
