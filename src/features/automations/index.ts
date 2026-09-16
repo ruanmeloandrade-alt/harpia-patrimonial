@@ -8,3 +8,11 @@ export type {
   CrmAutomationEventType,
   SalesBotCommandPort,
 } from './contracts';
+export type { AICredentialVaultPort, AICredentialSaveResult } from '../integrations/aiCredentialPort';
+export type {
+  AIProviderCatalogItem,
+  AIProviderKind,
+  AIProviderProfile,
+  AIProviderProfileStatus,
+} from '../integrations/aiProviderTypes';
+export type { AIModelInvocationInput, AIModelInvocationResult, AIModelRuntimePort } from '../integrations/aiRuntimePort';
