@@ -11,93 +11,95 @@ Legenda:
 
 ## Status geral
 
-🟠 **INTEGRAÇÃO ESTRUTURAL MONTADA / AGUARDANDO SINCRONIZAÇÃO FINAL + BUILD/BROWSER QA.**
+🟠 **BACKEND REAL VALIDADO + INTEGRAÇÃO ESTRUTURAL MONTADA; AGUARDANDO SINCRONIZAÇÃO FINAL, TIPOS GLOBAIS E QA DE BUILD/NAVEGADOR.**
 
-A Frente01 já destravou e montou a infraestrutura que bloqueava a Frente03: Supabase dedicado, runtime global, rota/menu, RBAC alternativo, experiência pública e CRM compartilhado. O backend do catálogo foi validado no projeto real. A frente ainda não recebe 🟢 geral porque a branch integradora precisa sincronizar as últimas mudanças da Frente03 e executar build/QA em navegador.
+A Frente01 já entregou Supabase, auth/RBAC, runtime global, rota/menu, integração pública e CRM compartilhado. A Frente03 continuou avançando e fechou regras de integridade, visibilidade pública hierárquica, Storage e um factory de runtime único.
 
-## 🟢 Catálogo — domínio e regras
+## 🟢 Domínio e repositórios
 
-Implementado e validado:
+Coberto:
 
 - empreendimento, unidade e imóvel avulso;
-- código, nome, finalidade, descrição e localização;
-- preço e faixa derivada;
+- código, nome, finalidade, descrição, localização, preço, lançamento, características, estilos de vida e origem;
 - tipologia obrigatória para unidade;
-- lançamento, características, estilos de vida e incorporadora/origem;
-- fotos, vídeos, plantas e documentos;
+- mídia: fotos, vídeos, plantas e documentos;
+- CRUD, busca, duplicação, exclusão lógica e código ativo único;
 - primeira foto como capa;
-- exclusão lógica;
-- código ativo único;
-- proteção contra unidade órfã;
-- duplicação segura para rascunho.
+- adapters local e Supabase seguindo o mesmo contrato.
 
 ## 🟢 Máquina de estados
 
-A mesma regra existe no repositório local, adapter Supabase e trigger do banco:
+Mesma regra em local, adapter Supabase e trigger:
 
 - `draft` → `published` ou `sold`;
 - `published` → `paused` ou `sold`;
 - `paused` → `published` ou `sold`;
 - `sold` é terminal.
 
-QA real no Supabase:
+QA real confirmou bloqueios/permitidos e timestamps `published_at`/`sold_at`.
 
-- `draft→paused`: rejeitado;
-- `draft→published`: permitido;
-- `published→draft`: rejeitado;
-- `published→paused`: permitido;
-- `paused→published`: permitido;
-- `published→sold`: permitido;
-- `sold→published`: rejeitado;
-- `published_at` e `sold_at` preenchidos corretamente.
+## 🟢 Integridade empreendimento/unidade
+
+Regras finais:
+
+- unidade exige pai ativo do tipo empreendimento;
+- unidade nova/realocada não pode apontar para empreendimento vendido;
+- unidade histórica já vinculada a pai vendido continua editável para correção cadastral;
+- empreendimento não pode ser vendido enquanto existir unidade ativa não vendida;
+- depois de vender todas as unidades, vender o empreendimento é permitido;
+- empreendimento com unidades ativas não pode ser excluído nem convertido deixando órfãos;
+- duplicação de unidade com pai vendido/indisponível é bloqueada.
+
+QA real em transação + rollback confirmou:
+
+- 🟢 venda do pai com unidade não vendida bloqueada;
+- 🟢 venda do pai após todas as unidades vendidas permitida;
+- 🟢 edição histórica sob pai vendido permitida;
+- 🟢 criação de unidade sob pai vendido bloqueada;
+- 🟢 realocação para pai vendido bloqueada.
+
+Migration aplicada no banco real: `catalog_front03_sold_development_integrity`.
+Arquivo incremental versionado: `catalog.sold-integrity.sql`.
+
+## 🟢 Visibilidade pública hierárquica
+
+Uma unidade `published` só é pública se o empreendimento pai também estiver `published` e ativo.
+
+QA real:
+
+- pai + unidade publicados → ambos visíveis publicamente;
+- pai pausado com unidade ainda `published` → unidade deixa de ser pública;
+- usuário interno com `catalog.view` continua vendo pai + unidade para administração.
+
+A regra existe em:
+
+- RLS real;
+- `catalog.public-visibility.sql`;
+- `PublicCatalogService`;
+- Dashboard, que usa a mesma definição de “publicados/elegíveis”.
 
 ## 🟢 Persistência real — Supabase
 
 Projeto: `Harpia Patrimonial` (`desxomqvtjaymwwxivwq`).
 
-Migrations da Frente03 aplicadas:
+Migrations registradas:
 
-- `catalog_front03`;
-- `catalog_front03_grants_hardening`;
-- `catalog_front03_select_policy_performance`;
-- `catalog_front03_status_transitions`;
-- `catalog_front03_media_storage`.
+1. `catalog_front03`;
+2. `catalog_front03_grants_hardening`;
+3. `catalog_front03_select_policy_performance`;
+4. `catalog_front03_status_transitions`;
+5. `catalog_front03_media_storage`;
+6. `catalog_front03_public_unit_parent_visibility`;
+7. `catalog_front03_sold_development_integrity`.
 
-Validações reais:
-
-- `anon` vê publicados e não vê rascunhos;
-- `anon` possui apenas SELECT na tabela;
-- `authenticated` possui SELECT/INSERT/UPDATE, sem DELETE bruto;
-- `service_role` mantém DELETE;
-- unidade sem tipologia é rejeitada;
-- código ativo duplicado é rejeitado;
-- empreendimento com unidade ativa não pode ser excluído;
-- removendo logicamente a unidade antes, o pai pode ser removido;
-- QA temporário terminou com 0 registros residuais.
+QA final desta rodada: 0 registros `QA-%`/`QA-F03-%` residuais.
 
 ## 🟢 RBAC real
 
-Testado com identidades temporárias e rollback:
-
-### `catalog.manage`
-
-- cria: permitido;
-- edita: permitido;
-- publica sem `catalog.publish`: bloqueado.
-
-### `catalog.publish`
-
-- lê registros internos: permitido;
-- muda status: permitido;
-- altera conteúdo: bloqueado;
-- cria item: bloqueado.
-
-### `catalog.view`
-
-- lê rascunhos internos: permitido;
-- UPDATE: 0 linhas afetadas;
-- conteúdo permaneceu inalterado;
-- INSERT: bloqueado.
+- `catalog.manage`: cria/edita; não publica sem publish;
+- `catalog.publish`: lê/muda status; não cria nem edita conteúdo;
+- `catalog.view`: lê internamente; não grava;
+- cliente autenticado comum: somente superfície pública, sem escrita interna.
 
 ## 🟢 Catálogo público
 
@@ -111,135 +113,153 @@ Testado com identidades temporárias e rollback:
 
 Garantias:
 
-- só `published`;
-- relação empreendimento/unidades;
-- tipologia de unidade;
-- faixa derivada das unidades publicadas;
-- filtro por preço usando unidades reais;
-- cidades/localizações/estilos derivados dos dados reais.
+- somente itens publicamente elegíveis;
+- unidade depende do pai publicado;
+- faixa de preço derivada das unidades;
+- filtros/opções derivados de dados reais;
+- `storagePath` não faz parte do contrato público.
 
-A Frente01 já monta `IntegratedPublicExperience` e passa `runtime.publicCatalogService` para a experiência da Frente02. Portanto, a integração estrutural pública está resolvida; resta QA browser/E2E.
+A Frente01 já passa `runtime.publicCatalogService` à experiência da Frente02.
 
 ## 🟢 Dashboard
 
-Métricas patrimoniais:
+Patrimonial:
 
-- publicados;
+- publicados/elegíveis;
 - rascunhos;
 - pausados;
 - vendidos;
-- estoque sem dupla contagem;
+- valor do estoque sem dupla contagem;
 - cidade;
 - finalidade.
 
-Métricas CRM objetivas:
+CRM objetivo:
 
 - leads;
 - origem;
 - próximas tarefas;
 - demanda por região com `interest.referenceId`;
-- interesse por produto medido por leads/interesses.
+- interesse por produto baseado em leads.
 
-A Frente01 já usa repositório CRM compartilhado em `PlatformRuntime` e instancia `CrmSnapshotMetricsProvider(new CrmRepositorySnapshotSource(crmRepository), catalogRepository)`.
-
-Não inferir por nome de etapa: visitas, propostas, negociações, vendas, VGV, ticket e conversão.
+Não inferir por nome de etapa: visita, proposta, negociação, venda, VGV, ticket ou conversão.
 
 ## 🟢 Mídia / Storage — backend e contrato
 
 Bucket real: `catalog-media`.
 
-- público para serving de mídia do catálogo;
-- 50 MB por arquivo;
+- público para serving;
+- limite 50 MB;
 - JPEG, PNG, WebP, GIF, MP4, WebM e PDF;
-- escrita/alteração/remoção/listagem operacional protegidas por `catalog.manage`;
-- URLs estáveis;
+- operações administrativas protegidas por `catalog.manage`;
 - nomes opacos;
 - `upsert:false`.
 
-Código novo:
+Código:
 
 - `catalogMediaStorage.ts`;
-- `SupabaseCatalogMediaStorage`;
-- `catalog.storage.sql`.
+- `catalog.storage.sql`;
+- `CatalogMedia.storagePath` para lifecycle interno;
+- `CatalogAdminPage` com upload direto opcional e URL manual de fallback.
 
-O adapter passou typecheck estrito e teste de execução com cliente Supabase simulado.
+Lifecycle administrativo:
 
-`CatalogAdminPage` agora aceita `mediaStorage` e, quando presente, permite upload direto de fotos, vídeos, plantas e documentos. Sem adapter, o fluxo manual por URL continua funcional.
+- lote parcial é limpo se upload falha;
+- uploads não salvos são limpos ao trocar/cancelar edição;
+- mídia removida de um cadastro pode remover o objeto correspondente do Storage quando existe `storagePath`;
+- caminho operacional não é devolvido pelo contrato público.
 
-🟠 Falta validar upload real no navegador após a Frente01 injetar `new SupabaseCatalogMediaStorage(supabase)` no `IntegratedCatalog`.
+🟠 Falta upload real pela UI/browser porque a Frente01 ainda não injeta `mediaStorage` no `IntegratedCatalog`.
 
-## 🟢 Integração estrutural da Frente01
+## 🟢 Factory de integração
 
-Confirmado no HEAD da Frente01:
+Novo `catalogRuntime.ts`:
 
-- `PlatformRuntimeProvider` envolve a aplicação;
-- runtime usa `SupabaseCatalogRepository`;
-- runtime expõe `PublicCatalogService`;
-- `IntegratedCatalog` e `IntegratedDashboard` existem;
-- `/interno/catalogo` está no `AppRouter`;
-- rota aceita qualquer uma de `catalog.view/manage/publish`;
-- `InternalShell` possui link Catálogo com a mesma lógica;
-- `IntegratedPublicExperience` usa `runtime.publicCatalogService`;
-- Dashboard recebe métricas do CRM compartilhado.
+```ts
+const catalogRuntime = createCatalogRuntime(requireSupabase());
+```
 
-## 🟠 Sincronização necessária na branch integradora
+Retorna, com o mesmo cliente oficial:
 
-A Frente01 incorporou uma versão anterior dos arquivos da Frente03. Sincronizar antes do QA final:
+- `catalogRuntime.repository`;
+- `catalogRuntime.publicCatalogService`;
+- `catalogRuntime.mediaStorage`.
 
-- `src/features/catalog/catalogRepository.ts`;
-- `src/features/catalog/supabaseCatalogRepository.ts`;
-- `src/features/catalog/catalog.schema.sql`;
-- `src/features/catalog/catalogMediaStorage.ts` (novo);
-- `src/features/catalog/catalog.storage.sql` (novo);
-- `src/features/catalog/CatalogAdminPage.tsx`;
-- `src/features/catalog/Front03Workspace.tsx`;
-- `src/features/catalog/index.ts`;
-- `src/features/catalog/README.md`.
+Objetivo: evitar composição duplicada e fontes/clientes divergentes na Frente01.
 
-O diretório `src/features/dashboard/**` estava sincronizado por SHA no último pente-fino.
+## 🟢 Integração estrutural já existente na Frente01
 
-## 🟠 Tipos Supabase globais
+Confirmado no HEAD recente:
 
-`src/core/supabase/database.types.ts` da Frente01 ainda é anterior à tabela `catalog_items`.
+- `PlatformRuntimeProvider`;
+- repositório Supabase do catálogo;
+- serviço público do catálogo;
+- `IntegratedCatalog`;
+- `IntegratedDashboard`;
+- `/interno/catalogo`;
+- menu interno;
+- permissões alternativas `catalog.view/manage/publish`;
+- catálogo público compartilhado com Frente02;
+- CRM compartilhado com Dashboard.
 
-A geração atual do projeto real já contém:
+## 🟠 Pendências reais da Frente01 / integrador
 
-- `catalog_items`;
-- `catalog_item_kind`;
-- `catalog_purpose`;
-- `catalog_status`.
+### 1. Sincronizar a versão atual da Frente03
 
-Regenerar antes do build final. A porta estrutural do adapter da Frente03 aceita o cliente oficial mesmo antes dessa regeneração, portanto isso não bloqueia a composição em runtime.
+A branch integradora antecede as últimas correções. Sincronizar os arquivos próprios da Frente03, incluindo:
+
+- `CatalogAdminPage.tsx`;
+- `Front03Workspace.tsx`;
+- `types.ts`;
+- `catalogRepository.ts`;
+- `supabaseCatalogRepository.ts`;
+- `publicCatalog.ts`;
+- `catalogMediaStorage.ts`;
+- `catalogRuntime.ts`;
+- `catalog.schema.sql`;
+- `catalog.public-visibility.sql`;
+- `catalog.sold-integrity.sql`;
+- `catalog.storage.sql`;
+- `index.ts`;
+- Dashboard atualizado.
+
+### 2. Expor Storage no runtime
+
+O `IntegratedCatalog` atual da Frente01 ainda passa somente `repository` e `access`.
+
+Preferência:
+
+- criar runtime com `createCatalogRuntime(requireSupabase())`;
+- expor `repository`, `publicCatalogService` e `mediaStorage` no `PlatformRuntime`;
+- passar `mediaStorage={runtime.catalogMediaStorage}` ao `CatalogAdminPage`.
+
+### 3. Regenerar tipos globais Supabase
+
+O `src/core/supabase/database.types.ts` atual da Frente01 ainda não contém `catalog_items` nem enums do catálogo.
+
+A Frente03 não altera esse arquivo por ownership global.
 
 ## Advisors
 
-- 🟢 Security Advisor: nenhum finding pertencente ao catálogo/Storage da Frente03.
-- 🟠 Existem WARNs externos em funções compartilhadas `SECURITY DEFINER` (`list_internal_assignees`, `save_platform_module_state`). Ownership fora da Frente03. Remediação: https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable
-- 🟢 Performance: catálogo só apresenta índices `unused_index` como INFO, esperado em banco novo.
-- 🟠 `platform_module_state` possui FK sem índice, fora da Frente03. Remediação: https://supabase.com/docs/guides/database/database-linter?lint=0001_unindexed_foreign_keys
+Checagem pós-migrations atual:
 
-## 🟠 Validação final
+- 🟢 Security Advisor: **0 findings**;
+- 🟢 Performance: apenas `unused_index` nível INFO, esperado no banco novo sem tráfego relevante.
 
-Ainda NÃO VERIFICADO:
+Referência do INFO: https://supabase.com/docs/guides/database/database-linter?lint=0005_unused_index
 
-- build Vite completo;
+## 🟠 Validação final ainda NÃO VERIFICADA
+
+- build Vite completo integrado;
+- typecheck completo do produto integrado;
 - QA visual em navegador;
-- upload real do bucket pela UI integrada;
-- fluxo E2E criar → editar → mídia → publicar → pausar → republicar → vender;
-- confirmação visual de que publicado aparece no site e pausado/vendido deixam de aparecer;
-- comportamento final do Dashboard com dados criados pelo usuário.
+- upload real pelo Storage API via tela;
+- fluxo E2E criar → editar → mídia → publicar → site → pausar → republicar → vender unidades → vender empreendimento;
+- Dashboard final com dados criados pela operação real.
 
-O executor isolado disponível usa Node 22, enquanto o projeto exige Node 24, e o acesso ao registry npm estava indisponível. Nenhum build não executado foi declarado como aprovado.
-
-## Pedidos atuais para Frente01 / integrador
-
-1. sincronizar os arquivos recentes da Frente03;
-2. instanciar `SupabaseCatalogMediaStorage` no runtime/composição e passar para `IntegratedCatalog`;
-3. regenerar `database.types.ts`;
-4. executar build e QA browser/E2E.
+O executor deste chat não materializou diretamente o repo privado e roda Node 22, enquanto o projeto declara Node 24. Portanto nenhum build/typecheck completo não executado foi marcado como aprovado.
 
 ## Estado para o usuário
 
-🟢 Backend, RLS, RBAC, domínio, catálogo público, dashboard e integração estrutural estão implementados/validados nos níveis descritos.
+🟢 O trabalho próprio de backend/domínio/RLS/RBAC/publicação/visibilidade/Storage/contratos da Frente03 está avançado e validado nos níveis descritos.
 
-🟠 A Frente03 permanece sem verde geral exclusivamente porque a versão integrada ainda precisa receber os arquivos mais recentes e passar build/browser/E2E real.
+🟠 A Frente03 não recebe verde geral enquanto a branch integrada não sincronizar esses arquivos e passar build/browser/E2E real.
