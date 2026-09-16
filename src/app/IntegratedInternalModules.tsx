@@ -42,6 +42,7 @@ export function IntegratedCatalog() {
   return (
     <CatalogAdminPage
       repository={runtime.catalogRepository}
+      mediaStorage={runtime.catalogMediaStorage ?? undefined}
       access={{
         canView: auth.hasPermission(PERMISSIONS.CATALOG_VIEW) || auth.hasPermission(PERMISSIONS.CATALOG_MANAGE) || auth.hasPermission(PERMISSIONS.CATALOG_PUBLISH),
         canManage: auth.hasPermission(PERMISSIONS.CATALOG_MANAGE),
