@@ -26,9 +26,11 @@ import {
   salesBotCommandPort,
   unconfiguredAutomationEngineDependencies,
 } from '../features/automations';
+import { resetF05SharedStorage } from '../features/automations/f05Storage';
 import { SupabaseAICredentialVault } from './integrations/supabaseAICredentialVault';
 import { SupabaseFavoritesStore } from './integrations/supabaseFavoritesStore';
 import { loadInternalAssignees } from './integrations/internalAssignees';
+import { hydrateSharedF05Storage } from './integrations/sharedF05Storage';
 import {
   hydrateSharedCrmRepository,
   hydrateSharedInboxRepository,
@@ -46,6 +48,9 @@ interface PlatformRuntimeValue {
   assignees: AssigneeOption[];
   operationalLoading: boolean;
   operationalError: string;
+  f05Ready: boolean;
+  f05Loading: boolean;
+  f05Error: string;
 }
 
 const PlatformRuntimeContext = createContext<PlatformRuntimeValue | null>(null);
@@ -68,6 +73,9 @@ export function PlatformRuntimeProvider({ children }: PropsWithChildren) {
   const [assignees, setAssignees] = useState<AssigneeOption[]>([]);
   const [operationalLoading, setOperationalLoading] = useState(false);
   const [operationalError, setOperationalError] = useState('');
+  const [f05Ready, setF05Ready] = useState(false);
+  const [f05Loading, setF05Loading] = useState(false);
+  const [f05Error, setF05Error] = useState('');
 
   const canUseCrm = auth.isInternalUser && (
     auth.hasPermission(PERMISSIONS.CRM_VIEW)
@@ -75,6 +83,51 @@ export function PlatformRuntimeProvider({ children }: PropsWithChildren) {
     || auth.hasPermission(PERMISSIONS.INBOX_VIEW)
     || auth.hasPermission(PERMISSIONS.INBOX_MANAGE)
   );
+
+  const canUseF05 = auth.isInternalUser && (
+    auth.hasPermission(PERMISSIONS.SALESBOT_VIEW)
+    || auth.hasPermission(PERMISSIONS.SALESBOT_MANAGE)
+    || auth.hasPermission(PERMISSIONS.AUTOMATIONS_VIEW)
+    || auth.hasPermission(PERMISSIONS.AUTOMATIONS_MANAGE)
+    || auth.hasPermission(PERMISSIONS.AI_VIEW)
+    || auth.hasPermission(PERMISSIONS.AI_MANAGE)
+    || auth.hasPermission(PERMISSIONS.INTEGRATIONS_VIEW)
+    || auth.hasPermission(PERMISSIONS.INTEGRATIONS_MANAGE)
+  );
+
+  useEffect(() => {
+    let active = true;
+
+    if (!canUseF05 || !isSupabaseConfigured) {
+      resetF05SharedStorage();
+      setF05Ready(false);
+      setF05Loading(false);
+      setF05Error('');
+      return () => undefined;
+    }
+
+    setF05Ready(false);
+    setF05Loading(true);
+    setF05Error('');
+
+    hydrateSharedF05Storage()
+      .then(() => {
+        if (active) setF05Ready(true);
+      })
+      .catch((error) => {
+        if (!active) return;
+        resetF05SharedStorage();
+        setF05Ready(false);
+        setF05Error(error instanceof Error ? error.message : 'Não foi possível carregar SalesBot, automações e IA.');
+      })
+      .finally(() => {
+        if (active) setF05Loading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [canUseF05]);
 
   useEffect(() => {
     let active = true;
@@ -160,6 +213,9 @@ export function PlatformRuntimeProvider({ children }: PropsWithChildren) {
     assignees,
     operationalLoading,
     operationalError,
+    f05Ready,
+    f05Loading,
+    f05Error,
   }), [
     assignees,
     catalogRepository,
@@ -167,6 +223,9 @@ export function PlatformRuntimeProvider({ children }: PropsWithChildren) {
     credentialVault,
     crmService,
     favoritesStore,
+    f05Error,
+    f05Loading,
+    f05Ready,
     inboxAutomationPort,
     inboxService,
     operationalError,
