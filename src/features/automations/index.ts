@@ -1,4 +1,7 @@
 export { Front05Workspace } from './Front05Workspace';
+export type { Front05Tab } from './Front05Workspace';
+export { buildFront05Access, FRONT05_PERMISSION_KEYS, FULL_FRONT05_ACCESS } from './front05Access';
+export type { Front05Access, Front05Module, Front05ModuleAccess } from './front05Access';
 export { salesBotCommandPort, aiAgentCommandPort, createSalesBotCommandPort } from './runtimePorts';
 export { processCrmAutomationEvent, unconfiguredAutomationEngineDependencies } from './engine';
 export type {
@@ -29,6 +32,7 @@ export type {
 export { createAIAgentCommandPort } from '../ai-agents/runtime';
 export type { AIAgentExecutionLog, AIAgentExecutionStatus } from '../ai-agents/executionTypes';
 export type { AICredentialVaultPort, AICredentialSaveResult } from '../integrations/aiCredentialPort';
+export { createSupabaseAICredentialVault } from '../integrations/supabaseAICredentialVault';
 export { unconfiguredAICredentialResolver } from '../integrations/aiCredentialResolverPort';
 export type { AICredentialResolveResult, AICredentialResolverPort } from '../integrations/aiCredentialResolverPort';
 export type {
