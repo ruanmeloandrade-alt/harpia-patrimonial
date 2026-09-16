@@ -9,6 +9,7 @@ export interface AIAgentDefinition {
   context: string;
   accessScopes: string[];
   activationPoints: string[];
+  providerProfileId: string;
   status: AIAgentStatus;
   createdAt: string;
   updatedAt: string;
