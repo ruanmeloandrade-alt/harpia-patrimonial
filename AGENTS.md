@@ -13,6 +13,9 @@ Este arquivo deve ser lido antes de qualquer alteração no projeto.
   2. `docs/BRIEFING-CONSOLIDADO.md`
   3. `docs/ESCOPO-DE-TRABALHO.md`
   4. `docs/CONVERSA-E-DECISOES.md`
+  5. `docs/FRENTES-DE-TRABALHO.md`
+  6. `docs/CONTRATOS-ENTRE-MODULOS.md`
+  7. `docs/STATUS-FRENTES.md`
 
 ## 2. Princípio central
 
@@ -219,3 +222,30 @@ Preparar estrutura de configurações para integrações, mas deixar as conexõe
 ## 19. Critério de decisão
 
 Quando houver dúvida entre criar algo sofisticado e entregar algo funcional, escolher o caminho mais simples, estável e extensível que permita cumprir o prazo sem sacrificar a estrutura necessária.
+
+## 20. Regra obrigatória das cinco frentes
+
+O projeto está dividido oficialmente em cinco frentes de trabalho paralelas.
+
+Quando o usuário disser `Atue na Frente01`, `Frente02`, `Frente03`, `Frente04` ou `Frente05`:
+
+1. ler `docs/FRENTES-DE-TRABALHO.md`;
+2. ler o arquivo específico em `docs/frentes/FRENTE-0X.md`;
+3. trabalhar na branch correspondente;
+4. respeitar a propriedade de arquivos definida para a frente;
+5. não editar módulo de outra frente sem necessidade de integração registrada;
+6. registrar dependências e pedidos em `docs/STATUS-FRENTES.md`;
+7. preencher o `Handoff` do arquivo da frente ao concluir;
+8. manter o status atualizado no GitHub.
+
+Branches oficiais:
+
+- Frente01 → `frente-01`
+- Frente02 → `frente-02`
+- Frente03 → `frente-03`
+- Frente04 → `frente-04`
+- Frente05 → `frente-05`
+
+Arquivos compartilhados como `package.json`, roteador raiz, providers globais, configuração de build e CSS/tokens globais pertencem por padrão à Frente01. Outra frente não deve sobrescrevê-los sem registrar a necessidade e conferir o estado mais recente.
+
+Depois das cinco frentes, o chat/agente de integração deve seguir `docs/PENTE-FINO-INTEGRACAO.md`.
