@@ -1,4 +1,4 @@
-import { InternalRoute } from '../core/auth/guards';
+import { ClientRoute, InternalRoute } from '../core/auth/guards';
 import { PERMISSIONS } from '../core/auth/permissions';
 import { Navigate, useAppRouter } from '../core/router/router';
 import { LoginPage } from '../features/auth/LoginPage';
@@ -47,7 +47,13 @@ export function AppRouter() {
   if (pathname === '/cadastro') return <RegisterPage />;
   if (pathname === '/recuperar-senha') return <RecoverPasswordPage />;
   if (pathname === '/nova-senha') return <ResetPasswordPage />;
-  if (pathname === '/conta') return <Navigate to="/cliente" />;
+  if (pathname === '/conta') {
+    return (
+      <ClientRoute>
+        <Navigate to="/cliente" />
+      </ClientRoute>
+    );
+  }
   if (pathname === '/interno/entrar') return <LoginPage internal />;
 
   if (isPublicRoute(pathname)) return <IntegratedPublicExperience />;
