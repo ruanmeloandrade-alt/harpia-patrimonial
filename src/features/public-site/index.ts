@@ -66,6 +66,7 @@ export {
 } from './usePublicFavoritesBridge';
 export {
   hasCatalogFilters,
+  normalizeCatalogFilters,
   readCatalogFilters,
   writeCatalogFilters,
 } from './catalogQuery';
