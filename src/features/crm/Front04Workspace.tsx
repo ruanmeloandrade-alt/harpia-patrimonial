@@ -18,6 +18,7 @@ interface CrmCompositionProps {
   crmService?: CrmService;
   crmRepository?: CrmRepository;
   crmEventSinks?: CrmEventSink[];
+  canManageCrm?: boolean;
 }
 
 interface InboxCompositionProps extends CrmCompositionProps {
@@ -26,6 +27,9 @@ interface InboxCompositionProps extends CrmCompositionProps {
   inboxRepository?: InboxRepository;
   salesBots?: AutomationOption[];
   aiAgents?: AutomationOption[];
+  canManageInbox?: boolean;
+  canManageSalesBot?: boolean;
+  canManageAiAgent?: boolean;
 }
 
 export interface Front04WorkspaceProps extends InboxCompositionProps {
@@ -58,6 +62,7 @@ export function Front04CrmScreen({
   crmService: injectedCrmService,
   crmRepository,
   crmEventSinks = [],
+  canManageCrm = true,
 }: CrmCompositionProps) {
   const crmService = useCrmService({
     crmService: injectedCrmService,
@@ -65,7 +70,7 @@ export function Front04CrmScreen({
     crmEventSinks,
   });
 
-  return <CrmWorkspace service={crmService} assignees={assignees} />;
+  return <CrmWorkspace service={crmService} assignees={assignees} canManage={canManageCrm} />;
 }
 
 export function Front04InboxScreen({
@@ -78,6 +83,10 @@ export function Front04InboxScreen({
   crmEventSinks = [],
   inboxService: injectedInboxService,
   inboxRepository,
+  canManageCrm = true,
+  canManageInbox = true,
+  canManageSalesBot = true,
+  canManageAiAgent = true,
 }: InboxCompositionProps) {
   const crmService = useCrmService({
     crmService: injectedCrmService,
@@ -94,8 +103,16 @@ export function Front04InboxScreen({
   useEffect(() => {
     const previous = previousRuntimeRef.current;
     if (previous.crmService === crmService && previous.inboxService === inboxService) return;
+
+    const crmContentChanged = previous.crmService !== crmService
+      && JSON.stringify(previous.crmService.snapshot()) !== JSON.stringify(crmService.snapshot());
+    const inboxContentChanged = previous.inboxService !== inboxService
+      && JSON.stringify(previous.inboxService.snapshot()) !== JSON.stringify(inboxService.snapshot());
+
     previousRuntimeRef.current = { crmService, inboxService };
-    setRuntimeRevision((value) => value + 1);
+    if (crmContentChanged || inboxContentChanged) {
+      setRuntimeRevision((value) => value + 1);
+    }
   }, [crmService, inboxService]);
 
   return (
@@ -107,6 +124,10 @@ export function Front04InboxScreen({
       assignees={assignees}
       salesBots={salesBots}
       aiAgents={aiAgents}
+      canManageInbox={canManageInbox}
+      canManageCrm={canManageCrm}
+      canManageSalesBot={canManageSalesBot}
+      canManageAiAgent={canManageAiAgent}
     />
   );
 }
@@ -121,6 +142,10 @@ export function Front04Workspace({
   crmRepository,
   inboxRepository,
   crmEventSinks = [],
+  canManageCrm = true,
+  canManageInbox = true,
+  canManageSalesBot = true,
+  canManageAiAgent = true,
   initialView = 'crm',
 }: Front04WorkspaceProps) {
   const crmService = useCrmService({
@@ -168,6 +193,7 @@ export function Front04Workspace({
         <Front04CrmScreen
           crmService={crmService}
           assignees={assignees}
+          canManageCrm={canManageCrm}
         />
       ) : (
         <Front04InboxScreen
@@ -177,6 +203,10 @@ export function Front04Workspace({
           assignees={assignees}
           salesBots={salesBots}
           aiAgents={aiAgents}
+          canManageCrm={canManageCrm}
+          canManageInbox={canManageInbox}
+          canManageSalesBot={canManageSalesBot}
+          canManageAiAgent={canManageAiAgent}
         />
       )}
     </div>
