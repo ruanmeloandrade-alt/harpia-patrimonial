@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { CATALOG_CHANGED_EVENT, LocalCatalogRepository, type CatalogRepository } from '../catalog/catalogRepository';
 import {
+  commercialAvailability,
   getDashboardSnapshot,
+  type CommercialMetricKey,
   type CommercialMetricsProvider,
   type DashboardSnapshot,
 } from './dashboardService';
@@ -35,6 +37,7 @@ const initialSnapshot: DashboardSnapshot = {
     demandByRegion: [],
     nextActions: [],
   },
+  commercialAvailability: commercialAvailability(),
   commercialSource: 'awaiting-crm',
 };
 
@@ -118,6 +121,8 @@ export function DashboardPage({ catalogRepository, commercialProvider }: Dashboa
   }
 
   const crmConnected = snapshot.commercialSource === 'connected';
+  const availability = snapshot.commercialAvailability;
+  const helper = (key: CommercialMetricKey) => availability[key] ? undefined : 'Métrica ainda não configurada no CRM';
 
   return (
     <section className="f03-dashboard">
@@ -125,7 +130,7 @@ export function DashboardPage({ catalogRepository, commercialProvider }: Dashboa
         <div>
           <p className="f03-dashboard-kicker">Visão operacional</p>
           <h1>Dashboard</h1>
-          <p>Métricas do catálogo vêm dos registros reais. Dados comerciais permanecem zerados até a conexão com o CRM.</p>
+          <p>Métricas do catálogo vêm dos registros reais. Métricas comerciais só são tratadas como disponíveis quando a fonte realmente as expõe.</p>
         </div>
         <div className={`f03-source-pill ${crmConnected ? 'connected' : ''}`}>
           <span className="f03-source-dot" />
@@ -144,17 +149,17 @@ export function DashboardPage({ catalogRepository, commercialProvider }: Dashboa
       <section className="f03-dashboard-section">
         <div className="f03-section-heading">
           <h2>Comercial</h2>
-          <p>{crmConnected ? 'Fonte: CRM integrado.' : 'Fonte ainda não integrada: valores reais indisponíveis, exibindo zero conforme regra do projeto.'}</p>
+          <p>{crmConnected ? 'Fonte conectada. Somente métricas realmente disponíveis são consideradas ativas.' : 'Fonte ainda não integrada: valores ficam em zero conforme regra do projeto.'}</p>
         </div>
         <div className="f03-commercial-grid">
-          <MetricCard label="Leads" value={snapshot.commercial.leads} />
-          <MetricCard label="Visitas" value={snapshot.commercial.visits} />
-          <MetricCard label="Propostas" value={snapshot.commercial.proposals} />
-          <MetricCard label="Negociações" value={snapshot.commercial.negotiations} />
-          <MetricCard label="Vendas" value={snapshot.commercial.sales} />
-          <MetricCard label="Pipeline / VGV" value={money(snapshot.commercial.pipelineValue)} />
-          <MetricCard label="Ticket" value={money(snapshot.commercial.ticket)} />
-          <MetricCard label="Conversão" value={percent(snapshot.commercial.conversionRate)} />
+          <MetricCard label="Leads" value={snapshot.commercial.leads} helper={helper('leads')} />
+          <MetricCard label="Visitas" value={snapshot.commercial.visits} helper={helper('visits')} />
+          <MetricCard label="Propostas" value={snapshot.commercial.proposals} helper={helper('proposals')} />
+          <MetricCard label="Negociações" value={snapshot.commercial.negotiations} helper={helper('negotiations')} />
+          <MetricCard label="Vendas" value={snapshot.commercial.sales} helper={helper('sales')} />
+          <MetricCard label="Pipeline / VGV" value={money(snapshot.commercial.pipelineValue)} helper={helper('pipelineValue')} />
+          <MetricCard label="Ticket" value={money(snapshot.commercial.ticket)} helper={helper('ticket')} />
+          <MetricCard label="Conversão" value={percent(snapshot.commercial.conversionRate)} helper={helper('conversionRate')} />
         </div>
       </section>
 
@@ -169,7 +174,7 @@ export function DashboardPage({ catalogRepository, commercialProvider }: Dashboa
         </section>
         <section className="f03-dashboard-panel">
           <h3>Próximas ações</h3>
-          {snapshot.commercial.nextActions.length ? (
+          {availability.nextActions && snapshot.commercial.nextActions.length ? (
             <div className="f03-stat-list">
               {snapshot.commercial.nextActions.map((action) => (
                 <div className="f03-stat-row" key={action.id}>
@@ -178,15 +183,15 @@ export function DashboardPage({ catalogRepository, commercialProvider }: Dashboa
                 </div>
               ))}
             </div>
-          ) : <div className="f03-dashboard-empty">Nenhuma próxima ação real disponível.</div>}
+          ) : <div className="f03-dashboard-empty">{availability.nextActions ? 'Nenhuma próxima ação real disponível.' : 'Métrica aguardando contrato/configuração do CRM.'}</div>}
         </section>
         <section className="f03-dashboard-panel">
           <h3>Origem dos leads</h3>
-          <StatList items={snapshot.commercial.leadOrigins} emptyText="Aguardando dados reais do CRM." />
+          <StatList items={availability.leadOrigins ? snapshot.commercial.leadOrigins : []} emptyText={availability.leadOrigins ? 'Nenhuma origem registrada nos leads atuais.' : 'Métrica aguardando contrato/configuração do CRM.'} />
         </section>
         <section className="f03-dashboard-panel">
           <h3>Demanda por região</h3>
-          <StatList items={snapshot.commercial.demandByRegion} emptyText="Aguardando dados reais do CRM." />
+          <StatList items={availability.demandByRegion ? snapshot.commercial.demandByRegion : []} emptyText={availability.demandByRegion ? 'Nenhuma demanda regional registrada.' : 'Métrica aguardando contrato/configuração do CRM.'} />
         </section>
         <section className="f03-dashboard-panel">
           <h3>Integridade dos dados</h3>
