@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import type { AICredentialVaultPort } from './aiCredentialPort';
 import { listIntegrations, updateIntegration } from './repository';
 import { AIProvidersWorkspace } from './AIProvidersWorkspace';
 
@@ -8,7 +9,11 @@ const STATUS_LABELS = {
   connected: 'Conectado',
 } as const;
 
-export function IntegrationsWorkspace() {
+interface IntegrationsWorkspaceProps {
+  credentialVault?: AICredentialVaultPort;
+}
+
+export function IntegrationsWorkspace({ credentialVault }: IntegrationsWorkspaceProps) {
   const [items, setItems] = useState(() => listIntegrations());
   const refresh = () => setItems(listIntegrations());
   const externalItems = items.filter((item) => item.id !== 'ai');
@@ -16,7 +21,7 @@ export function IntegrationsWorkspace() {
   return <section className="f05-module">
     <header className="f05-module__header"><div><span className="f05-kicker">Integrações</span><h2>Conexões externas e provedores</h2><p>IA é configurável por cliente. WhatsApp e Meta permanecem sem conexão real até a fase final.</p></div></header>
 
-    <AIProvidersWorkspace />
+    <AIProvidersWorkspace credentialVault={credentialVault} />
 
     <div className="f05-divider" />
     <div className="f05-subheader"><div><span className="f05-kicker">Demais integrações</span><h3>Estrutura preparatória</h3><p>Sem credencial real nesta fase para WhatsApp e Meta.</p></div></div>
