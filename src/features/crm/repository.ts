@@ -1,6 +1,7 @@
 import { CrmState, createEmptyCrmState } from './domain';
 
 export const CRM_STORAGE_KEY = 'harpia.crm.v1';
+export const CRM_UPDATED_EVENT = 'harpia:crm-updated';
 
 export interface CrmRepository {
   load(): CrmState;
@@ -26,6 +27,11 @@ const normalizeState = (value: unknown): CrmState => {
     tasks: Array.isArray(candidate.tasks) ? candidate.tasks : [],
     history: Array.isArray(candidate.history) ? candidate.history : [],
   };
+};
+
+const notifyCrmUpdated = (): void => {
+  if (typeof window === 'undefined') return;
+  window.dispatchEvent(new CustomEvent(CRM_UPDATED_EVENT));
 };
 
 export class BrowserCrmRepository implements CrmRepository {
@@ -58,21 +64,26 @@ export class BrowserCrmRepository implements CrmRepository {
     const safeState = normalizeState(state);
     this.memoryState = cloneState(safeState);
 
-    if (!this.storage) return;
-    try {
-      this.storage.setItem(CRM_STORAGE_KEY, JSON.stringify(safeState));
-    } catch {
-      // A aplicação continua funcional em memória quando o navegador bloqueia storage.
+    if (this.storage) {
+      try {
+        this.storage.setItem(CRM_STORAGE_KEY, JSON.stringify(safeState));
+      } catch {
+        // A aplicação continua funcional em memória quando o navegador bloqueia storage.
+      }
     }
+
+    notifyCrmUpdated();
   }
 
   clear(): void {
     this.memoryState = createEmptyCrmState();
-    if (!this.storage) return;
-    try {
-      this.storage.removeItem(CRM_STORAGE_KEY);
-    } catch {
-      // Nada a fazer: o estado em memória já foi limpo.
+    if (this.storage) {
+      try {
+        this.storage.removeItem(CRM_STORAGE_KEY);
+      } catch {
+        // Nada a fazer: o estado em memória já foi limpo.
+      }
     }
+    notifyCrmUpdated();
   }
 }
