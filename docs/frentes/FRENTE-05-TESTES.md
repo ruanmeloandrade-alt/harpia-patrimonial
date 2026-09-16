@@ -123,14 +123,18 @@ Implementado nesta rodada:
 - erro de persistência dispara rollback em memória;
 - rollback só ocorre se a escrita rejeitada ainda for a geração mais recente daquela chave;
 - `replaceStoredListFromRemote(...)` restaura snapshot autoritativo vindo do backend e invalida rollbacks antigos;
+- `writeStoredListConfirmed(...)` aguarda confirmação/rejeição real do backend para mutações críticas;
 - SalesBot, Automatize, Agentes IA, Provedores/Integrações e Execuções escutam eventos de storage compartilhado;
 - contrato alinhado ao adapter `sharedF05Storage` da Frente01.
 
-Teste controlado realmente executado:
+Testes controlados realmente executados:
 
 - duas escritas locais consecutivas + refresh remoto autoritativo + duas rejeições atrasadas => snapshot remoto permaneceu intacto;
 - uma escrita isolada rejeitada => rollback voltou ao valor anterior;
-- resultado: `F05 storage race/rollback tests: OK`.
+- escrita confirmada com backend aceitando => Promise concluiu e estado permaneceu;
+- escrita confirmada com backend rejeitando => Promise rejeitou e estado voltou ao anterior;
+- refresh remoto durante escrita confirmada + falha atrasada => snapshot remoto permaneceu autoritativo;
+- resultados: `F05 storage race/rollback tests: OK` e `F05 confirmed-write tests: OK`.
 
 Ainda falta validar esse comportamento dentro do browser autenticado do produto consolidado.
 
@@ -144,7 +148,8 @@ A F05 suporta:
 - `automations.view` / `automations.manage`;
 - `ai.view` / `ai.manage`;
 - `integrations.view` / `integrations.manage`;
-- modo leitura quando existe `view` sem `manage`.
+- modo leitura quando existe `view` sem `manage`;
+- `manage` implica `view` no mapeamento interno, evitando esconder módulo de um gerente que recebeu apenas a permissão de gestão.
 
 Hardening aplicado na branch F05:
 
@@ -194,7 +199,33 @@ Limitação desta sessão:
 
 Estado real conferido após a tentativa: `auth.users = 0`; nenhum usuário de QA foi criado.
 
-## 13. Não verificado ainda
+## 13. Consistência perfil IA ↔ Vault
+
+Status: PROTEÇÕES IMPLEMENTADAS; FLUXO DE COMPENSAÇÃO TESTADO COM DEPENDÊNCIAS CONTROLADAS.
+
+Implementado:
+
+- metadados críticos de credencial usam `updateAIProviderProfileConfirmed(...)`;
+- primeira chave só fica marcada como configurada depois da persistência confirmada do perfil;
+- se essa persistência falhar, a UI tenta remover do Vault a credencial recém-criada;
+- atualização de uma chave já configurada preserva o mesmo `secretRef` do Vault e não cria referência paralela;
+- remoção de chave primeiro confirma o perfil sem `secretRef`; depois remove do Vault;
+- se o Vault falhar na remoção, o perfil anterior é restaurado com escrita confirmada;
+- exclusão de perfil usa escrita confirmada; se a limpeza do Vault falhar, o perfil é restaurado;
+- perfil não pode ser excluído enquanto qualquer agente o referencia;
+- chave não pode ser removida nem perfil `ready` desativado enquanto houver agente ativo usando-o;
+- UI mostra quais agentes dependem do perfil.
+
+Teste controlado realmente executado:
+
+- primeira configuração + falha ao persistir perfil => limpeza compensatória do segredo chamada;
+- substituição de chave com mesmo `secretRef` => não executa segunda escrita desnecessária do perfil;
+- remoção do Vault falha após perfil ter sido atualizado => perfil anterior é restaurado;
+- resultado: `F05 credential/profile consistency tests: OK`.
+
+E2E real pela Edge Function/Vault continua dependente de usuário autenticado de QA.
+
+## 14. Não verificado ainda
 
 Não tratar como concluído:
 
