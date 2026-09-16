@@ -16,15 +16,15 @@ Atualizar este arquivo ao iniciar e ao concluir blocos relevantes.
 ## Frente02 — Site público/Área do cliente
 
 - Branch: `frente-02`
-- Status: EM ANDAMENTO
+- Status: BLOQUEADA PARA INTEGRAÇÃO / VALIDAÇÃO REAL
 - Responsável: chat/agente Frente02 designado pelo usuário em 16/09/2026
-- Último commit relevante: `5f588221233f76509b1802a863ec4da85117774b`
-- Entregue no bloco atual: home pública com busca real; páginas institucionais; catálogo/filtros/detalhe; filtros persistidos em URL; relação unidade → empreendimento resolvida pelo serviço real; área do cliente com favoritos/interesses/histórico preparados para dados reais; retenção; vender/alugar com estado real; menu mobile; acessibilidade de overlays; captura de contato; metadados por rota; adapters Auth/Catálogo/CRM; pipeline CRM → WhatsApp; continuação contextual de WhatsApp sem número fictício; bridge de favoritos; handoff e semáforo atualizados.
-- Validação executada: releitura no GitHub; conferência de ownership/branch; conferência dos contratos atuais das Frentes01/03/04; revisão estrutural dos adapters, navegação, estados vazios e fluxos de conversão.
-- NÃO VERIFICADO: build/typecheck do produto conjunto; execução ponta a ponta com branches integradas; store real de favoritos; dados reais de interesses/histórico; responsividade visual em navegador/dispositivos.
-- Em andamento: pente-fino de código próprio e preparação do merge.
-- Bloqueios/dependências: montagem no `AppRouter` pertence à Frente01/integrador; persistência compartilhada de favoritos ainda não existe; instâncias reais de catálogo/CRM entram após merge; telefone real vem da configuração final.
-- Próximo passo: continuar fechando itens independentes; depois do merge executar build/typecheck/E2E no Node `>=24 <25` e corrigir regressões antes de alterar o status.
+- Último commit funcional relevante: `5135c8aa2a33fb3da75036e0abaf46e850ccd170`
+- Entregue: home pública com busca real; páginas institucionais; catálogo/filtros/detalhe; tipologia real da Frente03; filtros sanitizados e persistidos em URL; relação unidade → empreendimento; serviços relacionados; área do cliente; favoritos com loading/erro/retry; interesses/histórico por fonte real; retenção; vender/alugar com estado real; Minha conta/menu mobile; acessibilidade de overlays; captura de contato; metadados por rota; adapters Auth/Catálogo/CRM; bloqueio de conversão sem contato; pipeline CRM → WhatsApp; validação do número internacional; `Front02IntegrationShell`; handoff e semáforo atualizados.
+- Independências concluídas: no pente-fino atual não restou implementação funcional conhecida da Frente02 que possa ser concluída isoladamente sem invadir ownership de outra frente, inventar persistência ou simular integração.
+- Validação executada: releitura no GitHub dos arquivos gravados; conferência de ownership/branch; conferência dos contratos atuais das Frentes01/03/04; revisão estrutural dos adapters, shell, estados vazios/loading/erro/retry, navegação, filtros e fluxos de conversão.
+- NÃO VERIFICADO: build/typecheck do produto conjunto; execução ponta a ponta com branches integradas; store/tabela real de favoritos; dados persistidos reais da área do cliente; WhatsApp oficial; responsividade visual em navegador/dispositivos.
+- Bloqueios/dependências: montagem no `AppRouter` e bootstrap pertence à Frente01/integrador; persistência compartilhada de favoritos ainda não existe; catálogo/CRM reais precisam ser instanciados após merge; backend real e telefone oficial são externos à F2.
+- Próximo passo: aguardar integração. Assim que o produto conjunto estiver montado, executar build/typecheck/E2E em Node `>=24 <25`, testar desktop/mobile e corrigir regressões pertencentes à Frente02 antes de alterar o status.
 
 ## Frente03 — Catálogo interno/Dashboard
 
@@ -66,36 +66,36 @@ Atualizar este arquivo ao iniciar e ao concluir blocos relevantes.
 - Data/hora: 16/09/2026 11:51 BRT
 - Origem: Frente02
 - Destino: Frente01 / integrador
-- Necessidade: substituir o placeholder público atual e montar `PublicExperience` nas rotas de `publicRouteManifest`, preservando `/entrar`, `/cadastro`, `/conta` e `/interno/**` do núcleo.
+- Necessidade: substituir o placeholder público e montar `Front02IntegrationShell`/`PublicExperience` nas rotas de `publicRouteManifest`, preservando `/entrar`, `/cadastro`, `/conta` e `/interno/**` do núcleo.
 - Arquivo/contrato afetado: `src/app/AppRouter.tsx`, providers globais e composição de rotas.
-- Motivo: a Frente02 já entrega entrypoint, auth bridge e sincronização de navegação; não deve sobrescrever arquivo global da Frente01.
+- Motivo: a Frente02 já entrega shell único, auth bridge e experiência pública; não deve sobrescrever arquivos globais da Frente01.
 - Urgência: ALTA.
-- Status: EM ANDAMENTO
+- Status: PENDENTE DE INTEGRAÇÃO
 
 - Data/hora: 16/09/2026 11:51 BRT
 - Origem: Frente02
 - Destino: Frente03 / integrador
 - Necessidade: instanciar `PublicCatalogService` real por `createFront03PublicCatalogReader` após merge.
 - Arquivo/contrato afetado: catálogo público da Frente03 + `src/features/public-catalog/front03Adapter.ts`.
-- Motivo: adapter da Frente02 já cobre filtros, estilo de vida e resolução do empreendimento-pai; falta somente composição/teste com dados reais.
+- Motivo: adapter da Frente02 já cobre filtros, estilo de vida, `typology` e empreendimento-pai; falta composição/teste com dados reais.
 - Urgência: ALTA.
-- Status: EM ANDAMENTO
+- Status: PENDENTE DE INTEGRAÇÃO
 
 - Data/hora: 16/09/2026 11:51 BRT
 - Origem: Frente02
 - Destino: Frente04 / integrador
-- Necessidade: instanciar `createFront04ConversionHandler` sobre o CRM real e, quando existir fonte real, fornecer dados de interesses/histórico associados ao cliente.
+- Necessidade: instanciar `createFront04ConversionHandler` sobre o CRM real e, quando existir fonte real, fornecer interesses/histórico associados ao cliente.
 - Arquivo/contrato afetado: `LeadConversionEvent`/`ingestLeadConversion` + portas da área do cliente.
-- Motivo: captura, pipeline e UI da Frente02 já estão preparados sem simular mensagem ou histórico.
+- Motivo: captura, bloqueio sem contato, pipeline e UI da Frente02 já estão preparados sem simular mensagem ou histórico.
 - Urgência: ALTA para conversões; MÉDIA para histórico.
-- Status: EM ANDAMENTO
+- Status: PENDENTE DE INTEGRAÇÃO
 
 - Data/hora: 16/09/2026
 - Origem: Frente02
 - Destino: Frente01 / integrador de dados
 - Necessidade: definir persistência real de favoritos vinculando usuário autenticado + item real do catálogo, compatível com `PublicFavoritesStorePort`.
 - Arquivo/contrato afetado: contrato de favoritos/interesses e futura camada de persistência/RLS.
-- Motivo: UX e bridge estão prontos, mas o schema atual não possui tabela compartilhada de favoritos; a Frente02 não criará persistência definitiva paralela.
+- Motivo: UX, estados e bridge estão prontos, mas o schema compartilhado ainda não possui a persistência definitiva; a Frente02 não criará banco paralelo.
 - Urgência: MÉDIA/ALTA antes da entrega operacional.
 - Status: PENDENTE
 
@@ -119,6 +119,6 @@ Atualizar este arquivo ao iniciar e ao concluir blocos relevantes.
 
 - NÃO INICIADA: nenhuma implementação relevante começou.
 - EM ANDAMENTO: há trabalho ativo na branch.
-- BLOQUEADA: depende de decisão ou contrato externo.
+- BLOQUEADA: depende de decisão, contrato, integração ou validação externa à frente.
 - PRONTA PARA INTEGRAÇÃO: escopo da frente concluído e testado isoladamente.
 - INTEGRADA: merge validado no produto conjunto.
