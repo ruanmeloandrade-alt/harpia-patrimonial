@@ -19,10 +19,30 @@ interface ProviderHttpRequest {
 
 const normalizeBase = (value: string) => value.trim().replace(/\/$/, '');
 
+function openAIEndpoint(value: string): string {
+  const base = normalizeBase(value || 'https://api.openai.com');
+  if (base.endsWith('/responses')) return base;
+  if (base.endsWith('/v1')) return `${base}/responses`;
+  return `${base}/v1/responses`;
+}
+
+function anthropicEndpoint(value: string): string {
+  const base = normalizeBase(value || 'https://api.anthropic.com');
+  if (base.endsWith('/v1/messages')) return base;
+  if (base.endsWith('/v1')) return `${base}/messages`;
+  return `${base}/v1/messages`;
+}
+
+function geminiEndpoint(value: string): string {
+  const base = normalizeBase(value || 'https://generativelanguage.googleapis.com');
+  if (base.endsWith('/interactions')) return base;
+  if (base.endsWith('/v1beta')) return `${base}/interactions`;
+  return `${base}/v1beta/interactions`;
+}
+
 function buildOpenAIRequest(input: ProviderInvocationRequest): ProviderHttpRequest {
-  const url = input.profile.baseUrl.trim() || 'https://api.openai.com/v1/responses';
   return {
-    url,
+    url: openAIEndpoint(input.profile.baseUrl),
     init: {
       method: 'POST',
       headers: {
@@ -39,10 +59,8 @@ function buildOpenAIRequest(input: ProviderInvocationRequest): ProviderHttpReque
 }
 
 function buildAnthropicRequest(input: ProviderInvocationRequest): ProviderHttpRequest {
-  const base = normalizeBase(input.profile.baseUrl || 'https://api.anthropic.com');
-  const url = base.endsWith('/v1/messages') ? base : `${base}/v1/messages`;
   return {
-    url,
+    url: anthropicEndpoint(input.profile.baseUrl),
     init: {
       method: 'POST',
       headers: {
@@ -61,12 +79,11 @@ function buildAnthropicRequest(input: ProviderInvocationRequest): ProviderHttpRe
 }
 
 function buildGeminiRequest(input: ProviderInvocationRequest): ProviderHttpRequest {
-  const url = input.profile.baseUrl.trim() || 'https://generativelanguage.googleapis.com/v1beta/interactions';
   const composedInput = input.instructions.trim()
     ? `${input.instructions.trim()}\n\n${input.input}`
     : input.input;
   return {
-    url,
+    url: geminiEndpoint(input.profile.baseUrl),
     init: {
       method: 'POST',
       headers: {
@@ -100,6 +117,10 @@ function buildCustomRequest(input: ProviderInvocationRequest): ProviderHttpReque
   };
 }
 
+/**
+ * Constrói requests para execução server-side. Nunca envie a apiKey bruta para
+ * o navegador; use createProviderAIModelRuntime com resolvedor de segredo no backend.
+ */
 export function buildProviderHttpRequest(input: ProviderInvocationRequest): ProviderHttpRequest {
   const builders: Record<AIProviderKind, (value: ProviderInvocationRequest) => ProviderHttpRequest> = {
     openai: buildOpenAIRequest,
