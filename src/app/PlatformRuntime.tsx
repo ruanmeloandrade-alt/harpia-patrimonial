@@ -14,6 +14,11 @@ import {
   createFront05InboxAutomationAdapter,
   Front05CrmEventSink,
 } from '../features/crm/front05Adapter';
+import {
+  CrmRepositorySnapshotSource,
+  CrmSnapshotMetricsProvider,
+} from '../features/dashboard/crmMetricsAdapter';
+import type { CommercialMetricsProvider } from '../features/dashboard/dashboardService';
 import { InboxService } from '../features/inbox/service';
 import {
   aiAgentCommandPort,
@@ -37,6 +42,7 @@ interface PlatformRuntimeValue {
   crmService: CrmService | null;
   inboxService: InboxService | null;
   inboxAutomationPort: InboxAutomationPort | null;
+  commercialMetricsProvider: CommercialMetricsProvider | null;
   assignees: AssigneeOption[];
   operationalLoading: boolean;
   operationalError: string;
@@ -58,6 +64,7 @@ export function PlatformRuntimeProvider({ children }: PropsWithChildren) {
   const [crmService, setCrmService] = useState<CrmService | null>(null);
   const [inboxService, setInboxService] = useState<InboxService | null>(null);
   const [inboxAutomationPort, setInboxAutomationPort] = useState<InboxAutomationPort | null>(null);
+  const [commercialMetricsProvider, setCommercialMetricsProvider] = useState<CommercialMetricsProvider | null>(null);
   const [assignees, setAssignees] = useState<AssigneeOption[]>([]);
   const [operationalLoading, setOperationalLoading] = useState(false);
   const [operationalError, setOperationalError] = useState('');
@@ -77,6 +84,7 @@ export function PlatformRuntimeProvider({ children }: PropsWithChildren) {
       setCrmService(null);
       setInboxService(null);
       setInboxAutomationPort(null);
+      setCommercialMetricsProvider(null);
       setAssignees([]);
       setOperationalLoading(false);
       setOperationalError('');
@@ -116,6 +124,9 @@ export function PlatformRuntimeProvider({ children }: PropsWithChildren) {
         setCrmService(crm);
         setInboxService(inbox);
         setInboxAutomationPort(automationPort);
+        setCommercialMetricsProvider(
+          new CrmSnapshotMetricsProvider(new CrmRepositorySnapshotSource(crmRepository), catalogRepository),
+        );
         setAssignees(assigneeRows);
       })
       .catch((error) => {
@@ -124,6 +135,7 @@ export function PlatformRuntimeProvider({ children }: PropsWithChildren) {
         setCrmService(null);
         setInboxService(null);
         setInboxAutomationPort(null);
+        setCommercialMetricsProvider(null);
         setAssignees([]);
       })
       .finally(() => {
@@ -134,7 +146,7 @@ export function PlatformRuntimeProvider({ children }: PropsWithChildren) {
       active = false;
       unsubscribeEvents?.();
     };
-  }, [canUseCrm]);
+  }, [canUseCrm, catalogRepository]);
 
   const value = useMemo<PlatformRuntimeValue>(() => ({
     catalogRepository,
@@ -144,12 +156,14 @@ export function PlatformRuntimeProvider({ children }: PropsWithChildren) {
     crmService,
     inboxService,
     inboxAutomationPort,
+    commercialMetricsProvider,
     assignees,
     operationalLoading,
     operationalError,
   }), [
     assignees,
     catalogRepository,
+    commercialMetricsProvider,
     credentialVault,
     crmService,
     favoritesStore,
