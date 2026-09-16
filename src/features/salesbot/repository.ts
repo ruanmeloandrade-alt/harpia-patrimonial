@@ -1,5 +1,6 @@
 import { createF05Id, readStoredList, writeStoredList } from '../automations/f05Storage';
 import type { SalesBotBlock, SalesBotDefinition, SalesBotStatus } from './types';
+import { validateSalesBot } from './validation';
 
 const STORAGE_KEY = 'harpia:f05:salesbots';
 const now = () => new Date().toISOString();
@@ -63,7 +64,10 @@ export function duplicateSalesBot(id: string): SalesBotDefinition {
 export function setSalesBotStatus(id: string, status: SalesBotStatus): SalesBotDefinition {
   const current = getSalesBot(id);
   if (!current) throw new Error('SalesBot não encontrado.');
-  if (status === 'active' && current.blocks.length === 0) throw new Error('Adicione pelo menos um bloco antes de ativar o SalesBot.');
+  if (status === 'active') {
+    const issues = validateSalesBot(current);
+    if (issues.length > 0) throw new Error(issues.join(' '));
+  }
   return updateSalesBot(id, { status });
 }
 
