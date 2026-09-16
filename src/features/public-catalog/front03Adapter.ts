@@ -94,7 +94,7 @@ function bestLocation(location: Front03Location) {
   return location.condominium || location.neighborhood || location.city;
 }
 
-function toPublicItem(item: Front03PublishedItem): PublicCatalogItem {
+function toPublicItem(item: Front03PublishedItem, parent?: Front03PublishedItem | null): PublicCatalogItem {
   return {
     id: item.id,
     slug: item.code || item.id,
@@ -118,6 +118,14 @@ function toPublicItem(item: Front03PublishedItem): PublicCatalogItem {
         url: media.url,
         alt: media.label,
       })),
+    development:
+      item.kind === 'unit' && item.parentId && parent
+        ? {
+            id: parent.id,
+            title: parent.name,
+            unitLabel: item.code || undefined,
+          }
+        : undefined,
   };
 }
 
@@ -149,6 +157,30 @@ function deriveFilterOptions(items: Front03PublishedItem[]): PublicCatalogFilter
   };
 }
 
+async function resolveParents(
+  service: Front03PublicCatalogServicePort,
+  items: Front03PublishedItem[],
+) {
+  const parents = new Map<string, Front03PublishedItem>();
+  items.forEach((item) => parents.set(item.id, item));
+
+  const missingParentIds = unique(
+    items
+      .filter((item) => item.kind === 'unit' && item.parentId && !parents.has(item.parentId))
+      .map((item) => item.parentId ?? ''),
+  );
+
+  const resolved = await Promise.all(
+    missingParentIds.map(async (parentId) => [parentId, await service.getByIdOrCode(parentId)] as const),
+  );
+
+  resolved.forEach(([parentId, parent]) => {
+    if (parent) parents.set(parentId, parent);
+  });
+
+  return parents;
+}
+
 /**
  * Creates the concrete read adapter expected by the public experience.
  * After branch integration, pass Frente03's PublicCatalogService instance here.
@@ -159,12 +191,17 @@ export function createFront03PublicCatalogReader(
   return {
     async listPublished(filters) {
       const items = await service.list(toFront03Filters(filters));
-      return items.map(toPublicItem);
+      const parents = await resolveParents(service, items);
+      return items.map((item) => toPublicItem(item, item.parentId ? parents.get(item.parentId) : undefined));
     },
 
     async getPublishedBySlug(slug) {
       const item = await service.getByIdOrCode(slug);
-      return item ? toPublicItem(item) : null;
+      if (!item) return null;
+      const parent = item.kind === 'unit' && item.parentId
+        ? await service.getByIdOrCode(item.parentId)
+        : null;
+      return toPublicItem(item, parent);
     },
 
     async getFilterOptions() {
