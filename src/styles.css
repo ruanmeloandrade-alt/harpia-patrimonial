@@ -1,0 +1,44 @@
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+  margin: 0;
+}
+
+body {
+  min-width: 320px;
+  background: #0b0b0b;
+  color: #f5f2ea;
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+.boot-screen {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 32px;
+  text-align: center;
+}
+
+.eyebrow {
+  margin: 0 0 18px;
+  font-size: 12px;
+  letter-spacing: 0.24em;
+  opacity: 0.72;
+}
+
+h1 {
+  margin: 0;
+  font-size: clamp(38px, 7vw, 80px);
+  font-weight: 500;
+}
+
+.subtitle {
+  margin: 18px 0 0;
+  font-size: 18px;
+  opacity: 0.7;
+}
