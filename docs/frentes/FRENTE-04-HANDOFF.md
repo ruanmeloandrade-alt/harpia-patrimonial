@@ -5,12 +5,12 @@ Branch: `frente-04`
 
 ## Status visual
 
-- 🟠 CRM/Kanban/Lead 360 — implementação própria fechada; runtime compartilhado e realtime já existem na Frente01; falta sync final, build/E2E e teste pelo usuário.
-- 🟠 Inbox — implementação própria fechada; seleção explícita de SalesBot/IA e troca de runtime realtime tratadas; falta sync final, build/E2E e teste pelo usuário.
+- 🟠 CRM/Kanban/Lead 360 — implementação própria fechada e endurecida; runtime compartilhado/realtime já existem na Frente01; falta sync final, build/E2E e teste pelo usuário.
+- 🟠 Inbox — implementação própria fechada; seleção explícita de SalesBot/IA, realtime visual e invariantes de transporte tratados; falta sync final, build/E2E e teste pelo usuário.
 - 🟠 Entrada automática de leads — backend público seguro já existe na Frente01; falta ensaio ponta a ponta real até a fila sem etapa.
 - 🟠 Dashboard CRM — integração usa a mesma fonte CRM compartilhada; falta validação visual com dado real.
 - 🟠 SalesBot/IA/Automatize — adapters implementados e runtime real já composto na Frente01; falta execução ponta a ponta com recurso real configurado.
-- 🟠 Persistência multiusuário — infraestrutura oficial da Frente01 com Supabase, optimistic locking e realtime; adapter paralelo da Frente04 foi removido.
+- 🟠 Persistência multiusuário — infraestrutura oficial da Frente01 com Supabase, optimistic locking e realtime; persistência paralela da Frente04 foi removida.
 - 🔴 Build/typecheck consolidado — ainda não verificado.
 - 🔴 Validação final pelo usuário — ainda não executada.
 
@@ -34,9 +34,27 @@ Nenhum item recebe 🟢 apenas porque o código existe.
 - fila de leads sem etapa;
 - classificação da fila somente para etapas de funis ativos;
 - entrada canônica `CrmWorkspace` inclui automaticamente a fila sem etapa;
-- troca de `CrmService` em runtime realtime força atualização da tela sem manter snapshot antigo.
+- realtime remonta a UI somente quando o snapshot realmente mudou, evitando reset por eco do próprio save local.
 
-A implementação visual principal foi separada em `CrmWorkspaceCore.tsx`; `CrmWorkspace.tsx` é o wrapper canônico compatível com os imports já usados pela Frente01.
+Arquitetura canônica:
+
+- `CrmWorkspace.tsx`: wrapper de integração/realtime;
+- `CrmWorkspaceCore.tsx`: implementação visual;
+- `service.ts`: camada canônica com hardening;
+- `serviceCore.ts`: CRUD/base original preservado.
+
+### Hardening de campos personalizados
+
+`CrmService` agora protege UI e ações do Automatize:
+
+- `select`/`multiselect` exigem opções reais;
+- opções são limpas e deduplicadas;
+- campo inativo rejeita alteração;
+- número precisa ser finito;
+- boolean exige boolean;
+- select aceita somente opção declarada;
+- multiselect aceita somente lista de opções declaradas;
+- valor incompatível é recusado antes de persistir.
 
 ### Conversões públicas
 
@@ -64,26 +82,32 @@ A Frente01 já implementou o backend seguro `public-lead-ingest` e a composiçã
 - seleção explícita de SalesBot;
 - seleção explícita de agente IA;
 - nenhuma escolha automática de fluxo;
-- troca de `CrmService`, `InboxService` ou `automationPort` em runtime realtime remonta o core para evitar snapshot/execução antiga.
+- realtime troca services/port sem reset visual quando os snapshots continuam equivalentes;
+- mudança real de CRM/Inbox remonta o core para não exibir snapshot antigo;
+- canal não pode ser marcado como conectado sem transporte real;
+- desconectar remove `externalThreadId`;
+- mensagens externas são deduplicadas por `conversationId + externalMessageId`.
 
-A implementação visual principal da Inbox foi preservada em `InboxWorkspaceCore.tsx`; `InboxWorkspace.tsx` é o wrapper canônico e mantém o mesmo caminho de importação usado pela Frente01.
+Arquitetura canônica:
+
+- `InboxWorkspace.tsx`: wrapper de integração/realtime;
+- `InboxWorkspaceCore.tsx`: implementação visual;
+- `service.ts`: invariantes de conversa/transporte/mensagem.
 
 ### Integração Frente05
 
-`src/features/crm/front05Adapter.ts` expõe:
-
-- `createFront05InboxAutomationAdapter`;
-- `createFront05CrmActionPort`;
-- `Front05CrmEventSink`;
-- `toFront05CrmAutomationEvent`.
+O contrato público continua em `src/features/crm/front05Adapter.ts`; a implementação-base anterior foi preservada em `front05AdapterCore.ts`.
 
 O adapter atual:
 
 - aceita `botId`/`agentId` explícitos;
 - preserva execução por lead/conversa;
+- mantém `executionId` em escopo de módulo para sobreviver à recriação do `automationPort` pela Frente01 durante a mesma sessão;
 - só retoma SalesBot pausado quando o bot selecionado é o mesmo;
 - não apresenta status de execução antiga para outro recurso;
 - evita invocação duplicada de IA quando o mesmo agente já está rodando;
+- não tenta pausar execução já encerrada;
+- limpa ponteiros de execução concluída, falha ou `not_found`;
 - ações do Automatize operam o `CrmService` real;
 - eventos CRM são convertidos para o contrato F05.
 
@@ -102,15 +126,19 @@ A fonte operacional oficial é a infraestrutura da Frente01:
 
 A implementação paralela `src/features/crm/sharedStatePersistence.ts` foi removida da Frente04 para impedir duas rotas de persistência.
 
-A F04 agora somente consome services/repositories injetados pela composição integradora, mantendo fallback local apenas para uso isolado do módulo.
+A F04 agora consome services/repositories injetados pela composição integradora, mantendo fallback local apenas para uso isolado do módulo.
 
 ## QA de backend observado
 
 No projeto Supabase dedicado da Hárpia:
 
-- CRM e Inbox permanecem sem dados fictícios;
 - Security Advisor atual: `0` lints;
-- Performance Advisor: apenas INFO de índices ainda não utilizados, esperado no ambiente recém-criado/sem tráfego real.
+- Performance Advisor: somente INFO de índices ainda não utilizados;
+- última consulta: `auth.users = 0`;
+- última consulta: usuários internos ativos = `0`;
+- linhas compartilhadas de estado `crm` e `inbox` existem.
+
+Sem usuário real ainda não é possível concluir E2E autenticado/RLS/UI.
 
 ## Integração Frente01 observada
 
@@ -126,7 +154,7 @@ Já existem:
 - runtime de SalesBot e IA reais;
 - estado F05 compartilhado.
 
-Atenção no merge: preservar as versões atuais da Frente04 de `CrmWorkspace`, `InboxWorkspace` e `front05Adapter`, porque a branch Frente01 ainda foi observada com versões anteriores desses arquivos.
+Atenção no merge: preservar as versões atuais da Frente04 de `CrmWorkspace`, `InboxWorkspace`, `service` e `front05Adapter` junto com seus respectivos arquivos `*Core`, porque a branch Frente01 ainda foi observada com versões anteriores desses módulos.
 
 ## Pontos externos ainda pendentes
 
@@ -152,9 +180,11 @@ Atenção no merge: preservar as versões atuais da Frente04 de `CrmWorkspace`, 
 - `src/features/crm/domain.ts`
 - `src/features/crm/repository.ts`
 - `src/features/crm/service.ts`
+- `src/features/crm/serviceCore.ts`
 - `src/features/crm/contracts.ts`
 - `src/features/crm/front01Adapter.ts`
 - `src/features/crm/front05Adapter.ts`
+- `src/features/crm/front05AdapterCore.ts`
 - `src/features/crm/CrmWorkspace.tsx`
 - `src/features/crm/CrmWorkspaceCore.tsx`
 - `src/features/crm/UnassignedLeadsQueue.tsx`
@@ -167,6 +197,20 @@ Atenção no merge: preservar as versões atuais da Frente04 de `CrmWorkspace`, 
 - `src/features/inbox/InboxWorkspaceCore.tsx`
 - `src/features/inbox/inbox.module.css`
 
+## Validações executadas nesta frente
+
+- revisão estrutural de CRM/Inbox;
+- checagens TypeScript isoladas dos wrappers/hardenings recentes;
+- checagens isoladas do adapter F04↔F05;
+- proteção de exclusão de etapa com leads;
+- bloqueio de envio sem transporte real;
+- bloqueio de falso estado `connected` sem transporte;
+- empty states sem dados fictícios;
+- validação de tipos de campos personalizados;
+- revisão de CSS modular sem seletor global vazando;
+- revisão do runtime realtime da Frente01;
+- Security Advisor do backend rechecado com zero lints.
+
 ## NÃO VERIFICADO ainda
 
 - `npm run build` consolidado;
@@ -178,6 +222,7 @@ Atenção no merge: preservar as versões atuais da Frente04 de `CrmWorkspace`, 
 - conversão pública → fila sem etapa → classificação;
 - dashboard refletindo alteração real de CRM;
 - Inbox ↔ SalesBot/IA/Automatize ponta a ponta;
+- continuidade de execução de automação após reload completo da página;
 - WhatsApp real;
 - teste final pelo usuário.
 
