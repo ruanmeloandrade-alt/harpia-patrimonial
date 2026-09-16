@@ -12,9 +12,10 @@ import { unconfiguredAICredentialVault, type AICredentialVaultPort } from './aiC
 
 interface AIProvidersWorkspaceProps {
   credentialVault?: AICredentialVaultPort;
+  canManage?: boolean;
 }
 
-export function AIProvidersWorkspace({ credentialVault = unconfiguredAICredentialVault }: AIProvidersWorkspaceProps) {
+export function AIProvidersWorkspace({ credentialVault = unconfiguredAICredentialVault, canManage = true }: AIProvidersWorkspaceProps) {
   const [profiles, setProfiles] = useState(() => listAIProviderProfiles());
   const [selectedId, setSelectedId] = useState<string | null>(() => profiles[0]?.id ?? null);
   const [newName, setNewName] = useState('');
@@ -34,14 +35,14 @@ export function AIProvidersWorkspace({ credentialVault = unconfiguredAICredentia
   };
 
   const create = () => {
-    if (!newName.trim()) return;
+    if (!newName.trim() || !canManage) return;
     const profile = createAIProviderProfile({ name: newName, provider: newProvider });
     setNewName('');
     refresh(profile.id);
   };
 
   const saveKey = async () => {
-    if (!selected || !apiKey.trim()) return;
+    if (!selected || !apiKey.trim() || !canManage) return;
     setCredentialMessage('');
     const result = await credentialVault.saveApiKey({ profileId: selected.id, apiKey: apiKey.trim() });
     setApiKey('');
@@ -55,7 +56,7 @@ export function AIProvidersWorkspace({ credentialVault = unconfiguredAICredentia
   };
 
   const removeKey = async () => {
-    if (!selected) return;
+    if (!selected || !canManage) return;
     const result = await credentialVault.removeApiKey({ profileId: selected.id, secretRef: selected.secretRef });
     if (result.status === 'stored') {
       updateAIProviderProfile(selected.id, { apiKeyConfigured: false, secretRef: undefined, status: 'draft' });
@@ -71,14 +72,15 @@ export function AIProvidersWorkspace({ credentialVault = unconfiguredAICredentia
       <div><span className="f05-kicker">Provedores de IA</span><h3>Modelo e credencial por cliente</h3><p>Escolha o provedor, informe o modelo e conecte a chave API. Nenhuma chave fica gravada no navegador.</p></div>
       <span className="f05-count">{profiles.length}</span>
     </div>
+    {!canManage ? <div className="f05-readonly-note">Modo leitura: somente usuários com integrations.manage podem alterar provedor ou credencial.</div> : null}
 
-    <div className="f05-create-row">
+    <fieldset className="f05-readonly-fieldset" disabled={!canManage}><div className="f05-create-row">
       <input value={newName} onChange={(event) => setNewName(event.target.value)} placeholder="Nome do perfil, ex.: IA Comercial" />
       <select value={newProvider} onChange={(event) => setNewProvider(event.target.value as AIProviderKind)}>
         {AI_PROVIDER_CATALOG.map((provider) => <option key={provider.id} value={provider.id}>{provider.label}</option>)}
       </select>
       <button disabled={!newName.trim()} onClick={create}>Criar perfil</button>
-    </div>
+    </div></fieldset>
 
     <div className="f05-split">
       <aside className="f05-list">
@@ -90,7 +92,7 @@ export function AIProvidersWorkspace({ credentialVault = unconfiguredAICredentia
         })}
       </aside>
 
-      <div className="f05-editor">
+      <fieldset className="f05-editor f05-readonly-fieldset" disabled={!canManage}>
         {!selected ? <div className="f05-empty f05-empty--large">Crie ou selecione um perfil de IA.</div> : <>
           <div className="f05-form-grid">
             <label>Nome do perfil<input value={selected.name} onChange={(event) => { updateAIProviderProfile(selected.id, { name: event.target.value }); refresh(selected.id); }} /></label>
@@ -121,7 +123,7 @@ export function AIProvidersWorkspace({ credentialVault = unconfiguredAICredentia
             <button className="danger" onClick={() => { if (window.confirm('Excluir este perfil de IA?')) { deleteAIProviderProfile(selected.id); refresh(); } }}>Excluir perfil</button>
           </div>
         </>}
-      </div>
+      </fieldset>
     </div>
   </div>;
 }
