@@ -1,3 +1,4 @@
+import type { CatalogRepository } from './catalogRepository';
 import type { CatalogMediaType } from './types';
 
 export const CATALOG_MEDIA_BUCKET = 'catalog-media';
@@ -99,7 +100,21 @@ function validateFile(file: File, type: CatalogMediaType) {
 }
 
 export class SupabaseCatalogMediaStorage implements CatalogMediaStorage {
-  constructor(private readonly client: CatalogStorageSupabaseClient) {}
+  constructor(
+    private readonly client: CatalogStorageSupabaseClient,
+    private readonly repository?: CatalogRepository,
+  ) {}
+
+  private async isReferenced(path: string) {
+    if (!this.repository) return false;
+    const bucket = this.client.storage.from(CATALOG_MEDIA_BUCKET);
+    const publicUrl = bucket.getPublicUrl(path).data.publicUrl;
+    const items = await this.repository.list({ includeDeleted: true });
+
+    return items.some((item) => item.media.some(
+      (media) => media.storagePath === path || Boolean(publicUrl && media.url === publicUrl),
+    ));
+  }
 
   async upload(file: File, type: CatalogMediaType): Promise<CatalogMediaUpload> {
     validateFile(file, type);
@@ -133,6 +148,8 @@ export class SupabaseCatalogMediaStorage implements CatalogMediaStorage {
   }
 
   async remove(path: string): Promise<void> {
+    if (await this.isReferenced(path)) return;
+
     const result = await this.client.storage.from(CATALOG_MEDIA_BUCKET).remove([path]);
     if (result.error) throw new Error(result.error.message || 'Não foi possível remover a mídia.');
   }
