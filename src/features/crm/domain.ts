@@ -44,6 +44,8 @@ export interface Lead {
   source?: string;
   sourceAction?: string;
   sourcePage?: string;
+  sourceOccurredAt?: IsoDateTime;
+  sourceMetadata?: Record<string, unknown>;
   interest?: LeadInterest;
   assigneeId?: string;
   pipelineId?: CrmId;
