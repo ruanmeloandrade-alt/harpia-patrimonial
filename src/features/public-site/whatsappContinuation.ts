@@ -8,8 +8,8 @@ export interface WhatsAppContinuationOptions {
 
 function normalizePhone(phone: string) {
   const digits = phone.replace(/\D/g, '');
-  if (digits.length < 10) {
-    throw new Error('Número de WhatsApp inválido para a integração pública.');
+  if (digits.length < 10 || digits.length > 15) {
+    throw new Error('Número de WhatsApp inválido para a integração pública. Use formato internacional com DDI.');
   }
   return digits;
 }
@@ -29,7 +29,8 @@ function buildMessage(event: PublicSiteConversion) {
 
 /**
  * Prepara o redirecionamento contextual para WhatsApp sem embutir número
- * fictício na Frente02. O integrador fornece o número real da Hárpia.
+ * fictício na Frente02. O integrador fornece o número real da Hárpia em
+ * formato internacional (DDI + DDD + número).
  *
  * A função não cria lead e não dispara mensagem automaticamente: apenas
  * direciona o navegador para a conversa já com o contexto preenchido.
