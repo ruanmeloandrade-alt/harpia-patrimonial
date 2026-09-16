@@ -6,6 +6,7 @@ import type {
   ConversationAutomationStatus,
   InboxAutomationPort,
 } from '../crm/contracts';
+import type { CustomFieldDefinition, CustomFieldValue } from '../crm/domain';
 import { CrmService } from '../crm/service';
 import type { AssigneeOption } from '../crm/CrmWorkspace';
 import { BrowserInboxRepository } from './repository';
@@ -154,6 +155,17 @@ export function InboxWorkspace({
     }
   };
 
+  const updateCustomField = (fieldId: string, value: CustomFieldValue) => {
+    if (!selectedLead) return;
+    try {
+      crmService.setCustomFieldValue(selectedLead.id, fieldId, value);
+      refresh();
+      setFeedback('Campo personalizado atualizado pela Inbox.');
+    } catch (error) {
+      setFeedback(error instanceof Error ? error.message : 'Falha ao atualizar campo.');
+    }
+  };
+
   const addTag = (tagId: string) => {
     if (!selectedLead || !tagId) return;
     try {
@@ -194,9 +206,7 @@ export function InboxWorkspace({
     }
   };
 
-  const activeStages = selectedLead?.pipelineId
-    ? crmService.getStages(selectedLead.pipelineId)
-    : [];
+  const activePipelines = crmState.pipelines.filter((pipeline) => pipeline.active);
   const availableTags = selectedLead
     ? crmState.tags.filter((tag) => !selectedLead.tagIds.includes(tag.id))
     : [];
@@ -332,6 +342,7 @@ export function InboxWorkspace({
                 <dt>Origem</dt><dd>{selectedLead.source || 'Não informada'}</dd>
                 <dt>Interesse</dt><dd>{selectedLead.interest?.label || 'Não informado'}</dd>
                 <dt>Página/ação</dt><dd>{selectedLead.sourcePage || selectedLead.sourceAction || 'Não informada'}</dd>
+                <dt>Conversão</dt><dd>{selectedLead.sourceOccurredAt ? new Date(selectedLead.sourceOccurredAt).toLocaleString('pt-BR') : 'Não informada'}</dd>
               </dl>
             </section>
 
@@ -339,10 +350,15 @@ export function InboxWorkspace({
               <h3>Etapa</h3>
               <select value={selectedLead.stageId ?? ''} onChange={(event) => updateStage(event.target.value)}>
                 <option value="">Sem etapa</option>
-                {activeStages.map((stage) => (
-                  <option key={stage.id} value={stage.id}>{stage.name}</option>
+                {activePipelines.map((pipeline) => (
+                  <optgroup key={pipeline.id} label={pipeline.name}>
+                    {crmService.getStages(pipeline.id).map((stage) => (
+                      <option key={stage.id} value={stage.id}>{stage.name}</option>
+                    ))}
+                  </optgroup>
                 ))}
               </select>
+              {activePipelines.length === 0 && <small>Nenhum funil ativo configurado.</small>}
             </section>
 
             <section className={styles.contextSection}>
@@ -383,20 +399,12 @@ export function InboxWorkspace({
                 <small>Nenhum campo configurado.</small>
               ) : (
                 crmState.customFieldDefinitions.filter((field) => field.active).map((field) => (
-                  <label className={styles.customField} key={field.id}>
-                    <span>{field.name}</span>
-                    <input
-                      value={String(selectedLead.customFields[field.id] ?? '')}
-                      onChange={(event) => {
-                        try {
-                          crmService.setCustomFieldValue(selectedLead.id, field.id, event.target.value || null);
-                          refresh();
-                        } catch (error) {
-                          setFeedback(error instanceof Error ? error.message : 'Falha ao atualizar campo.');
-                        }
-                      }}
-                    />
-                  </label>
+                  <InboxCustomFieldEditor
+                    key={field.id}
+                    field={field}
+                    value={selectedLead.customFields[field.id] ?? null}
+                    onChange={(value) => updateCustomField(field.id, value)}
+                  />
                 ))
               )}
             </section>
@@ -440,6 +448,83 @@ export function InboxWorkspace({
         )}
       </aside>
     </section>
+  );
+}
+
+function InboxCustomFieldEditor({
+  field,
+  value,
+  onChange,
+}: {
+  field: CustomFieldDefinition;
+  value: CustomFieldValue;
+  onChange: (value: CustomFieldValue) => void;
+}) {
+  if (field.type === 'boolean') {
+    return (
+      <label className={styles.customField}>
+        <span>{field.name}</span>
+        <input
+          type="checkbox"
+          checked={value === true}
+          onChange={(event) => onChange(event.target.checked)}
+        />
+      </label>
+    );
+  }
+
+  if (field.type === 'select') {
+    return (
+      <label className={styles.customField}>
+        <span>{field.name}</span>
+        <select
+          value={typeof value === 'string' ? value : ''}
+          onChange={(event) => onChange(event.target.value || null)}
+        >
+          <option value="">Não informado</option>
+          {(field.options ?? []).map((option) => (
+            <option key={option} value={option}>{option}</option>
+          ))}
+        </select>
+      </label>
+    );
+  }
+
+  if (field.type === 'multiselect') {
+    const selectedValues = Array.isArray(value) ? value : [];
+    return (
+      <label className={styles.customField}>
+        <span>{field.name}</span>
+        <select
+          multiple
+          value={selectedValues}
+          onChange={(event) => onChange(
+            Array.from(event.target.selectedOptions, (option) => option.value),
+          )}
+        >
+          {(field.options ?? []).map((option) => (
+            <option key={option} value={option}>{option}</option>
+          ))}
+        </select>
+      </label>
+    );
+  }
+
+  return (
+    <label className={styles.customField}>
+      <span>{field.name}</span>
+      <input
+        type={field.type === 'number' ? 'number' : field.type === 'date' ? 'date' : 'text'}
+        value={typeof value === 'string' || typeof value === 'number' ? value : ''}
+        onChange={(event) => {
+          if (!event.target.value) {
+            onChange(null);
+            return;
+          }
+          onChange(field.type === 'number' ? Number(event.target.value) : event.target.value);
+        }}
+      />
+    </label>
   );
 }
 
