@@ -29,11 +29,13 @@ Atualizar este arquivo ao iniciar e ao concluir blocos relevantes.
 - Branch: `frente-03`
 - Status: EM ANDAMENTO
 - Responsável: ChatGPT — Frente03
-- Último commit relevante: início da execução da frente
-- Entregue: —
-- Em andamento: modelo de catálogo, persistência local desacoplada, CRUD administrativo, contrato de leitura pública e dashboard sem mocks.
-- Bloqueios: integração visual/roteamento global depende da Frente01; métricas comerciais dependem da Frente04.
-- Próximo passo: implementar módulos próprios em `src/features/catalog/**` e `src/features/dashboard/**`, validar isoladamente e preparar handoff.
+- Último commit funcional relevante: `454c4f5201c4a5e1534ab9ad12ed36af2d7dba7f`
+- Handoff parcial: `85440a6d36c228e3f0d29497e0263ada9c1f78e1`
+- Entregue neste bloco: modelo de catálogo; repositório desacoplado com adaptador local sem mocks; CRUD administrativo; estados rascunho/publicado/pausado/vendido; duplicação segura; exclusão lógica; relação empreendimento/unidades; contrato público somente de publicados; filtros derivados de dados reais; dashboard de catálogo; contrato para métricas comerciais; `Front03Workspace` desacoplado.
+- Em andamento: preparação para persistência compartilhada/storage e validação integrada no shell da plataforma.
+- Bloqueios/dependências: RBAC e roteamento global dependem da Frente01; consumo público depende da Frente02; métricas comerciais dependem da Frente04; banco/storage compartilhados ainda precisam de infraestrutura definida.
+- Validação: checagem local da camada TypeScript central realizada; build Vite completo, lint e teste end-to-end estão `NÃO VERIFICADOS` nesta sessão.
+- Próximo passo: integrar um adaptador de persistência de produção quando a infraestrutura comum estiver disponível e executar validação completa sem invadir arquivos globais de outra frente.
 
 ## Frente04 — CRM/Inbox
 
@@ -79,7 +81,7 @@ Formato obrigatório:
 - Destino: Frente01
 - Necessidade: integrar os módulos exportados pela Frente03 ao shell/roteador interno quando disponíveis.
 - Arquivo/contrato afetado: roteador raiz / navegação interna (propriedade da Frente01)
-- Motivo: a Frente03 não deve alterar arquivos globais protegidos; entregará `CatalogAdminPage`, `DashboardPage` e `Front03Workspace` desacoplados.
+- Motivo: a Frente03 não deve alterar arquivos globais protegidos; entrega `CatalogAdminPage`, `DashboardPage` e `Front03Workspace` desacoplados.
 - Urgência: alta para demonstração.
 - Status: PENDENTE
 
