@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useF05StorageListener } from '../automations/useF05StorageListener';
 import type { AICredentialVaultPort } from './aiCredentialPort';
 import { listIntegrations, updateIntegration } from './repository';
 import { AIProvidersWorkspace } from './AIProvidersWorkspace';
@@ -17,6 +18,7 @@ interface IntegrationsWorkspaceProps {
 export function IntegrationsWorkspace({ credentialVault, canManage = true }: IntegrationsWorkspaceProps) {
   const [items, setItems] = useState(() => listIntegrations());
   const refresh = () => setItems(listIntegrations());
+  useF05StorageListener(refresh);
   const externalItems = items.filter((item) => item.id !== 'ai');
 
   return <section className="f05-module">
