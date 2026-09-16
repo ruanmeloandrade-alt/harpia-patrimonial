@@ -136,14 +136,22 @@ function ExperienceWithFavorites({
 
   return (
     <PublicExperienceBoundary>
-      <PublicExperience
-        catalog={catalog}
-        auth={authBridge}
-        favorites={favorites.bridge}
-        clientAreaData={accountData}
-        onConversion={onConversion}
-        internalAreaHref={internalAreaHref}
-      />
+      <>
+        {favorites.error ? (
+          <div className="integration-notice" role="alert" aria-live="assertive">
+            <span>{favorites.error}</span>
+            <button type="button" onClick={favorites.clearError} aria-label="Fechar aviso de favoritos">×</button>
+          </div>
+        ) : null}
+        <PublicExperience
+          catalog={catalog}
+          auth={authBridge}
+          favorites={favorites.bridge}
+          clientAreaData={accountData}
+          onConversion={onConversion}
+          internalAreaHref={internalAreaHref}
+        />
+      </>
     </PublicExperienceBoundary>
   );
 }
