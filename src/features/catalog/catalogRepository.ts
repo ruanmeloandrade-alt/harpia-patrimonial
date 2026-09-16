@@ -81,7 +81,12 @@ export class LocalCatalogRepository implements CatalogRepository {
     window.dispatchEvent(new CustomEvent(CATALOG_CHANGED_EVENT));
   }
 
-  private validateDraft(input: CatalogItemDraft, items: CatalogItem[], ignoreId?: string) {
+  private validateDraft(
+    input: CatalogItemDraft,
+    items: CatalogItem[],
+    ignoreId?: string,
+    currentParentId?: string,
+  ) {
     const code = normalizeText(input.code);
     const name = normalizeText(input.name);
     const city = normalizeText(input.location.city);
@@ -103,7 +108,9 @@ export class LocalCatalogRepository implements CatalogRepository {
         (item) => item.id === input.parentId && item.kind === 'development' && !item.deletedAt,
       );
       if (!parent) throw new Error('O empreendimento selecionado não está disponível.');
-      if (parent.status === 'sold') throw new Error('Não é possível vincular unidade a um empreendimento vendido.');
+      if (parent.status === 'sold' && currentParentId !== input.parentId) {
+        throw new Error('Não é possível vincular unidade a um empreendimento vendido.');
+      }
     }
   }
 
@@ -193,7 +200,12 @@ export class LocalCatalogRepository implements CatalogRepository {
     } else {
       merged.typology = normalizeText(merged.typology) || undefined;
     }
-    this.validateDraft(merged, items, id);
+    this.validateDraft(
+      merged,
+      items,
+      id,
+      current.kind === 'unit' ? current.parentId : undefined,
+    );
 
     const updated: CatalogItem = {
       ...current,
@@ -236,6 +248,15 @@ export class LocalCatalogRepository implements CatalogRepository {
     const items = this.readAll();
     const source = items.find((item) => item.id === id && !item.deletedAt);
     if (!source) throw new Error('Item não encontrado.');
+
+    if (source.kind === 'unit' && source.parentId) {
+      const parent = items.find(
+        (item) => item.id === source.parentId && item.kind === 'development' && !item.deletedAt,
+      );
+      if (!parent || parent.status === 'sold') {
+        throw new Error('Não é possível duplicar unidade vinculada a um empreendimento vendido ou indisponível.');
+      }
+    }
 
     const baseCode = `${source.code}-COPIA`;
     let code = baseCode;
