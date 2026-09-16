@@ -12,6 +12,7 @@ create table public.catalog_items (
   name text not null,
   kind public.catalog_item_kind not null,
   parent_id uuid references public.catalog_items(id) on delete restrict,
+  typology text,
   purpose public.catalog_purpose not null,
   description text not null default '',
   city text not null,
@@ -33,6 +34,9 @@ create table public.catalog_items (
   constraint catalog_unit_parent_check check (
     (kind = 'unit' and parent_id is not null)
     or (kind <> 'unit' and parent_id is null)
+  ),
+  constraint catalog_unit_typology_check check (
+    kind <> 'unit' or nullif(btrim(typology), '') is not null
   )
 );
 
@@ -78,6 +82,10 @@ begin
 
     if parent_kind is distinct from 'development'::public.catalog_item_kind then
       raise exception 'catalog unit requires an active development parent';
+    end if;
+
+    if nullif(btrim(new.typology), '') is null then
+      raise exception 'catalog unit requires typology';
     end if;
   end if;
 
@@ -131,6 +139,10 @@ begin
 
     if parent_kind is distinct from 'development'::public.catalog_item_kind then
       raise exception 'catalog unit requires an active development parent';
+    end if;
+
+    if nullif(btrim(new.typology), '') is null then
+      raise exception 'catalog unit requires typology';
     end if;
   end if;
 
