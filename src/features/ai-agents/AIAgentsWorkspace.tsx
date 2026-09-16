@@ -6,7 +6,7 @@ import type { AIAgentDefinition } from './types';
 
 const splitCsv = (value: string) => value.split(',').map((item) => item.trim()).filter(Boolean);
 
-export function AIAgentsWorkspace() {
+export function AIAgentsWorkspace({ canManage = true }: { canManage?: boolean }) {
   const [agents, setAgents] = useState(() => listAIAgents());
   const [selectedId, setSelectedId] = useState<string | null>(() => agents[0]?.id ?? null);
   const [newName, setNewName] = useState('');
@@ -22,7 +22,7 @@ export function AIAgentsWorkspace() {
   };
 
   const patch = (value: Partial<Omit<AIAgentDefinition, 'id' | 'createdAt'>>) => {
-    if (!selected) return;
+    if (!selected || !canManage) return;
     updateAIAgent(selected.id, value);
     refresh(selected.id);
   };
@@ -31,10 +31,11 @@ export function AIAgentsWorkspace() {
 
   return <section className="f05-module">
     <header className="f05-module__header"><div><span className="f05-kicker">Agentes de IA</span><h2>Configuração interna de agentes</h2><p>Agentes ficam nos bastidores e usam um perfil de provedor configurável escolhido por cliente.</p></div><span className="f05-count">{agents.length}</span></header>
-    <div className="f05-create-row"><input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="Nome interno do agente"/><button disabled={!newName.trim()} onClick={() => { const agent = createAIAgent(newName); setNewName(''); refresh(agent.id); }}>Criar agente</button></div>
+    {!canManage ? <div className="f05-readonly-note">Modo leitura: sua permissão permite visualizar agentes, mas não alterá-los.</div> : null}
+    <fieldset className="f05-readonly-fieldset" disabled={!canManage}><div className="f05-create-row"><input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="Nome interno do agente"/><button disabled={!newName.trim()} onClick={() => { const agent = createAIAgent(newName); setNewName(''); refresh(agent.id); }}>Criar agente</button></div></fieldset>
     <div className="f05-split">
       <aside className="f05-list">{agents.length === 0 ? <div className="f05-empty">Nenhum agente criado.</div> : agents.map((agent) => <button key={agent.id} className={`f05-list-item ${agent.id === selectedId ? 'is-active' : ''}`} onClick={() => setSelectedId(agent.id)}><strong>{agent.name}</strong><span>{agent.status}{agent.role ? ` · ${agent.role}` : ''}</span></button>)}</aside>
-      <div className="f05-editor">{!selected ? <div className="f05-empty f05-empty--large">Crie ou selecione um agente.</div> : <>
+      <fieldset className="f05-editor f05-readonly-fieldset" disabled={!canManage}>{!selected ? <div className="f05-empty f05-empty--large">Crie ou selecione um agente.</div> : <>
         <div className="f05-form-grid"><label>Nome<input value={selected.name} onChange={(e) => patch({ name: e.target.value })}/></label><label>Função<input value={selected.role} onChange={(e) => patch({ role: e.target.value })} placeholder="Ex.: qualificação, apoio comercial"/></label></div>
         <label className="f05-field">Provedor/modelo<select value={selected.providerProfileId} onChange={(e) => patch({ providerProfileId: e.target.value, status: 'draft' })}>
           <option value="">Selecione um perfil configurado em Integrações</option>
@@ -51,7 +52,7 @@ export function AIAgentsWorkspace() {
         <div className="f05-form-grid"><label>Acessos<input value={selected.accessScopes.join(', ')} onChange={(e) => patch({ accessScopes: splitCsv(e.target.value) })} placeholder="crm.lead.read, catalog.read"/></label><label>Pontos de acionamento<input value={selected.activationPoints.join(', ')} onChange={(e) => patch({ activationPoints: splitCsv(e.target.value) })} placeholder="salesbot, inbox, automatize"/></label></div>
         <div className="f05-actions"><button disabled={selected.status !== 'active' && !canActivate} onClick={() => { setAIAgentStatus(selected.id, selected.status === 'active' ? 'paused' : 'active'); refresh(selected.id); }}>{selected.status === 'active' ? 'Pausar' : 'Ativar'}</button><button className="danger" onClick={() => { if (window.confirm('Excluir este agente?')) { deleteAIAgent(selected.id); refresh(); } }}>Excluir</button></div>
         {!canActivate && selected.status !== 'active' ? <small>Para ativar o agente, selecione um perfil de IA com status pronto.</small> : null}
-      </>}</div>
+      </>}</fieldset>
     </div>
   </section>;
 }
