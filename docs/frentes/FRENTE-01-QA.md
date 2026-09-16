@@ -10,115 +10,107 @@ Data: 16/09/2026
 - Status: `ACTIVE_HEALTHY`
 - Projeto MKTon não foi alterado.
 
-## Migrations aplicadas
-
-- `20260916155523_core_auth`
-- `20260916155537_core_auth_hardening`
-- `20260916155713_core_auth_performance`
-
 ## Edge Function
 
-- Nome: `admin-user`
-- Status: `ACTIVE`
-- Versão observada: `1`
-- JWT obrigatório: `true`
+- `admin-user`: `ACTIVE`, JWT obrigatório.
+- Função temporária `f01-bootstrap-qa`: encerrada após o QA e responde `410`; JWT obrigatório novamente.
 
-## Estrutura do banco observada
+## Estrutura do banco
 
-Todas com RLS habilitado:
+RLS permanece habilitado nas tabelas do núcleo. Seed estrutural preservado:
 
-- `user_profiles`
-- `permissions`
-- `permission_groups`
-- `group_permissions`
-- `user_group_memberships`
-- `user_permission_overrides`
-- `organization_settings`
+- permissões: `22`;
+- grupo de sistema `Administrador`: `1`;
+- permissões allow no grupo Administrador: `22`.
 
-Seed estrutural:
+Após o QA:
 
-- permissões: `22`
-- grupo de sistema `Administrador`: `1`
-- permissões allow no grupo Administrador: `22`
-- perfis de usuário: `0`
+- `auth.users`: `0`;
+- `user_profiles`: `0`;
+- grupos temporários QA: `0`;
+- memberships temporários: `0`;
+- overrides temporários: `0`.
 
-Não foi criado usuário fictício para preencher a plataforma.
+Nenhum usuário/grupo fictício foi deixado na plataforma.
+
+## QA real de Auth/RBAC — executado
+
+Foram criados temporariamente, pela Admin API oficial do Supabase:
+
+1. administrador interno QA;
+2. viewer interno QA.
+
+Resultado real do teste:
+
+- admin autenticou com `22` permissões efetivas;
+- `users.manage` e `roles.manage` presentes no admin;
+- viewer autenticou com `11` permissões de leitura;
+- viewer recebeu exatamente as `11` permissões `*.view` esperadas;
+- viewer recebeu `0` permissões de gestão/publicação;
+- `auth.getUser()` confirmou as duas sessões e identidades corretas;
+- todos os usuários/grupos temporários foram removidos ao final.
+
+Resultado: **AUTH + RBAC BACKEND OK**.
+
+## Bug encontrado e corrigido durante o QA
+
+O trigger `private.protect_profile_security_fields()` verificava somente o claim legado `request.jwt.claim.role` para reconhecer `service_role`.
+
+No Supabase atual observado no projeto:
+
+- `request.jwt.claim.role` = `null`;
+- `request.jwt.claims.role` = `service_role`;
+- `current_setting('role')` = `service_role`.
+
+Consequência antes da correção: a própria Edge Function `admin-user` podia criar o usuário no Auth, mas o hardening bloqueava a mudança de `account_type` para `internal` com `not authorized to change security fields`.
+
+Correção aplicada no backend e versionada em `supabase/schema/core_auth_hardening.sql`: reconhecer o formato atual (`request.jwt.claims.role` / role atual), mantendo compatibilidade com o claim legado e sem liberar usuários comuns.
+
+Commit do fix no GitHub: `af09b2faa7e072125ccb2fc1c91ab74c0d9ab39c`.
 
 ## QA de segurança
 
-Supabase Security Advisor após todas as migrations:
+Security Advisor após a correção e limpeza:
 
 - `0` lints.
 
-Teste como role `authenticated` sem identidade/JWT de usuário:
+O teste anterior sem identidade válida continua garantindo:
 
-- permissões visíveis: `0`
-- grupos visíveis: `0`
-- configurações visíveis: `0`
-- perfis visíveis: `0`
-
-Teste direto das funções de autorização sem identidade:
-
-- `private.is_internal_user(auth.uid())` → `false`
-- `private.user_has_permission(auth.uid(), 'dashboard.view')` → `false`
-- `private.user_has_permission(auth.uid(), 'users.manage')` → `false`
-
-Conclusão: possuir apenas o role Postgres `authenticated` sem identidade válida não concede acesso interno nem permissões.
+- `private.is_internal_user(auth.uid())` → `false`;
+- `private.user_has_permission(auth.uid(), 'dashboard.view')` → `false`;
+- `private.user_has_permission(auth.uid(), 'users.manage')` → `false`.
 
 ## QA de performance
 
-Advisor inicial apontou:
+Performance Advisor final mostra somente `INFO` de índices ainda não utilizados, esperado em banco praticamente vazio. Nenhum novo erro de segurança/performance bloqueante foi encontrado.
 
-- 3 FKs sem índice de cobertura;
-- policies permissivas duplicadas em SELECT devido a policies `FOR ALL`.
-
-Correções aplicadas em `core_auth_performance`:
-
-- índices das 3 FKs adicionados;
-- policies de gestão separadas em `INSERT`, `UPDATE` e `DELETE`;
-- policy de leitura permanece única por operação.
-
-Após correção restaram somente `INFO` de índices ainda não utilizados, esperado em banco recém-criado e sem tráfego.
-
-## QA de código/contratos
-
-Implementado/versionado:
+## Implementado/versionado
 
 - cliente Supabase tipado pelo schema real;
-- `database.types.ts` gerado do projeto real;
 - contrato público de autenticação;
-- constantes compartilhadas de permissão;
 - sessão persistente;
 - cadastro/login/logout/recovery;
-- rotas de cliente e equipe separadas;
-- `dashboard.view` aplicado em rota e menu;
+- rotas cliente/equipe separadas;
+- guards;
 - gestão de usuários;
 - gestão de grupos;
 - herança de permissões;
 - exceções individuais allow/deny;
-- bloqueio de autoelevação e autodesativação;
+- bloqueio de autoelevação/autodesativação;
+- reconhecimento correto de `service_role` no hardening;
 - Error Boundary global;
-- composição estrutural com as demais frentes concluída na branch `frente-01`.
+- composição estrutural com as demais frentes.
 
-## NÃO VERIFICADO / pendente para verde final
+## Ainda NÃO VERIFICADO no ambiente atual
 
-Não marcar como verde final até execução real:
+Estes itens dependem de ambiente executável/navegador e não bloqueiam as outras frentes:
 
-- build/typecheck completo em ambiente Node/npm compatível;
-- cadastro/login/logout/refresh com conta real;
-- persistência após fechar/reabrir navegador;
-- confirmação e recuperação de senha por e-mail real;
-- criação do primeiro administrador por caminho oficial do Supabase Auth;
-- criação de funcionário pela Edge Function com conta administrativa real;
-- edição/ativação/desativação com contas reais;
-- permissões por grupo e exceções individuais com usuários reais;
-- configuração final das variáveis/redirect URLs no ambiente publicado;
-- E2E autenticado do núcleo já integrado.
+- build/typecheck completo no Node suportado;
+- persistência de sessão após fechar/reabrir navegador real;
+- fluxo real de confirmação/recovery por e-mail;
+- redirects finais do Auth no domínio publicado;
+- E2E visual pelo navegador do produto consolidado.
 
-## Liberação das outras frentes
+## Liberação
 
-As pendências acima são de QA/fase final. Elas **não bloqueiam** o avanço estrutural das Frentes02, 03, 04 e 05. O núcleo e os contratos da F01 já estão disponíveis na branch `frente-01`.
-
-## Regra para integração
-
-Não criar outro sistema de autenticação, usuário ou autorização. Consumir `src/core/auth/index.ts` e `PERMISSIONS` durante o pente fino.
+A Frente01 não bloqueia as Frentes02–05. Backend Auth/RBAC foi validado com usuários temporários reais e o bug de `service_role` encontrado no QA foi corrigido.
