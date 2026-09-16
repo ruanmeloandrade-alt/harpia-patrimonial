@@ -145,7 +145,10 @@ function ExperienceWithFavorites({
  * apenas monta adapters/hooks da experiência pública.
  */
 export function Front02IntegrationShell(props: Front02IntegrationShellProps) {
-  const clientId = props.auth.isAuthenticated && props.auth.user
+  const clientId = props.auth.isAuthenticated
+    && props.auth.user
+    && props.auth.profile?.account_type === 'client'
+    && props.auth.profile.is_active
     ? props.auth.user.id
     : null;
 
