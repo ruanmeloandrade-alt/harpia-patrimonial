@@ -26,6 +26,15 @@ export function createAIProviderProfile(input: { name: string; provider: AIProvi
   return profile;
 }
 
+export function validateAIProviderProfile(profile: AIProviderProfile): string[] {
+  const issues: string[] = [];
+  if (!profile.name.trim()) issues.push('Nome do perfil é obrigatório.');
+  if (!profile.model.trim()) issues.push('Modelo é obrigatório.');
+  if (profile.provider === 'custom' && !profile.baseUrl.trim()) issues.push('Endpoint é obrigatório para provedor customizado.');
+  if (!profile.apiKeyConfigured || !profile.secretRef) issues.push('Chave API ainda não foi configurada em cofre seguro.');
+  return issues;
+}
+
 export function updateAIProviderProfile(
   id: string,
   patch: Partial<Omit<AIProviderProfile, 'id' | 'createdAt'>>,
@@ -33,7 +42,10 @@ export function updateAIProviderProfile(
   const items = listAIProviderProfiles();
   const current = items.find((item) => item.id === id);
   if (!current) throw new Error('Perfil de IA não encontrado.');
-  const updated: AIProviderProfile = { ...current, ...patch, updatedAt: now() };
+  let updated: AIProviderProfile = { ...current, ...patch, updatedAt: now() };
+  if (current.status === 'ready' && patch.status === undefined && validateAIProviderProfile(updated).length > 0) {
+    updated = { ...updated, status: 'draft' };
+  }
   writeStoredList(STORAGE_KEY, items.map((item) => (item.id === id ? updated : item)));
   return updated;
 }
@@ -43,14 +55,11 @@ export function deleteAIProviderProfile(id: string): void {
 }
 
 export function setAIProviderProfileStatus(id: string, status: AIProviderProfileStatus): AIProviderProfile {
+  const current = listAIProviderProfiles().find((item) => item.id === id);
+  if (!current) throw new Error('Perfil de IA não encontrado.');
+  if (status === 'ready') {
+    const issues = validateAIProviderProfile(current);
+    if (issues.length > 0) throw new Error(issues.join(' '));
+  }
   return updateAIProviderProfile(id, { status });
-}
-
-export function validateAIProviderProfile(profile: AIProviderProfile): string[] {
-  const issues: string[] = [];
-  if (!profile.name.trim()) issues.push('Nome do perfil é obrigatório.');
-  if (!profile.model.trim()) issues.push('Modelo é obrigatório.');
-  if (profile.provider === 'custom' && !profile.baseUrl.trim()) issues.push('Endpoint é obrigatório para provedor customizado.');
-  if (!profile.apiKeyConfigured) issues.push('Chave API ainda não foi configurada.');
-  return issues;
 }
