@@ -28,6 +28,10 @@ export {
   type Front04LeadConversionResultPort,
   type PublicConversionHandlingResult,
 } from './front04ConversionAdapter';
+export {
+  createFront01PublicAuthBridge,
+  type Front01AuthContextPort,
+} from './front01AuthAdapter';
 
 /**
  * Rotas de propriedade da Frente02. O roteador global pertence à Frente01;
