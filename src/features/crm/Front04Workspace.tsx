@@ -8,6 +8,7 @@ import { CrmWorkspace } from './CrmWorkspace';
 import type { AssigneeOption } from './CrmWorkspace';
 import { UnassignedLeadsQueue } from './UnassignedLeadsQueue';
 import { InboxWorkspace } from '../inbox/InboxWorkspace';
+import type { AutomationOption } from '../inbox/InboxWorkspace';
 import { BrowserInboxRepository } from '../inbox/repository';
 import type { InboxRepository } from '../inbox/repository';
 import { InboxService } from '../inbox/service';
@@ -24,6 +25,8 @@ interface InboxCompositionProps extends CrmCompositionProps {
   automationPort?: InboxAutomationPort;
   inboxService?: InboxService;
   inboxRepository?: InboxRepository;
+  salesBots?: AutomationOption[];
+  aiAgents?: AutomationOption[];
 }
 
 export interface Front04WorkspaceProps extends InboxCompositionProps {
@@ -84,6 +87,8 @@ export function Front04CrmScreen({
 export function Front04InboxScreen({
   assignees = [],
   automationPort,
+  salesBots = [],
+  aiAgents = [],
   crmService: injectedCrmService,
   crmRepository,
   crmEventSinks = [],
@@ -106,6 +111,8 @@ export function Front04InboxScreen({
       inboxService={inboxService}
       automationPort={automationPort}
       assignees={assignees}
+      salesBots={salesBots}
+      aiAgents={aiAgents}
     />
   );
 }
@@ -113,6 +120,8 @@ export function Front04InboxScreen({
 export function Front04Workspace({
   assignees = [],
   automationPort,
+  salesBots = [],
+  aiAgents = [],
   crmService: injectedCrmService,
   inboxService: injectedInboxService,
   crmRepository,
@@ -172,6 +181,8 @@ export function Front04Workspace({
           inboxService={inboxService}
           automationPort={automationPort}
           assignees={assignees}
+          salesBots={salesBots}
+          aiAgents={aiAgents}
         />
       )}
     </div>
