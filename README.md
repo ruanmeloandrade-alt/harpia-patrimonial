@@ -18,13 +18,40 @@ Leia nesta ordem:
 2. [`docs/BRIEFING-CONSOLIDADO.md`](./docs/BRIEFING-CONSOLIDADO.md) — briefing completo do cliente e do produto.
 3. [`docs/ESCOPO-DE-TRABALHO.md`](./docs/ESCOPO-DE-TRABALHO.md) — escopo detalhado, entregas e critérios de aceite.
 4. [`docs/CONVERSA-E-DECISOES.md`](./docs/CONVERSA-E-DECISOES.md) — registro das decisões tomadas nas conversas.
+5. [`docs/FRENTES-DE-TRABALHO.md`](./docs/FRENTES-DE-TRABALHO.md) — divisão oficial do trabalho paralelo.
+6. [`docs/CONTRATOS-ENTRE-MODULOS.md`](./docs/CONTRATOS-ENTRE-MODULOS.md) — contratos entre as frentes.
+7. [`docs/STATUS-FRENTES.md`](./docs/STATUS-FRENTES.md) — status, bloqueios e handoffs.
+
+## Trabalho em 5 chats
+
+Quando o usuário disser `Atue na Frente01`, `Frente02`, `Frente03`, `Frente04` ou `Frente05`, leia também o arquivo específico:
+
+- [`Frente01`](./docs/frentes/FRENTE-01.md) — núcleo, autenticação, usuários e permissões.
+- [`Frente02`](./docs/frentes/FRENTE-02.md) — site público e área do cliente.
+- [`Frente03`](./docs/frentes/FRENTE-03.md) — catálogo interno, publicação e dashboard.
+- [`Frente04`](./docs/frentes/FRENTE-04.md) — CRM e Inbox.
+- [`Frente05`](./docs/frentes/FRENTE-05.md) — SalesBot, Automatize, IA e integrações preparatórias.
+
+Cada frente possui sua própria branch:
+
+- `frente-01`
+- `frente-02`
+- `frente-03`
+- `frente-04`
+- `frente-05`
+
+O desenvolvimento paralelo deve acontecer nessas branches, não diretamente na `main`.
+
+## Pente fino e integração
+
+Depois das cinco frentes, o chat/agente integrador deve seguir [`docs/PENTE-FINO-INTEGRACAO.md`](./docs/PENTE-FINO-INTEGRACAO.md).
 
 ## Estado atual
 
 - Repositório inicializado.
 - Base React/Vite/Node criada.
 - Documentação operacional consolidada.
-- Próxima fase: produção da plataforma.
+- Escopo dividido em cinco frentes independentes.
 - Dados reais de imóveis, funcionários, bots e agentes serão inseridos depois.
 - Integrações reais de WhatsApp e Meta ficam para a fase final.
 
