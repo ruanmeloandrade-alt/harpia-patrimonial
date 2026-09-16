@@ -162,10 +162,19 @@ function deriveFilterOptions(items: Front03PublishedItem[]): PublicCatalogFilter
     .filter((item) => item.kind !== 'development' || !developmentIdsWithPublishedUnits.has(item.id))
     .map((item) => item.price as number);
 
+  const locationsByCity = items.reduce<Record<string, string[]>>((accumulator, item) => {
+    const city = item.location.city.trim();
+    if (!city) return accumulator;
+    const locations = [item.location.neighborhood, item.location.condominium ?? ''].filter(Boolean);
+    accumulator[city] = unique([...(accumulator[city] ?? []), ...locations]);
+    return accumulator;
+  }, {});
+
   return {
     purposes: unique(items.map((item) => mapPurposeToPublic(item.purpose))),
     cities: unique(items.map((item) => item.location.city)),
     locations: unique(items.flatMap((item) => [item.location.neighborhood, item.location.condominium ?? ''])),
+    locationsByCity,
     lifestyleTags: unique(items.flatMap((item) => item.lifestyleTags)),
     minPrice: prices.length ? Math.min(...prices) : null,
     maxPrice: prices.length ? Math.max(...prices) : null,
