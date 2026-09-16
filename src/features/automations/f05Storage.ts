@@ -3,11 +3,17 @@ export interface F05SharedStorageBackend {
 }
 
 const memory = new Map<string, unknown[]>();
+const writeGeneration = new Map<string, number>();
 let backend: F05SharedStorageBackend | null = null;
 let sharedReady = false;
 
 const clone = <T,>(value: T): T => JSON.parse(JSON.stringify(value)) as T;
 const canUseStorage = () => typeof window !== 'undefined' && typeof window.localStorage !== 'undefined';
+
+function emitStorageUpdated(key: string) {
+  if (typeof window === 'undefined') return;
+  window.dispatchEvent(new CustomEvent('harpia:f05-updated', { detail: { key } }));
+}
 
 function persistenceError(key: string, error: unknown) {
   const message = error instanceof Error ? error.message : 'Falha ao persistir estado compartilhado da Frente05.';
@@ -45,6 +51,7 @@ export function configureF05SharedStorage(input: {
   backend: F05SharedStorageBackend;
 }) {
   memory.clear();
+  writeGeneration.clear();
   Object.entries(input.values).forEach(([key, value]) => {
     memory.set(key, Array.isArray(value) ? clone(value) : []);
   });
@@ -57,6 +64,7 @@ export function configureF05SharedStorage(input: {
 
 export function resetF05SharedStorage() {
   memory.clear();
+  writeGeneration.clear();
   backend = null;
   sharedReady = false;
 }
@@ -95,9 +103,25 @@ export function writeStoredList<T>(key: string, value: T[]): void {
   }
 
   const safe = clone(value);
+  const previous = clone((memory.get(key) ?? []) as unknown[]);
+  const generation = (writeGeneration.get(key) ?? 0) + 1;
+  writeGeneration.set(key, generation);
   memory.set(key, safe as unknown[]);
   if (!backend) return;
-  void backend.save(key, safe as unknown[]).catch((error) => persistenceError(key, error));
+
+  void backend.save(key, safe as unknown[])
+    .then(() => {
+      if (writeGeneration.get(key) === generation) emitStorageUpdated(key);
+    })
+    .catch((error) => {
+      // Só desfaz esta alteração se nenhuma escrita mais nova tiver ocorrido.
+      // Isso evita que uma rejeição atrasada apague uma edição posterior válida.
+      if (writeGeneration.get(key) === generation) {
+        memory.set(key, previous);
+        emitStorageUpdated(key);
+      }
+      persistenceError(key, error);
+    });
 }
 
 export function createF05Id(prefix: string): string {
