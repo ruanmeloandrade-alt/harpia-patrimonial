@@ -114,15 +114,19 @@ export class LocalCatalogRepository implements CatalogRepository {
   }
 
   async create(input: CatalogItemDraft) {
+    const normalized: CatalogItemDraft = {
+      ...clone(input),
+      parentId: input.kind === 'unit' ? input.parentId : undefined,
+      typology: input.kind === 'unit' ? normalizeText(input.typology) || undefined : undefined,
+    };
     const items = this.readAll();
-    this.validateDraft(input, items);
+    this.validateDraft(normalized, items);
     const timestamp = nowIso();
     const item: CatalogItem = {
-      ...clone(input),
+      ...normalized,
       id: makeId(),
-      code: normalizeText(input.code),
-      name: normalizeText(input.name),
-      typology: normalizeText(input.typology) || undefined,
+      code: normalizeText(normalized.code),
+      name: normalizeText(normalized.name),
       status: 'draft',
       createdAt: timestamp,
       updatedAt: timestamp,
@@ -158,7 +162,12 @@ export class LocalCatalogRepository implements CatalogRepository {
       throw new Error('Este empreendimento possui unidades ativas. Remova ou realoque as unidades antes de alterar o tipo.');
     }
 
-    if (merged.kind !== 'unit') merged.parentId = undefined;
+    if (merged.kind !== 'unit') {
+      merged.parentId = undefined;
+      merged.typology = undefined;
+    } else {
+      merged.typology = normalizeText(merged.typology) || undefined;
+    }
     this.validateDraft(merged, items, id);
 
     const updated: CatalogItem = {
@@ -166,7 +175,6 @@ export class LocalCatalogRepository implements CatalogRepository {
       ...clone(merged),
       code: normalizeText(merged.code),
       name: normalizeText(merged.name),
-      typology: normalizeText(merged.typology) || undefined,
       updatedAt: nowIso(),
     };
     items[index] = updated;
