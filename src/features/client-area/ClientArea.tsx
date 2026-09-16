@@ -6,18 +6,55 @@ export interface ClientProfileView {
   whatsapp: string;
 }
 
+export interface ClientInterestView {
+  id: string;
+  label: string;
+  type?: string;
+  detail?: string;
+}
+
+export interface ClientHistoryView {
+  id: string;
+  title: string;
+  detail?: string;
+  occurredAt?: string;
+  propertySlug?: string;
+}
+
+export interface ClientAreaDataView {
+  interests: ClientInterestView[];
+  history: ClientHistoryView[];
+}
+
 interface ClientAreaProps {
   profile: ClientProfileView | null;
   favorites: PublicCatalogItem[];
+  data?: ClientAreaDataView;
+  dataLoading?: boolean;
+  dataError?: string;
   onRequestLogin: () => void;
   onOpenProperty: (slug: string) => void;
   onGoToCatalog: () => void;
   onRequestService: (service: string) => void;
 }
 
+function formatHistoryDate(value?: string) {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  return new Intl.DateTimeFormat('pt-BR', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  }).format(date);
+}
+
 export function ClientArea({
   profile,
   favorites,
+  data = { interests: [], history: [] },
+  dataLoading = false,
+  dataError = '',
   onRequestLogin,
   onOpenProperty,
   onGoToCatalog,
@@ -53,7 +90,9 @@ export function ClientArea({
         </div>
       </header>
 
-      <div className="client-grid">
+      {dataError ? <div className="error-state client-data-error" role="alert">{dataError}</div> : null}
+
+      <div className="client-grid" aria-busy={dataLoading}>
         <article className="client-panel client-panel--wide">
           <div className="panel-heading">
             <div>
@@ -96,19 +135,57 @@ export function ClientArea({
         <article className="client-panel">
           <p className="section-kicker">Interesses</p>
           <h2>Seu contexto patrimonial</h2>
-          <div className="empty-state empty-state--compact">
-            <strong>Nenhum interesse registrado.</strong>
-            <p>Os interesses aparecerão aqui quando houver dados reais vinculados à sua conta.</p>
-          </div>
+          {dataLoading ? (
+            <div className="loading-state empty-state--compact">Carregando interesses…</div>
+          ) : data.interests.length === 0 ? (
+            <div className="empty-state empty-state--compact">
+              <strong>Nenhum interesse registrado.</strong>
+              <p>Os interesses aparecerão aqui quando houver dados reais vinculados à sua conta.</p>
+            </div>
+          ) : (
+            <div className="client-record-list">
+              {data.interests.map((interest) => (
+                <div className="client-record" key={interest.id}>
+                  <strong>{interest.label}</strong>
+                  {interest.type ? <small>{interest.type}</small> : null}
+                  {interest.detail ? <span>{interest.detail}</span> : null}
+                </div>
+              ))}
+            </div>
+          )}
         </article>
 
         <article className="client-panel">
           <p className="section-kicker">Histórico</p>
           <h2>Itens e serviços relacionados</h2>
-          <div className="empty-state empty-state--compact">
-            <strong>Sem histórico disponível.</strong>
-            <p>Atividades reais vinculadas ao seu atendimento aparecerão neste espaço.</p>
-          </div>
+          {dataLoading ? (
+            <div className="loading-state empty-state--compact">Carregando histórico…</div>
+          ) : data.history.length === 0 ? (
+            <div className="empty-state empty-state--compact">
+              <strong>Sem histórico disponível.</strong>
+              <p>Atividades reais vinculadas ao seu atendimento aparecerão neste espaço.</p>
+            </div>
+          ) : (
+            <div className="client-record-list">
+              {data.history.map((entry) => {
+                const content = (
+                  <>
+                    <strong>{entry.title}</strong>
+                    {entry.detail ? <span>{entry.detail}</span> : null}
+                    {formatHistoryDate(entry.occurredAt) ? <small>{formatHistoryDate(entry.occurredAt)}</small> : null}
+                  </>
+                );
+
+                return entry.propertySlug ? (
+                  <button className="client-record client-record--button" type="button" key={entry.id} onClick={() => onOpenProperty(entry.propertySlug!)}>
+                    {content}
+                  </button>
+                ) : (
+                  <div className="client-record" key={entry.id}>{content}</div>
+                );
+              })}
+            </div>
+          )}
         </article>
 
         <article className="client-panel client-panel--wide">
