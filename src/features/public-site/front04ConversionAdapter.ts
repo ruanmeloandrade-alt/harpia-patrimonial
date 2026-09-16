@@ -44,22 +44,22 @@ export type PublicConversionHandlingResult =
 
 const forbiddenIdentityMetadataKeys = new Set([
   'clientid',
-  'client_id',
   'userid',
-  'user_id',
   'accountid',
-  'account_id',
   'accounttype',
-  'account_type',
   'authorization',
   'role',
 ]);
+
+function normalizeMetadataKey(key: string) {
+  return key.trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+}
 
 function sanitizeMetadata(metadata?: Record<string, string | number | boolean>) {
   if (!metadata) return undefined;
 
   const safeEntries = Object.entries(metadata).filter(
-    ([key]) => !forbiddenIdentityMetadataKeys.has(key.trim().toLowerCase()),
+    ([key]) => !forbiddenIdentityMetadataKeys.has(normalizeMetadataKey(key)),
   );
 
   return safeEntries.length ? Object.fromEntries(safeEntries) : undefined;
