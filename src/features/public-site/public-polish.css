@@ -1,3 +1,41 @@
+.home-catalog-search {
+  display: grid;
+  gap: 18px;
+}
+
+.home-catalog-search h2 {
+  margin-bottom: 0;
+}
+
+.home-catalog-search__fields {
+  display: grid;
+  gap: 10px;
+}
+
+.home-catalog-search__fields label {
+  display: grid;
+  gap: 6px;
+  color: #68716c;
+  font-size: .76rem;
+  font-weight: 750;
+}
+
+.home-catalog-search__fields select {
+  width: 100%;
+  min-height: 46px;
+  padding: 0 12px;
+  border: 1px solid rgba(23, 34, 30, .14);
+  border-radius: 10px;
+  background: #fffdf8;
+  color: #17221e;
+  outline: none;
+}
+
+.home-catalog-search__fields select:focus {
+  border-color: #b99455;
+  box-shadow: 0 0 0 3px rgba(185, 148, 85, .12);
+}
+
 .catalog-toolbar {
   min-height: 42px;
   margin: -14px 0 22px;
@@ -84,5 +122,9 @@
   .catalog-toolbar {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .home-catalog-search__fields {
+    grid-template-columns: 1fr;
   }
 }
