@@ -1,4 +1,10 @@
-import { CATALOG_CHANGED_EVENT, assertCatalogStatusTransition, type CatalogRepository } from './catalogRepository';
+import {
+  CATALOG_CHANGED_EVENT,
+  assertCatalogMedia,
+  assertCatalogStatusTransition,
+  isCatalogMediaUrlAllowed,
+  type CatalogRepository,
+} from './catalogRepository';
 import type { CatalogItem, CatalogItemDraft, CatalogMedia, CatalogQuery, CatalogStatus } from './types';
 
 interface SupabaseErrorLike {
@@ -67,7 +73,9 @@ function sanitizeMedia(value: unknown): CatalogMedia[] {
     if (!item || typeof item !== 'object') return false;
     const media = item as Partial<CatalogMedia>;
     return typeof media.id === 'string'
+      && Boolean(media.id.trim())
       && typeof media.url === 'string'
+      && isCatalogMediaUrlAllowed(media.url)
       && ['image', 'video', 'document', 'floorplan'].includes(String(media.type));
   });
 }
@@ -132,6 +140,7 @@ function validateDraft(input: CatalogItemDraft) {
   if (input.price !== null && input.price < 0) throw new Error('O preço não pode ser negativo.');
   if (input.kind === 'unit' && !input.parentId) throw new Error('Selecione o empreendimento desta unidade.');
   if (input.kind === 'unit' && !input.typology?.trim()) throw new Error('Informe a tipologia desta unidade.');
+  assertCatalogMedia(input.media);
 }
 
 function applyLocalQuery(items: CatalogItem[], query: CatalogQuery) {
@@ -176,6 +185,8 @@ export class SupabaseCatalogRepository implements CatalogRepository {
   async list(query: CatalogQuery = {}): Promise<CatalogItem[]> {
     let builder = this.client.from('catalog_items').select('*');
     if (!query.includeDeleted) builder = builder.is('deleted_at', null);
+    if (query.status) builder = builder.eq('status', query.status);
+    if (query.kind) builder = builder.eq('kind', query.kind);
     const result = await builder as SupabaseResultLike<CatalogRow[]>;
 
     if (result.error) fail(result.error, 'Não foi possível carregar o catálogo.');
