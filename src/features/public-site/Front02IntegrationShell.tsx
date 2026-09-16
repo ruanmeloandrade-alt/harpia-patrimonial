@@ -57,12 +57,17 @@ function ComposedExperience(props: ComposedExperienceProps) {
     [authBridge, props.crmIngest],
   );
 
-  const whatsapp = useMemo(
-    () => props.whatsappPhone
-      ? createWhatsAppContinuation({ phone: props.whatsappPhone })
-      : undefined,
-    [props.whatsappPhone],
-  );
+  const whatsapp = useMemo(() => {
+    if (!props.whatsappPhone) return undefined;
+
+    try {
+      return createWhatsAppContinuation({ phone: props.whatsappPhone });
+    } catch {
+      // Número ausente/inválido não pode derrubar o site nem impedir o lead.
+      // O pipeline continua registrando no CRM e apenas omite a continuação.
+      return undefined;
+    }
+  }, [props.whatsappPhone]);
 
   const onConversion = useMemo(
     () => capture
