@@ -32,7 +32,7 @@ function toPublicItem(item: RepositoryItem): PublicCatalogItem {
     features: item.features,
     lifestyleTags: item.lifestyleTags,
     developer: item.developer,
-    media: item.media,
+    media: item.media.map(({ storagePath: _storagePath, ...media }) => media),
     status: 'published',
   };
 }
