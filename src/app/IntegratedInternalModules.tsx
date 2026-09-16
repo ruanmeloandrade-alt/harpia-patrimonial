@@ -53,8 +53,21 @@ export function IntegratedCatalog() {
 }
 
 export function IntegratedCrm() {
+  const auth = useAuth();
   const runtime = usePlatformRuntime();
-  return <OperationalGate>{runtime.crmService ? <CrmWorkspace service={runtime.crmService} assignees={runtime.assignees} /> : <FullPageState title="CRM indisponível" description="A persistência compartilhada não foi carregada." />}</OperationalGate>;
+  return (
+    <OperationalGate>
+      {runtime.crmService
+        ? (
+          <CrmWorkspace
+            service={runtime.crmService}
+            assignees={runtime.assignees}
+            canManage={auth.hasPermission(PERMISSIONS.CRM_MANAGE)}
+          />
+        )
+        : <FullPageState title="CRM indisponível" description="A persistência compartilhada não foi carregada." />}
+    </OperationalGate>
+  );
 }
 
 export function IntegratedInbox() {
@@ -80,6 +93,10 @@ export function IntegratedInbox() {
             assignees={runtime.assignees}
             salesBots={salesBots}
             aiAgents={aiAgents}
+            canManageInbox={auth.hasPermission(PERMISSIONS.INBOX_MANAGE)}
+            canManageCrm={auth.hasPermission(PERMISSIONS.CRM_MANAGE)}
+            canManageSalesBot={auth.hasPermission(PERMISSIONS.SALESBOT_MANAGE)}
+            canManageAiAgent={auth.hasPermission(PERMISSIONS.AI_MANAGE)}
           />
         )
         : <FullPageState title="Inbox indisponível" description="CRM ou Inbox compartilhados não foram carregados." />}
