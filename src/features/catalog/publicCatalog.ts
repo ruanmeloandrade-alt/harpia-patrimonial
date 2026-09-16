@@ -13,7 +13,9 @@ export interface PublicCatalogFilterOptions {
   maxPrice: number | null;
 }
 
-function toPublicItem(item: Awaited<ReturnType<CatalogRepository['list']>>[number]): PublicCatalogItem {
+type RepositoryItem = Awaited<ReturnType<CatalogRepository['list']>>[number];
+
+function toPublicItem(item: RepositoryItem): PublicCatalogItem {
   return {
     id: item.id,
     code: item.code,
@@ -34,9 +36,31 @@ function toPublicItem(item: Awaited<ReturnType<CatalogRepository['list']>>[numbe
   };
 }
 
-function applyPublicFilters(
-  items: Awaited<ReturnType<CatalogRepository['list']>>,
+function matchesPriceFilter(
+  item: RepositoryItem,
+  allPublishedItems: RepositoryItem[],
   filters: PublicCatalogFilters,
+) {
+  if (filters.minPrice === undefined && filters.maxPrice === undefined) return true;
+
+  const prices = item.kind === 'development'
+    ? allPublishedItems
+        .filter((candidate) => candidate.kind === 'unit' && candidate.parentId === item.id && candidate.price !== null)
+        .map((candidate) => candidate.price as number)
+    : item.price === null ? [] : [item.price];
+
+  if (!prices.length && item.kind === 'development' && item.price !== null) prices.push(item.price);
+
+  return prices.some(
+    (price) => (filters.minPrice === undefined || price >= filters.minPrice)
+      && (filters.maxPrice === undefined || price <= filters.maxPrice),
+  );
+}
+
+function applyPublicFilters(
+  items: RepositoryItem[],
+  filters: PublicCatalogFilters,
+  allPublishedItems = items,
 ) {
   return items
     .filter((item) => !filters.purpose || item.purpose === filters.purpose)
@@ -48,8 +72,7 @@ function applyPublicFilters(
         .some((value) => value === filters.location);
     })
     .filter((item) => filters.isLaunch === undefined || item.isLaunch === filters.isLaunch)
-    .filter((item) => filters.minPrice === undefined || (item.price !== null && item.price >= filters.minPrice))
-    .filter((item) => filters.maxPrice === undefined || (item.price !== null && item.price <= filters.maxPrice))
+    .filter((item) => matchesPriceFilter(item, allPublishedItems, filters))
     .filter((item) => !filters.lifestyleTag || item.lifestyleTags.includes(filters.lifestyleTag));
 }
 
@@ -58,14 +81,15 @@ export class PublicCatalogService {
 
   async list(filters: PublicCatalogFilters = {}): Promise<PublicCatalogItem[]> {
     const items = await this.repository.list({ status: 'published' });
-    return applyPublicFilters(items, filters).map(toPublicItem);
+    return applyPublicFilters(items, filters, items).map(toPublicItem);
   }
 
   async listUnits(parentId: string, filters: PublicCatalogFilters = {}): Promise<PublicCatalogItem[]> {
-    const items = await this.repository.list({ status: 'published', kind: 'unit' });
+    const items = await this.repository.list({ status: 'published' });
     return applyPublicFilters(
-      items.filter((item) => item.parentId === parentId),
+      items.filter((item) => item.kind === 'unit' && item.parentId === parentId),
       filters,
+      items,
     ).map(toPublicItem);
   }
 
