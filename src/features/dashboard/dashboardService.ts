@@ -1,4 +1,5 @@
 import type { CatalogRepository } from '../catalog/catalogRepository';
+import { filterPublicEligibleCatalogItems } from '../catalog/publicCatalog';
 
 export type CommercialMetricKey =
   | 'leads'
@@ -103,7 +104,9 @@ export async function getDashboardSnapshot(
   commercialProvider?: CommercialMetricsProvider,
 ): Promise<DashboardSnapshot> {
   const items = await repository.list();
-  const activeItems = items.filter((item) => item.status === 'published');
+  const activeItems = filterPublicEligibleCatalogItems(
+    items.filter((item) => item.status === 'published'),
+  );
   const developmentIdsWithUnits = new Set(
     items
       .filter((item) => item.kind === 'unit' && item.parentId)
