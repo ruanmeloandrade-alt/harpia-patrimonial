@@ -94,11 +94,29 @@ function Front05Module({ children }: { children: ReactNode }) {
   return <Front05Gate><Front05Shell>{children}</Front05Shell></Front05Gate>;
 }
 
-export function IntegratedSalesBot() { return <Front05Module><SalesBotWorkspace /></Front05Module>; }
-export function IntegratedAutomations() { return <Front05Module><AutomationsWorkspace /></Front05Module>; }
-export function IntegratedAIAgents() { return <Front05Module><AIAgentsWorkspace /></Front05Module>; }
-export function IntegratedExecutionLogs() { return <Front05Module><ExecutionLogsPanel /></Front05Module>; }
+export function IntegratedSalesBot() {
+  const auth = useAuth();
+  return <Front05Module><SalesBotWorkspace canManage={auth.hasPermission(PERMISSIONS.SALESBOT_MANAGE)} /></Front05Module>;
+}
+
+export function IntegratedAutomations() {
+  const auth = useAuth();
+  return <Front05Module><AutomationsWorkspace canManage={auth.hasPermission(PERMISSIONS.AUTOMATIONS_MANAGE)} /></Front05Module>;
+}
+
+export function IntegratedAIAgents() {
+  const auth = useAuth();
+  return <Front05Module><AIAgentsWorkspace canManage={auth.hasPermission(PERMISSIONS.AI_MANAGE)} /></Front05Module>;
+}
+
+export function IntegratedExecutionLogs() {
+  const auth = useAuth();
+  const canManage = auth.hasPermission(PERMISSIONS.SALESBOT_MANAGE) || auth.hasPermission(PERMISSIONS.AI_MANAGE);
+  return <Front05Module><ExecutionLogsPanel canManage={canManage} /></Front05Module>;
+}
+
 export function IntegratedIntegrations() {
+  const auth = useAuth();
   const runtime = usePlatformRuntime();
-  return <Front05Module><IntegrationsWorkspace credentialVault={runtime.credentialVault} /></Front05Module>;
+  return <Front05Module><IntegrationsWorkspace credentialVault={runtime.credentialVault} canManage={auth.hasPermission(PERMISSIONS.INTEGRATIONS_MANAGE)} /></Front05Module>;
 }
