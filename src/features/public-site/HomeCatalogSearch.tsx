@@ -1,4 +1,4 @@
-import { FormEvent, useMemo, useState } from 'react';
+import { FormEvent, useEffect, useMemo, useState } from 'react';
 import type { PublicCatalogFilterOptions, PublicCatalogFilters } from '../public-catalog/contracts';
 import { writeCatalogFilters } from './catalogQuery';
 import './public-polish.css';
@@ -15,6 +15,39 @@ export function HomeCatalogSearch({ options, onNavigate }: HomeCatalogSearchProp
     if (!options.locationsByCity) return options.locations;
     return options.locationsByCity[filters.city] ?? [];
   }, [filters.city, options.locations, options.locationsByCity]);
+
+  useEffect(() => {
+    setFilters((current) => {
+      const next = { ...current };
+      let changed = false;
+
+      if (current.purpose && !options.purposes.includes(current.purpose)) {
+        next.purpose = undefined;
+        changed = true;
+      }
+
+      if (current.city && !options.cities.includes(current.city)) {
+        next.city = undefined;
+        next.location = undefined;
+        changed = true;
+      } else if (current.location) {
+        const validLocations = current.city
+          ? options.locationsByCity?.[current.city] ?? options.locations
+          : options.locations;
+        if (!validLocations.includes(current.location)) {
+          next.location = undefined;
+          changed = true;
+        }
+      }
+
+      if (current.lifestyleTag && !options.lifestyleTags.includes(current.lifestyleTag)) {
+        next.lifestyleTag = undefined;
+        changed = true;
+      }
+
+      return changed ? next : current;
+    });
+  }, [options.cities, options.lifestyleTags, options.locations, options.locationsByCity, options.purposes]);
 
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
