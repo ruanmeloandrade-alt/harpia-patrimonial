@@ -39,6 +39,8 @@ export type {
 } from '../salesbot/runtime';
 export { listDueSalesBotExecutions } from '../salesbot/executionRepository';
 export { salesBotDelayDurationToMs } from '../salesbot/validation';
+export { createSalesBotDelayScheduler } from '../salesbot/delayScheduler';
+export type { SalesBotDelayScheduler } from '../salesbot/delayScheduler';
 export { createAIAgentCommandPort } from '../ai-agents/runtime';
 export type { AIAgentExecutionLog, AIAgentExecutionStatus } from '../ai-agents/executionTypes';
 export type { AICredentialVaultPort, AICredentialSaveResult } from '../integrations/aiCredentialPort';
