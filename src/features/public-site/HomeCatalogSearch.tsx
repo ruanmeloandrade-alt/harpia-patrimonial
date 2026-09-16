@@ -1,4 +1,4 @@
-import { FormEvent, useState } from 'react';
+import { FormEvent, useMemo, useState } from 'react';
 import type { PublicCatalogFilterOptions, PublicCatalogFilters } from '../public-catalog/contracts';
 import { writeCatalogFilters } from './catalogQuery';
 import './public-polish.css';
@@ -10,6 +10,10 @@ interface HomeCatalogSearchProps {
 
 export function HomeCatalogSearch({ options, onNavigate }: HomeCatalogSearchProps) {
   const [filters, setFilters] = useState<PublicCatalogFilters>({});
+  const locationOptions = useMemo(() => {
+    if (!filters.city) return options.locations;
+    return options.locationsByCity?.[filters.city] ?? [];
+  }, [filters.city, options.locations, options.locationsByCity]);
 
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -52,10 +56,11 @@ export function HomeCatalogSearch({ options, onNavigate }: HomeCatalogSearchProp
           <span>Localização</span>
           <select
             value={filters.location ?? ''}
+            disabled={Boolean(filters.city) && locationOptions.length === 0}
             onChange={(event) => setFilters((current) => ({ ...current, location: event.target.value || undefined }))}
           >
-            <option value="">Todas</option>
-            {options.locations.map((value) => <option key={value}>{value}</option>)}
+            <option value="">{filters.city && locationOptions.length === 0 ? 'Sem localizações publicadas' : 'Todas'}</option>
+            {locationOptions.map((value) => <option key={value}>{value}</option>)}
           </select>
         </label>
 
