@@ -19,67 +19,67 @@ Regra: nunca usar 🟢 apenas porque o código foi escrito. Verde exige condiç�
 ## Escopo executivo e acompanhamento
 
 ### Bloco A — Fundação do CRM
-- 🟠 Modelo de dados: funil, etapa, lead, tag, campo personalizado, tarefa e histórico.
-- 🟠 Persistência real vazia por padrão, sem dados fictícios.
-- 🟠 Serviço CRUD e regras de integridade.
-- 🟠 Eventos de domínio para integração com Automatize.
+- 🟠 Modelo de dados implementado: funil, etapa, lead, tag, campo personalizado, tarefa e histórico. Falta validação integrada.
+- 🟠 Persistência vazia e real por padrão implementada com adapter local transitório; falta adapter multiusuário/backend da Frente01.
+- 🟠 Serviço CRUD e regras de integridade implementados; falta validação de build/fluxo integrado.
+- 🟠 Eventos de domínio implementados por `CrmEventSink`; falta conexão com Automatize da Frente05.
 
 ### Bloco B — Funis, etapas e Kanban
-- 🔴 Criar/renomear/ativar/desativar funil.
-- 🔴 Criar/renomear/reordenar/remover etapa com integridade.
-- 🔴 Kanban por funil.
-- 🔴 Movimentação manual de lead.
+- 🟠 Criar/renomear/ativar/desativar funil implementado na UI e serviço; falta rota/build integrado.
+- 🟠 Criar/renomear/reordenar/remover etapa com integridade implementado; remoção bloqueia etapa com leads.
+- 🟠 Kanban por funil implementado; falta validação no shell final.
+- 🟠 Movimentação manual de lead implementada por drag-and-drop e serviço.
 
 ### Bloco C — Lead 360º
-- 🔴 Criar/editar lead.
-- 🔴 Origem e contexto de imóvel/produto/serviço.
-- 🔴 Responsável.
-- 🔴 Tags.
-- 🔴 Campos personalizados.
-- 🔴 Observações.
-- 🔴 Tarefas/próximos passos.
-- 🔴 Histórico/timestamps.
+- 🟠 Criar lead implementado; edição estrutural existe no serviço e ficha visual está parcial.
+- 🟠 Origem e contexto de imóvel/produto/serviço previstos e exibidos.
+- 🟠 Responsável implementado por contrato de usuários; falta lista real da Frente01.
+- 🟠 Tags implementadas.
+- 🟠 Campos personalizados implementados estruturalmente; UI inicial cria campo de texto e permite edição.
+- 🟠 Observações previstas no modelo/serviço; falta acabamento de edição visual dedicado.
+- 🟠 Tarefas/próximos passos implementados.
+- 🟠 Histórico/timestamps implementados.
 
 ### Bloco D — Entrada de leads por contrato
-- 🔴 Contrato para eventos do site/conta.
-- 🔴 Registro de origem, página/ação e contexto.
-- 🔴 Garantia de que criar lead não dispara mensagem automaticamente.
+- 🟠 Contrato para eventos do site/conta implementado em `ingestLeadConversion`.
+- 🟠 Registro de origem, página/ação e contexto implementado; falta integração com Frente02/Frente01.
+- 🟠 Garantia implementada: criar lead retorna `automaticMessageSent: false` e não chama transporte.
 
 ### Bloco E — Inbox operacional
-- 🔴 Layout de três colunas.
-- 🔴 Lista de conversas.
-- 🔴 Área central da conversa.
-- 🔴 Contexto CRM à direita.
-- 🔴 Empty state e estado de canal não conectado.
+- 🟠 Layout de três colunas implementado.
+- 🟠 Lista de conversas implementada com estado vazio real.
+- 🟠 Área central da conversa implementada.
+- 🟠 Contexto CRM à direita implementado.
+- 🟠 Empty state e estado de canal não conectado implementados; falta validação na rota final.
 
 ### Bloco F — Recursos de mensagem preparados
-- 🔴 Texto.
-- 🔴 Áudio.
-- 🔴 Imagem.
-- 🔴 Vídeo.
-- 🔴 Documento/anexo.
-- 🔴 Formulário.
-- 🔴 Sem simular envio real enquanto WhatsApp não estiver conectado.
+- 🟠 Texto preparado pelo contrato de transporte; envio bloqueado sem canal conectado.
+- 🟠 Áudio previsto no modelo/contrato.
+- 🟠 Imagem prevista no modelo/contrato.
+- 🟠 Vídeo previsto no modelo/contrato.
+- 🟠 Documento/anexo previsto no modelo/contrato.
+- 🟠 Formulário previsto no modelo/contrato.
+- 🟠 Proteção implementada: sem transporte real, nenhuma mensagem é registrada como enviada.
 
 ### Bloco G — Operação de CRM pela Inbox
-- 🔴 Alterar etapa.
-- 🔴 Alterar responsável.
-- 🔴 Editar campo personalizado.
-- 🔴 Adicionar/remover tags.
-- 🔴 Criar tarefa/próxima ação.
+- 🟠 Alterar etapa implementado.
+- 🟠 Alterar responsável implementado.
+- 🟠 Editar campo personalizado implementado.
+- 🟠 Adicionar/remover tags implementado.
+- 🟠 Criar tarefa/próxima ação implementado.
 
 ### Bloco H — Contratos com SalesBot/IA
-- 🔴 Interface para iniciar/pausar SalesBot.
-- 🔴 Interface para acionar/pausar IA.
-- 🔴 Consulta de status.
-- 🔴 Sem implementar motor da Frente05.
+- 🟠 Interface para iniciar/pausar SalesBot implementada; indisponível até Frente05 conectar.
+- 🟠 Interface para acionar/pausar IA implementada; indisponível até Frente05 conectar.
+- 🟠 Consulta de status implementada por contrato.
+- 🟠 Motor não foi duplicado; fallback mostra `unavailable` e não simula sucesso.
 
 ### Bloco I — Validação e handoff
-- 🔴 Build/TypeScript/imports do que estiver disponível.
-- 🔴 Fluxos CRUD principais.
-- 🔴 Empty states.
-- 🔴 Persistência/refresh quando aplicável.
-- 🔴 Handoff final e atualização de status.
+- 🔴 Build/TypeScript/imports completos da branch ainda NÃO VERIFICADOS em ambiente montado.
+- 🔴 Fluxos CRUD principais ainda não foram testados ponta a ponta na rota final.
+- 🟠 Empty states foram implementados, mas falta validação visual integrada.
+- 🟠 Persistência local foi implementada; refresh/backend multiusuário ainda precisa validação/integração.
+- 🔴 Handoff final não preenchido porque a frente ainda não está pronta para integração.
 
 ## Ler antes de começar
 
