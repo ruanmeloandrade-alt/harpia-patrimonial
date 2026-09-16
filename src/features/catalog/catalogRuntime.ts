@@ -22,16 +22,17 @@ export interface CatalogRuntime {
  * A composição global continua pertencendo à Frente01; este factory apenas
  * evita que repository, serviço público, Realtime e Storage sejam instanciados
  * com clientes diferentes ou com configurações duplicadas.
+ *
+ * O serviço público usa o repositório Supabase base. O repositório interno é
+ * decorado com Realtime e só abre canal quando realmente utilizado pela área interna.
  */
 export function createCatalogRuntime(client: CatalogRuntimeSupabaseClient): CatalogRuntime {
-  const repository = new RealtimeCatalogRepository(
-    new SupabaseCatalogRepository(client),
-    client,
-  );
+  const baseRepository = new SupabaseCatalogRepository(client);
+  const repository = new RealtimeCatalogRepository(baseRepository, client);
 
   return {
     repository,
-    publicCatalogService: new PublicCatalogService(repository),
+    publicCatalogService: new PublicCatalogService(baseRepository),
     mediaStorage: new SupabaseCatalogMediaStorage(client),
     dispose: () => repository.dispose(),
   };
