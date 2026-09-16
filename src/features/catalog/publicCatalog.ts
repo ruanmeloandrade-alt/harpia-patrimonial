@@ -36,6 +36,17 @@ function toPublicItem(item: RepositoryItem): PublicCatalogItem {
   };
 }
 
+function publicEligibleItems(items: RepositoryItem[]) {
+  const publishedDevelopmentIds = new Set(
+    items.filter((item) => item.kind === 'development').map((item) => item.id),
+  );
+
+  return items.filter(
+    (item) => item.kind !== 'unit'
+      || Boolean(item.parentId && publishedDevelopmentIds.has(item.parentId)),
+  );
+}
+
 function developmentUnitPrices(item: RepositoryItem, allPublishedItems: RepositoryItem[]) {
   return allPublishedItems
     .filter((candidate) => candidate.kind === 'unit' && candidate.parentId === item.id && candidate.price !== null)
@@ -83,13 +94,17 @@ function applyPublicFilters(
 export class PublicCatalogService {
   constructor(private readonly repository: CatalogRepository) {}
 
+  private async publishedItems() {
+    return publicEligibleItems(await this.repository.list({ status: 'published' }));
+  }
+
   async list(filters: PublicCatalogFilters = {}): Promise<PublicCatalogItem[]> {
-    const items = await this.repository.list({ status: 'published' });
+    const items = await this.publishedItems();
     return applyPublicFilters(items, filters, items).map(toPublicItem);
   }
 
   async listUnits(parentId: string, filters: PublicCatalogFilters = {}): Promise<PublicCatalogItem[]> {
-    const items = await this.repository.list({ status: 'published' });
+    const items = await this.publishedItems();
     return applyPublicFilters(
       items.filter((item) => item.kind === 'unit' && item.parentId === parentId),
       filters,
@@ -98,8 +113,12 @@ export class PublicCatalogService {
   }
 
   async getByIdOrCode(value: string): Promise<PublicCatalogItem | null> {
-    const items = await this.repository.list({ status: 'published' });
-    const item = items.find((candidate) => candidate.id === value || candidate.code === value);
+    const items = await this.publishedItems();
+    const normalized = value.trim().toLocaleLowerCase('pt-BR');
+    const item = items.find(
+      (candidate) => candidate.id === value
+        || candidate.code.toLocaleLowerCase('pt-BR') === normalized,
+    );
     return item ? toPublicItem(item) : null;
   }
 
@@ -124,7 +143,7 @@ export class PublicCatalogService {
   }
 
   async getFilterOptions(): Promise<PublicCatalogFilterOptions> {
-    const items = await this.repository.list({ status: 'published' });
+    const items = await this.publishedItems();
     const cities = new Set<string>();
     const locations = new Set<string>();
     const lifestyleTags = new Set<string>();
