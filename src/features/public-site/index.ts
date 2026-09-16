@@ -42,6 +42,12 @@ export {
   type PublicConversionPipelineOptions,
 } from './conversionPipeline';
 export {
+  usePublicFavoritesBridge,
+  type PublicFavoriteReference,
+  type PublicFavoritesBridgeState,
+  type PublicFavoritesStorePort,
+} from './usePublicFavoritesBridge';
+export {
   hasCatalogFilters,
   readCatalogFilters,
   writeCatalogFilters,
