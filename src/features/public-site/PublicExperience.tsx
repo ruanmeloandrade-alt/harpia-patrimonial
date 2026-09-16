@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { FormEvent, useEffect, useMemo, useState } from 'react';
 import PublicSiteApp, {
   type PublicAuthBridge,
   type PublicFavoritesBridge,
@@ -35,6 +35,9 @@ function navigatePublic(path: string) {
 export default function PublicExperience(props: PublicExperienceProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [path, setPath] = useState(() => window.location.pathname);
+  const [pendingConversion, setPendingConversion] = useState<PublicSiteConversion | null>(null);
+  const [contactBusy, setContactBusy] = useState(false);
+  const [contactError, setContactError] = useState('');
 
   useEffect(() => {
     const onPopState = () => {
@@ -51,9 +54,61 @@ export default function PublicExperience(props: PublicExperienceProps) {
     [path],
   );
 
+  const forwardConversion = async (event: PublicSiteConversion) => {
+    if (!props.onConversion) return;
+
+    const eventHasName = Boolean(event.contact?.name?.trim());
+    const authenticatedClientHasName = Boolean(props.auth?.currentClient?.name?.trim());
+
+    if (!eventHasName && !authenticatedClientHasName) {
+      setContactError('');
+      setPendingConversion(event);
+      return;
+    }
+
+    await props.onConversion(event);
+  };
+
+  const submitPendingConversion = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!pendingConversion || !props.onConversion) return;
+
+    const form = new FormData(event.currentTarget);
+    const name = String(form.get('name') ?? '').trim();
+    const email = String(form.get('email') ?? '').trim();
+    const whatsapp = String(form.get('whatsapp') ?? '').trim();
+
+    if (!name || !whatsapp) {
+      setContactError('Informe seu nome e WhatsApp para continuar.');
+      return;
+    }
+
+    setContactBusy(true);
+    setContactError('');
+
+    try {
+      await props.onConversion({
+        ...pendingConversion,
+        contact: {
+          name,
+          email: email || undefined,
+          whatsapp,
+        },
+      });
+      setPendingConversion(null);
+    } catch (error) {
+      setContactError(error instanceof Error ? error.message : 'Não foi possível registrar seu contato agora.');
+    } finally {
+      setContactBusy(false);
+    }
+  };
+
   return (
     <>
-      <PublicSiteApp {...props} />
+      <PublicSiteApp
+        {...props}
+        onConversion={props.onConversion ? forwardConversion : undefined}
+      />
 
       <button
         className="mobile-public-menu-trigger"
@@ -111,6 +166,59 @@ export default function PublicExperience(props: PublicExperienceProps) {
               Acessar Área Interna
             </a>
           </nav>
+        </div>
+      )}
+
+      {pendingConversion && (
+        <div
+          className="public-contact-backdrop"
+          role="presentation"
+          onMouseDown={() => !contactBusy && setPendingConversion(null)}
+        >
+          <section
+            className="public-contact-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="public-contact-title"
+            onMouseDown={(event) => event.stopPropagation()}
+          >
+            <button
+              className="public-contact-modal__close"
+              type="button"
+              aria-label="Fechar"
+              disabled={contactBusy}
+              onClick={() => setPendingConversion(null)}
+            >
+              ×
+            </button>
+
+            <p className="public-contact-modal__kicker">Atendimento Hárpia</p>
+            <h2 id="public-contact-title">Deixe seu contato para continuarmos.</h2>
+            <p>
+              Precisamos apenas dos dados essenciais para registrar seu interesse e encaminhar o atendimento com contexto.
+            </p>
+
+            <form className="public-contact-form" onSubmit={submitPendingConversion}>
+              <label>
+                <span>Nome</span>
+                <input name="name" autoComplete="name" required disabled={contactBusy} />
+              </label>
+              <label>
+                <span>WhatsApp</span>
+                <input name="whatsapp" autoComplete="tel" inputMode="tel" required disabled={contactBusy} />
+              </label>
+              <label>
+                <span>E-mail <small>opcional</small></span>
+                <input name="email" type="email" autoComplete="email" disabled={contactBusy} />
+              </label>
+
+              {contactError && <p className="public-contact-form__error" role="alert">{contactError}</p>}
+
+              <button className="public-contact-form__submit" type="submit" disabled={contactBusy}>
+                {contactBusy ? 'Registrando…' : 'Continuar atendimento'}
+              </button>
+            </form>
+          </section>
         </div>
       )}
     </>
