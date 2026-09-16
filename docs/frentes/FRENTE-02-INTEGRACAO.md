@@ -5,9 +5,37 @@ Branch de origem: `frente-02`
 
 Este documento descreve como integrar a experiência pública e a área do cliente da Frente02 com os contratos atuais das Frentes01, 03 e 04.
 
-## 1. Entry point da Frente02
+## 1. Caminho recomendado — shell único
 
-Consumir a Frente02 por:
+A Frente02 exporta `Front02IntegrationShell`, que recebe os ports reais e monta internamente Auth, catálogo, CRM, favoritos, dados do cliente e continuação para WhatsApp.
+
+```tsx
+import { Front02IntegrationShell } from './features/public-site';
+
+<Front02IntegrationShell
+  auth={auth}
+  requestLogin={() => navigate('/entrar')}
+  catalogService={publicCatalogService}
+  crmIngest={(event) => ingestLeadConversion(crm, event)}
+  favoritesStore={favoritesStore}
+  clientAreaDataSource={clientAreaDataSource}
+  whatsappPhone={realHarpiaPhone}
+  internalAreaHref="/interno"
+/>
+```
+
+Todos os itens opcionais têm fallback honesto:
+
+- sem `crmIngest`, a interface não simula criação de lead;
+- sem `favoritesStore`, não persiste favorito falsamente;
+- sem `clientAreaDataSource`, interesses/histórico ficam em empty state;
+- sem `whatsappPhone`, não existe redirecionamento externo fictício.
+
+O shell não cria serviço pertencente a outra frente. Ele apenas compõe os ports recebidos.
+
+## 2. Entry point de baixo nível
+
+Para integração manual ou testes, continuam exportados:
 
 ```ts
 import {
@@ -23,9 +51,9 @@ import {
 } from './features/public-site';
 ```
 
-Não importar implementações internas da Frente02 no roteador global.
+Não importar implementações internas diretamente no roteador global.
 
-## 2. Rotas públicas e encaixe com a Frente01
+## 3. Rotas públicas e encaixe com a Frente01
 
 Rotas da Frente02:
 
@@ -41,7 +69,7 @@ Rotas da Frente02:
 - `/alugar`
 - `/cliente`
 
-A Frente01 já possui no `AppRouter`:
+A Frente01 já possui:
 
 - `/entrar`;
 - `/cadastro`;
@@ -50,22 +78,28 @@ A Frente01 já possui no `AppRouter`:
 - `/conta` protegido por `ClientRoute`;
 - `/interno/entrar` e `/interno/**`.
 
-Integração recomendada:
+Integração:
 
-1. substituir o `PublicPlaceholder` atual de `/` pela experiência da Frente02;
-2. encaminhar todas as rotas do `publicRouteManifest` para `PublicExperience`;
-3. manter `/entrar`, `/cadastro`, recuperação, redefinição e rotas internas sob responsabilidade da Frente01;
-4. preservar o `ClientRoute` da Frente01 como guarda de autenticação;
-5. usar `/conta` como entrada protegida/alias e então renderizar ou encaminhar o cliente autenticado para a área `/cliente` da Frente02;
-6. não criar outro `AuthProvider`, outra sessão ou outro roteador de autenticação.
+1. substituir o placeholder público atual pela Frente02;
+2. encaminhar `publicRouteManifest` para a experiência pública;
+3. manter autenticação e rotas internas sob a Frente01;
+4. preservar `ClientRoute` como guarda;
+5. usar `/conta` como entrada protegida/alias para a área `/cliente`;
+6. não criar outro `AuthProvider` ou outra sessão.
 
-`PublicExperience` sincroniza mudanças de `history.pushState`/`replaceState` com navegação para não deixar o estado do roteador global defasado.
+A Frente02 também expõe “Minha conta” no header desktop e “Área do cliente” no mobile/rodapé.
 
-## 3. Auth — Frente01
+## 4. Auth — Frente01
 
-A Frente01 fornece `useAuth()` com sessão, usuário, perfil e estado de autenticação.
+`Front01AuthContextPort` consome:
 
-A Frente02 fornece:
+- `user.id`;
+- `user.email`;
+- perfil;
+- autenticação;
+- tipo de conta.
+
+`user.id` é usado somente como identidade real para favoritos e dados pessoais; a Frente02 não conhece Supabase diretamente.
 
 ```ts
 const authBridge = createFront01PublicAuthBridge({
@@ -74,23 +108,9 @@ const authBridge = createFront01PublicAuthBridge({
 });
 ```
 
-A rota `/cadastro` também já existe e pode ser usada pela composição quando a ação for explicitamente criar conta.
+A rota `/cadastro` já existe para criação explícita de conta.
 
-Regras:
-
-- o adapter só considera perfil ativo do tipo `client` como cliente público;
-- e-mail vem do usuário autenticado;
-- nome e WhatsApp vêm do perfil real;
-- usuário interno não vira cliente público por adaptação;
-- não duplicar autenticação.
-
-## 4. Catálogo — Frente03
-
-A Frente03 fornece `PublicCatalogService` com:
-
-- `list(filters)`;
-- `getByIdOrCode(value)`;
-- `getFilterOptions()`.
+## 5. Catálogo — Frente03
 
 Usar:
 
@@ -98,31 +118,22 @@ Usar:
 const publicCatalogReader = createFront03PublicCatalogReader(publicCatalogService);
 ```
 
-O adapter da Frente02 já trata:
+O adapter cobre:
 
-- `name` → `title`;
-- `development | unit | standalone` → rótulo público;
-- `sale | rent` → `Venda | Locação`;
-- cidade, bairro e condomínio;
-- código → slug público;
-- lançamentos;
-- faixa de preço;
-- `lifestyleTag`;
-- mídia pública somente `image`/`video`;
-- opções globais de filtro;
-- relação unidade → empreendimento-pai.
+- título/tipo/finalidade;
+- cidade/bairro/condomínio;
+- código/slug;
+- lançamento e preço;
+- estilo de vida;
+- imagem/vídeo;
+- opções estáveis de filtros;
+- relação unidade → empreendimento-pai via `parentId` + `getByIdOrCode`.
 
-Para unidades, a Frente02 resolve `parentId` pelo próprio `getByIdOrCode(parentId)` e usa o nome real do empreendimento. Não é necessário inventar ou duplicar esse dado.
+A home possui busca real por finalidade, cidade, localização e estilo de vida. O catálogo completo acrescenta lançamento e faixa de preço.
 
-A home já possui busca rápida real por finalidade, cidade, localização e estilo de vida. O catálogo completo acrescenta lançamento e faixa de preço.
+Filtros ficam na URL e suportam refresh/compartilhamento.
 
-Os filtros públicos são serializados na URL. Links como `/imoveis?cidade=...&estilo=...` podem ser recarregados e compartilhados mantendo a busca.
-
-## 5. CRM — Frente04
-
-A Frente04 fornece `LeadConversionEvent` e `ingestLeadConversion(crm, event)`.
-
-Usar:
+## 6. CRM — Frente04
 
 ```ts
 const capture = createFront04ConversionHandler({
@@ -131,17 +142,14 @@ const capture = createFront04ConversionHandler({
 });
 ```
 
-Regras preservadas:
+Regras:
 
-- criação de lead não envia mensagem automaticamente;
-- imóvel preserva referência real;
-- serviço preserva interesse;
+- criar lead não envia mensagem automaticamente;
+- referência do imóvel/serviço é preservada;
 - origem, ação, página e metadados seguem para o CRM;
 - visitante anônimo não recebe contato fictício.
 
-## 6. CRM primeiro, WhatsApp depois
-
-A Frente02 fornece a composição:
+## 7. CRM primeiro, WhatsApp depois
 
 ```ts
 const continueToWhatsApp = createWhatsAppContinuation({
@@ -154,30 +162,28 @@ const onConversion = createPublicConversionPipeline({
 });
 ```
 
-O telefone deve vir da configuração real da organização. O schema da Frente01 já prevê `organization_settings.phone`; não hardcodar telefone fictício na Frente02.
+O número deve ser oficial e injetado na composição a partir de configuração confiável. O schema da Frente01 prevê `organization_settings.phone`, mas o integrador deve respeitar a política de acesso dessa configuração; não expor nem inventar dado para contornar RLS.
 
 Ordem obrigatória:
 
-1. registrar conversão no CRM;
-2. somente se a captura concluir, abrir WhatsApp com contexto;
-3. se a captura falhar, não redirecionar e não perder o lead silenciosamente.
+1. CRM registra;
+2. somente após sucesso abre WhatsApp;
+3. falha no CRM interrompe a continuação.
 
-`createWhatsAppContinuation` apenas abre `wa.me` com texto preenchido. Ele não envia mensagem automaticamente.
+A função apenas abre `wa.me` com contexto preenchido; não envia mensagem automaticamente.
 
-## 7. Captura de contato anônimo
+## 8. Captura de contato e proprietário
 
-Quando um visitante anônimo aciona atendimento, retenção ou interesse em imóvel sem nome real:
+Visitante anônimo em CTA/retensão/interesse:
 
-1. `PublicExperience` abre o modal da Frente02;
-2. exige nome e WhatsApp;
-3. e-mail é opcional;
-4. somente depois envia o evento ao pipeline.
+1. abre modal;
+2. nome + WhatsApp obrigatórios;
+3. e-mail opcional;
+4. depois segue para o pipeline.
 
-Os formulários `Quero vender` e `Quero alugar` já fornecem contato completo e possuem estado real de envio, sucesso e erro. Eles não exibem falso sucesso quando a conversão não é aceita.
+`Quero vender` e `Quero alugar` possuem formulário enxuto com estado `idle/busy/success/error` e não exibem falso sucesso.
 
-## 8. Favoritos
-
-A Frente02 fornece `usePublicFavoritesBridge` e o contrato `PublicFavoritesStorePort`.
+## 9. Favoritos
 
 ```ts
 const favoritesState = usePublicFavoritesBridge({
@@ -187,27 +193,31 @@ const favoritesState = usePublicFavoritesBridge({
 });
 ```
 
-O `favoritesStore` real deve implementar:
+`PublicFavoritesStorePort` exige:
 
 - `list(clientId)`;
 - `add(clientId, { itemId, itemSlug })`;
 - `remove(clientId, itemId)`.
 
-Requisitos:
+Requisitos do store real:
 
-- identidade real + item real;
-- autorização/RLS quando persistido no Supabase;
-- adição idempotente;
-- remoção idempotente;
-- não usar `localStorage` como persistência definitiva.
+- usuário real + imóvel real;
+- autorização/RLS;
+- adição/remoção idempotentes;
+- sem `localStorage` definitivo.
 
-O schema atual da Frente01 ainda não possui a tabela compartilhada de favoritos. Essa persistência deve ser criada/definida no ponto de integração apropriado, sem tabela paralela da Frente02.
+A persistência compartilhada ainda precisa ser criada/definida no ponto apropriado da integração.
 
-## 9. Interesses e histórico da Área do Cliente
+## 10. Interesses e histórico da Área do Cliente
 
-A Frente02 agora aceita dados reais sem exigir alteração da tela.
+```ts
+const clientAreaData = useClientAreaData({
+  clientId: auth.user?.id ?? null,
+  source: clientAreaDataSource,
+});
+```
 
-A fonte deve implementar:
+A fonte implementa:
 
 ```ts
 interface ClientAreaDataSourcePort {
@@ -218,77 +228,61 @@ interface ClientAreaDataSourcePort {
 }
 ```
 
-Uso:
+A tela trata dados, loading, erro e ausência de conteúdo. Histórico que referencia imóvel pode abrir o item real pelo slug.
 
-```ts
-const clientAreaData = useClientAreaData({
-  clientId: auth.user?.id ?? null,
-  source: clientAreaDataSource,
-});
-```
+Não inventar histórico/interesses para demonstração.
 
-Depois:
+## 11. Detalhe do imóvel
 
-```tsx
-<PublicExperience
-  auth={authBridge}
-  catalog={publicCatalogReader}
-  favorites={favoritesState.bridge}
-  clientAreaData={clientAreaData}
-  onConversion={onConversion}
-/>
-```
+O detalhe já prevê:
 
-Sem fonte real, interesses e histórico permanecem em empty state. A interface também trata loading e erro.
+- galeria;
+- vídeo;
+- características;
+- localização/valor/status;
+- empreendimento/unidade;
+- favorito;
+- CTA de atendimento;
+- serviços relacionados reais: Investimentos, Assessoria Jurídica e Arquitetura.
 
-A fonte pode ser composta a partir do CRM ou de outra camada integrada, desde que os dados estejam realmente vinculados ao `clientId` autenticado. Não criar histórico fictício para demonstração.
+## 12. Metadados, navegação e acessibilidade
 
-## 10. Metadados, navegação e acessibilidade
+Já implementado:
 
-A Frente02 já entrega:
+- título/meta description por rota;
+- 404 pública;
+- foco e restauração de foco;
+- Escape e scroll lock em overlays;
+- `aria-busy`, `aria-pressed`, `aria-modal`;
+- filtros na URL;
+- busca rápida da home.
 
-- `document.title` e meta description por rota;
-- fallback público para rota inexistente;
-- foco inicial/restauração de foco nos overlays;
-- fechamento por `Escape`;
-- bloqueio/restauração de scroll em modal/menu;
-- estados `aria-busy`, `aria-pressed`, `aria-modal` e descrições de diálogo;
-- filtros persistidos na URL;
-- busca rápida na home conectada à mesma query do catálogo.
+## 13. Checklist após merge
 
-## 11. Checklist obrigatório após merge
-
-Antes de considerar a Frente02 integrada:
-
-- montar `PublicExperience` nas rotas públicas;
-- manter `/entrar`, `/cadastro`, `/conta` e `/interno/**` sob a Frente01;
-- conectar auth bridge real;
-- conectar catálogo real via adapter Frente03;
-- validar busca rápida da home com dados reais;
-- validar empreendimento/unidade real;
-- validar filtros e estilo de vida com dados reais;
-- testar refresh e compartilhamento de URL filtrada;
-- conectar conversões via Frente04;
-- configurar pipeline CRM → WhatsApp com telefone real;
-- verificar que falha no CRM impede redirecionamento externo;
+- montar shell/experiência nas rotas públicas;
+- preservar rotas de Auth/Internal da Frente01;
+- conectar catálogo real;
+- validar busca da home e catálogo com dados reais;
+- validar unidade/empreendimento;
+- testar URL filtrada/reload;
+- conectar CRM;
+- configurar WhatsApp oficial;
+- testar falha CRM sem redirecionamento;
 - conectar store real de favoritos;
-- testar favorito deslogado/logado e remoção;
-- conectar fonte real de interesses/histórico quando disponível;
-- testar área do cliente com e sem dados;
-- testar vender/alugar em sucesso e falha;
-- testar captura anônima dos CTAs;
-- testar exit-intent;
-- testar foco/Escape nos overlays;
-- testar navegação desktop/mobile;
-- testar rota inexistente;
-- testar refresh em rota pública direta;
-- validar títulos e descrições das rotas;
-- executar build e typecheck no Node exigido pelo projeto;
-- validar responsividade real;
-- manter como `NÃO VERIFICADO` qualquer item não executado.
+- testar favorito deslogado/logado/removido;
+- conectar dados do cliente quando disponíveis;
+- testar área do cliente com/sem dados;
+- testar vender/alugar sucesso/falha;
+- testar captura anônima e exit-intent;
+- testar overlays por teclado;
+- testar desktop/mobile;
+- testar 404 e refresh direto;
+- executar build/typecheck no Node exigido pelo projeto;
+- manter `NÃO VERIFICADO` onde não houver execução real.
 
-## 12. Arquivos da Frente02 que devem ser preservados no merge
+## 14. Arquivos a preservar no merge
 
+- `src/features/public-site/Front02IntegrationShell.tsx`
 - `src/features/public-site/PublicSiteApp.tsx`
 - `src/features/public-site/PublicExperience.tsx`
 - `src/features/public-site/HomeCatalogSearch.tsx`
@@ -307,4 +301,4 @@ Antes de considerar a Frente02 integrada:
 - `src/features/client-area/ClientArea.tsx`
 - `src/features/client-area/useClientAreaData.ts`
 
-Em conflito de merge, preservar a intenção funcional dos módulos de ambas as frentes e adaptar no ponto de composição; não substituir a Frente02 por uma implementação paralela no núcleo.
+Em conflito, adaptar no ponto de composição e preservar a intenção funcional de ambas as frentes; não substituir a Frente02 por implementação paralela no núcleo.
