@@ -50,7 +50,12 @@ export function usePublicFavoritesBridge(options: {
     try {
       const references = await store.list(clientId);
       const resolved = await Promise.all(
-        references.map((reference) => catalog.getPublishedBySlug(reference.itemSlug)),
+        references.map(async (reference) => {
+          const byId = await catalog.getPublishedBySlug(reference.itemId);
+          if (byId) return byId;
+          if (!reference.itemSlug || reference.itemSlug === reference.itemId) return null;
+          return catalog.getPublishedBySlug(reference.itemSlug);
+        }),
       );
       setItems(resolved.filter((item): item is PublicCatalogItem => Boolean(item)));
     } catch (cause) {
