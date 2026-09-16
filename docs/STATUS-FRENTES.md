@@ -6,20 +6,21 @@ Atualizar este arquivo ao iniciar e ao concluir blocos relevantes.
 
 - Branch: `frente-01`
 - Status nesta cópia: consultar a própria branch para o estado mais recente.
-- Para a Frente03 já entregou: Supabase dedicado, auth/RBAC, `PlatformRuntimeProvider`, `IntegratedCatalog`, `IntegratedDashboard`, rota `/interno/catalogo`, menu interno e composição do catálogo público/CRM.
-- 🟠 Pendência específica para Frente03: sincronizar os arquivos mais recentes, usar o runtime novo com `mediaStorage`/Realtime e regenerar `database.types.ts`.
+- 🟢 Para a Frente03 já entregou: Supabase dedicado, auth/RBAC, `PlatformRuntimeProvider`, `IntegratedCatalog`, `IntegratedDashboard`, rota `/interno/catalogo`, menu interno, composição do catálogo público/CRM, `createCatalogRuntime`, `catalogMediaStorage`, `dispose()` e tipos Supabase atualizados.
+- 🟢 A comparação atual de branches mostra a Frente03 integralmente incorporada na Frente01.
+- 🟠 Pendência relevante para Frente03: build/typecheck integrado e QA real de navegador/E2E.
 
 ## Frente02 — Site público/Área do cliente
 
 - Branch: `frente-02`
 - Status nesta cópia: consultar a própria branch para o estado mais recente.
 - 🟢 Integração estrutural com Frente03 já montada pela Frente01 via `IntegratedPublicExperience` + `runtime.publicCatalogService`.
-- 🟠 QA visual/E2E com dados reais publicados ainda depende da sincronização final da aplicação integrada.
+- 🟠 QA visual/E2E com dados reais publicados ainda depende da validação final da aplicação integrada.
 
 ## Frente03 — Catálogo interno/Dashboard
 
 - Branch: `frente-03`
-- Status geral: 🟠 **PARCIAL / BACKEND REAL VALIDADO E CONTRATOS PRONTOS; FALTA SINCRONIZAÇÃO FINAL + BUILD/BROWSER QA**
+- Status geral: 🟠 **INTEGRADA E BACKEND REAL VALIDADO; FALTAM BUILD/TYPECHECK CONSOLIDADO + BROWSER/E2E.**
 - Responsável: ChatGPT — Frente03
 - Regra visual: 🟢 completo e testável | 🟠 parcial/em andamento | 🔴 não iniciado.
 
@@ -43,13 +44,15 @@ Atualizar este arquivo ao iniciar e ao concluir blocos relevantes.
 - 🟢 unidade publicada exige empreendimento pai publicado para exposição;
 - 🟢 pausar/vender o pai retira as unidades do público preservando o histórico interno;
 - 🟢 faixa de preço de empreendimento deriva das unidades publicadas;
+- 🟢 preço público do empreendimento usa o menor preço das unidades publicadas quando existirem;
 - 🟢 preço do pai só é fallback quando não existem unidades publicadas com preço;
 - 🟢 `storagePath` não pertence ao contrato `PublicCatalogItem`.
 
 ### 🟢 Dashboard
 
-- 🟢 publicados/elegíveis, publicados ocultos, rascunhos, pausados e vendidos;
+- 🟢 publicados/elegíveis, publicados ocultos, estoque ativo, rascunhos, pausados e vendidos;
 - 🟢 `hiddenPublished` explicita unidades com `status=published` ocultas porque o empreendimento pai não está publicado;
+- 🟢 `inventoryCount` representa estoque operacional sem dupla contagem pai + unidades;
 - 🟢 valor de estoque sem dupla contagem empreendimento + unidades;
 - 🟢 cidade e finalidade;
 - 🟢 Dashboard usa a mesma elegibilidade hierárquica do catálogo público;
@@ -94,15 +97,15 @@ QA real já executado:
 - 🟢 payload de mídia HTTPS válido é aceito;
 - 🟢 nenhum registro `QA-%`/`QA-F03-%` permaneceu no banco após os testes.
 
-### 🟢 Realtime multi-sessão
+### 🟢 Realtime multi-sessão — implementação
 
 - 🟢 `catalog_items` habilitado na publication `supabase_realtime` por migration versionada;
-- 🟢 `RealtimeCatalogRepository` escuta `INSERT/UPDATE/DELETE` de `catalog_items` e converte em `harpia:catalog-changed`;
+- 🟢 `RealtimeCatalogRepository` escuta mudanças em `catalog_items` e converte em `harpia:catalog-changed`;
 - 🟢 serviço público continua no repositório base e não abre canal Realtime para visitante;
 - 🟢 canal interno só é criado quando o repositório interno é efetivamente usado;
 - 🟢 `dispose()` remove o canal;
 - 🟢 testes isolados passaram: `REALTIME_CATALOG_RUNTIME_OK` e `REALTIME_CATALOG_LAZY_OK`;
-- 🟠 validação WebSocket real entre dois navegadores continua para o QA integrado.
+- 🟠 validação WebSocket real entre dois navegadores continua para o QA E2E.
 
 ### 🟢 Mídia / Storage — backend e contrato
 
@@ -111,67 +114,29 @@ QA real já executado:
 - 🟢 limite de 50 MB;
 - 🟢 JPEG, PNG, WebP, GIF, MP4, WebM e PDF;
 - 🟢 `SupabaseCatalogMediaStorage` com upload, URL pública, nomes opacos e remoção;
-- 🟢 `CatalogMedia.storagePath` permite administrar mídia criada pelo próprio Storage;
+- 🟢 `CatalogMedia.storagePath` permite administrar mídia criada pelo Storage;
 - 🟢 `CatalogAdminPage` rastreia uploads pendentes e limpa lote parcial em erro/troca/cancelamento;
-- 🟢 mídia salva removida do cadastro só é apagada do bucket se nenhum item ativo ou histórico ainda referenciar `storagePath`/URL;
+- 🟢 mídia removida só apaga objeto do bucket quando nenhuma referência ativa ou histórica permanece;
 - 🟢 duplicatas podem compartilhar o mesmo objeto sem quebrar a mídia uma da outra;
 - 🟢 entrada manual por URL continua como fallback, limitada a HTTP(S);
 - 🟢 tipo de mídia é validado no domínio, adapter Supabase e trigger real;
 - 🟢 `createCatalogRuntime(client)` monta repository interno com Realtime + public service base + media storage protegido usando o mesmo cliente oficial;
 - 🟢 regressões isoladas: `MEDIA_REFERENCE_GUARD_OK` e `CATALOG_MEDIA_VALIDATION_OK`.
 
-### 🟢 Integração estrutural já feita pela Frente01
+### 🟢 Integração Frente01 — RESOLVIDA
 
-- 🟢 `PlatformRuntimeProvider` envolve a aplicação;
-- 🟢 `SupabaseCatalogRepository` já é usado quando Supabase está configurado;
-- 🟢 `PublicCatalogService` usa o mesmo backend;
-- 🟢 Dashboard recebe CRM compartilhado;
-- 🟢 `IntegratedCatalog` e `IntegratedDashboard` existem;
-- 🟢 `/interno/catalogo` está no roteador com OR entre `catalog.view/manage/publish`;
-- 🟢 sidebar possui Catálogo com a mesma regra;
-- 🟢 Frente02 recebe `runtime.publicCatalogService`.
+Confirmado no HEAD atual da Frente01:
 
-### 🟠 Sincronização final com Frente01
-
-A branch Frente01 continua avançando, mas a cópia incorporada da Frente03 ainda antecede nossas correções mais recentes. Sincronizar os módulos próprios da Frente03, em especial:
-
-- `CatalogAdminPage.tsx`;
-- `Front03Workspace.tsx`;
-- `catalogRepository.ts`;
-- `supabaseCatalogRepository.ts`;
-- `publicCatalog.ts`;
-- `types.ts`;
-- `catalogMediaStorage.ts`;
-- `catalogRuntime.ts`;
-- `realtimeCatalogRepository.ts`;
-- `catalog.schema.sql`;
-- `catalog.public-visibility.sql`;
-- `catalog.sold-integrity.sql`;
-- `catalog.storage.sql`;
-- `catalog.realtime.sql`;
-- `catalog.media-validation.sql`;
-- `index.ts`;
-- `dashboardService.ts`;
-- `DashboardPage.tsx`.
-
-Integração recomendada na Frente01:
-
-```ts
-const catalogRuntime = createCatalogRuntime(requireSupabase());
-```
-
-Expor no `PlatformRuntime`:
-
-- `catalogRuntime.repository`;
-- `catalogRuntime.publicCatalogService`;
-- `catalogRuntime.mediaStorage`;
-
-E chamar `catalogRuntime.dispose()` ao desmontar/substituir o runtime.
-
-### 🟠 Tipos Supabase globais
-
-- O arquivo global da Frente01 deve ser conferido/regenerado após as migrations atuais para conter `catalog_items` e enums do catálogo.
-- 🟠 Essa regeneração é ownership da Frente01 e continua requisito para fechar a integração tipada.
+- 🟢 `PlatformRuntimeProvider` usa `createCatalogRuntime(supabase)`;
+- 🟢 `catalogRepository`, `publicCatalogService` e `catalogMediaStorage` são expostos no runtime;
+- 🟢 `catalogRuntime.dispose()` é chamado no ciclo de vida do provider;
+- 🟢 `IntegratedCatalog` passa `repository` + `mediaStorage` + RBAC granular;
+- 🟢 `IntegratedDashboard` usa o repositório do catálogo e provider comercial compartilhado;
+- 🟢 `/interno/catalogo` e sidebar já usam `catalog.view/manage/publish`;
+- 🟢 Frente02 recebe `runtime.publicCatalogService`;
+- 🟢 `database.types.ts` contém `catalog_items`, relacionamento pai/unidade e enums `catalog_item_kind`, `catalog_purpose`, `catalog_status`;
+- 🟢 schema real e tipos gerados foram conferidos nesta rodada;
+- 🟢 comparação de branches: a Frente03 atual está integralmente incorporada na Frente01, sem arquivos próprios pendentes de sincronização.
 
 ### Advisors
 
@@ -179,22 +144,22 @@ E chamar `catalogRuntime.dispose()` ao desmontar/substituir o runtime.
 - 🟢 Performance Advisor: nenhum erro funcional; apenas `unused_index` INFO em índices de banco ainda sem tráfego.
 - Referência do INFO: https://supabase.com/docs/guides/database/database-linter?lint=0005_unused_index
 
-### 🟠 Build / navegador
+### 🟠 Build / navegador — bloqueio restante
 
 - 🟠 Build Vite completo integrado: **NÃO VERIFICADO** neste chat.
 - 🟠 Typecheck completo da versão integrada: **NÃO VERIFICADO**.
 - 🟠 Upload real pela Storage API no navegador: **NÃO VERIFICADO**.
 - 🟠 Realtime real entre duas sessões/browser: **NÃO VERIFICADO**.
 - 🟠 QA visual/E2E no shell final: **NÃO VERIFICADO**.
-- O executor isolado possui TypeScript, mas não materializa automaticamente o repo privado completo; testes isolados dos novos contratos foram executados e não substituem o build integrado.
+- O `package-lock.json` ainda não existe na Frente01.
+- O executor local desta sessão possui Node 22 e TypeScript global 5.8.3; o projeto exige Node 24 e não há dependências npm instaladas/cacheadas. Isso impede declarar build/typecheck consolidado como executado aqui.
 
 ### Próximo fechamento da Frente03
 
-1. Frente01 sincronizar os arquivos listados acima.
-2. Frente01 adotar `createCatalogRuntime` e expor `mediaStorage`.
-3. Regenerar/conferir `database.types.ts`.
-4. Rodar typecheck/build integrado.
-5. QA browser: criar → editar → upload → publicar → verificar site → pausar → republicar → testar duas sessões → vender unidades → vender empreendimento → validar Dashboard/site.
+1. Gerar lockfile/instalar dependências em ambiente Node 24 com registry acessível.
+2. Rodar `npm run typecheck` e `npm run build` na branch integrada.
+3. QA browser com usuário interno real: criar → editar → upload → publicar → verificar site → pausar → republicar → testar duas sessões → vender unidades → vender empreendimento → validar Dashboard/site.
+4. Só então promover o status geral para 🟢.
 
 ## Frente04 — CRM/Inbox
 
@@ -216,15 +181,15 @@ E chamar `catalogRuntime.dispose()` ao desmontar/substituir o runtime.
 - Data: 16/09/2026
 - Origem: Frente03
 - Destino: Frente01 / Integrador
-- Necessidade: sincronizar a versão atual dos módulos Frente03 e usar `createCatalogRuntime`, incluindo Realtime e `mediaStorage`.
-- Urgência: ALTA antes do QA final.
-- Status: 🟠 PENDENTE.
+- Necessidade anterior: sincronizar a Frente03 atual, adotar `createCatalogRuntime`, expor `mediaStorage`, usar `dispose()` e regenerar tipos Supabase.
+- Resultado: confirmado no HEAD atual da Frente01.
+- Status: 🟢 RESOLVIDO.
 
 - Data: 16/09/2026
 - Origem: Frente03
-- Destino: Frente01 / Integrador
-- Necessidade: regenerar/conferir `src/core/supabase/database.types.ts` no schema atual.
-- Urgência: ALTA antes do fechamento tipado.
+- Destino: Integração final
+- Necessidade: build/typecheck integrado e QA browser/E2E com sessão interna real.
+- Urgência: ALTA para fechamento.
 - Status: 🟠 PENDENTE.
 
 - Data: 16/09/2026
