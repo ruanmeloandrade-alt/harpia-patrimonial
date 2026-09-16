@@ -36,6 +36,7 @@ export interface Front03PublishedItem {
   name: string;
   kind: Front03Kind;
   parentId?: string;
+  typology?: string;
   purpose: Front03Purpose;
   description: string;
   location: Front03Location;
@@ -90,6 +91,11 @@ function mapKind(kind: Front03Kind) {
   return 'Imóvel';
 }
 
+function mapPropertyType(item: Front03PublishedItem) {
+  const typology = item.typology?.trim();
+  return typology || mapKind(item.kind);
+}
+
 function bestLocation(location: Front03Location) {
   return location.condominium || location.neighborhood || location.city;
 }
@@ -100,7 +106,7 @@ function toPublicItem(item: Front03PublishedItem, parent?: Front03PublishedItem 
     slug: item.code || item.id,
     code: item.code,
     title: item.name,
-    propertyType: mapKind(item.kind),
+    propertyType: mapPropertyType(item),
     purpose: mapPurposeToPublic(item.purpose),
     city: item.location.city,
     location: bestLocation(item.location),
