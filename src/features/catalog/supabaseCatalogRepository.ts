@@ -24,6 +24,7 @@ interface CatalogRow {
   name: string;
   kind: CatalogItem['kind'];
   parent_id: string | null;
+  typology: string | null;
   purpose: CatalogItem['purpose'];
   description: string;
   city: string;
@@ -71,6 +72,7 @@ function fromRow(row: CatalogRow): CatalogItem {
     name: row.name,
     kind: row.kind,
     parentId: row.parent_id ?? undefined,
+    typology: row.typology ?? undefined,
     purpose: row.purpose,
     description: row.description,
     location: {
@@ -100,6 +102,7 @@ function draftPayload(input: CatalogItemDraft) {
     name: input.name.trim(),
     kind: input.kind,
     parent_id: input.kind === 'unit' ? input.parentId ?? null : null,
+    typology: input.typology?.trim() || null,
     purpose: input.purpose,
     description: input.description,
     city: input.location.city.trim(),
@@ -126,6 +129,7 @@ function applyLocalQuery(items: CatalogItem[], query: CatalogQuery) {
       return [
         item.code,
         item.name,
+        item.typology,
         item.location.city,
         item.location.neighborhood,
         item.location.condominium,
@@ -164,6 +168,10 @@ export class SupabaseCatalogRepository implements CatalogRepository {
   }
 
   async create(input: CatalogItemDraft): Promise<CatalogItem> {
+    if (input.kind === 'unit' && !input.typology?.trim()) {
+      throw new Error('Informe a tipologia desta unidade.');
+    }
+
     const result = await this.client
       .from('catalog_items')
       .insert({ ...draftPayload(input), status: 'draft' })
@@ -183,6 +191,7 @@ export class SupabaseCatalogRepository implements CatalogRepository {
       name: input.name ?? current.name,
       kind: input.kind ?? current.kind,
       parentId: input.parentId ?? current.parentId,
+      typology: input.typology ?? current.typology,
       purpose: input.purpose ?? current.purpose,
       description: input.description ?? current.description,
       location: input.location ?? current.location,
@@ -193,6 +202,10 @@ export class SupabaseCatalogRepository implements CatalogRepository {
       developer: input.developer ?? current.developer,
       media: input.media ?? current.media,
     };
+
+    if (merged.kind === 'unit' && !merged.typology?.trim()) {
+      throw new Error('Informe a tipologia desta unidade.');
+    }
 
     const result = await this.client
       .from('catalog_items')
@@ -237,6 +250,7 @@ export class SupabaseCatalogRepository implements CatalogRepository {
       name: `${source.name} — cópia`,
       kind: source.kind,
       parentId: source.parentId,
+      typology: source.typology,
       purpose: source.purpose,
       description: source.description,
       location: source.location,
