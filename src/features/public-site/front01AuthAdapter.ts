@@ -2,6 +2,7 @@ import type { ClientProfileView } from '../client-area/ClientArea';
 import type { PublicAuthBridge } from './PublicSiteApp';
 
 interface Front01UserPort {
+  id: string;
   email?: string | null;
 }
 
