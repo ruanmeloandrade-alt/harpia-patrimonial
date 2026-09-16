@@ -1,4 +1,8 @@
-import type { CommercialDashboardMetrics, CommercialMetricsProvider } from './dashboardService';
+import type {
+  CommercialDashboardMetrics,
+  CommercialMetricKey,
+  CommercialMetricsProvider,
+} from './dashboardService';
 
 export interface CrmMetricLead {
   id: string;
@@ -39,6 +43,10 @@ function countLabels(values: Array<string | undefined>) {
  */
 export class CrmSnapshotMetricsProvider implements CommercialMetricsProvider {
   constructor(private readonly crm: CrmSnapshotPort) {}
+
+  getAvailableMetrics(): CommercialMetricKey[] {
+    return ['leads', 'leadOrigins', 'nextActions'];
+  }
 
   async getMetrics(): Promise<CommercialDashboardMetrics> {
     const snapshot = this.crm.snapshot();
