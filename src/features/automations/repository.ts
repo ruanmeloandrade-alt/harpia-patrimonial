@@ -1,3 +1,5 @@
+import { listAIAgents } from '../ai-agents/repository';
+import { listSalesBots } from '../salesbot/repository';
 import { createF05Id, readStoredList, writeStoredList } from './f05Storage';
 import type { AutomationAction, AutomationDefinition, AutomationStatus } from './types';
 import { validateAutomation } from './validation';
@@ -7,6 +9,37 @@ const now = () => new Date().toISOString();
 
 export function listAutomations(): AutomationDefinition[] {
   return readStoredList<AutomationDefinition>(STORAGE_KEY).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+}
+
+function validateAutomationReferences(definition: AutomationDefinition): string[] {
+  const issues: string[] = [];
+  const bots = listSalesBots();
+  const agents = listAIAgents();
+
+  definition.actions.forEach((action) => {
+    if (action.type === 'start_salesbot') {
+      const botId = String(action.config.botId ?? '').trim();
+      if (botId) {
+        const bot = bots.find((item) => item.id === botId);
+        if (!bot) issues.push('Ação Iniciar SalesBot: fluxo não encontrado.');
+        else if (bot.status !== 'active') issues.push(`Ação Iniciar SalesBot: ${bot.name} precisa estar ativo.`);
+      }
+    }
+    if (action.type === 'invoke_ai') {
+      const agentId = String(action.config.agentId ?? '').trim();
+      if (agentId) {
+        const agent = agents.find((item) => item.id === agentId);
+        if (!agent) issues.push('Ação Chamar agente IA: agente não encontrado.');
+        else if (agent.status !== 'active') issues.push(`Ação Chamar agente IA: ${agent.name} precisa estar ativo.`);
+      }
+    }
+  });
+
+  return issues;
+}
+
+export function validateAutomationForActivation(definition: AutomationDefinition): string[] {
+  return [...validateAutomation(definition), ...validateAutomationReferences(definition)];
 }
 
 export function createAutomation(name: string): AutomationDefinition {
@@ -30,7 +63,7 @@ export function updateAutomation(id: string, patch: Partial<Omit<AutomationDefin
   const current = items.find((item) => item.id === id);
   if (!current) throw new Error('Automação não encontrada.');
   let updated: AutomationDefinition = { ...current, ...patch, updatedAt: now() };
-  if (current.status === 'active' && patch.status === undefined && validateAutomation(updated).length > 0) {
+  if (current.status === 'active' && patch.status === undefined && validateAutomationForActivation(updated).length > 0) {
     updated = { ...updated, status: 'paused' };
   }
   writeStoredList(STORAGE_KEY, items.map((item) => (item.id === id ? updated : item)));
@@ -66,7 +99,7 @@ export function setAutomationStatus(id: string, status: AutomationStatus): Autom
   const current = listAutomations().find((item) => item.id === id);
   if (!current) throw new Error('Automação não encontrada.');
   if (status === 'active') {
-    const issues = validateAutomation(current);
+    const issues = validateAutomationForActivation(current);
     if (issues.length > 0) throw new Error(issues.join(' '));
   }
   return updateAutomation(id, { status });
