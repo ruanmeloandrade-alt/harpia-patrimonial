@@ -3,6 +3,7 @@ import { notConfiguredResult } from '../automations/contracts';
 import { getSalesBot } from './repository';
 import { finishExecution, listSalesBotExecutions, updateExecution } from './executionRepository';
 import type { SalesBotBlock } from './types';
+import { salesBotDelayDurationToMs } from './validation';
 
 export interface SalesBotMessagePort {
   send(input: { leadId?: string; conversationId?: string; message: string; context: Record<string, unknown> }): Promise<AutomationCommandResult>;
@@ -13,7 +14,7 @@ export interface SalesBotWebhookPort {
 }
 
 export interface SalesBotDelayPort {
-  schedule(input: { executionId: string; duration: string }): Promise<AutomationCommandResult>;
+  schedule(input: { executionId: string; duration: string; resumeAt: string }): Promise<AutomationCommandResult>;
 }
 
 export type SalesBotConditionResult =
@@ -86,7 +87,7 @@ const haltOnCommand = (
   if (result.status === 'accepted') return null;
   const reason = result.reason ?? 'Ação não executada.';
   if (result.status === 'not_configured') {
-    updateExecution(executionId, { status: 'paused', currentBlockId: block.id, resumeMode: 'retry_current', action: reason });
+    updateExecution(executionId, { status: 'paused', currentBlockId: block.id, resumeMode: 'retry_current', resumeAt: undefined, action: reason });
     return { status: 'paused', blockId: block.id, reason };
   }
   finishExecution(executionId, 'failed', reason);
@@ -112,7 +113,7 @@ async function executeBlock(
   if (block.type === 'condition') {
     const result = await deps.condition.evaluate({ expression: stringConfig(block, 'expression'), context: data });
     if (result.status === 'not_configured') {
-      updateExecution(executionId, { status: 'paused', currentBlockId: block.id, resumeMode: 'retry_current', action: result.reason });
+      updateExecution(executionId, { status: 'paused', currentBlockId: block.id, resumeMode: 'retry_current', resumeAt: undefined, action: result.reason });
       return { status: 'paused', blockId: block.id, reason: result.reason };
     }
     if (result.status === 'failed') {
@@ -127,11 +128,19 @@ async function executeBlock(
   }
 
   if (block.type === 'delay') {
-    const result = await deps.delay.schedule({ executionId, duration: stringConfig(block, 'duration') });
+    const duration = stringConfig(block, 'duration');
+    const durationMs = salesBotDelayDurationToMs(duration);
+    if (durationMs === null) {
+      const reason = 'Duração de espera inválida.';
+      finishExecution(executionId, 'failed', reason);
+      return { status: 'failed', blockId: block.id, reason };
+    }
+    const resumeAt = new Date(Date.now() + durationMs).toISOString();
+    const result = await deps.delay.schedule({ executionId, duration, resumeAt });
     const halted = haltOnCommand(executionId, block, result);
     if (halted) return halted;
-    const reason = `Aguardando ${stringConfig(block, 'duration')}.`;
-    updateExecution(executionId, { status: 'paused', currentBlockId: block.id, resumeMode: 'next_block', action: reason });
+    const reason = `Aguardando ${duration}.`;
+    updateExecution(executionId, { status: 'paused', currentBlockId: block.id, resumeMode: 'next_block', resumeAt, action: reason });
     return { status: 'paused', blockId: block.id, reason };
   }
 
@@ -201,12 +210,12 @@ export async function runSalesBotExecution(
     if (currentIndex >= 0) startIndex = currentIndex + (execution.resumeMode === 'next_block' ? 1 : 0);
   }
 
-  updateExecution(executionId, { status: 'running', resumeMode: undefined, error: undefined, action: 'Execução iniciada/retomada.' });
+  updateExecution(executionId, { status: 'running', resumeMode: undefined, resumeAt: undefined, error: undefined, action: 'Execução iniciada/retomada.' });
 
   try {
     for (let index = startIndex; index < bot.blocks.length; index += 1) {
       const block = bot.blocks[index];
-      updateExecution(executionId, { currentBlockId: block.id, resumeMode: undefined, action: `Executando: ${block.label}` });
+      updateExecution(executionId, { currentBlockId: block.id, resumeMode: undefined, resumeAt: undefined, action: `Executando: ${block.label}` });
       const halted = await executeBlock(executionId, block, context, deps);
       if (halted) return halted;
     }
