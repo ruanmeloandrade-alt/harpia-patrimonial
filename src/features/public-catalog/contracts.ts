@@ -48,6 +48,7 @@ export interface PublicCatalogFilterOptions {
   purposes: string[];
   cities: string[];
   locations: string[];
+  locationsByCity?: Record<string, string[]>;
   lifestyleTags: string[];
   minPrice: number | null;
   maxPrice: number | null;
@@ -76,6 +77,7 @@ export const emptyPublicCatalogReader: PublicCatalogReader = {
       purposes: [],
       cities: [],
       locations: [],
+      locationsByCity: {},
       lifestyleTags: [],
       minPrice: null,
       maxPrice: null,
