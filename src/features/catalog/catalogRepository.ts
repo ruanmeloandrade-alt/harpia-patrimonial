@@ -32,6 +32,12 @@ function clone<T>(value: T): T {
   return JSON.parse(JSON.stringify(value)) as T;
 }
 
+function hasActiveUnits(items: CatalogItem[], developmentId: string) {
+  return items.some(
+    (item) => item.kind === 'unit' && item.parentId === developmentId && !item.deletedAt,
+  );
+}
+
 export class LocalCatalogRepository implements CatalogRepository {
   private readAll(): CatalogItem[] {
     if (typeof window === 'undefined') return [];
@@ -143,6 +149,11 @@ export class LocalCatalogRepository implements CatalogRepository {
       developer: input.developer ?? current.developer,
       media: input.media ?? current.media,
     };
+
+    if (current.kind === 'development' && merged.kind !== 'development' && hasActiveUnits(items, id)) {
+      throw new Error('Este empreendimento possui unidades ativas. Remova ou realoque as unidades antes de alterar o tipo.');
+    }
+
     if (merged.kind !== 'unit') merged.parentId = undefined;
     this.validateDraft(merged, items, id);
 
@@ -211,9 +222,14 @@ export class LocalCatalogRepository implements CatalogRepository {
     const index = items.findIndex((item) => item.id === id && !item.deletedAt);
     if (index < 0) throw new Error('Item não encontrado.');
 
+    const current = items[index];
+    if (current.kind === 'development' && hasActiveUnits(items, id)) {
+      throw new Error('Não é possível excluir um empreendimento com unidades ativas. Remova ou realoque as unidades primeiro.');
+    }
+
     const timestamp = nowIso();
     items[index] = {
-      ...items[index],
+      ...current,
       updatedAt: timestamp,
       deletedAt: timestamp,
     };
