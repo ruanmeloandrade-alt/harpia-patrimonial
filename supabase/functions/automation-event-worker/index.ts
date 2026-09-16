@@ -74,6 +74,7 @@ function isPrivateIpv4(hostname: string) {
   const parts = hostname.split('.').map(Number);
   if (parts.length !== 4 || parts.some((part) => !Number.isInteger(part) || part < 0 || part > 255)) return false;
   if (parts[0] === 0 || parts[0] === 10 || parts[0] === 127) return true;
+  if (parts[0] === 100 && parts[1] >= 64 && parts[1] <= 127) return true;
   if (parts[0] === 169 && parts[1] === 254) return true;
   if (parts[0] === 192 && parts[1] === 168) return true;
   if (parts[0] === 172 && parts[1] >= 16 && parts[1] <= 31) return true;
@@ -110,7 +111,11 @@ async function executeWebhook(action: AutomationAction, event: OutboxEvent): Pro
         ...(event.payload ?? {}),
       }),
       signal: AbortSignal.timeout(15000),
+      redirect: 'manual',
     });
+    if (external.status >= 300 && external.status < 400) {
+      return { status: 'rejected', reason: 'Redirecionamentos de webhook não são permitidos.' };
+    }
     if (!external.ok) return { status: 'rejected', reason: `Webhook respondeu HTTP ${external.status}.` };
     return { status: 'accepted', data: { httpStatus: external.status } };
   } catch (error) {
