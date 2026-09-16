@@ -43,13 +43,18 @@ export function updateAIAgent(id: string, patch: Partial<Omit<AIAgentDefinition,
   const current = items.find((item) => item.id === id);
   if (!current) throw new Error('Agente IA não encontrado.');
   let updated: AIAgentDefinition = { ...current, ...patch, updatedAt: now() };
+
   if (current.status === 'active' && patch.status === undefined && !isProviderReady(updated)) {
+    updated = { ...updated, status: 'paused' };
+  }
+
+  if (current.status === 'active' && updated.status !== 'active') {
     const activeReferences = findActiveAIAgentReferences(id);
     if (activeReferences.length > 0) {
       throw new Error(`Pause primeiro os recursos ativos que dependem deste agente IA: ${formatF05References(activeReferences)}.`);
     }
-    updated = { ...updated, status: 'paused' };
   }
+
   writeStoredList(STORAGE_KEY, items.map((item) => (item.id === id ? updated : item)));
   return updated;
 }
@@ -69,12 +74,6 @@ export function setAIAgentStatus(id: string, status: AIAgentStatus): AIAgentDefi
   if (!agent) throw new Error('Agente IA não encontrado.');
   if (status === 'active' && !isProviderReady(agent)) {
     throw new Error('O perfil de provedor IA precisa estar pronto e com chave API segura configurada.');
-  }
-  if (status !== 'active' && agent.status === 'active') {
-    const activeReferences = findActiveAIAgentReferences(id);
-    if (activeReferences.length > 0) {
-      throw new Error(`Pause primeiro os recursos ativos que dependem deste agente IA: ${formatF05References(activeReferences)}.`);
-    }
   }
   return updateAIAgent(id, { status });
 }
