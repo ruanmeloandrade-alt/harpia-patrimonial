@@ -74,6 +74,7 @@ export class LocalCatalogRepository implements CatalogRepository {
 
     if (input.kind === 'unit') {
       if (!input.parentId) throw new Error('Selecione o empreendimento desta unidade.');
+      if (!normalizeText(input.typology)) throw new Error('Informe a tipologia desta unidade.');
       const parent = items.find(
         (item) => item.id === input.parentId && item.kind === 'development' && !item.deletedAt,
       );
@@ -92,6 +93,7 @@ export class LocalCatalogRepository implements CatalogRepository {
         const haystack = [
           item.code,
           item.name,
+          item.typology,
           item.location.city,
           item.location.neighborhood,
           item.location.condominium,
@@ -120,6 +122,7 @@ export class LocalCatalogRepository implements CatalogRepository {
       id: makeId(),
       code: normalizeText(input.code),
       name: normalizeText(input.name),
+      typology: normalizeText(input.typology) || undefined,
       status: 'draft',
       createdAt: timestamp,
       updatedAt: timestamp,
@@ -139,6 +142,7 @@ export class LocalCatalogRepository implements CatalogRepository {
       name: input.name ?? current.name,
       kind: input.kind ?? current.kind,
       parentId: input.parentId ?? current.parentId,
+      typology: input.typology ?? current.typology,
       purpose: input.purpose ?? current.purpose,
       description: input.description ?? current.description,
       location: input.location ?? current.location,
@@ -160,6 +164,9 @@ export class LocalCatalogRepository implements CatalogRepository {
     const updated: CatalogItem = {
       ...current,
       ...clone(merged),
+      code: normalizeText(merged.code),
+      name: normalizeText(merged.name),
+      typology: normalizeText(merged.typology) || undefined,
       updatedAt: nowIso(),
     };
     items[index] = updated;
