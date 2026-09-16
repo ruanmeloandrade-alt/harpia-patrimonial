@@ -1,0 +1,26 @@
+export const PERMISSIONS = {
+  DASHBOARD_VIEW: 'dashboard.view',
+  USERS_VIEW: 'users.view',
+  USERS_MANAGE: 'users.manage',
+  ROLES_VIEW: 'roles.view',
+  ROLES_MANAGE: 'roles.manage',
+  SETTINGS_VIEW: 'settings.view',
+  SETTINGS_MANAGE: 'settings.manage',
+  CATALOG_VIEW: 'catalog.view',
+  CATALOG_MANAGE: 'catalog.manage',
+  CATALOG_PUBLISH: 'catalog.publish',
+  CRM_VIEW: 'crm.view',
+  CRM_MANAGE: 'crm.manage',
+  INBOX_VIEW: 'inbox.view',
+  INBOX_MANAGE: 'inbox.manage',
+  AUTOMATIONS_VIEW: 'automations.view',
+  AUTOMATIONS_MANAGE: 'automations.manage',
+  SALESBOT_VIEW: 'salesbot.view',
+  SALESBOT_MANAGE: 'salesbot.manage',
+  AI_VIEW: 'ai.view',
+  AI_MANAGE: 'ai.manage',
+  INTEGRATIONS_VIEW: 'integrations.view',
+  INTEGRATIONS_MANAGE: 'integrations.manage',
+} as const;
+
+export type KnownPermissionKey = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];
