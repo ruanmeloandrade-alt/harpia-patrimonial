@@ -5,15 +5,20 @@ Atualizar este arquivo ao iniciar e ao concluir blocos relevantes.
 ## Frente01 — Núcleo/Auth/Usuários/Permissões
 
 - Branch: `frente-01`
-- Status: BLOQUEADA PARA VALIDAÇÃO REAL
+- Status: EM ANDAMENTO — BACKEND ATIVO / TESTES E2E E INTEGRAÇÃO PENDENTES
 - Responsável: este chat
-- Último commit relevante: `7463a6357fd5e0a54296fcc5d3a86e0d95119605`
-- Entregue estruturalmente: cliente Supabase desacoplado; sessão persistente; cadastro/login/logout/recuperação; validação da sessão de recuperação; rotas protegidas; `dashboard.view` aplicado também na rota; área base do cliente; shell interno; Error Boundary global; criação/edição/ativação de usuários; criação/edição/ativação de grupos; permissões por grupo; exceções individuais; bloqueio de autoelevação/autodesativação; configurações estruturais e preferências compartilhadas; métricas reais do núcleo; contrato público `src/core/auth/index.ts`; constantes compartilhadas de permissão; schema RLS; hardening adicional de RLS; Edge Function segura para criação de usuários internos; documentação de ativação do backend; versões de dependências fixadas no `package.json`.
-- Independências concluídas: não há outro item de código da Frente01 que precise ser construído antes do backend dedicado para cumprir o escopo atual.
-- Bloqueio externo: ainda não existe projeto Supabase dedicado da Hárpia. O único projeto conectado é MKTon e não será utilizado. Existe uma única organização Supabase disponível, `Marketing11`, mas a criação do novo projeto exige confirmação explícita do usuário para essa organização e confirmação de custo antes da criação.
-- Dependências entre frentes aguardando: integração da identidade/autorização da Frente01 com a área do cliente da Frente02 e com os módulos internos das demais frentes durante o pente fino. A Frente01 não vai invadir esses módulos antes dos handoffs correspondentes.
-- Verificação: instalação/build completo continuam `NÃO VERIFICADOS` porque o ambiente não conseguiu acessar o registry npm. O `package-lock.json` também não pôde ser gerado por essa indisponibilidade. Testes reais de cadastro, login, persistência, RLS, grupos e exceções aguardam o Supabase dedicado.
-- Próximo passo após desbloqueio: confirmar a organização `Marketing11`, consultar/confirmar custo, criar/ligar o Supabase dedicado, aplicar `core_auth.sql` + `core_auth_hardening.sql`, publicar `admin-user`, configurar URL/chave publishable, criar primeiro administrador conscientemente, rodar advisors e executar testes ponta a ponta.
+- Último commit relevante de implementação antes deste status: `63c1e3b299a8279f8505d6bac30e0459d05f21e1`
+- Backend dedicado: projeto Supabase `Harpia Patrimonial`, ref `desxomqvtjaymwwxivwq`, organização `Marketing11`, região `sa-east-1`, status `ACTIVE_HEALTHY`.
+- Entregue estruturalmente: cliente Supabase tipado; sessão persistente; cadastro/login/logout/recuperação; validação da sessão de recuperação; rotas protegidas; `dashboard.view` aplicado na rota; área base do cliente; shell interno; Error Boundary global; criação/edição/ativação de usuários; criação/edição/ativação de grupos; permissões por grupo; exceções individuais; bloqueio de autoelevação/autodesativação; configurações estruturais e preferências compartilhadas; métricas reais do núcleo; contrato público `src/core/auth/index.ts`; constantes compartilhadas de permissão; tipos TypeScript gerados do schema real; versões de dependências fixadas no `package.json`.
+- Banco aplicado: migrations `core_auth`, `core_auth_hardening` e `core_auth_performance` executadas com sucesso.
+- Edge Function: `admin-user` publicada, `ACTIVE`, com `verify_jwt = true`.
+- Segurança verificada: Supabase Security Advisor com 0 lints; RLS habilitado; teste como role `authenticated` sem identidade retornou 0 linhas para permissões, grupos, configurações e perfis.
+- Performance verificada: avisos úteis do advisor corrigidos; restam apenas informações de índices ainda não utilizados, esperadas em banco novo sem tráfego.
+- Seed estrutural verificado: 22 permissões, 1 grupo de sistema `Administrador`, 22 permissões allow no grupo administrador e 0 perfis reais/fictícios.
+- Independências concluídas: não há outro bloco de implementação do núcleo que dependa apenas da Frente01 e precise ser construído antes dos testes reais/deploy para cumprir o escopo atual.
+- Pendências próprias: configurar `VITE_SUPABASE_URL` e `VITE_SUPABASE_PUBLISHABLE_KEY` no ambiente de hospedagem; configurar URLs de redirect do Auth quando o deploy final estiver definido; criar/promover o primeiro administrador real quando os dados forem fornecidos; validar cadastro/login/logout/refresh/recovery e gestão de usuários/permissões ponta a ponta; gerar `package-lock.json` e rodar build/typecheck quando houver ambiente com registry npm acessível.
+- Dependências entre frentes aguardando: integrar identidade/autorização da Frente01 com a área do cliente da Frente02 e com os módulos internos das demais frentes durante o pente fino. A Frente01 não vai invadir esses módulos antes dos handoffs correspondentes.
+- Próximo passo: aguardar dados reais do primeiro administrador e a consolidação do ambiente de deploy/integração; assim que disponíveis, executar QA real de autenticação/RLS e fechar a frente para integração.
 
 ## Frente02 — Site público/Área do cliente
 
