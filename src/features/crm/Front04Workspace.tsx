@@ -1,23 +1,45 @@
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import type { CSSProperties } from 'react';
+import type { CrmEventSink } from './domain';
 import { BrowserCrmRepository } from './repository';
+import type { CrmRepository } from './repository';
 import { CrmService } from './service';
 import { CrmWorkspace } from './CrmWorkspace';
 import type { AssigneeOption } from './CrmWorkspace';
 import { UnassignedLeadsQueue } from './UnassignedLeadsQueue';
 import { InboxWorkspace } from '../inbox/InboxWorkspace';
 import { BrowserInboxRepository } from '../inbox/repository';
+import type { InboxRepository } from '../inbox/repository';
 import { InboxService } from '../inbox/service';
 import type { InboxAutomationPort } from './contracts';
 
 export interface Front04WorkspaceProps {
   assignees?: AssigneeOption[];
   automationPort?: InboxAutomationPort;
+  crmService?: CrmService;
+  inboxService?: InboxService;
+  crmRepository?: CrmRepository;
+  inboxRepository?: InboxRepository;
+  crmEventSinks?: CrmEventSink[];
 }
 
-export function Front04Workspace({ assignees = [], automationPort }: Front04WorkspaceProps) {
-  const crmService = useMemo(() => new CrmService(new BrowserCrmRepository()), []);
-  const inboxService = useMemo(() => new InboxService(new BrowserInboxRepository()), []);
+export function Front04Workspace({
+  assignees = [],
+  automationPort,
+  crmService: injectedCrmService,
+  inboxService: injectedInboxService,
+  crmRepository,
+  inboxRepository,
+  crmEventSinks = [],
+}: Front04WorkspaceProps) {
+  const [crmService] = useState(
+    () => injectedCrmService
+      ?? new CrmService(crmRepository ?? new BrowserCrmRepository(), crmEventSinks),
+  );
+  const [inboxService] = useState(
+    () => injectedInboxService
+      ?? new InboxService(inboxRepository ?? new BrowserInboxRepository()),
+  );
   const [view, setView] = useState<'crm' | 'inbox'>('crm');
   const [crmRevision, setCrmRevision] = useState(0);
 
