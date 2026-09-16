@@ -10,12 +10,13 @@ Este arquivo deve ser lido antes de qualquer alteração no projeto.
 - NÃO usar GitHub Actions neste projeto.
 - Antes de implementar qualquer módulo, ler:
   1. `AGENTS.md`
-  2. `docs/BRIEFING-CONSOLIDADO.md`
-  3. `docs/ESCOPO-DE-TRABALHO.md`
-  4. `docs/CONVERSA-E-DECISOES.md`
-  5. `docs/FRENTES-DE-TRABALHO.md`
-  6. `docs/CONTRATOS-ENTRE-MODULOS.md`
-  7. `docs/STATUS-FRENTES.md`
+  2. `docs/REGRAS-DE-PRODUCAO.md`
+  3. `docs/BRIEFING-CONSOLIDADO.md`
+  4. `docs/ESCOPO-DE-TRABALHO.md`
+  5. `docs/CONVERSA-E-DECISOES.md`
+  6. `docs/FRENTES-DE-TRABALHO.md`
+  7. `docs/CONTRATOS-ENTRE-MODULOS.md`
+  8. `docs/STATUS-FRENTES.md`
 
 ## 2. Princípio central
 
@@ -249,3 +250,21 @@ Branches oficiais:
 Arquivos compartilhados como `package.json`, roteador raiz, providers globais, configuração de build e CSS/tokens globais pertencem por padrão à Frente01. Outra frente não deve sobrescrevê-los sem registrar a necessidade e conferir o estado mais recente.
 
 Depois das cinco frentes, o chat/agente de integração deve seguir `docs/PENTE-FINO-INTEGRACAO.md`.
+
+## 21. Regras de produção e qualidade
+
+`docs/REGRAS-DE-PRODUCAO.md` é obrigatório e tem precedência operacional sobre atalhos de implementação.
+
+Todo chat/agente deve obedecer:
+
+- Definition of Ready antes de começar;
+- propriedade de arquivos e isolamento de branch;
+- contratos explícitos entre módulos;
+- regra anti-conflito e releitura do arquivo antes de editar;
+- zero mocks permanentes;
+- commits pequenos e identificados pela frente;
+- validação real antes de declarar algo pronto;
+- Definition of Done antes do handoff;
+- atualização de status, dependências, testes e pendências no GitHub.
+
+Se um teste não foi executado, registrar `NÃO VERIFICADO`. É proibido afirmar sucesso sem validação real.
