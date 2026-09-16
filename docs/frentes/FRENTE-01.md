@@ -160,15 +160,17 @@ Os nomes finais podem variar conforme a arquitetura, mas a capacidade deve exist
 - build funciona;
 - outras frentes conseguem consumir os contratos sem copiar lógica de autenticação.
 
-## Handoff obrigatório ao terminar
+## Handoff da Frente01 — 16/09/2026
 
-Atualizar este bloco e `docs/STATUS-FRENTES.md`:
-
-- Status:
-- Commit final:
-- O que foi entregue:
-- O que ficou pendente:
-- Contratos expostos:
-- Migrações/configurações necessárias:
-- Riscos conhecidos:
-- Instruções para o chat de integração:
+- **Status:** BLOQUEADA PARA VALIDAÇÃO REAL. A parte independente do código está estruturalmente concluída; faltam backend dedicado e testes reais antes de qualquer status verde.
+- **Branch:** `frente-01`.
+- **Último commit estrutural antes deste handoff:** `6694741cb1ef256023c87dc6cdcd5536e3dcdfd0`.
+- **O que foi entregue:** shell/roteamento base; `AuthProvider`; sessão persistente; cadastro, login, logout, recuperação e redefinição de senha; separação cliente/equipe; guards de rota; `dashboard.view` protegido também por URL; Error Boundary global; CRUD estrutural de usuários internos (criar, editar dados operacionais, ativar/desativar); grupos configuráveis (criar, editar, ativar/desativar); permissões herdadas por grupo; exceções individuais allow/deny; dados estruturais da organização; preferências compartilhadas via JSON; métricas reais do núcleo sem mocks; cliente Supabase desacoplado; Edge Function `admin-user`; schema RLS e hardening adicional contra autoelevação/autodesativação.
+- **Contratos expostos:** `src/core/auth/index.ts` exporta `AuthProvider`, `useAuth`, `ClientRoute`, `InternalRoute`, tipos públicos e `PERMISSIONS`; demais frentes devem usar esse contrato e não criar auth paralelo.
+- **Banco preparado:** `supabase/schema/core_auth.sql` + `supabase/schema/core_auth_hardening.sql`.
+- **Edge Function preparada:** `supabase/functions/admin-user/index.ts`, com JWT obrigatório em `config.toml`.
+- **O que ficou pendente:** criar/conectar projeto Supabase exclusivo da Hárpia; aplicar os dois scripts SQL; publicar Edge Function; configurar URL/chave publishable; criar conscientemente o primeiro administrador; rodar advisors; testar autenticação, sessão persistente, recuperação, RLS, usuários, grupos e exceções ponta a ponta.
+- **Build/testes:** `NÃO VERIFICADOS` integralmente. O ambiente não conseguiu acessar o registry npm para instalar dependências; portanto não declarar build aprovado. A revisão estática foi realizada, mas não substitui build nem teste funcional.
+- **Dependências de outras frentes:** integração com a área do cliente da Frente02 e incorporação dos módulos internos das Frentes02–05 no shell ficam para os respectivos handoffs/pente fino. Não invadir esses módulos antes disso.
+- **Riscos conhecidos:** sem o Supabase dedicado não existe validação real das policies, função administrativa ou persistência; qualquer mudança futura de chave de permissão deve manter `src/core/auth/permissions.ts`, seed SQL e contratos sincronizados.
+- **Instrução para integração:** preservar `src/core/auth/**`, usar `PERMISSIONS` em vez de criar strings divergentes, consumir `useAuth()`/guards e reconciliar o roteador raiz sem substituir a lógica de autenticação silenciosamente.
