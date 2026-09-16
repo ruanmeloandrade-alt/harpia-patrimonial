@@ -14,14 +14,27 @@ function normalizePhone(phone: string) {
   return digits;
 }
 
+function cleanContext(value: unknown, maxLength = 160) {
+  return String(value ?? '')
+    .replace(/[\u0000-\u001f\u007f]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, maxLength);
+}
+
 function buildMessage(event: PublicSiteConversion) {
   const lines = ['Olá! Vim pelo site da Hárpia Patrimonial & Co.'];
+  const service = cleanContext(event.service);
+  const propertySlug = cleanContext(event.propertySlug, 120);
+  const city = cleanContext(event.metadata?.city, 120);
+  const propertyType = cleanContext(event.metadata?.propertyType, 120);
+  const name = cleanContext(event.contact?.name, 120);
 
-  if (event.service) lines.push(`Interesse: ${event.service}.`);
-  if (event.propertySlug) lines.push(`Imóvel: ${event.propertySlug}.`);
-  if (event.metadata?.city) lines.push(`Cidade: ${String(event.metadata.city)}.`);
-  if (event.metadata?.propertyType) lines.push(`Tipo de imóvel: ${String(event.metadata.propertyType)}.`);
-  if (event.contact?.name) lines.push(`Nome: ${event.contact.name}.`);
+  if (service) lines.push(`Interesse: ${service}.`);
+  if (propertySlug) lines.push(`Imóvel: ${propertySlug}.`);
+  if (city) lines.push(`Cidade: ${city}.`);
+  if (propertyType) lines.push(`Tipo de imóvel: ${propertyType}.`);
+  if (name) lines.push(`Nome: ${name}.`);
 
   lines.push('Gostaria de continuar o atendimento.');
   return lines.join('\n');
