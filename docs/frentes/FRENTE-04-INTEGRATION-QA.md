@@ -55,6 +55,17 @@ Confirmado:
 - runtime expõe start/pause/resume/status;
 - Frente01 já compõe CRM actions + IA + SalesBot + Automatize.
 
+## Estado real do backend conferido
+
+Consulta read-only no projeto Supabase dedicado confirmou:
+
+- `crm`: revision `0`, `0` leads;
+- `inbox`: revision `0`, `0` conversas;
+- `0` usuários internos ativos;
+- `0` usuários em `auth.users`.
+
+Isso confirma que o ambiente continua sem dado fictício e também explica por que o E2E autenticado ainda não pode ser concluído.
+
 ## Desvios encontrados no QA
 
 ### 1. Lead sem etapa pode ficar invisível no CRM integrado
@@ -76,11 +87,15 @@ A composição integrada da Frente01 atualmente lista recursos da Frente05 diret
 
 No merge final, preservar seleção explícita por conversa e não escolher bot/agente automaticamente.
 
-### 3. Segurança Supabase ainda possui avisos a serem avaliados
+### 3. Avisos de segurança foram rechecados no banco real
 
-Security Advisor atual aponta funções `SECURITY DEFINER` expostas por RPC. Em especial existe aviso de execução `anon` para `save_f05_shared_storage`, além de avisos `authenticated` para funções compartilhadas.
+O Security Advisor ainda exibe avisos históricos sobre RPCs, porém a definição atual do banco foi conferida diretamente:
 
-Esses avisos pertencem à camada integradora/F01-F05 e precisam ser avaliados antes do verde. Não alterar grants da Frente01/F05 a partir da Frente04 sem decisão do proprietário.
+- `save_f05_shared_storage` está executável somente por `authenticated`, não por `anon`, e a definição atual é `SECURITY INVOKER`;
+- `save_platform_module_state` está executável somente por `authenticated`, também `SECURITY INVOKER`, e valida `private.can_write_platform_module(...)`;
+- `list_internal_assignees` continua `SECURITY DEFINER`, executável somente por `authenticated`, e filtra acesso por `private.user_has_permission(...)`.
+
+Portanto o aviso `anon` observado anteriormente não representa o grant atual do banco. A Frente04 não vai alterar grants dessas funções; o integrador/F01-F05 ainda deve manter a revisão de segurança antes do verde final.
 
 ## Critério restante para fechar F04
 
