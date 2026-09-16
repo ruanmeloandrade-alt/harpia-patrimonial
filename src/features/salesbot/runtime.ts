@@ -161,14 +161,17 @@ async function executeBlock(
       else result = await deps.crm.updateField({ leadId, fieldId: stringConfig(block, 'fieldId'), value: block.config.fieldValue });
       break;
     case 'tag': {
+      const operation = stringConfig(block, 'operation').toLowerCase();
       if (!leadId) result = { status: 'rejected', reason: 'Lead obrigatório para alterar tag.' };
-      else if (stringConfig(block, 'operation') === 'remove') result = await deps.crm.removeTag({ leadId, tagId: stringConfig(block, 'tagId') });
+      else if (operation === 'remove') result = await deps.crm.removeTag({ leadId, tagId: stringConfig(block, 'tagId') });
       else result = await deps.crm.addTag({ leadId, tagId: stringConfig(block, 'tagId') });
       break;
     }
-    case 'webhook':
-      result = await deps.webhook.invoke({ url: stringConfig(block, 'url'), method: stringConfig(block, 'method') || 'POST', payload: data });
+    case 'webhook': {
+      const method = (stringConfig(block, 'method') || 'POST').toUpperCase();
+      result = await deps.webhook.invoke({ url: stringConfig(block, 'url'), method, payload: data });
       break;
+    }
     case 'chain_flow':
       result = await deps.chain.start({ botId: stringConfig(block, 'botId'), leadId, conversationId, context: data });
       break;
