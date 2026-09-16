@@ -220,10 +220,10 @@ export default function PublicExperience(props: PublicExperienceProps) {
   const forwardConversion = async (event: PublicSiteConversion) => {
     if (!props.onConversion) throw new Error('Atendimento ainda não conectado.');
 
-    const eventHasName = Boolean(event.contact?.name?.trim());
-    const authenticatedClientHasName = Boolean(props.auth?.currentClient?.name?.trim());
+    const resolvedName = event.contact?.name?.trim() || props.auth?.currentClient?.name?.trim();
+    const resolvedWhatsapp = event.contact?.whatsapp?.trim() || props.auth?.currentClient?.whatsapp?.trim();
 
-    if (!eventHasName && !authenticatedClientHasName) {
+    if (!resolvedName || !resolvedWhatsapp) {
       setContactError('');
       setPendingConversion(event);
       return;
@@ -379,15 +379,35 @@ export default function PublicExperience(props: PublicExperienceProps) {
             <form className="public-contact-form" onSubmit={submitPendingConversion} aria-busy={contactBusy}>
               <label>
                 <span>Nome</span>
-                <input ref={contactNameRef} name="name" autoComplete="name" required disabled={contactBusy} />
+                <input
+                  ref={contactNameRef}
+                  name="name"
+                  autoComplete="name"
+                  required
+                  disabled={contactBusy}
+                  defaultValue={pendingConversion.contact?.name ?? props.auth?.currentClient?.name ?? ''}
+                />
               </label>
               <label>
                 <span>WhatsApp</span>
-                <input name="whatsapp" autoComplete="tel" inputMode="tel" required disabled={contactBusy} />
+                <input
+                  name="whatsapp"
+                  autoComplete="tel"
+                  inputMode="tel"
+                  required
+                  disabled={contactBusy}
+                  defaultValue={pendingConversion.contact?.whatsapp ?? props.auth?.currentClient?.whatsapp ?? ''}
+                />
               </label>
               <label>
                 <span>E-mail <small>opcional</small></span>
-                <input name="email" type="email" autoComplete="email" disabled={contactBusy} />
+                <input
+                  name="email"
+                  type="email"
+                  autoComplete="email"
+                  disabled={contactBusy}
+                  defaultValue={pendingConversion.contact?.email ?? props.auth?.currentClient?.email ?? ''}
+                />
               </label>
 
               {contactError && <p className="public-contact-form__error" role="alert">{contactError}</p>}
