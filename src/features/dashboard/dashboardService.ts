@@ -103,7 +103,15 @@ export async function getDashboardSnapshot(
 ): Promise<DashboardSnapshot> {
   const items = await repository.list();
   const activeItems = items.filter((item) => item.status === 'published');
-  const inventoryItems = items.filter((item) => item.status !== 'sold');
+  const developmentIdsWithUnits = new Set(
+    items
+      .filter((item) => item.kind === 'unit' && item.parentId)
+      .map((item) => item.parentId as string),
+  );
+  const inventoryItems = items.filter(
+    (item) => item.status !== 'sold'
+      && (item.kind !== 'development' || !developmentIdsWithUnits.has(item.id)),
+  );
   const catalog = {
     active: activeItems.length,
     drafts: items.filter((item) => item.status === 'draft').length,
