@@ -33,7 +33,7 @@ export function ResetPasswordPage() {
     const result = await auth.updatePassword(password);
     setBusy(false);
     if (!result.ok) return setError(result.message || 'Não foi possível atualizar a senha.');
-    navigate(auth.isInternalUser ? '/interno' : '/conta', { replace: true });
+    navigate(auth.isInternalUser ? '/interno' : '/cliente', { replace: true });
   }
 
   return (
