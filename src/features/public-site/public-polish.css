@@ -36,6 +36,52 @@
   box-shadow: 0 0 0 3px rgba(185, 148, 85, .12);
 }
 
+.property-related-services {
+  margin-top: 64px;
+  padding: 34px;
+  display: grid;
+  grid-template-columns: .9fr 1.1fr;
+  gap: 32px;
+  border: 1px solid rgba(23, 34, 30, .14);
+  border-radius: 22px;
+  background: #fffdf8;
+}
+
+.property-related-services h2 {
+  margin-bottom: 0;
+  font-size: clamp(1.9rem, 3vw, 3rem);
+}
+
+.property-related-services > div:last-child {
+  display: grid;
+  gap: 10px;
+}
+
+.property-related-services button {
+  min-height: 62px;
+  padding: 0 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  border: 1px solid rgba(23, 34, 30, .12);
+  border-radius: 13px;
+  background: transparent;
+  color: #17221e;
+  cursor: pointer;
+  text-align: left;
+}
+
+.property-related-services button:hover {
+  border-color: rgba(185, 148, 85, .5);
+  background: rgba(244, 240, 232, .55);
+}
+
+.property-related-services button span {
+  color: #68716c;
+  font-size: .78rem;
+}
+
 .catalog-toolbar {
   min-height: 42px;
   margin: -14px 0 22px;
@@ -126,5 +172,17 @@
 
   .home-catalog-search__fields {
     grid-template-columns: 1fr;
+  }
+
+  .property-related-services {
+    grid-template-columns: 1fr;
+    padding: 24px;
+  }
+
+  .property-related-services button {
+    align-items: flex-start;
+    flex-direction: column;
+    justify-content: center;
+    gap: 5px;
   }
 }
