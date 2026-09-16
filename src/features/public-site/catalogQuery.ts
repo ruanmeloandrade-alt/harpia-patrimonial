@@ -6,8 +6,12 @@ function parseNumber(value: string | null) {
   return Number.isFinite(parsed) && parsed >= 0 ? parsed : undefined;
 }
 
-function parseText(value: string | null) {
-  const normalized = value?.trim();
+function parseText(value: string | null, maxLength = 120) {
+  const normalized = value
+    ?.replace(/[\u0000-\u001f\u007f]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, maxLength);
   return normalized ? normalized : undefined;
 }
 
