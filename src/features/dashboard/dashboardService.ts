@@ -1,5 +1,20 @@
 import type { CatalogRepository } from '../catalog/catalogRepository';
 
+export type CommercialMetricKey =
+  | 'leads'
+  | 'visits'
+  | 'proposals'
+  | 'negotiations'
+  | 'sales'
+  | 'pipelineValue'
+  | 'ticket'
+  | 'conversionRate'
+  | 'leadOrigins'
+  | 'demandByRegion'
+  | 'nextActions';
+
+export type CommercialMetricAvailability = Record<CommercialMetricKey, boolean>;
+
 export interface CommercialDashboardMetrics {
   leads: number;
   visits: number;
@@ -16,6 +31,7 @@ export interface CommercialDashboardMetrics {
 
 export interface CommercialMetricsProvider {
   getMetrics(): Promise<CommercialDashboardMetrics>;
+  getAvailableMetrics?(): CommercialMetricKey[];
 }
 
 export interface DashboardSnapshot {
@@ -29,10 +45,25 @@ export interface DashboardSnapshot {
     byPurpose: Array<{ label: string; value: number }>;
   };
   commercial: CommercialDashboardMetrics;
+  commercialAvailability: CommercialMetricAvailability;
   commercialSource: 'connected' | 'awaiting-crm';
 }
 
-const emptyCommercialMetrics = (): CommercialDashboardMetrics => ({
+const commercialMetricKeys: CommercialMetricKey[] = [
+  'leads',
+  'visits',
+  'proposals',
+  'negotiations',
+  'sales',
+  'pipelineValue',
+  'ticket',
+  'conversionRate',
+  'leadOrigins',
+  'demandByRegion',
+  'nextActions',
+];
+
+export const emptyCommercialMetrics = (): CommercialDashboardMetrics => ({
   leads: 0,
   visits: 0,
   proposals: 0,
@@ -45,6 +76,14 @@ const emptyCommercialMetrics = (): CommercialDashboardMetrics => ({
   demandByRegion: [],
   nextActions: [],
 });
+
+export const commercialAvailability = (available: CommercialMetricKey[] = []): CommercialMetricAvailability => {
+  const set = new Set(available);
+  return commercialMetricKeys.reduce((result, key) => {
+    result[key] = set.has(key);
+    return result;
+  }, {} as CommercialMetricAvailability);
+};
 
 function countBy(values: string[]) {
   const counter = new Map<string, number>();
@@ -72,16 +111,28 @@ export async function getDashboardSnapshot(
   };
 
   if (!commercialProvider) {
-    return { catalog, commercial: emptyCommercialMetrics(), commercialSource: 'awaiting-crm' };
+    return {
+      catalog,
+      commercial: emptyCommercialMetrics(),
+      commercialAvailability: commercialAvailability(),
+      commercialSource: 'awaiting-crm',
+    };
   }
 
   try {
+    const available = commercialProvider.getAvailableMetrics?.() ?? commercialMetricKeys;
     return {
       catalog,
       commercial: await commercialProvider.getMetrics(),
+      commercialAvailability: commercialAvailability(available),
       commercialSource: 'connected',
     };
   } catch {
-    return { catalog, commercial: emptyCommercialMetrics(), commercialSource: 'awaiting-crm' };
+    return {
+      catalog,
+      commercial: emptyCommercialMetrics(),
+      commercialAvailability: commercialAvailability(),
+      commercialSource: 'awaiting-crm',
+    };
   }
 }
