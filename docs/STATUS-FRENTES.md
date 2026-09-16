@@ -6,7 +6,8 @@ Atualizar este arquivo ao iniciar e ao concluir blocos relevantes.
 
 - Branch: `frente-01`
 - Observação F05 em 16/09/2026: status autoritativo da F01 está como **INTEGRADA ESTRUTURALMENTE — F02/F03/F04/F05 LIBERADAS PARA CONTINUAR**.
-- F01 já incorporou a F05 atual, corrigiu RBAC `view/manage`, sincronizou tipos Supabase e mantém shell/runtime compartilhado.
+- F01 mantém shell/runtime compartilhado, RBAC `view/manage`, tipos Supabase e a integração estrutural da F05.
+- Atenção de sincronização: comparação atual `frente-01...frente-05` mostra **11 commits da F05 ainda fora da F01**. Não é apenas divergência de histórico: `src/features/automations/engine.ts` na F01 ainda não contém o hardening mais recente de metadados canônicos do evento nem a normalização mais nova do método de webhook.
 
 ## Frente02 — Site público/Área do cliente
 
@@ -27,7 +28,7 @@ Atualizar este arquivo ao iniciar e ao concluir blocos relevantes.
 ## Frente05 — SalesBot/Automatize/IA/Integrações
 
 - Branch: `frente-05`
-- Status: **NÚCLEO F05 🟢 / INTEGRAÇÃO ESTRUTURAL F01↔F05 🟢 / QA FINAL AUTENTICADO 🟠**.
+- Status: **NÚCLEO F05 🟢 / INTEGRAÇÃO ESTRUTURAL F01↔F05 🟢 / SINCRONIZAÇÃO DO HARDENING MAIS RECENTE COM F01 🟠 / QA FINAL AUTENTICADO 🟠**.
 - Responsável: chat atual — Frente05.
 - Relatório histórico: `docs/frentes/FRENTE-05-TESTES.md`.
 - Handoff atual: `docs/frentes/FRENTE-05-INTEGRACAO-F01.md`.
@@ -76,6 +77,18 @@ Atualizar este arquivo ao iniciar e ao concluir blocos relevantes.
 - worker server-side de eventos;
 - tipos Supabase sincronizados com schema integrado.
 
+### 🟠 Sincronização F05 → F01
+
+Comparação atual entre as branches confirmou `frente-05` com 11 commits que ainda não estão na `frente-01`. Entre as diferenças materiais estão hardenings em:
+
+- `src/features/automations/engine.ts`;
+- `src/features/automations/outboundUrlValidation.ts`;
+- `src/features/integrations/providerAdapters.ts`;
+- `src/features/salesbot/runtime.ts`;
+- `src/features/salesbot/validation.ts`.
+
+Exemplo confirmado: na F01 atual, `event.payload` ainda pode sobrescrever metadados canônicos usados pelo motor do Automatize e o método de webhook ainda não recebe a normalização mais recente da F05. A F01 precisa sincronizar esses hardenings antes do verde integrado final.
+
 ### 🟠 Pendências reais de QA/fase final
 
 - `auth.users = 0` e usuários internos ativos = 0 na última conferência;
@@ -96,6 +109,7 @@ Portanto, automação disparada pelo outbox server-side ainda não deve ser cons
 
 ### Dependências atuais
 
+- Frente01: sincronizar os 11 commits/hardenings mais recentes da F05 antes do verde integrado final.
 - Frente01/Auth: criar os dois usuários temporários de QA quando houver caminho oficial de Auth disponível.
 - Produto/integração: build/typecheck conjunto.
 - Frente01/F05: definir se `start_salesbot` e `invoke_ai` server-side entram nesta primeira entrega; se sim, ligar o worker.
@@ -103,14 +117,14 @@ Portanto, automação disparada pelo outbox server-side ainda não deve ser cons
 
 ### Próximo passo da Frente05
 
-Continuar QA/hardening independente enquanto possível. Assim que usuários de QA aparecerem, executar E2E autenticado imediatamente. Não criar dados operacionais falsos, não forçar credenciais e não marcar WhatsApp/Meta como conectados antes da fase real.
+Continuar QA/hardening independente enquanto possível. Assim que usuários de QA aparecerem, executar E2E autenticado imediatamente. Em paralelo, manter a F01 informada de que há 11 commits/hardenings da F05 ainda pendentes de sincronização. Não criar dados operacionais falsos, não forçar credenciais e não marcar WhatsApp/Meta como conectados antes da fase real.
 
 ---
 
 # Pedidos entre frentes
 
 - F05 → F01 — rotas/sidebar/cofre/runtime: **RESOLVIDO**.
-- F05 → F01 — sincronizar branch F05: **RESOLVIDO**.
+- F05 → F01 — sincronizar branch F05: **PENDENTE NOVAMENTE — 11 commits/hardenings atuais ainda fora da F01**.
 - F05 → F01 — RBAC `view/manage`: **RESOLVIDO**.
 - F05 → F01/Auth — usuários temporários de QA: **PENDENTE**.
 - F05 ↔ F01 — SalesBot/IA no worker server-side: **PENDENTE/DECISÃO DE ESCOPO**.
