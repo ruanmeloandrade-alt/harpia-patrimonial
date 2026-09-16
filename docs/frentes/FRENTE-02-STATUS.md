@@ -36,18 +36,21 @@ A comparação mais recente F01 × F02 mostra **12 arquivos funcionais da F2 com
 | 🟢 | Faixa de preço pública | Empreendimento com unidades publicadas usa faixa derivada das unidades, evitando preço próprio enganoso. Commit `afe2d6d`. |
 | 🟢 | Catálogo — unidade órfã | F2 descarta unidade sem empreendimento publicado na lista, detalhe e opções de filtro. Commit `3845a83`. |
 | 🟢 | Catálogo — lookup resiliente | Detalhe possui fallback case-insensitive para código quando o producer integrado ainda estiver em versão anterior. Commit `e04a7e0`. |
-| 🟠 | Último sync do catálogo F3 | Producer atual da F3 possui realtime/integridade própria; a jornada pública básica da F2 já possui fallback local, mas a integração global ainda deve sincronizar o producer atual. |
+| 🟠 | Último sync do catálogo F3 | Producer atual da F3 possui realtime, validação de mídia e integridade próprias; a jornada pública básica da F2 já possui fallback local, mas a integração global ainda deve sincronizar o producer atual. |
 | 🟢 | Tipologia e empreendimento/unidade | Adapter usa `typology` e resolve pai real. |
 | 🟢 | Detalhe do imóvel | Galeria, vídeo, características, serviços relacionados, CTA e favorito. |
 | 🟢 | Vender/alugar | Formulário só mostra sucesso quando a conversão é aceita. |
 | 🟢 | Retenção | Exit-intent + captura implementados. |
 | 🟢 | Auth F1 → F2 | Sessão/perfil central consumidos sem segunda autenticação. |
 | 🟢 | Isolamento cliente/interno | Dados persistentes da conta só carregam para `client` ativo. Commit `14918a0`. |
+| 🟢 | Privacidade — troca de conta | Interesses/histórico da conta anterior ficam ocultos imediatamente antes mesmo do novo carregamento concluir. Commit `2e099d5`. |
 | 🟢 | Favoritos — banco | `client_favorites` existe com PK/FKs/RLS/policies de dono. |
 | 🟢 | Favoritos — resolução | Primeiro por `item_id` estável, slug como fallback. Commit `39f2cd8`. |
 | 🟢 | Favoritos — troca de sessão | Respostas/mutações obsoletas não sobrescrevem a conta nova. Commit `a231a10`. |
+| 🟢 | Favoritos — isolamento visual entre contas | Favoritos da conta anterior não aparecem nem transitoriamente após troca de identidade. Commit `77811a9`. |
 | 🟢 | Favoritos — concorrência | Mutações serializadas por cliente+imóvel. Commit `60ae458`. |
-| 🟢 | Favoritos — corrida reload × mutação | Uma leitura iniciada antes de salvar/remover não pode mais sobrescrever o estado novo. Commit `48a7ea5`. |
+| 🟢 | Favoritos — corrida reload × mutação | Uma leitura iniciada antes de salvar/remover não pode sobrescrever o estado novo. Commit `48a7ea5`. |
+| 🟢 | Favoritos — erro visível | Falha de persistência é exibida também fora da Área do Cliente por aviso global descartável. Commits `59e62e3`, `4b8b286`. |
 | 🟢 | Área do cliente | Perfil, favoritos, interesses, histórico, loading, erro e retry. |
 | 🟢 | Área do cliente — corrida de sessão | Resposta antiga ignorada após troca de conta/source. Commit `6f232a4`. |
 | 🟢 | Conversão F2→F4 | Contrato atual da F4 confirmado compatível; nome + WhatsApp exigidos. |
