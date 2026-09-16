@@ -34,7 +34,15 @@ Contrato mínimo de leitura pública:
 - retornar fotos, vídeos, preço, localização, características, status e tipo;
 - informar relação produto/empreendimento/unidade quando aplicável.
 
-Frente02 consome esse contrato. Não deve duplicar banco/repositório de catálogo.
+Implementação da Frente03:
+
+- `CatalogRepository` é o contrato de persistência do domínio;
+- `PublicCatalogService` é o contrato de leitura pública e retorna somente `published`;
+- `SupabaseCatalogRepository` é o adapter de produção preparado para receber o cliente Supabase oficial da Frente01 por injeção;
+- `LocalCatalogRepository` é adapter transitório local, começa vazio e não pode ser tratado como persistência multiusuário final;
+- `src/features/catalog/catalog.schema.sql` contém o schema/RLS do domínio e depende das funções/permissões definidas pela Frente01.
+
+Frente02 consome o contrato público. Não deve duplicar banco/repositório de catálogo.
 
 ## 3. Favoritos e interesses
 
@@ -145,8 +153,16 @@ Enquanto WhatsApp real não estiver conectado, a interface deve mostrar estado p
 Proprietário visual: Frente03.
 Fontes de dados: Frente03 e Frente04.
 
-Métricas de catálogo podem vir diretamente da Frente03.
-Métricas comerciais dependem do CRM da Frente04.
+Métricas de catálogo vêm do `CatalogRepository` da Frente03.
+Métricas comerciais usam `CommercialMetricsProvider`.
+
+Contrato atual com a Frente04:
+
+- a Frente03 pode adaptar a `snapshot()` real do CRM sem importar a implementação interna;
+- `CrmSnapshotMetricsProvider` considera objetivamente disponíveis hoje: quantidade de leads, origem dos leads e próximas tarefas pendentes;
+- visitas, propostas, negociações, vendas, pipeline/VGV, ticket, conversão e demanda por região NÃO podem ser inferidos pelo nome das etapas porque funis/etapas são configuráveis;
+- métricas não suportadas devem permanecer em `0`/empty state e ser marcadas como indisponíveis até existir contrato/configuração explícita;
+- `CommercialMetricsProvider.getAvailableMetrics()` informa quais métricas a fonte realmente sustenta.
 
 Sem integração disponível:
 
@@ -167,7 +183,24 @@ Conexões reais posteriores:
 
 As demais frentes devem consumir interfaces internas, nunca chaves ou SDKs externos diretamente.
 
-## 11. Arquivos compartilhados
+## 11. Persistência e RBAC do catálogo
+
+Proprietários envolvidos: Frente01 para Supabase/auth/RBAC global; Frente03 para domínio do catálogo.
+
+Contrato:
+
+- Frente03 não cria outro cliente Supabase;
+- Frente01 fornece/injeta o cliente oficial do projeto Hárpia;
+- Frente03 fornece `SupabaseCatalogRepository` e schema do domínio;
+- schema do catálogo deve ser aplicado somente depois do `core_auth.sql` da Frente01;
+- `catalog.view` permite consulta interna;
+- `catalog.manage` permite criar/editar/duplicar/excluir logicamente;
+- `catalog.publish` permite transições de status publicar/pausar/vendido;
+- usuário apenas com `catalog.publish` não pode alterar campos comerciais do item;
+- RLS e trigger de banco devem validar as permissões; esconder botão na UI não é suficiente;
+- exclusão de empreendimento ou mudança de tipo não pode deixar unidades ativas órfãs.
+
+## 12. Arquivos compartilhados
 
 Se um contrato precisar mudar:
 
