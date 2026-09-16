@@ -1,11 +1,13 @@
-import { FormEvent, MouseEvent, useEffect, useMemo, useState } from 'react';
+import { FormEvent, MouseEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { ClientArea, type ClientProfileView } from '../client-area/ClientArea';
 import {
   emptyPublicCatalogReader,
+  type PublicCatalogFilterOptions,
   type PublicCatalogFilters,
   type PublicCatalogItem,
   type PublicCatalogReader,
 } from '../public-catalog/contracts';
+import { hasCatalogFilters, readCatalogFilters, writeCatalogFilters } from './catalogQuery';
 import './public-site.css';
 
 export interface PublicSiteConversion {
@@ -43,13 +45,16 @@ interface PublicSiteAppProps {
 }
 
 type OwnerIntent = 'vender' | 'alugar';
-
 type InstitutionalPageKey = 'sobre' | 'investimentos' | 'leiloes' | 'assessoria-juridica' | 'arquitetura';
 
-const institutionalPages: Record<
-  InstitutionalPageKey,
-  { kicker: string; title: string; lead: string; body: string[] }
-> = {
+type InstitutionalPage = {
+  kicker: string;
+  title: string;
+  lead: string;
+  body: string[];
+};
+
+const institutionalPages: Record<InstitutionalPageKey, InstitutionalPage> = {
   sobre: {
     kicker: 'Desde 1986',
     title: 'Inteligência patrimonial para decisões que atravessam gerações.',
@@ -103,13 +108,89 @@ const institutionalPages: Record<
   },
 };
 
+const emptyFilterOptions: PublicCatalogFilterOptions = {
+  purposes: [],
+  cities: [],
+  locations: [],
+  lifestyleTags: [],
+  minPrice: null,
+  maxPrice: null,
+};
+
 function formatCurrency(value: number | null) {
   if (value === null) return 'Valor sob consulta';
-  return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(value);
+  return new Intl.NumberFormat('pt-BR', {
+    style: 'currency',
+    currency: 'BRL',
+    maximumFractionDigits: 0,
+  }).format(value);
 }
 
-function currentPath() {
-  return typeof window === 'undefined' ? '/' : window.location.pathname;
+function currentLocation() {
+  if (typeof window === 'undefined') return { pathname: '/', search: '' };
+  return { pathname: window.location.pathname || '/', search: window.location.search };
+}
+
+function deriveFilterOptions(items: PublicCatalogItem[]): PublicCatalogFilterOptions {
+  const unique = (values: string[]) =>
+    [...new Set(values.filter(Boolean))].sort((a, b) => a.localeCompare(b, 'pt-BR'));
+  const prices = items.map((item) => item.price).filter((value): value is number => value !== null);
+
+  return {
+    purposes: unique(items.map((item) => item.purpose)),
+    cities: unique(items.map((item) => item.city)),
+    locations: unique(items.map((item) => item.location)),
+    lifestyleTags: unique(items.flatMap((item) => item.lifestyleTags ?? [])),
+    minPrice: prices.length ? Math.min(...prices) : null,
+    maxPrice: prices.length ? Math.max(...prices) : null,
+  };
+}
+
+function RetentionDialog({ onClose, onAccept }: { onClose: () => void; onAccept: () => void }) {
+  const closeRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    const previouslyFocused = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    closeRef.current?.focus();
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onClose();
+    };
+    document.addEventListener('keydown', onKeyDown);
+
+    return () => {
+      document.removeEventListener('keydown', onKeyDown);
+      document.body.style.overflow = previousOverflow;
+      previouslyFocused?.focus();
+    };
+  }, [onClose]);
+
+  return (
+    <div className="retention-backdrop" role="presentation" onMouseDown={onClose}>
+      <section
+        className="retention-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="retention-title"
+        aria-describedby="retention-description"
+        onMouseDown={(event) => event.stopPropagation()}
+      >
+        <button ref={closeRef} className="modal-close" type="button" onClick={onClose} aria-label="Fechar">
+          ×
+        </button>
+        <p className="section-kicker">Antes de sair</p>
+        <h2 id="retention-title">Não encontrou o imóvel ou a oportunidade certa?</h2>
+        <p id="retention-description">
+          Conte o que procura. A proposta da Hárpia é orientar a decisão, não apenas mostrar uma lista de imóveis.
+        </p>
+        <button className="primary-button" type="button" onClick={onAccept}>
+          Quero ser atendido
+        </button>
+      </section>
+    </div>
+  );
 }
 
 export default function PublicSiteApp({
@@ -119,27 +200,60 @@ export default function PublicSiteApp({
   onConversion,
   internalAreaHref = '/interno',
 }: PublicSiteAppProps) {
-  const [route, setRoute] = useState(currentPath);
+  const initialLocation = currentLocation();
+  const [route, setRoute] = useState(initialLocation.pathname);
   const [items, setItems] = useState<PublicCatalogItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [catalogError, setCatalogError] = useState('');
   const [notice, setNotice] = useState('');
   const [retentionOpen, setRetentionOpen] = useState(false);
   const [retentionSeen, setRetentionSeen] = useState(false);
-  const [filters, setFilters] = useState<PublicCatalogFilters>({});
+  const [filters, setFilters] = useState<PublicCatalogFilters>(() =>
+    initialLocation.pathname === '/imoveis' ? readCatalogFilters(initialLocation.search) : {},
+  );
+  const [filterOptions, setFilterOptions] = useState<PublicCatalogFilterOptions>(emptyFilterOptions);
 
   useEffect(() => {
-    const pop = () => setRoute(currentPath());
+    const pop = () => {
+      const location = currentLocation();
+      setRoute(location.pathname);
+      setFilters(location.pathname === '/imoveis' ? readCatalogFilters(location.search) : {});
+    };
     window.addEventListener('popstate', pop);
     return () => window.removeEventListener('popstate', pop);
   }, []);
 
   useEffect(() => {
     let active = true;
+
+    const loadOptions = async () => {
+      try {
+        if (catalog.getFilterOptions) {
+          const options = await catalog.getFilterOptions();
+          if (active) setFilterOptions(options);
+          return;
+        }
+
+        const allItems = await catalog.listPublished();
+        if (active) setFilterOptions(deriveFilterOptions(allItems));
+      } catch {
+        if (active) setFilterOptions(emptyFilterOptions);
+      }
+    };
+
+    loadOptions();
+    return () => {
+      active = false;
+    };
+  }, [catalog]);
+
+  useEffect(() => {
+    let active = true;
     setLoading(true);
     setCatalogError('');
+
     catalog
-      .listPublished(filters)
+      .listPublished(route === '/imoveis' ? filters : {})
       .then((result) => {
         if (active) setItems(result);
       })
@@ -149,10 +263,20 @@ export default function PublicSiteApp({
       .finally(() => {
         if (active) setLoading(false);
       });
+
     return () => {
       active = false;
     };
-  }, [catalog, filters]);
+  }, [catalog, filters, route]);
+
+  useEffect(() => {
+    if (route !== '/imoveis') return;
+    const next = `/imoveis${writeCatalogFilters(filters)}`;
+    const current = `${window.location.pathname}${window.location.search}`;
+    if (current === next) return;
+    window.history.replaceState({}, '', next);
+    window.dispatchEvent(new CustomEvent('harpia:locationchange'));
+  }, [filters, route]);
 
   useEffect(() => {
     const onMouseLeave = (event: globalThis.MouseEvent) => {
@@ -166,9 +290,15 @@ export default function PublicSiteApp({
   }, [retentionSeen, route]);
 
   const navigate = (path: string) => {
-    if (path === route) return;
-    window.history.pushState({}, '', path);
-    setRoute(path);
+    const target = new URL(path, window.location.origin);
+    const current = `${window.location.pathname}${window.location.search}`;
+    const next = `${target.pathname}${target.search}`;
+    if (current === next) return;
+
+    window.history.pushState({}, '', next);
+    setRoute(target.pathname);
+    setFilters(target.pathname === '/imoveis' ? readCatalogFilters(target.search) : {});
+    window.dispatchEvent(new CustomEvent('harpia:locationchange'));
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -185,24 +315,24 @@ export default function PublicSiteApp({
     setNotice('Login e cadastro aguardam a integração do contrato de autenticação da Frente01.');
   };
 
-  const emitConversion = async (event: PublicSiteConversion) => {
+  const emitConversion = async (event: PublicSiteConversion): Promise<boolean> => {
     if (!onConversion) {
       setNotice('Atendimento e criação de lead aguardam integração com CRM/WhatsApp. Nenhuma mensagem foi simulada.');
-      return;
+      return false;
     }
-    await onConversion(event);
+
+    try {
+      await onConversion(event);
+      return true;
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : 'Não foi possível registrar o atendimento agora.');
+      return false;
+    }
   };
 
-  const requestService = (service: string) =>
-    emitConversion({ source: 'site-publico', action: 'solicitar-atendimento', page: route, service });
-
-  const purposes = useMemo(() => Array.from(new Set(items.map((item) => item.purpose))).sort(), [items]);
-  const cities = useMemo(() => Array.from(new Set(items.map((item) => item.city))).sort(), [items]);
-  const locations = useMemo(() => Array.from(new Set(items.map((item) => item.location))).sort(), [items]);
-  const lifestyleTags = useMemo(
-    () => Array.from(new Set(items.flatMap((item) => item.lifestyleTags ?? []))).sort(),
-    [items],
-  );
+  const requestService = (service: string) => {
+    void emitConversion({ source: 'site-publico', action: 'solicitar-atendimento', page: route, service });
+  };
 
   const propertySlug = route.startsWith('/imoveis/') ? decodeURIComponent(route.replace('/imoveis/', '')) : '';
 
@@ -243,7 +373,7 @@ export default function PublicSiteApp({
           items={items}
           loading={loading}
           error={catalogError}
-          lifestyleTags={lifestyleTags}
+          lifestyleTags={filterOptions.lifestyleTags}
           onNavigate={navigate}
           onService={requestService}
           onFavorite={(item) => {
@@ -261,9 +391,7 @@ export default function PublicSiteApp({
           loading={loading}
           error={catalogError}
           filters={filters}
-          purposes={purposes}
-          cities={cities}
-          locations={locations}
+          options={filterOptions}
           onFilters={setFilters}
           onOpen={(slug) => navigate(`/imoveis/${encodeURIComponent(slug)}`)}
           onFavorite={(item) => {
@@ -302,7 +430,11 @@ export default function PublicSiteApp({
       {(['sobre', 'investimentos', 'leiloes', 'assessoria-juridica', 'arquitetura'] as InstitutionalPageKey[]).map(
         (key) =>
           route === `/${key}` && (
-            <InstitutionalPage key={key} page={institutionalPages[key]} onService={() => requestService(institutionalPages[key].kicker)} />
+            <InstitutionalPage
+              key={key}
+              page={institutionalPages[key]}
+              onService={() => requestService(institutionalPages[key].kicker)}
+            />
           ),
       )}
 
@@ -350,24 +482,13 @@ export default function PublicSiteApp({
       </footer>
 
       {retentionOpen && (
-        <div className="retention-backdrop" role="presentation" onMouseDown={() => setRetentionOpen(false)}>
-          <section className="retention-modal" role="dialog" aria-modal="true" aria-labelledby="retention-title" onMouseDown={(e) => e.stopPropagation()}>
-            <button className="modal-close" type="button" onClick={() => setRetentionOpen(false)} aria-label="Fechar">×</button>
-            <p className="section-kicker">Antes de sair</p>
-            <h2 id="retention-title">Não encontrou o imóvel ou a oportunidade certa?</h2>
-            <p>Conte o que procura. A proposta da Hárpia é orientar a decisão, não apenas mostrar uma lista de imóveis.</p>
-            <button
-              className="primary-button"
-              type="button"
-              onClick={() => {
-                setRetentionOpen(false);
-                requestService('Retenção de comprador');
-              }}
-            >
-              Quero ser atendido
-            </button>
-          </section>
-        </div>
+        <RetentionDialog
+          onClose={() => setRetentionOpen(false)}
+          onAccept={() => {
+            setRetentionOpen(false);
+            requestService('Retenção de comprador');
+          }}
+        />
       )}
     </div>
   );
@@ -410,14 +531,18 @@ function HomePage({
           <p className="section-kicker">Encontre uma oportunidade</p>
           <h2>Busque no catálogo publicado.</h2>
           <p>Finalidade, cidade, localização, lançamentos e faixa de preço são definidos a partir do inventário real.</p>
-          <button className="search-launcher" type="button" onClick={() => onNavigate('/imoveis')}>Abrir busca de imóveis <span>→</span></button>
+          <button className="search-launcher" type="button" onClick={() => onNavigate('/imoveis')}>
+            Abrir busca de imóveis <span>→</span>
+          </button>
         </aside>
       </section>
 
       <section className="manifesto section-shell">
         <p className="section-kicker">Hárpia Patrimonial & Co.</p>
         <blockquote>“Enquanto o mercado negocia imóveis, nós orientamos e gerimos decisões.”</blockquote>
-        <p>Patrimônio é mais do que o que se possui. É a capacidade de transformar recursos em liberdade, escolhas em legado e imóveis em ativos que atravessam gerações.</p>
+        <p>
+          Patrimônio é mais do que o que se possui. É a capacidade de transformar recursos em liberdade, escolhas em legado e imóveis em ativos que atravessam gerações.
+        </p>
       </section>
 
       <section className="section-shell">
@@ -428,7 +553,14 @@ function HomePage({
           </div>
           <button className="text-button" type="button" onClick={() => onNavigate('/imoveis')}>Ver catálogo completo</button>
         </div>
-        <PropertyGrid items={items.slice(0, 6)} loading={loading} error={error} onOpen={(slug) => onNavigate(`/imoveis/${encodeURIComponent(slug)}`)} onFavorite={onFavorite} isFavorite={isFavorite} />
+        <PropertyGrid
+          items={items.slice(0, 6)}
+          loading={loading}
+          error={error}
+          onOpen={(slug) => onNavigate(`/imoveis/${encodeURIComponent(slug)}`)}
+          onFavorite={onFavorite}
+          isFavorite={isFavorite}
+        />
       </section>
 
       <section className="lifestyle-section section-shell">
@@ -444,7 +576,13 @@ function HomePage({
             <p>A experiência já está preparada para usar classificações reais dos imóveis publicados, sem categorias fictícias.</p>
           </div>
         ) : (
-          <div className="lifestyle-tags">{lifestyleTags.map((tag) => <button key={tag} type="button" onClick={() => onNavigate('/imoveis')}>{tag}</button>)}</div>
+          <div className="lifestyle-tags">
+            {lifestyleTags.map((tag) => (
+              <button key={tag} type="button" onClick={() => onNavigate(`/imoveis?estilo=${encodeURIComponent(tag)}`)}>
+                {tag}
+              </button>
+            ))}
+          </div>
         )}
       </section>
 
@@ -480,21 +618,36 @@ function HomePage({
       </section>
 
       <section className="owner-strip section-shell">
-        <div><p className="section-kicker">Proprietários</p><h2>Quer vender ou alugar um imóvel?</h2><p>Envie os dados iniciais e a equipe assume o atendimento manual.</p></div>
-        <div className="hero-actions"><button className="secondary-button" type="button" onClick={() => onNavigate('/vender')}>Quero vender</button><button className="secondary-button" type="button" onClick={() => onNavigate('/alugar')}>Quero alugar</button></div>
+        <div>
+          <p className="section-kicker">Proprietários</p>
+          <h2>Quer vender ou alugar um imóvel?</h2>
+          <p>Envie os dados iniciais e a equipe assume o atendimento manual.</p>
+        </div>
+        <div className="hero-actions">
+          <button className="secondary-button" type="button" onClick={() => onNavigate('/vender')}>Quero vender</button>
+          <button className="secondary-button" type="button" onClick={() => onNavigate('/alugar')}>Quero alugar</button>
+        </div>
       </section>
     </main>
   );
 }
 
-function CatalogPage({ items, loading, error, filters, purposes, cities, locations, onFilters, onOpen, onFavorite, isFavorite }: {
+function CatalogPage({
+  items,
+  loading,
+  error,
+  filters,
+  options,
+  onFilters,
+  onOpen,
+  onFavorite,
+  isFavorite,
+}: {
   items: PublicCatalogItem[];
   loading: boolean;
   error: string;
   filters: PublicCatalogFilters;
-  purposes: string[];
-  cities: string[];
-  locations: string[];
+  options: PublicCatalogFilterOptions;
   onFilters: (filters: PublicCatalogFilters) => void;
   onOpen: (slug: string) => void;
   onFavorite: (item: PublicCatalogItem) => void | Promise<void>;
@@ -502,21 +655,98 @@ function CatalogPage({ items, loading, error, filters, purposes, cities, locatio
 }) {
   return (
     <main className="section-shell catalog-page">
-      <div className="page-intro"><p className="section-kicker">Catálogo Hárpia</p><h1>Imóveis publicados</h1><p className="section-lead">Os filtros refletem somente dados reais disponibilizados pelo catálogo interno.</p></div>
-      <div className="filter-grid">
-        <label>Finalidade<select value={filters.purpose ?? ''} onChange={(e) => onFilters({ ...filters, purpose: e.target.value || undefined })}><option value="">Todas</option>{purposes.map((value) => <option key={value}>{value}</option>)}</select></label>
-        <label>Cidade<select value={filters.city ?? ''} onChange={(e) => onFilters({ ...filters, city: e.target.value || undefined, location: undefined })}><option value="">Todas</option>{cities.map((value) => <option key={value}>{value}</option>)}</select></label>
-        <label>Localização<select value={filters.location ?? ''} onChange={(e) => onFilters({ ...filters, location: e.target.value || undefined })}><option value="">Todas</option>{locations.map((value) => <option key={value}>{value}</option>)}</select></label>
-        <label>Lançamento<select value={filters.launch === undefined ? '' : String(filters.launch)} onChange={(e) => onFilters({ ...filters, launch: e.target.value === '' ? undefined : e.target.value === 'true' })}><option value="">Todos</option><option value="true">Sim</option><option value="false">Não</option></select></label>
-        <label>Preço mínimo<input inputMode="numeric" value={filters.minPrice ?? ''} placeholder="R$ 250.000" onChange={(e) => onFilters({ ...filters, minPrice: e.target.value ? Number(e.target.value) : undefined })} /></label>
-        <label>Preço máximo<input inputMode="numeric" value={filters.maxPrice ?? ''} placeholder="R$ 20.000.000" onChange={(e) => onFilters({ ...filters, maxPrice: e.target.value ? Number(e.target.value) : undefined })} /></label>
+      <div className="page-intro">
+        <p className="section-kicker">Catálogo Hárpia</p>
+        <h1>Imóveis publicados</h1>
+        <p className="section-lead">Os filtros refletem somente dados reais disponibilizados pelo catálogo interno.</p>
       </div>
+
+      <div className="filter-grid">
+        <label>
+          Finalidade
+          <select value={filters.purpose ?? ''} onChange={(event) => onFilters({ ...filters, purpose: event.target.value || undefined })}>
+            <option value="">Todas</option>
+            {options.purposes.map((value) => <option key={value}>{value}</option>)}
+          </select>
+        </label>
+        <label>
+          Cidade
+          <select value={filters.city ?? ''} onChange={(event) => onFilters({ ...filters, city: event.target.value || undefined, location: undefined })}>
+            <option value="">Todas</option>
+            {options.cities.map((value) => <option key={value}>{value}</option>)}
+          </select>
+        </label>
+        <label>
+          Localização
+          <select value={filters.location ?? ''} onChange={(event) => onFilters({ ...filters, location: event.target.value || undefined })}>
+            <option value="">Todas</option>
+            {options.locations.map((value) => <option key={value}>{value}</option>)}
+          </select>
+        </label>
+        <label>
+          Lançamento
+          <select
+            value={filters.launch === undefined ? '' : String(filters.launch)}
+            onChange={(event) => onFilters({ ...filters, launch: event.target.value === '' ? undefined : event.target.value === 'true' })}
+          >
+            <option value="">Todos</option>
+            <option value="true">Sim</option>
+            <option value="false">Não</option>
+          </select>
+        </label>
+        <label>
+          Preço mínimo
+          <input
+            type="number"
+            min="0"
+            inputMode="numeric"
+            value={filters.minPrice ?? ''}
+            placeholder={options.minPrice === null ? 'Sem mínimo' : formatCurrency(options.minPrice)}
+            onChange={(event) => onFilters({ ...filters, minPrice: event.target.value ? Number(event.target.value) : undefined })}
+          />
+        </label>
+        <label>
+          Preço máximo
+          <input
+            type="number"
+            min="0"
+            inputMode="numeric"
+            value={filters.maxPrice ?? ''}
+            placeholder={options.maxPrice === null ? 'Sem máximo' : formatCurrency(options.maxPrice)}
+            onChange={(event) => onFilters({ ...filters, maxPrice: event.target.value ? Number(event.target.value) : undefined })}
+          />
+        </label>
+        {options.lifestyleTags.length > 0 && (
+          <label>
+            Estilo de vida
+            <select value={filters.lifestyleTag ?? ''} onChange={(event) => onFilters({ ...filters, lifestyleTag: event.target.value || undefined })}>
+              <option value="">Todos</option>
+              {options.lifestyleTags.map((value) => <option key={value}>{value}</option>)}
+            </select>
+          </label>
+        )}
+      </div>
+
+      <div className="catalog-toolbar" aria-live="polite">
+        <span>{loading ? 'Atualizando resultados…' : `${items.length} ${items.length === 1 ? 'resultado' : 'resultados'}`}</span>
+        {hasCatalogFilters(filters) && (
+          <button className="text-button" type="button" onClick={() => onFilters({})}>Limpar filtros</button>
+        )}
+      </div>
+
       <PropertyGrid items={items} loading={loading} error={error} onOpen={onOpen} onFavorite={onFavorite} isFavorite={isFavorite} />
     </main>
   );
 }
 
-function PropertyGrid({ items, loading, error, onOpen, onFavorite, isFavorite }: {
+function PropertyGrid({
+  items,
+  loading,
+  error,
+  onOpen,
+  onFavorite,
+  isFavorite,
+}: {
   items: PublicCatalogItem[];
   loading: boolean;
   error: string;
@@ -526,47 +756,244 @@ function PropertyGrid({ items, loading, error, onOpen, onFavorite, isFavorite }:
 }) {
   if (loading) return <div className="loading-state">Carregando catálogo…</div>;
   if (error) return <div className="error-state">{error}</div>;
-  if (items.length === 0) return <div className="empty-state"><strong>Nenhum imóvel publicado neste momento.</strong><p>Assim que o catálogo interno publicar dados reais, eles aparecerão automaticamente aqui.</p></div>;
-  return <div className="property-grid">{items.map((item) => <article className="property-card" key={item.id}><div className="property-media">{item.media.find((media) => media.type === 'image') ? <img src={item.media.find((media) => media.type === 'image')?.url} alt={item.media.find((media) => media.type === 'image')?.alt ?? item.title} /> : <span>Imagem não disponível</span>}<button className="favorite-button" type="button" aria-label={isFavorite(item.id) ? 'Remover dos favoritos' : 'Salvar imóvel'} onClick={() => onFavorite(item)}>{isFavorite(item.id) ? '♥' : '♡'}</button></div><div className="property-body"><small>{item.propertyType} · {item.purpose}</small><h3>{item.title}</h3><p>{item.location}, {item.city}</p><strong>{formatCurrency(item.price)}</strong><div className="property-meta">{item.privateAreaM2 ? <span>{item.privateAreaM2} m²</span> : null}{item.bedrooms ? <span>{item.bedrooms} quartos</span> : null}{item.parkingSpaces ? <span>{item.parkingSpaces} vagas</span> : null}</div><button className="text-button" type="button" onClick={() => onOpen(item.slug)}>Ver detalhes <span>→</span></button></div></article>)}</div>;
+  if (items.length === 0) {
+    return (
+      <div className="empty-state">
+        <strong>Nenhum imóvel encontrado.</strong>
+        <p>Revise os filtros ou aguarde novos imóveis publicados no catálogo real.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="property-grid">
+      {items.map((item) => {
+        const cover = item.media.find((media) => media.type === 'image');
+        const saved = isFavorite(item.id);
+        return (
+          <article className="property-card" key={item.id}>
+            <div className="property-media">
+              {cover ? <img src={cover.url} alt={cover.alt ?? item.title} loading="lazy" /> : <span>Imagem não disponível</span>}
+              <button
+                className="favorite-button"
+                type="button"
+                aria-pressed={saved}
+                aria-label={saved ? 'Remover dos favoritos' : 'Salvar imóvel'}
+                onClick={() => onFavorite(item)}
+              >
+                {saved ? '♥' : '♡'}
+              </button>
+            </div>
+            <div className="property-body">
+              <small>{item.propertyType} · {item.purpose}</small>
+              <h3>{item.title}</h3>
+              <p>{item.location}, {item.city}</p>
+              <strong>{formatCurrency(item.price)}</strong>
+              <div className="property-meta">
+                {item.privateAreaM2 ? <span>{item.privateAreaM2} m²</span> : null}
+                {item.bedrooms ? <span>{item.bedrooms} quartos</span> : null}
+                {item.parkingSpaces ? <span>{item.parkingSpaces} vagas</span> : null}
+                <span>{item.status === 'sold' ? 'Vendido' : 'Publicado'}</span>
+              </div>
+              <button className="text-button" type="button" onClick={() => onOpen(item.slug)}>Ver detalhes <span>→</span></button>
+            </div>
+          </article>
+        );
+      })}
+    </div>
+  );
 }
 
-function PropertyDetail({ slug, catalog, isFavorite, onBack, onFavorite, onService }: {
+function PropertyDetail({
+  slug,
+  catalog,
+  isFavorite,
+  onBack,
+  onFavorite,
+  onService,
+}: {
   slug: string;
   catalog: PublicCatalogReader;
   isFavorite: (id: string) => boolean;
   onBack: () => void;
   onFavorite: (item: PublicCatalogItem) => void | Promise<void>;
-  onService: (item: PublicCatalogItem) => void | Promise<void>;
+  onService: (item: PublicCatalogItem) => void | Promise<boolean>;
 }) {
   const [item, setItem] = useState<PublicCatalogItem | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+
   useEffect(() => {
     let active = true;
     setLoading(true);
     setError('');
-    catalog.getPublishedBySlug(slug).then((result) => active && setItem(result)).catch(() => active && setError('Não foi possível carregar este imóvel.')).finally(() => active && setLoading(false));
-    return () => { active = false; };
+    catalog
+      .getPublishedBySlug(slug)
+      .then((result) => active && setItem(result))
+      .catch(() => active && setError('Não foi possível carregar este imóvel.'))
+      .finally(() => active && setLoading(false));
+    return () => {
+      active = false;
+    };
   }, [catalog, slug]);
+
   if (loading) return <main className="section-shell"><div className="loading-state">Carregando imóvel…</div></main>;
   if (error) return <main className="section-shell"><div className="error-state">{error}</div></main>;
-  if (!item) return <main className="section-shell"><div className="empty-state"><strong>Imóvel não encontrado ou não publicado.</strong><p>O catálogo público só exibe itens reais em estado publicado.</p><button className="secondary-button" type="button" onClick={onBack}>Voltar ao catálogo</button></div></main>;
+  if (!item) {
+    return (
+      <main className="section-shell">
+        <div className="empty-state">
+          <strong>Imóvel não encontrado ou não publicado.</strong>
+          <p>O catálogo público só exibe itens reais em estado publicado.</p>
+          <button className="secondary-button" type="button" onClick={onBack}>Voltar ao catálogo</button>
+        </div>
+      </main>
+    );
+  }
+
   const images = item.media.filter((media) => media.type === 'image');
   const videos = item.media.filter((media) => media.type === 'video');
-  return <main className="section-shell property-detail"><button className="text-button" type="button" onClick={onBack}>← Voltar ao catálogo</button><div className="detail-hero"><div className="detail-copy"><p className="section-kicker">{item.propertyType} · {item.purpose}</p><h1>{item.title}</h1><p>{item.location}, {item.city}</p><strong className="detail-price">{formatCurrency(item.price)}</strong><div className="hero-actions"><button className="primary-button" type="button" onClick={() => onService(item)}>Quero atendimento</button><button className="secondary-button" type="button" onClick={() => onFavorite(item)}>{isFavorite(item.id) ? 'Remover dos favoritos' : 'Salvar imóvel'}</button></div></div><div className="detail-cover">{images[0] ? <img src={images[0].url} alt={images[0].alt ?? item.title} /> : <span>Imagem não disponível</span>}</div></div><div className="detail-grid"><article><p className="section-kicker">Sobre o imóvel</p><h2>Características</h2><p>{item.description || 'Descrição ainda não cadastrada no catálogo publicado.'}</p><div className="feature-list">{item.features?.length ? item.features.map((feature) => <span key={feature}>{feature}</span>) : <span>Características detalhadas ainda não cadastradas.</span>}</div></article><aside className="detail-facts"><strong>Informações</strong>{item.privateAreaM2 ? <span>Área privativa: {item.privateAreaM2} m²</span> : null}{item.bedrooms ? <span>Quartos: {item.bedrooms}</span> : null}{item.suites ? <span>Suítes: {item.suites}</span> : null}{item.bathrooms ? <span>Banheiros: {item.bathrooms}</span> : null}{item.parkingSpaces ? <span>Vagas: {item.parkingSpaces}</span> : null}<span>Status: {item.status === 'sold' ? 'Vendido' : 'Publicado'}</span>{item.development ? <span>Empreendimento: {item.development.title}{item.development.unitLabel ? ` · ${item.development.unitLabel}` : ''}</span> : null}</aside></div>{images.length > 1 && <div className="detail-gallery">{images.slice(1).map((image) => <img key={image.url} src={image.url} alt={image.alt ?? item.title} />)}</div>}{videos.length > 0 && <div className="video-list">{videos.map((video) => <a key={video.url} href={video.url} target="_blank" rel="noreferrer">Abrir vídeo do imóvel</a>)}</div>}</main>;
+
+  return (
+    <main className="section-shell property-detail">
+      <button className="text-button" type="button" onClick={onBack}>← Voltar ao catálogo</button>
+      <div className="detail-hero">
+        <div className="detail-copy">
+          <p className="section-kicker">{item.propertyType} · {item.purpose}</p>
+          <h1>{item.title}</h1>
+          <p>{item.location}, {item.city}</p>
+          <strong className="detail-price">{formatCurrency(item.price)}</strong>
+          <div className="hero-actions">
+            <button className="primary-button" type="button" onClick={() => void onService(item)}>Quero atendimento</button>
+            <button className="secondary-button" type="button" aria-pressed={isFavorite(item.id)} onClick={() => onFavorite(item)}>
+              {isFavorite(item.id) ? 'Remover dos favoritos' : 'Salvar imóvel'}
+            </button>
+          </div>
+        </div>
+        <div className="detail-cover">
+          {images[0] ? <img src={images[0].url} alt={images[0].alt ?? item.title} /> : <span>Imagem não disponível</span>}
+        </div>
+      </div>
+
+      <div className="detail-grid">
+        <article>
+          <p className="section-kicker">Sobre o imóvel</p>
+          <h2>Características</h2>
+          <p>{item.description || 'Descrição ainda não cadastrada no catálogo publicado.'}</p>
+          <div className="feature-list">
+            {item.features?.length
+              ? item.features.map((feature) => <span key={feature}>{feature}</span>)
+              : <span>Características detalhadas ainda não cadastradas.</span>}
+          </div>
+        </article>
+        <aside className="detail-facts">
+          <strong>Informações</strong>
+          {item.privateAreaM2 ? <span>Área privativa: {item.privateAreaM2} m²</span> : null}
+          {item.bedrooms ? <span>Quartos: {item.bedrooms}</span> : null}
+          {item.suites ? <span>Suítes: {item.suites}</span> : null}
+          {item.bathrooms ? <span>Banheiros: {item.bathrooms}</span> : null}
+          {item.parkingSpaces ? <span>Vagas: {item.parkingSpaces}</span> : null}
+          <span>Status: {item.status === 'sold' ? 'Vendido' : 'Publicado'}</span>
+          {item.development ? (
+            <span>Empreendimento: {item.development.title}{item.development.unitLabel ? ` · ${item.development.unitLabel}` : ''}</span>
+          ) : null}
+        </aside>
+      </div>
+
+      {images.length > 1 && (
+        <div className="detail-gallery">
+          {images.slice(1).map((image) => <img loading="lazy" key={image.url} src={image.url} alt={image.alt ?? item.title} />)}
+        </div>
+      )}
+      {videos.length > 0 && (
+        <div className="video-list">
+          {videos.map((video) => <a key={video.url} href={video.url} target="_blank" rel="noreferrer">Abrir vídeo do imóvel</a>)}
+        </div>
+      )}
+    </main>
+  );
 }
 
-function InstitutionalPage({ page, onService }: { page: { kicker: string; title: string; lead: string; body: string[] }; onService: () => void }) {
-  return <main className="institutional-page section-shell"><div className="page-intro"><p className="section-kicker">{page.kicker}</p><h1>{page.title}</h1><p className="section-lead">{page.lead}</p></div><div className="institutional-body">{page.body.map((paragraph) => <p key={paragraph}>{paragraph}</p>)}</div><button className="primary-button" type="button" onClick={onService}>Solicitar atendimento</button></main>;
+function InstitutionalPage({ page, onService }: { page: InstitutionalPage; onService: () => void }) {
+  return (
+    <main className="institutional-page section-shell">
+      <div className="page-intro">
+        <p className="section-kicker">{page.kicker}</p>
+        <h1>{page.title}</h1>
+        <p className="section-lead">{page.lead}</p>
+      </div>
+      <div className="institutional-body">{page.body.map((paragraph) => <p key={paragraph}>{paragraph}</p>)}</div>
+      <button className="primary-button" type="button" onClick={onService}>Solicitar atendimento</button>
+    </main>
+  );
 }
 
-function OwnerCapture({ intent, onSubmit }: { intent: OwnerIntent; onSubmit: (payload: { intent: OwnerIntent; city: string; propertyType: string; contact: { name: string; email: string; whatsapp: string } }) => void | Promise<void> }) {
-  const [submitted, setSubmitted] = useState(false);
+function OwnerCapture({
+  intent,
+  onSubmit,
+}: {
+  intent: OwnerIntent;
+  onSubmit: (payload: {
+    intent: OwnerIntent;
+    city: string;
+    propertyType: string;
+    contact: { name: string; email: string; whatsapp: string };
+  }) => Promise<boolean>;
+}) {
+  const [status, setStatus] = useState<'idle' | 'busy' | 'success' | 'error'>('idle');
+  const [feedback, setFeedback] = useState('');
+
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const data = new FormData(event.currentTarget);
-    await onSubmit({ intent, city: String(data.get('city') ?? ''), propertyType: String(data.get('propertyType') ?? ''), contact: { name: String(data.get('name') ?? ''), email: String(data.get('email') ?? ''), whatsapp: String(data.get('whatsapp') ?? '') } });
-    setSubmitted(true);
+    const form = event.currentTarget;
+    const data = new FormData(form);
+    setStatus('busy');
+    setFeedback('');
+
+    const accepted = await onSubmit({
+      intent,
+      city: String(data.get('city') ?? '').trim(),
+      propertyType: String(data.get('propertyType') ?? '').trim(),
+      contact: {
+        name: String(data.get('name') ?? '').trim(),
+        email: String(data.get('email') ?? '').trim(),
+        whatsapp: String(data.get('whatsapp') ?? '').trim(),
+      },
+    });
+
+    if (!accepted) {
+      setStatus('error');
+      setFeedback('A solicitação ainda não foi encaminhada. Tente novamente quando o atendimento estiver disponível.');
+      return;
+    }
+
+    form.reset();
+    setStatus('success');
+    setFeedback('Solicitação registrada com sucesso. A equipe poderá continuar o atendimento com o contexto enviado.');
   };
-  return <main className="owner-page section-shell"><div className="page-intro"><p className="section-kicker">Captação de proprietário</p><h1>Quero {intent === 'vender' ? 'vender' : 'alugar'} meu imóvel</h1><p className="section-lead">Envie os dados iniciais. Nesta primeira versão, a equipe Hárpia conduz o processo manualmente.</p></div><form className="owner-form" onSubmit={handleSubmit}><label>Nome<input name="name" autoComplete="name" required /></label><label>E-mail<input name="email" type="email" autoComplete="email" required /></label><label>WhatsApp<input name="whatsapp" inputMode="tel" autoComplete="tel" required /></label><label>Cidade<input name="city" required /></label><label>Tipo de imóvel<input name="propertyType" required /></label><button className="primary-button" type="submit">Enviar solicitação</button>{submitted ? <p className="form-feedback">Solicitação registrada na interface. O encaminhamento real depende do contrato de CRM/WhatsApp configurado.</p> : null}</form></main>;
+
+  return (
+    <main className="owner-page section-shell">
+      <div className="page-intro">
+        <p className="section-kicker">Captação de proprietário</p>
+        <h1>Quero {intent === 'vender' ? 'vender' : 'alugar'} meu imóvel</h1>
+        <p className="section-lead">Envie os dados iniciais. Nesta primeira versão, a equipe Hárpia conduz o processo manualmente.</p>
+      </div>
+      <form className="owner-form" onSubmit={handleSubmit} aria-busy={status === 'busy'}>
+        <label>Nome<input name="name" autoComplete="name" required disabled={status === 'busy'} /></label>
+        <label>E-mail<input name="email" type="email" autoComplete="email" required disabled={status === 'busy'} /></label>
+        <label>WhatsApp<input name="whatsapp" inputMode="tel" autoComplete="tel" required disabled={status === 'busy'} /></label>
+        <label>Cidade<input name="city" required disabled={status === 'busy'} /></label>
+        <label>Tipo de imóvel<input name="propertyType" required disabled={status === 'busy'} /></label>
+        <button className="primary-button" type="submit" disabled={status === 'busy'}>
+          {status === 'busy' ? 'Enviando…' : 'Enviar solicitação'}
+        </button>
+        {feedback ? (
+          <p className={status === 'error' ? 'form-feedback form-feedback--error' : 'form-feedback'} role={status === 'error' ? 'alert' : 'status'}>
+            {feedback}
+          </p>
+        ) : null}
+      </form>
+    </main>
+  );
 }
