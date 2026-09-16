@@ -11,16 +11,27 @@ function response(body: Record<string, unknown>, status = 200) {
   return new Response(JSON.stringify(body), { status, headers });
 }
 
+function namedKey(envName: string): string | undefined {
+  const raw = Deno.env.get(envName);
+  if (!raw) return undefined;
+  try {
+    const parsed = JSON.parse(raw) as Record<string, string>;
+    return parsed.default || Object.values(parsed)[0];
+  } catch {
+    return undefined;
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers });
   if (req.method !== 'POST') return response({ status: 'rejected', reason: 'Método não permitido.' }, 405);
 
   const supabaseUrl = Deno.env.get('SUPABASE_URL');
-  const publishableKey = Deno.env.get('SUPABASE_PUBLISHABLE_KEY') || Deno.env.get('SUPABASE_ANON_KEY');
-  const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+  const publishableKey = namedKey('SUPABASE_PUBLISHABLE_KEYS') || Deno.env.get('SUPABASE_ANON_KEY');
+  const serverKey = namedKey('SUPABASE_SECRET_KEYS') || Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
   const authorization = req.headers.get('Authorization');
 
-  if (!supabaseUrl || !publishableKey || !serviceRoleKey || !authorization) {
+  if (!supabaseUrl || !publishableKey || !serverKey || !authorization) {
     return response({ status: 'rejected', reason: 'Configuração segura do servidor incompleta.' }, 500);
   }
 
@@ -52,7 +63,7 @@ Deno.serve(async (req) => {
   const profileId = String(body.profileId || '').trim();
   if (!profileId) return response({ status: 'rejected', reason: 'Perfil de IA obrigatório.' }, 400);
 
-  const admin = createClient(supabaseUrl, serviceRoleKey, {
+  const admin = createClient(supabaseUrl, serverKey, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
 
