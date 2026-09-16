@@ -27,15 +27,23 @@ Atualizar este arquivo ao iniciar e ao concluir blocos relevantes.
 ## Frente03 — Catálogo interno/Dashboard
 
 - Branch: `frente-03`
-- Status: EM ANDAMENTO
+- Status geral: 🟠 PARCIAL / EM ANDAMENTO
 - Responsável: ChatGPT — Frente03
-- Último commit funcional relevante: `454c4f5201c4a5e1534ab9ad12ed36af2d7dba7f`
-- Handoff parcial: `85440a6d36c228e3f0d29497e0263ada9c1f78e1`
-- Entregue neste bloco: modelo de catálogo; repositório desacoplado com adaptador local sem mocks; CRUD administrativo; estados rascunho/publicado/pausado/vendido; duplicação segura; exclusão lógica; relação empreendimento/unidades; contrato público somente de publicados; filtros derivados de dados reais; dashboard de catálogo; contrato para métricas comerciais; `Front03Workspace` desacoplado.
-- Em andamento: preparação para persistência compartilhada/storage e validação integrada no shell da plataforma.
-- Bloqueios/dependências: RBAC e roteamento global dependem da Frente01; consumo público depende da Frente02; métricas comerciais dependem da Frente04; banco/storage compartilhados ainda precisam de infraestrutura definida.
-- Validação: checagem local da camada TypeScript central realizada; build Vite completo, lint e teste end-to-end estão `NÃO VERIFICADOS` nesta sessão.
-- Próximo passo: integrar um adaptador de persistência de produção quando a infraestrutura comum estiver disponível e executar validação completa sem invadir arquivos globais de outra frente.
+- Último commit funcional relevante: `aa0e1fc66248e58343393a7b8bec49163b4d7528`
+- Regra visual: 🟢 completo e testável | 🟠 parcial/em andamento | 🔴 não iniciado.
+- 🟢 Modelo de domínio do catálogo: empreendimento, unidade, imóvel avulso, estados e mídia.
+- 🟢 Repositório/contrato do catálogo: CRUD, publicação explícita, pausa, vendido, duplicação segura, exclusão lógica e proteção contra unidades órfãs.
+- 🟢 Contrato público: somente publicados, detalhe, filtros e opções de cidade/localização derivados dos dados reais.
+- 🟢 Serviço de métricas do catálogo/dashboard: sem mocks e com fallback real para CRM não conectado.
+- 🟠 `CatalogAdminPage`: implementada, mas build React/Vite completo e teste visual integrado ainda não foram concluídos.
+- 🟠 `DashboardPage`: implementada, mas build React/Vite completo e teste visual integrado ainda não foram concluídos.
+- 🟠 `Front03Workspace`: implementado para integração, mas depende do shell/roteamento da Frente01 para funcionar no produto conjunto.
+- 🟠 Persistência de produção: contrato desacoplado pronto; adaptador atual usa `localStorage` até a infraestrutura compartilhada ser definida.
+- 🟠 Mídia: associação por URL permanente implementada; storage/upload binário real ainda depende da infraestrutura comum.
+- 🟠 Métricas comerciais: contrato pronto; dados reais dependem da Frente04.
+- Validação executada: typecheck estrito da camada central passou; testes de execução passaram para criação, publicação, filtros públicos, dashboard, duplicação, exclusão lógica, bloqueio de exclusão de empreendimento com unidades e bloqueio de alteração de tipo que geraria unidade órfã.
+- NÃO VERIFICADO: build Vite completo da branch; lint global; teste visual em navegador integrado ao shell; RBAC real; persistência compartilhada; storage real.
+- Próximo passo: fechar validação do bloco React da Frente03 e preparar integração sem editar arquivos globais pertencentes à Frente01.
 
 ## Frente04 — CRM/Inbox
 
@@ -103,8 +111,9 @@ Registrar aqui somente itens que dependem de merge ou decisão entre duas ou mai
 
 # Critério de status
 
-- NÃO INICIADA: nenhuma implementação relevante começou.
-- EM ANDAMENTO: há trabalho ativo na branch.
+- 🔴 NÃO INICIADO: nenhuma implementação relevante começou.
+- 🟠 PARCIAL / EM ANDAMENTO: há trabalho ativo ou falta integração/validação/teste para concluir.
+- 🟢 COMPLETO E TESTÁVEL: escopo concluído, validações relevantes executadas e usuário pode testar.
 - BLOQUEADA: depende de decisão ou contrato externo.
 - PRONTA PARA INTEGRAÇÃO: escopo da frente concluído e testado isoladamente.
 - INTEGRADA: merge validado no produto conjunto.
