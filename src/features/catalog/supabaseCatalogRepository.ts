@@ -163,9 +163,9 @@ export class SupabaseCatalogRepository implements CatalogRepository {
   constructor(private readonly client: CatalogSupabaseClient) {}
 
   async list(query: CatalogQuery = {}): Promise<CatalogItem[]> {
-    const result = await this.client
-      .from('catalog_items')
-      .select('*') as SupabaseResultLike<CatalogRow[]>;
+    let builder = this.client.from('catalog_items').select('*');
+    if (!query.includeDeleted) builder = builder.is('deleted_at', null);
+    const result = await builder as SupabaseResultLike<CatalogRow[]>;
 
     if (result.error) fail(result.error, 'Não foi possível carregar o catálogo.');
     return applyLocalQuery((result.data ?? []).map(fromRow), query);
@@ -289,9 +289,12 @@ export class SupabaseCatalogRepository implements CatalogRepository {
       .from('catalog_items')
       .update({ deleted_at: new Date().toISOString() })
       .eq('id', id)
-      .is('deleted_at', null) as SupabaseResultLike<unknown>;
+      .is('deleted_at', null)
+      .select('id')
+      .maybeSingle() as SupabaseResultLike<{ id: string }>;
 
     if (result.error) fail(result.error, 'Não foi possível excluir o item.');
+    if (!result.data) throw new Error('Item não encontrado ou sem permissão para exclusão.');
     notifyCatalogChanged();
   }
 }
