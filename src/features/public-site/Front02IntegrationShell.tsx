@@ -3,6 +3,7 @@ import type { ClientAreaDataState } from '../client-area/ClientArea';
 import { useClientAreaData, type ClientAreaDataSourcePort } from '../client-area/useClientAreaData';
 import { createFront03PublicCatalogReader, type Front03PublicCatalogServicePort } from '../public-catalog/front03Adapter';
 import PublicExperience from './PublicExperience';
+import { PublicExperienceBoundary } from './PublicExperienceBoundary';
 import { createFront01PublicAuthBridge, type Front01AuthContextPort } from './front01AuthAdapter';
 import {
   createFront04ConversionHandler,
@@ -75,13 +76,15 @@ function ComposedExperience(props: ComposedExperienceProps) {
 
   if (!props.favoritesStore) {
     return (
-      <PublicExperience
-        catalog={catalog}
-        auth={authBridge}
-        clientAreaData={clientAreaData}
-        onConversion={onConversion}
-        internalAreaHref={props.internalAreaHref}
-      />
+      <PublicExperienceBoundary>
+        <PublicExperience
+          catalog={catalog}
+          auth={authBridge}
+          clientAreaData={clientAreaData}
+          onConversion={onConversion}
+          internalAreaHref={props.internalAreaHref}
+        />
+      </PublicExperienceBoundary>
     );
   }
 
@@ -127,14 +130,16 @@ function ExperienceWithFavorites({
   };
 
   return (
-    <PublicExperience
-      catalog={catalog}
-      auth={authBridge}
-      favorites={favorites.bridge}
-      clientAreaData={accountData}
-      onConversion={onConversion}
-      internalAreaHref={internalAreaHref}
-    />
+    <PublicExperienceBoundary>
+      <PublicExperience
+        catalog={catalog}
+        auth={authBridge}
+        favorites={favorites.bridge}
+        clientAreaData={accountData}
+        onConversion={onConversion}
+        internalAreaHref={internalAreaHref}
+      />
+    </PublicExperienceBoundary>
   );
 }
 
