@@ -79,27 +79,33 @@ function resolveContact(
  * Adapter entre os eventos produzidos pela experiência pública (Frente02)
  * e o contrato de ingestão de lead atualmente exposto pela Frente04.
  *
- * Regras importantes:
- * - não cria contato fictício;
- * - não envia mensagem automática;
- * - CTAs anônimos sem nome retornam `contact-required` para a camada de UI;
- * - quando houver cliente autenticado, seus dados podem completar o evento.
+ * O handler devolvido é compatível diretamente com `PublicSiteApp.onConversion`.
+ * Resultados de ingestão são expostos por `onResult`, sem alterar a assinatura
+ * pública usada pelos componentes.
  */
 export function createFront04ConversionHandler(options: {
   ingest: Front04LeadConversionIngestPort;
   getCurrentClient?: () => ClientProfileView | null;
   onContactRequired?: (event: PublicSiteConversion) => void | Promise<void>;
-}) {
-  return async (event: PublicSiteConversion): Promise<PublicConversionHandlingResult> => {
+  onResult?: (
+    result: PublicConversionHandlingResult,
+    event: PublicSiteConversion,
+  ) => void | Promise<void>;
+}): (event: PublicSiteConversion) => Promise<void> {
+  return async (event: PublicSiteConversion): Promise<void> => {
     const currentClient = options.getCurrentClient?.() ?? null;
     const contact = resolveContact(event, currentClient);
 
     if (!contact) {
       await options.onContactRequired?.(event);
-      return {
-        accepted: false,
-        reason: 'contact-required',
-      };
+      await options.onResult?.(
+        {
+          accepted: false,
+          reason: 'contact-required',
+        },
+        event,
+      );
+      return;
     }
 
     const result = await options.ingest({
@@ -112,10 +118,13 @@ export function createFront04ConversionHandler(options: {
       metadata: event.metadata,
     });
 
-    return {
-      accepted: true,
-      leadId: result.leadId,
-      automaticMessageSent: false,
-    };
+    await options.onResult?.(
+      {
+        accepted: true,
+        leadId: result.leadId,
+        automaticMessageSent: false,
+      },
+      event,
+    );
   };
 }
