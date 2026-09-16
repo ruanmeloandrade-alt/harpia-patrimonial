@@ -79,9 +79,19 @@ export class PublicCatalogService {
     const item = await this.getByIdOrCode(value);
     if (!item || item.kind !== 'development') return null;
 
+    const units = await this.listUnits(item.id);
+    const prices = units
+      .map((unit) => unit.price)
+      .filter((price): price is number => price !== null);
+
+    if (!prices.length && item.price !== null) prices.push(item.price);
+
     return {
       development: item,
-      units: await this.listUnits(item.id),
+      units,
+      priceRange: prices.length
+        ? { min: Math.min(...prices), max: Math.max(...prices) }
+        : null,
     };
   }
 
