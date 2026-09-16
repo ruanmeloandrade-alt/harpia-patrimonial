@@ -5,12 +5,12 @@ Branch proprietária: `frente-04`
 
 ## Semáforo
 
-- 🟠 CRM/Kanban/Lead 360 — código F04 implementado e runtime compartilhado F01 já disponível; falta correção da montagem da fila de leads sem etapa e teste final no produto.
-- 🟠 Inbox — runtime compartilhado F01 + adapter F04↔F05 já montados; seleção explícita de SalesBot/IA existe na composição integrada; falta build/E2E e teste pelo usuário.
-- 🟠 Site → CRM — Frente02 já está ligada ao `public-lead-ingest` da Frente01 e retorna `automaticMessageSent: false`; falta ensaio ponta a ponta sem inserir dado fictício.
+- 🟠 CRM/Kanban/Lead 360 — código F04 implementado, fila de leads sem etapa incorporada ao `CrmWorkspace` canônico e runtime compartilhado F01 já disponível; falta sincronizar esse delta no integrador e testar no produto.
+- 🟠 Inbox — runtime compartilhado F01 + adapter F04↔F05 já montados; seleção explícita de SalesBot/IA existe na branch F04; falta sincronização final, build/E2E e teste pelo usuário.
+- 🟠 Site → CRM — Frente02 já está ligada ao `public-lead-ingest` da Frente01 e retorna `automaticMessageSent: false`; falta ensaio ponta a ponta com usuário/ambiente real.
 - 🟠 Dashboard CRM — Frente01 já fornece `CrmSnapshotMetricsProvider` usando o mesmo repository compartilhado; falta validação visual integrada.
 - 🟠 Persistência — Supabase dedicado ativo, `platform_module_state` aplicado e repositories compartilhados montados; falta sessão real de usuário para validar RLS/escrita pela UI.
-- 🟠 SalesBot/IA/Automatize — runtime real da Frente05 já está composto com CRM actions/event sink na Frente01; falta execução ponta a ponta com recurso real configurado.
+- 🟠 SalesBot/IA/Automatize — runtime real da Frente05 já está composto com CRM actions/event sink na Frente01; falta sincronizar o adapter mais novo da F04 e executar ponta a ponta com recurso real configurado.
 - 🔴 Teste final pelo usuário — ainda depende de administrador real, configuração de ambiente/deploy, build/typecheck conjunto e QA E2E.
 
 Nenhum bloco recebe 🟢 apenas por estar montado em código.
@@ -68,26 +68,44 @@ Isso confirma que o ambiente continua sem dado fictício e também explica por q
 
 ## Desvios encontrados no QA
 
-### 1. Lead sem etapa pode ficar invisível no CRM integrado
+### 1. Lead sem etapa — corrigido na branch F04, pendente de sincronização
 
-A composição atual da Frente01 monta `CrmWorkspace` diretamente. Conversões públicas são criadas sem obrigação de estágio/funil. Portanto um lead pode existir no banco e não aparecer em nenhuma coluna do Kanban.
+A composição observada na Frente01 monta `CrmWorkspace` diretamente. A Frente04 tornou esse mesmo caminho seguro: `CrmWorkspace.tsx` agora é a entrada canônica e incorpora `UnassignedLeadsQueue`, enquanto a UI anterior foi preservada em `CrmWorkspaceCore.tsx`.
 
-A Frente04 já possui `UnassignedLeadsQueue` e `Front04CrmScreen`, que mantêm esses leads visíveis e permitem classificá-los.
+Com isso:
 
-Correção de integração aceita:
+- conversões sem `stageId` permanecem visíveis;
+- nenhum estágio fictício é criado;
+- o lead só pode ser classificado em etapa de funil ativo;
+- `Front04CrmScreen` não duplica a fila.
 
-1. preferencial: montar `Front04CrmScreen` no `IntegratedCrm`; ou
-2. incorporar a fila de leads sem etapa dentro do `CrmWorkspace` canônico antes do merge final.
+Validação isolada de TypeScript do wrapper + fila: OK.
 
-Não criar etapa fictícia nem mover automaticamente o lead para uma etapa inventada.
+O integrador precisa sincronizar juntos:
+
+- `src/features/crm/CrmWorkspace.tsx`;
+- `src/features/crm/CrmWorkspaceCore.tsx`;
+- `src/features/crm/UnassignedLeadsQueue.tsx`.
 
 ### 2. Fonte de recursos SalesBot/IA deve permanecer explícita
 
-A composição integrada da Frente01 atualmente lista recursos da Frente05 diretamente na Inbox. A branch canônica F04 aceita `salesBots` e `aiAgents` por props para evitar acoplamento interno F04→F05.
+A composição integrada observada na Frente01 ainda lista recursos da Frente05 diretamente dentro da Inbox.
 
-No merge final, preservar seleção explícita por conversa e não escolher bot/agente automaticamente.
+A branch canônica F04 recebe `salesBots` e `aiAgents` por props. No merge final, preservar essa separação para que CRM/Inbox não dependa do repository interno da Frente05.
 
-### 3. Avisos de segurança foram rechecados no banco real
+A seleção continua explícita por conversa; nenhum bot/agente deve ser escolhido automaticamente.
+
+### 3. Adapter F04↔F05 da Frente01 está atrás da branch F04
+
+Preservar a versão atual da Frente04 de `src/features/crm/front05Adapter.ts`.
+
+Ela evita:
+
+- retomar execução pausada de um SalesBot diferente do selecionado;
+- mostrar status de uma execução antiga para outro `botId`/`agentId`;
+- disparar novamente o mesmo agente IA quando ele já está em execução.
+
+### 4. Avisos de segurança foram rechecados no banco real
 
 O Security Advisor ainda exibe avisos históricos sobre RPCs, porém a definição atual do banco foi conferida diretamente:
 
@@ -95,13 +113,17 @@ O Security Advisor ainda exibe avisos históricos sobre RPCs, porém a definiç�
 - `save_platform_module_state` está executável somente por `authenticated`, também `SECURITY INVOKER`, e valida `private.can_write_platform_module(...)`;
 - `list_internal_assignees` continua `SECURITY DEFINER`, executável somente por `authenticated`, e filtra acesso por `private.user_has_permission(...)`.
 
-Portanto o aviso `anon` observado anteriormente não representa o grant atual do banco. A Frente04 não vai alterar grants dessas funções; o integrador/F01-F05 ainda deve manter a revisão de segurança antes do verde final.
+Portanto o aviso `anon` observado anteriormente não representa o grant atual do banco. A Frente04 não altera grants dessas funções; o integrador/F01-F05 mantém a revisão de segurança antes do verde final.
+
+## Delta mínimo de sync
+
+Consultar `docs/frentes/FRENTE-04-SYNC-DELTA.md` antes do merge final.
 
 ## Critério restante para fechar F04
 
 A Frente04 pode seguir para verde quando:
 
-1. leads sem etapa estiverem visíveis na rota integrada;
+1. os deltas atuais da branch F04 estiverem sincronizados no integrador;
 2. build/typecheck conjunto passar;
 3. uma sessão interna real validar leitura/escrita CRM e Inbox com RLS;
 4. site → CRM for validado ponta a ponta sem mensagem automática;
