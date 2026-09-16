@@ -48,7 +48,7 @@ function BlockConfigEditor({ botId, block, onChange }: { botId: string; block: S
   return <div className="f05-block-config">{(definitions[block.type] ?? []).map(([key, label, placeholder]) => <label className="f05-inline-field" key={key}>{label}<input value={value(key)} onChange={(e) => set(key, e.target.value)} placeholder={placeholder}/></label>)}</div>;
 }
 
-export function SalesBotWorkspace({ canManage = true }: { canManage?: boolean }) {
+export function SalesBotWorkspace({ canManage = false }: { canManage?: boolean }) {
   const [bots, setBots] = useState(() => listSalesBots());
   const [selectedId, setSelectedId] = useState<string | null>(() => bots[0]?.id ?? null);
   const [newName, setNewName] = useState('');
