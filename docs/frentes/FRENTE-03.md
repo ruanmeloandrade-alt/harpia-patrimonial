@@ -189,37 +189,70 @@ Não conectar Meta ou WhatsApp.
 - estados vazios são claros;
 - build funciona na branch.
 
-## Handoff — bloco iniciado em 16/09/2026
+## Handoff — atualizado em 16/09/2026
 
-- Status: EM ANDAMENTO. A estrutura funcional própria da Frente03 foi implementada, mas a frente ainda não deve ser classificada como `PRONTA PARA INTEGRAÇÃO` porque persistência compartilhada/storage, integração no shell e build completo da branch ainda precisam ser validados.
-- Último commit funcional antes deste registro: `454c4f5201c4a5e1534ab9ad12ed36af2d7dba7f` (`[F03] dashboard: centralizar exports do modulo`).
-- O que foi entregue:
-  - modelo de domínio para empreendimento, unidade e imóvel avulso;
-  - status `draft`, `published`, `paused` e `sold`;
-  - interface `CatalogRepository` e adaptador local persistente sem seed/mock;
-  - criação, edição, publicação explícita, pausa, venda, duplicação com novo identificador/código e exclusão lógica protegida por confirmação na UI;
-  - relação de unidade com empreendimento;
-  - associação de fotos, vídeos e plantas/arquivos por URL permanente;
-  - `PublicCatalogService` que retorna somente itens publicados e deriva filtros a partir de dados reais;
-  - `CatalogAdminPage` com empty state, busca e filtros;
-  - `DashboardPage` com métricas reais do catálogo e zero/empty state para métricas comerciais não conectadas;
-  - contrato `CommercialMetricsProvider` para a Frente04 fornecer métricas sem acoplamento;
-  - `Front03Workspace` para a Frente01 integrar Dashboard + Catálogo sem a Frente03 editar o roteador global;
-  - estilos responsivos isolados dentro das pastas da Frente03;
-  - exports de módulo em `src/features/catalog/index.ts` e `src/features/dashboard/index.ts`.
-- O que ficou pendente:
-  - persistência de produção compartilhada (banco/backend) substituindo o adaptador `localStorage` quando a infraestrutura da Frente01 estiver definida;
-  - upload binário/storage real para fotos, vídeos e arquivos; a UI atual associa URLs permanentes e não simula upload;
-  - conexão do `canManage` com RBAC real da Frente01;
-  - ligação do workspace ao shell/roteador raiz pela Frente01;
-  - consumo do `PublicCatalogService` pela Frente02;
-  - métricas comerciais reais fornecidas pela Frente04;
-  - build Vite completo da branch: NÃO VERIFICADO nesta sessão;
-  - teste visual em navegador real integrado ao shell: NÃO VERIFICADO nesta sessão.
-- Modelo de dados criado/alterado: `CatalogItem`, `CatalogItemDraft`, `CatalogLocation`, `CatalogMedia`, `CatalogStatus`, `CatalogItemKind`, `PublicCatalogItem` e filtros públicos em `src/features/catalog/types.ts`.
-- Contrato público exposto: `PublicCatalogService.list`, `getByIdOrCode` e `getFilterOptions`; a leitura parte exclusivamente de registros com status `published`.
-- Métricas já reais: publicados, rascunhos, pausados, vendidos, valor de estoque não vendido com preço informado, distribuição dos publicados por cidade e por finalidade.
-- Métricas aguardando CRM: leads, visitas, propostas, negociações, vendas comerciais, pipeline/VGV comercial, ticket, conversão, origem dos leads, demanda comercial por região e próximas ações.
-- Testes executados: camada TypeScript de domínio/repositório/contratos foi submetida a checagem local de tipos durante a construção; inspeção final dos arquivos e da árvore da branch realizada no GitHub. Build completo, lint e teste end-to-end: NÃO VERIFICADOS.
-- Riscos conhecidos: `localStorage` é um adaptador transitório por navegador e não substitui banco compartilhado; mídia por URL depende de storage permanente; branch da Frente03 não deve editar arquivos globais para forçar demonstração.
-- Instruções para o chat de integração: integrar `Front03Workspace` ou, separadamente, `DashboardPage` e `CatalogAdminPage`; fornecer `canManage` pelo RBAC real; substituir/injetar `CatalogRepository` de produção quando a persistência compartilhada existir; fornecer `CommercialMetricsProvider` da Frente04; a Frente02 deve consumir o serviço público/contrato sem criar outra fonte de catálogo.
+Legenda obrigatória: 🟢 completo e testável | 🟠 parcial/em andamento | 🔴 não iniciado.
+
+- Status geral: 🟠 **PARCIAL / EM ANDAMENTO**. A camada funcional própria da Frente03 avançou e já possui blocos validados, mas a frente ainda não é `PRONTA PARA INTEGRAÇÃO` porque faltam build Vite completo, teste visual integrado, persistência compartilhada/storage e integrações obrigatórias com outras frentes.
+- Último commit funcional relevante: `aa0e1fc66248e58343393a7b8bec49163b4d7528` (`[F03] catalogo: proteger integridade entre empreendimentos e unidades`).
+- Último commit de status/handoff antes deste registro: `95a401ee0846c107d9da9dac5fd6254cd6168586`.
+
+### Estado por bloco
+
+- 🟢 **Modelo de domínio do catálogo** — empreendimento, unidade, imóvel avulso, finalidade, localização, preço, lançamento, características, estilo de vida, incorporadora/origem, mídia e estados.
+- 🟢 **Repositório/contrato do catálogo** — CRUD, busca, filtros internos, publicação explícita, pausa, vendido, duplicação segura e exclusão lógica.
+- 🟢 **Integridade empreendimento/unidades** — criação de unidade exige empreendimento válido; empreendimento com unidades ativas não pode ser excluído nem convertido para outro tipo deixando unidades órfãs.
+- 🟢 **Contrato de leitura pública** — `PublicCatalogService` expõe somente itens publicados, detalhe por id/código, filtros e opções de cidade/localização derivadas dos dados reais.
+- 🟢 **Serviço de dashboard de catálogo** — métricas derivadas do repositório real e fallback comercial zerado quando CRM não está conectado.
+- 🟠 **CatalogAdminPage** — implementada com formulário, edição, busca, filtros, ações e empty states; typecheck TSX isolado passou, mas build Vite real e teste visual no shell ainda não foram executados.
+- 🟠 **DashboardPage** — implementada com métricas do catálogo, estado de CRM não conectado e empty states; typecheck TSX isolado passou, mas build Vite real e teste visual no shell ainda não foram executados.
+- 🟠 **Front03Workspace** — Dashboard + Catálogo desacoplados e prontos para encaixe; integração real depende do shell/roteador da Frente01.
+- 🟠 **Persistência de produção** — interface `CatalogRepository` permite substituição; adaptador atual usa `localStorage` e não é a persistência compartilhada final.
+- 🟠 **Mídia** — associação de fotos, vídeos e plantas/arquivos por URL permanente está pronta; upload/storage binário real ainda depende da infraestrutura compartilhada.
+- 🟠 **Métricas comerciais** — `CommercialMetricsProvider` está definido; dados reais dependem da Frente04.
+
+### Testes realmente executados
+
+- 🟢 Typecheck estrito da camada central (`types.ts`, `catalogRepository.ts`, `publicCatalog.ts`, `dashboardService.ts`): **PASSOU**.
+- 🟢 Teste de execução de criação de empreendimento, unidade e imóvel avulso: **PASSOU**.
+- 🟢 Confirmação de que rascunhos não aparecem no catálogo público: **PASSOU**.
+- 🟢 Publicação e leitura pública somente de publicados: **PASSOU**.
+- 🟢 Filtros públicos por cidade e finalidade e opções derivadas dos dados reais: **PASSOU**.
+- 🟢 Dashboard com contagem real do catálogo e métricas comerciais zeradas sem CRM: **PASSOU**.
+- 🟢 Duplicação gerando novo id, novo código e status rascunho: **PASSOU**.
+- 🟢 Bloqueio de exclusão de empreendimento com unidades ativas: **PASSOU**.
+- 🟢 Bloqueio de alteração de tipo de empreendimento que deixaria unidade órfã: **PASSOU**.
+- 🟢 Exclusão lógica de unidade e posterior exclusão válida do empreendimento: **PASSOU**.
+- 🟢 Marcação de vendido e reflexo nas métricas: **PASSOU**.
+- 🟢 Typecheck isolado dos componentes React/TSX da Frente03 com seus contratos: **PASSOU**.
+
+### Ainda não verificado
+
+- 🟠 Build Vite completo da branch: **NÃO VERIFICADO**.
+- 🟠 Lint global: **NÃO VERIFICADO** porque o projeto não possui script/configuração de lint disponível nesta branch.
+- 🟠 Teste visual em navegador real integrado ao shell: **NÃO VERIFICADO**.
+- 🟠 Integração do `canManage` com RBAC real da Frente01: **NÃO VERIFICADO**.
+- 🟠 Persistência compartilhada/backend: **NÃO VERIFICADO**.
+- 🟠 Storage/upload real de mídia: **NÃO VERIFICADO**.
+- 🟠 Consumo real pela Frente02: **NÃO VERIFICADO**.
+- 🟠 Métricas reais da Frente04: **NÃO VERIFICADO**.
+
+### Modelo de dados e contratos
+
+- Modelo de dados: `CatalogItem`, `CatalogItemDraft`, `CatalogLocation`, `CatalogMedia`, `CatalogStatus`, `CatalogItemKind`, `PublicCatalogItem` e filtros públicos em `src/features/catalog/types.ts`.
+- Contrato público: `PublicCatalogService.list`, `getByIdOrCode` e `getFilterOptions`.
+- Contrato de dashboard comercial: `CommercialMetricsProvider`.
+- Contrato para persistência substituível: `CatalogRepository`.
+
+### Riscos conhecidos
+
+- `localStorage` é adaptador transitório por navegador e não substitui banco compartilhado.
+- mídia por URL depende de storage permanente.
+- a Frente03 não deve editar roteador, providers, `package.json` ou CSS global para forçar integração.
+
+### Instruções para integração
+
+- Frente01 deve integrar `Front03Workspace` ou, separadamente, `DashboardPage` e `CatalogAdminPage`, fornecendo RBAC real e roteamento.
+- A persistência final deve implementar `CatalogRepository` sem alterar o contrato dos consumidores.
+- Frente02 deve consumir `PublicCatalogService`/contrato equivalente, sem criar segunda fonte de catálogo.
+- Frente04 deve fornecer `CommercialMetricsProvider` para alimentar métricas comerciais reais.
