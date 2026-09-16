@@ -27,10 +27,16 @@ const CONDITION_PATH = '[\\p{L}\\p{N}_.-]+';
 const conditionExistsPrefix = new RegExp(`^exists\\s+${CONDITION_PATH}$`, 'iu');
 const conditionExistsSuffix = new RegExp(`^${CONDITION_PATH}\\s+exists$`, 'iu');
 const conditionComparison = new RegExp(`^${CONDITION_PATH}\\s*(contains|==|!=|>=|<=|=|>|<)\\s*.+$`, 'iu');
+const delayDuration = /^(\d+)\s*(s|m|h|d|w)$/i;
 
 export function validateSalesBotConditionExpression(expression: string): boolean {
   const value = expression.trim();
   return conditionExistsPrefix.test(value) || conditionExistsSuffix.test(value) || conditionComparison.test(value);
+}
+
+export function validateSalesBotDelayDuration(duration: string): boolean {
+  const match = duration.trim().match(delayDuration);
+  return Boolean(match && Number(match[1]) > 0);
 }
 
 export function validateSalesBotBlock(block: SalesBotBlock): string[] {
@@ -43,6 +49,13 @@ export function validateSalesBotBlock(block: SalesBotBlock): string[] {
     const expression = String(block.config.expression ?? '').trim();
     if (expression && !validateSalesBotConditionExpression(expression)) {
       issues.push(`${block.label}: condição inválida. Use campo = valor, !=, >, >=, <, <=, contains ou exists campo.`);
+    }
+  }
+
+  if (block.type === 'delay') {
+    const duration = String(block.config.duration ?? '').trim();
+    if (duration && !validateSalesBotDelayDuration(duration)) {
+      issues.push(`${block.label}: duração inválida. Use formatos como 30m, 2h ou 1d.`);
     }
   }
 
