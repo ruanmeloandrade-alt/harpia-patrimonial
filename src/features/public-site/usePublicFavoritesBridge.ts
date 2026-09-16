@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { PublicCatalogItem, PublicCatalogReader } from '../public-catalog/contracts';
 import type { PublicFavoritesBridge } from './PublicSiteApp';
 
@@ -36,9 +36,15 @@ export function usePublicFavoritesBridge(options: {
   const [items, setItems] = useState<PublicCatalogItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const requestVersionRef = useRef(0);
+  const activeClientRef = useRef(clientId);
+  activeClientRef.current = clientId;
 
   const reload = useCallback(async () => {
-    if (!clientId) {
+    const requestVersion = ++requestVersionRef.current;
+    const requestClientId = clientId;
+
+    if (!requestClientId) {
       setItems([]);
       setError('');
       setLoading(false);
@@ -48,7 +54,7 @@ export function usePublicFavoritesBridge(options: {
     setLoading(true);
     setError('');
     try {
-      const references = await store.list(clientId);
+      const references = await store.list(requestClientId);
       const resolved = await Promise.all(
         references.map(async (reference) => {
           const byId = await catalog.getPublishedBySlug(reference.itemId);
@@ -57,12 +63,16 @@ export function usePublicFavoritesBridge(options: {
           return catalog.getPublishedBySlug(reference.itemSlug);
         }),
       );
+      if (requestVersion !== requestVersionRef.current || activeClientRef.current !== requestClientId) return;
       setItems(resolved.filter((item): item is PublicCatalogItem => Boolean(item)));
     } catch (cause) {
+      if (requestVersion !== requestVersionRef.current || activeClientRef.current !== requestClientId) return;
       setItems([]);
       setError(cause instanceof Error ? cause.message : 'Não foi possível carregar os favoritos.');
     } finally {
-      setLoading(false);
+      if (requestVersion === requestVersionRef.current && activeClientRef.current === requestClientId) {
+        setLoading(false);
+      }
     }
   }, [catalog, clientId, store]);
 
@@ -83,19 +93,23 @@ export function usePublicFavoritesBridge(options: {
         return;
       }
 
+      const operationClientId = clientId;
       setError('');
       const exists = favoriteIds.has(item.id);
 
       try {
         if (exists) {
-          await store.remove(clientId, item.id);
+          await store.remove(operationClientId, item.id);
+          if (activeClientRef.current !== operationClientId) return;
           setItems((current) => current.filter((candidate) => candidate.id !== item.id));
           return;
         }
 
-        await store.add(clientId, { itemId: item.id, itemSlug: item.slug });
+        await store.add(operationClientId, { itemId: item.id, itemSlug: item.slug });
+        if (activeClientRef.current !== operationClientId) return;
         setItems((current) => current.some((candidate) => candidate.id === item.id) ? current : [...current, item]);
       } catch (cause) {
+        if (activeClientRef.current !== operationClientId) return;
         setError(cause instanceof Error ? cause.message : 'Não foi possível atualizar este favorito.');
       }
     },
