@@ -82,6 +82,9 @@ function resolveContact(
  * O handler devolvido é compatível diretamente com `PublicSiteApp.onConversion`.
  * Resultados de ingestão são expostos por `onResult`, sem alterar a assinatura
  * pública usada pelos componentes.
+ *
+ * Falta de contato é uma falha explícita. Isso garante que um pipeline
+ * CRM -> WhatsApp nunca avance sem que a captura do lead tenha sido aceita.
  */
 export function createFront04ConversionHandler(options: {
   ingest: Front04LeadConversionIngestPort;
@@ -97,15 +100,14 @@ export function createFront04ConversionHandler(options: {
     const contact = resolveContact(event, currentClient);
 
     if (!contact) {
+      const result: PublicConversionHandlingResult = {
+        accepted: false,
+        reason: 'contact-required',
+      };
+
       await options.onContactRequired?.(event);
-      await options.onResult?.(
-        {
-          accepted: false,
-          reason: 'contact-required',
-        },
-        event,
-      );
-      return;
+      await options.onResult?.(result, event);
+      throw new Error('Nome do contato é obrigatório para registrar o atendimento.');
     }
 
     const result = await options.ingest({
