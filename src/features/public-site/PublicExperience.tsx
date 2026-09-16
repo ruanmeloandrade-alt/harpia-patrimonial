@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useMemo, useState } from 'react';
+import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import PublicSiteApp, {
   type PublicAuthBridge,
   type PublicFavoritesBridge,
@@ -6,6 +6,7 @@ import PublicSiteApp, {
 } from './PublicSiteApp';
 import type { PublicCatalogReader } from '../public-catalog/contracts';
 import './public-experience.css';
+import './public-polish.css';
 
 interface PublicExperienceProps {
   catalog?: PublicCatalogReader;
@@ -28,6 +29,49 @@ const navigation = [
 
 const auxiliaryPublicPaths = ['/vender', '/alugar'];
 
+const routeMetadata: Record<string, { title: string; description: string }> = {
+  '/': {
+    title: 'Hárpia Patrimonial & Co. | Inteligência patrimonial',
+    description: 'Inteligência patrimonial aplicada a negócios imobiliários, investimentos e decisões que atravessam gerações.',
+  },
+  '/imoveis': {
+    title: 'Imóveis | Hárpia Patrimonial & Co.',
+    description: 'Consulte os imóveis e oportunidades publicados no catálogo da Hárpia Patrimonial & Co.',
+  },
+  '/sobre': {
+    title: 'Sobre | Hárpia Patrimonial & Co.',
+    description: 'Conheça a proposta da Hárpia Patrimonial & Co. e sua atuação em inteligência patrimonial e negócios imobiliários.',
+  },
+  '/investimentos': {
+    title: 'Investimentos | Hárpia Patrimonial & Co.',
+    description: 'Oportunidades imobiliárias analisadas dentro de uma visão mais ampla de patrimônio, preservação e expansão.',
+  },
+  '/leiloes': {
+    title: 'Leilões & Flipping | Hárpia Patrimonial & Co.',
+    description: 'Estratégia para aquisição, transformação e operação de ativos imobiliários em leilões e flipping.',
+  },
+  '/assessoria-juridica': {
+    title: 'Assessoria Jurídica | Hárpia Patrimonial & Co.',
+    description: 'Apoio jurídico integrado às decisões e operações imobiliárias atendidas pela Hárpia.',
+  },
+  '/arquitetura': {
+    title: 'Arquitetura | Hárpia Patrimonial & Co.',
+    description: 'Arquitetura, reformas e soluções relacionadas ao patrimônio, ao espaço e ao bem viver.',
+  },
+  '/vender': {
+    title: 'Quero vender meu imóvel | Hárpia Patrimonial & Co.',
+    description: 'Envie os dados iniciais do seu imóvel para iniciar um atendimento de venda com a equipe Hárpia.',
+  },
+  '/alugar': {
+    title: 'Quero alugar meu imóvel | Hárpia Patrimonial & Co.',
+    description: 'Envie os dados iniciais do seu imóvel para iniciar um atendimento de locação com a equipe Hárpia.',
+  },
+  '/cliente': {
+    title: 'Área do cliente | Hárpia Patrimonial & Co.',
+    description: 'Acesse seus imóveis salvos, interesses e atalhos de atendimento da Hárpia Patrimonial & Co.',
+  },
+};
+
 function normalizePath(path: string) {
   if (path === '/') return path;
   return path.replace(/\/+$/, '') || '/';
@@ -42,6 +86,20 @@ function isKnownPublicPath(path: string) {
   );
 }
 
+function metadataForPath(path: string) {
+  if (routeMetadata[path]) return routeMetadata[path];
+  if (path.startsWith('/imoveis/')) {
+    return {
+      title: 'Detalhe do imóvel | Hárpia Patrimonial & Co.',
+      description: 'Consulte os detalhes de um imóvel publicado no catálogo da Hárpia Patrimonial & Co.',
+    };
+  }
+  return {
+    title: 'Página não encontrada | Hárpia Patrimonial & Co.',
+    description: 'O endereço informado não pertence à experiência pública da Hárpia Patrimonial & Co.',
+  };
+}
+
 function navigatePublic(path: string) {
   window.history.pushState({}, '', path);
   window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -53,12 +111,13 @@ export default function PublicExperience(props: PublicExperienceProps) {
   const [pendingConversion, setPendingConversion] = useState<PublicSiteConversion | null>(null);
   const [contactBusy, setContactBusy] = useState(false);
   const [contactError, setContactError] = useState('');
+  const mobileCloseRef = useRef<HTMLButtonElement>(null);
+  const contactNameRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const history = window.history;
     const originalPushState = history.pushState;
     const originalReplaceState = history.replaceState;
-
     const emitNavigation = () => window.dispatchEvent(new PopStateEvent('popstate'));
 
     history.pushState = function pushState(...args: Parameters<History['pushState']>) {
@@ -84,7 +143,7 @@ export default function PublicExperience(props: PublicExperienceProps) {
       setMobileOpen(false);
 
       if (nextPath !== window.location.pathname && isKnownPublicPath(nextPath)) {
-        window.history.replaceState({}, '', nextPath);
+        window.history.replaceState({}, '', `${nextPath}${window.location.search}`);
       }
     };
 
@@ -93,13 +152,68 @@ export default function PublicExperience(props: PublicExperienceProps) {
     return () => window.removeEventListener('popstate', onPopState);
   }, []);
 
+  useEffect(() => {
+    const metadata = metadataForPath(path);
+    const previousTitle = document.title;
+    const existingDescription = document.querySelector<HTMLMetaElement>('meta[name="description"]');
+    const previousDescription = existingDescription?.content;
+    const description = existingDescription ?? document.createElement('meta');
+
+    document.title = metadata.title;
+    if (!existingDescription) {
+      description.name = 'description';
+      document.head.appendChild(description);
+    }
+    description.content = metadata.description;
+
+    return () => {
+      document.title = previousTitle;
+      if (existingDescription) {
+        existingDescription.content = previousDescription ?? '';
+      } else {
+        description.remove();
+      }
+    };
+  }, [path]);
+
+  useEffect(() => {
+    if (!mobileOpen && !pendingConversion) return;
+
+    const previouslyFocused = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    const focusTarget = window.requestAnimationFrame(() => {
+      if (pendingConversion) contactNameRef.current?.focus();
+      else if (mobileOpen) mobileCloseRef.current?.focus();
+    });
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return;
+      if (pendingConversion && !contactBusy) {
+        setPendingConversion(null);
+        return;
+      }
+      if (mobileOpen) setMobileOpen(false);
+    };
+
+    document.addEventListener('keydown', onKeyDown);
+
+    return () => {
+      window.cancelAnimationFrame(focusTarget);
+      document.removeEventListener('keydown', onKeyDown);
+      document.body.style.overflow = previousOverflow;
+      previouslyFocused?.focus();
+    };
+  }, [contactBusy, mobileOpen, pendingConversion]);
+
   const currentLabel = useMemo(
     () => navigation.find((item) => item.path === path)?.label ?? (path.startsWith('/imoveis/') ? 'Imóvel' : 'Menu'),
     [path],
   );
 
   const forwardConversion = async (event: PublicSiteConversion) => {
-    if (!props.onConversion) return;
+    if (!props.onConversion) throw new Error('Atendimento ainda não conectado.');
 
     const eventHasName = Boolean(event.contact?.name?.trim());
     const authenticatedClientHasName = Boolean(props.auth?.currentClient?.name?.trim());
@@ -194,7 +308,7 @@ export default function PublicExperience(props: PublicExperienceProps) {
                 <strong>HÁRPIA</strong>
                 <small>PATRIMONIAL & CO.</small>
               </div>
-              <button type="button" onClick={() => setMobileOpen(false)} aria-label="Fechar menu">
+              <button ref={mobileCloseRef} type="button" onClick={() => setMobileOpen(false)} aria-label="Fechar menu">
                 ×
               </button>
             </div>
@@ -214,12 +328,8 @@ export default function PublicExperience(props: PublicExperienceProps) {
             </div>
 
             <div className="mobile-public-menu__owner-actions">
-              <button type="button" onClick={() => navigatePublic('/vender')}>
-                Quero vender meu imóvel
-              </button>
-              <button type="button" onClick={() => navigatePublic('/alugar')}>
-                Quero alugar meu imóvel
-              </button>
+              <button type="button" onClick={() => navigatePublic('/vender')}>Quero vender meu imóvel</button>
+              <button type="button" onClick={() => navigatePublic('/alugar')}>Quero alugar meu imóvel</button>
             </div>
 
             <a className="mobile-public-menu__internal" href={props.internalAreaHref ?? '/interno'}>
@@ -240,6 +350,7 @@ export default function PublicExperience(props: PublicExperienceProps) {
             role="dialog"
             aria-modal="true"
             aria-labelledby="public-contact-title"
+            aria-describedby="public-contact-description"
             onMouseDown={(event) => event.stopPropagation()}
           >
             <button
@@ -254,14 +365,14 @@ export default function PublicExperience(props: PublicExperienceProps) {
 
             <p className="public-contact-modal__kicker">Atendimento Hárpia</p>
             <h2 id="public-contact-title">Deixe seu contato para continuarmos.</h2>
-            <p>
+            <p id="public-contact-description">
               Precisamos apenas dos dados essenciais para registrar seu interesse e encaminhar o atendimento com contexto.
             </p>
 
-            <form className="public-contact-form" onSubmit={submitPendingConversion}>
+            <form className="public-contact-form" onSubmit={submitPendingConversion} aria-busy={contactBusy}>
               <label>
                 <span>Nome</span>
-                <input name="name" autoComplete="name" required disabled={contactBusy} />
+                <input ref={contactNameRef} name="name" autoComplete="name" required disabled={contactBusy} />
               </label>
               <label>
                 <span>WhatsApp</span>
