@@ -22,8 +22,12 @@ function safeNumber(value?: number) {
 }
 
 export function normalizeCatalogFilters(filters: PublicCatalogFilters): PublicCatalogFilters {
-  const minPrice = safeNumber(filters.minPrice);
-  const maxPrice = safeNumber(filters.maxPrice);
+  let minPrice = safeNumber(filters.minPrice);
+  let maxPrice = safeNumber(filters.maxPrice);
+
+  if (minPrice !== undefined && maxPrice !== undefined && minPrice > maxPrice) {
+    [minPrice, maxPrice] = [maxPrice, minPrice];
+  }
 
   return {
     purpose: parseText(filters.purpose ?? null),
