@@ -19,6 +19,17 @@ export const FRONT05_PERMISSION_KEYS = {
   integrations: { view: 'integrations.view', manage: 'integrations.manage' },
 } as const;
 
+export const NO_FRONT05_ACCESS: Front05Access = {
+  salesbot: { view: false, manage: false },
+  automations: { view: false, manage: false },
+  ai: { view: false, manage: false },
+  integrations: { view: false, manage: false },
+};
+
+/**
+ * Acesso total existe apenas para usos explícitos (ex.: harness standalone de QA).
+ * O workspace integrado não usa este objeto como fallback de segurança.
+ */
 export const FULL_FRONT05_ACCESS: Front05Access = {
   salesbot: { view: true, manage: true },
   automations: { view: true, manage: true },
