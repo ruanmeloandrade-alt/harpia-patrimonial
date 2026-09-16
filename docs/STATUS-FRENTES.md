@@ -38,14 +38,16 @@ Atualizar este arquivo ao iniciar e ao concluir blocos relevantes.
 ## Frente04 — CRM/Inbox
 
 - Branch: `frente-04`
-- Status: EM ANDAMENTO
+- Status: EM ANDAMENTO — ESCOPO PRÓPRIO IMPLEMENTADO, AGUARDANDO INTEGRAÇÕES OBRIGATÓRIAS E VALIDAÇÃO GLOBAL
 - Responsável: chat atual — Frente04
-- Último commit relevante: `1e4f5a64fa8bf71fdabccc5a4dfae24b3ae2b179`
-- Último commit de implementação relevante: `c6bd4263b90426bddf9cf7e2bc529c3b63838cfa`
-- Entregue/implementado: modelo de domínio CRM; repositórios vazios por padrão; serviço de funis, etapas, leads, tags, campos personalizados, tarefas, histórico e eventos; Kanban configurável; ficha lateral de lead; contrato de conversão do site sem mensagem automática; Inbox de três colunas; contratos de mensagem; ações de CRM pela Inbox; portas de SalesBot/IA; componente único `Front04Workspace`; documentação de integração.
-- Em andamento: acabamento de edição visual completa do lead/observações; validação de build/TypeScript; validação ponta a ponta; integração de rota protegida; persistência multiusuário/backend; usuários internos reais; contratos vivos com Frente05.
-- Bloqueios para ficar VERDE/testável no produto integrado: encaixe do `Front04Workspace` no shell/rota interna da Frente01; adapter de persistência compartilhada/backend; usuários internos da Frente01 para responsáveis. SalesBot/IA permanecem corretamente indisponíveis até a Frente05 conectar.
-- Próximo passo: concluir acabamento próprio da ficha do lead, validar o módulo isoladamente e entregar ao integrador/F01 o ponto único de montagem sem alterar arquivos globais fora da propriedade da Frente04.
+- Último commit relevante: `6c2f629b713a2c81286f91a32e4d5df967d8b3cb`
+- Último commit de implementação relevante: `b2b6e154fd6a1336fa684fa5b66d18f24d5412e0`
+- Entregue/implementado: domínio CRM; repositórios vazios por padrão; serviços de funis, etapas, leads, tags, campos personalizados, tarefas, histórico e eventos; Kanban configurável; Lead 360 com edição completa de contato/contexto/observações; campos personalizados por tipo; fila de leads sem etapa; contrato de conversão sem mensagem automática; Inbox de três colunas; contratos de mensagem; ações de CRM pela Inbox; portas de SalesBot/IA; `Front04Workspace`; documentação de integração e handoff.
+- Validação própria executada: revisão estrutural de CRM/Inbox; checagem isolada de TypeScript/sintaxe do `CrmWorkspace` atualizado e da fila de leads sem etapa sem erros; revisão das proteções de integridade e estados vazios.
+- NÃO VERIFICADO: build completo da aplicação integrada; rota protegida; RBAC real; persistência multiusuário/backend; fluxo real Frente02 → CRM; referências reais Frente03; SalesBot/IA/Automatize reais Frente05; WhatsApp real; teste ponta a ponta pelo usuário.
+- Bloqueios para ficar VERDE/testável: Frente01 montar `Front04Workspace`, fornecer usuários internos e persistência definitiva; Frente02 ligar eventos reais de conversão; Frente05 implementar `InboxAutomationPort` e consumo dos eventos CRM. Integração com Frente03 é necessária para referências reais de catálogo e dashboard, mas não bloqueia o CRM manual básico.
+- Próximo passo da Frente04: revisar e corrigir qualquer problema que apareça no merge/build integrado. Não há outro bloco funcional exclusivo pendente identificado neste momento.
+- Handoff: `docs/frentes/FRENTE-04-HANDOFF.md`.
 
 ## Frente05 — SalesBot/Automatize/IA/Integrações
 
@@ -82,7 +84,7 @@ Formato obrigatório:
 - Arquivo/contrato afetado: `AGENTS.md` e/ou `docs/REGRAS-DE-PRODUCAO.md`.
 - Motivo: solicitação explícita do usuário para que esse formato passe a valer como regra geral e não somente na Frente04.
 - Urgência: ALTA
-- Status: PENDENTE
+- Status: RESOLVIDO — regra incorporada em `docs/REGRAS-DE-PRODUCAO.md`, seção 21.
 
 - Data/hora: 16/09/2026 12:10 BRT
 - Origem: Frente04
@@ -118,7 +120,6 @@ Registrar aqui somente itens que dependem de merge ou decisão entre duas ou mai
 - Trocar adapters locais da Frente04 por persistência compartilhada/backend sem reescrever serviços/UI.
 - Conectar usuários internos da Frente01 como responsáveis do CRM.
 - Conectar WhatsApp e Meta somente na fase final.
-- Propagar o semáforo de progresso 🔴/🟠/🟢 para as regras gerais compartilhadas do projeto.
 
 ---
 
