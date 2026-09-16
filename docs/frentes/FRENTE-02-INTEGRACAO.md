@@ -2,6 +2,7 @@
 
 Data-base: 16/09/2026
 Branch de origem: `frente-02`
+Estado da frente: aguardando integração/validação real
 
 Este documento descreve como integrar a experiência pública e a área do cliente da Frente02 com os contratos atuais das Frentes01, 03 e 04.
 
@@ -33,6 +34,8 @@ Todos os itens opcionais têm fallback honesto:
 
 O shell não cria serviço pertencente a outra frente. Ele apenas compõe os ports recebidos.
 
+Quando favoritos e dados da área do cliente estão conectados, o shell unifica loading/erro/retry. Uma falha de leitura não aparece como “nenhum favorito” e o usuário pode solicitar recarga real.
+
 ## 2. Entry point de baixo nível
 
 Para integração manual ou testes, continuam exportados:
@@ -47,6 +50,7 @@ import {
   createWhatsAppContinuation,
   usePublicFavoritesBridge,
   useClientAreaData,
+  normalizeCatalogFilters,
   publicRouteManifest,
 } from './features/public-site';
 ```
@@ -87,7 +91,7 @@ Integração:
 5. usar `/conta` como entrada protegida/alias para a área `/cliente`;
 6. não criar outro `AuthProvider` ou outra sessão.
 
-A Frente02 também expõe “Minha conta” no header desktop e “Área do cliente” no mobile/rodapé.
+A Frente02 expõe “Minha conta” no header desktop e “Área do cliente” no mobile/rodapé.
 
 ## 4. Auth — Frente01
 
@@ -99,7 +103,7 @@ A Frente02 também expõe “Minha conta” no header desktop e “Área do clie
 - autenticação;
 - tipo de conta.
 
-`user.id` é usado somente como identidade real para favoritos e dados pessoais; a Frente02 não conhece Supabase diretamente.
+O contrato foi conferido contra o `AuthContextValue` atual da Frente01. `user.id` é usado como identidade real para favoritos e dados pessoais; a Frente02 não conhece Supabase diretamente.
 
 ```ts
 const authBridge = createFront01PublicAuthBridge({
@@ -121,6 +125,7 @@ const publicCatalogReader = createFront03PublicCatalogReader(publicCatalogServic
 O adapter cobre:
 
 - título/tipo/finalidade;
+- `typology` real quando disponível, com fallback honesto por `kind`;
 - cidade/bairro/condomínio;
 - código/slug;
 - lançamento e preço;
@@ -131,7 +136,7 @@ O adapter cobre:
 
 A home possui busca real por finalidade, cidade, localização e estilo de vida. O catálogo completo acrescenta lançamento e faixa de preço.
 
-Filtros ficam na URL e suportam refresh/compartilhamento.
+Filtros ficam na URL e suportam refresh/compartilhamento. `normalizeCatalogFilters` impede valores inválidos, NaN, números negativos e valor inválido de lançamento de contaminarem o contrato público.
 
 ## 6. CRM — Frente04
 
@@ -147,7 +152,10 @@ Regras:
 - criar lead não envia mensagem automaticamente;
 - referência do imóvel/serviço é preservada;
 - origem, ação, página e metadados seguem para o CRM;
-- visitante anônimo não recebe contato fictício.
+- visitante anônimo não recebe contato fictício;
+- ausência de contato válido gera falha explícita, não “sucesso vazio”.
+
+O contrato foi conferido contra `LeadConversionEvent`/`ingestLeadConversion` atuais da Frente04.
 
 ## 7. CRM primeiro, WhatsApp depois
 
@@ -162,15 +170,16 @@ const onConversion = createPublicConversionPipeline({
 });
 ```
 
-O número deve ser oficial e injetado na composição a partir de configuração confiável. O schema da Frente01 prevê `organization_settings.phone`, mas o integrador deve respeitar a política de acesso dessa configuração; não expor nem inventar dado para contornar RLS.
+O número deve ser oficial, em formato internacional com DDI, e injetado na composição a partir de configuração confiável. A Frente02 rejeita números fora do intervalo válido e não inventa telefone.
 
 Ordem obrigatória:
 
 1. CRM registra;
 2. somente após sucesso abre WhatsApp;
-3. falha no CRM interrompe a continuação.
+3. falta de contato ou falha no CRM interrompe a continuação;
+4. não existe envio automático de mensagem.
 
-A função apenas abre `wa.me` com contexto preenchido; não envia mensagem automaticamente.
+A função apenas abre `wa.me` com contexto preenchido.
 
 ## 8. Captura de contato e proprietário
 
@@ -206,6 +215,8 @@ Requisitos do store real:
 - adição/remoção idempotentes;
 - sem `localStorage` definitivo.
 
+A camada da Frente02 trata loading, erro, atualização e recarga. Falha de `add/remove/list` mantém estado real e não gera promise rejeitada solta na UI.
+
 A persistência compartilhada ainda precisa ser criada/definida no ponto apropriado da integração.
 
 ## 10. Interesses e histórico da Área do Cliente
@@ -228,7 +239,7 @@ interface ClientAreaDataSourcePort {
 }
 ```
 
-A tela trata dados, loading, erro e ausência de conteúdo. Histórico que referencia imóvel pode abrir o item real pelo slug.
+A tela trata dados, loading, erro, retry e ausência de conteúdo. Histórico que referencia imóvel pode abrir o item real pelo slug.
 
 Não inventar histórico/interesses para demonstração.
 
@@ -238,7 +249,7 @@ O detalhe já prevê:
 
 - galeria;
 - vídeo;
-- características;
+- tipologia/características;
 - localização/valor/status;
 - empreendimento/unidade;
 - favorito;
@@ -257,21 +268,33 @@ Já implementado:
 - filtros na URL;
 - busca rápida da home.
 
-## 13. Checklist após merge
+## 13. O que não deve ser “resolvido” dentro da Frente02
+
+Neste ponto, qualquer tentativa de deixar os itens abaixo verdes isoladamente violaria as regras do projeto:
+
+- criar tabela/store definitivo de favoritos dentro da F2;
+- criar Supabase/auth paralelo;
+- duplicar o catálogo da F3;
+- duplicar CRM da F4;
+- editar o roteador/bootstrap global da F1 sem integração;
+- inventar telefone, imóveis, leads, histórico ou usuários;
+- declarar build/E2E/visual como validado sem execução real.
+
+## 14. Checklist após merge
 
 - montar shell/experiência nas rotas públicas;
 - preservar rotas de Auth/Internal da Frente01;
 - conectar catálogo real;
 - validar busca da home e catálogo com dados reais;
-- validar unidade/empreendimento;
+- validar tipologia e unidade/empreendimento;
 - testar URL filtrada/reload;
 - conectar CRM;
 - configurar WhatsApp oficial;
-- testar falha CRM sem redirecionamento;
+- testar falta de contato/falha CRM sem redirecionamento;
 - conectar store real de favoritos;
-- testar favorito deslogado/logado/removido;
+- testar favorito deslogado/logado/removido, loading, erro e retry;
 - conectar dados do cliente quando disponíveis;
-- testar área do cliente com/sem dados;
+- testar área do cliente com/sem dados e retry;
 - testar vender/alugar sucesso/falha;
 - testar captura anônima e exit-intent;
 - testar overlays por teclado;
@@ -280,7 +303,7 @@ Já implementado:
 - executar build/typecheck no Node exigido pelo projeto;
 - manter `NÃO VERIFICADO` onde não houver execução real.
 
-## 14. Arquivos a preservar no merge
+## 15. Arquivos a preservar no merge
 
 - `src/features/public-site/Front02IntegrationShell.tsx`
 - `src/features/public-site/PublicSiteApp.tsx`
