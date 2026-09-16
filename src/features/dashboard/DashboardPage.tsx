@@ -144,7 +144,7 @@ export function DashboardPage({ catalogRepository, commercialProvider }: Dashboa
         <MetricCard label="Rascunhos" value={snapshot.catalog.drafts} helper="Ainda não publicados" />
         <MetricCard label="Pausados" value={snapshot.catalog.paused} helper="Fora da exposição pública" />
         <MetricCard label="Vendidos" value={snapshot.catalog.sold} helper="Histórico preservado" />
-        <MetricCard label="Valor do estoque" value={money(snapshot.catalog.inventoryValue)} helper="Soma dos itens não vendidos com preço informado" />
+        <MetricCard label="Valor do estoque" value={money(snapshot.catalog.inventoryValue)} helper="Unidades prevalecem sobre o preço do empreendimento para evitar dupla contagem" />
       </div>
 
       <section className="f03-dashboard-section">
@@ -195,7 +195,7 @@ export function DashboardPage({ catalogRepository, commercialProvider }: Dashboa
           <StatList items={availability.demandByRegion ? snapshot.commercial.demandByRegion : []} emptyText={availability.demandByRegion ? 'Nenhum lead com imóvel referenciado para consolidar região.' : 'Métrica aguardando catálogo + referência real do CRM.'} />
         </section>
         <section className="f03-dashboard-panel">
-          <h3>Performance por produto</h3>
+          <h3>Interesse por produto (leads)</h3>
           <StatList items={availability.performanceByProduct ? snapshot.commercial.performanceByProduct : []} emptyText={availability.performanceByProduct ? 'Nenhum interesse real vinculado a produto do catálogo.' : 'Métrica aguardando catálogo + referência real do CRM.'} />
         </section>
         <section className="f03-dashboard-panel">
