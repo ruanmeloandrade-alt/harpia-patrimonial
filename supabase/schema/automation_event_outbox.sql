@@ -70,7 +70,7 @@ returns void
 language plpgsql
 security definer
 set search_path = ''
-as $$;
+as $$
 begin
   if coalesce(current_setting('request.jwt.claim.role', true), '') <> 'service_role' then
     raise exception 'service_role required';
