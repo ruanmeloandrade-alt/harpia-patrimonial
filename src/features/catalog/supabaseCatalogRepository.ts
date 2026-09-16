@@ -162,13 +162,13 @@ function applyLocalQuery(items: CatalogItem[], query: CatalogQuery) {
 export class SupabaseCatalogRepository implements CatalogRepository {
   constructor(private readonly client: CatalogSupabaseClient) {}
 
-  private async validateUnitParent(input: CatalogItemDraft) {
+  private async validateUnitParent(input: CatalogItemDraft, currentParentId?: string) {
     if (input.kind !== 'unit' || !input.parentId) return;
     const parent = await this.getById(input.parentId);
     if (!parent || parent.kind !== 'development') {
       throw new Error('O empreendimento selecionado não está disponível.');
     }
-    if (parent.status === 'sold') {
+    if (parent.status === 'sold' && currentParentId !== input.parentId) {
       throw new Error('Não é possível vincular unidade a um empreendimento vendido.');
     }
   }
@@ -233,7 +233,10 @@ export class SupabaseCatalogRepository implements CatalogRepository {
       merged.typology = undefined;
     }
     validateDraft(merged);
-    await this.validateUnitParent(merged);
+    await this.validateUnitParent(
+      merged,
+      current.kind === 'unit' ? current.parentId : undefined,
+    );
 
     const result = await this.client
       .from('catalog_items')
