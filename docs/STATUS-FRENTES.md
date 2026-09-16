@@ -4,75 +4,64 @@ Atualizar este arquivo ao iniciar e ao concluir blocos relevantes.
 
 ## Frente01 — Núcleo/Auth/Integração global
 
-- Branch: `frente-01`
-- Status observado pela Frente02: EM ANDAMENTO — produto estruturalmente integrado, QA/build final pendentes.
+- Branch: `frente-01`.
+- Status observado pela Frente02: EM ANDAMENTO — integração funcional bastante avançada; QA/build/publicação final pendentes.
 - Backend dedicado Hárpia ativo.
-- `database.types.ts` já foi regenerado e inclui `catalog_items` e `client_favorites`.
-- `PlatformRuntime` usa `SupabaseCatalogRepository` quando o backend está configurado.
-- `IntegratedPublicExperience` injeta `clientId` a partir da sessão autenticada no fluxo legítimo antes da Edge Function.
-- Pendências relevantes à F02: sincronizar os hardenings recentes da F2; endurecer `public-lead-ingest` server-side para não confiar em identidade fornecida pelo caller; alinhar idempotência do favorites store ao RLS; executar build/typecheck integrado.
+- `database.types.ts` atualizado com catálogo/favoritos.
+- `PlatformRuntime` usa runtime Supabase real para catálogo e favoritos.
+- A Frente01 absorveu o head funcional anterior da Frente02.
+- `SupabaseFavoritesStore.add()` já usa `insert` e trata `23505`, sem depender de UPDATE no RLS.
+- `public-lead-ingest` publicado remove identidade fornecida pelo caller e deriva `clientId` pelo JWT de cliente ativo.
+- `client-area-data` publicado exige JWT e filtra somente dados do usuário autenticado.
+- Pendências relevantes à F02: sincronizar o único delta novo da F2 (`Front02IntegrationShell.tsx` do commit `9d55666`), publicar/servir a aplicação React integrada e executar build/typecheck no Node correto.
 
 ## Frente02 — Site público/Área do cliente
 
-- Branch: `frente-02`
-- Status: EM ANDAMENTO — INTEGRADA ESTRUTURALMENTE; QA ESTÁTICO PRÓPRIO NO LIMITE / SYNC, BUILD E E2E PENDENTES.
+- Branch: `frente-02`.
+- Status: EM ANDAMENTO — BASE INTEGRADA NA F1; QA DE INTEGRAÇÃO ATIVO; DADOS REAIS / PUBLICAÇÃO / BUILD / E2E PENDENTES.
 - Responsável: chat/agente Frente02.
-- Hardening atual inclui:
-  - nome + WhatsApp antes do backend;
-  - favoritos por ID antes do slug, isolamento entre contas, serialização por item e proteção contra reload antigo;
-  - interesses/histórico ocultos imediatamente na troca de conta e também na troca da fonte de dados;
-  - erros de favorito visíveis globalmente;
-  - shell limitado a conta `client` ativa;
-  - filtros URL sanitizados/limitados, faixa invertida normalizada e busca da home limpando seleção obsoleta;
-  - defesa contra unidade órfã, faixa de preço coerente e fallback case-insensitive do detalhe;
-  - cidade→localização real na busca da home;
-  - metadata de identidade removida no adapter público;
-  - pipeline preserva sucesso do lead se somente WhatsApp/callback externo falhar;
-  - contexto de WhatsApp normalizado;
-  - Error Boundary para rota malformada;
-  - número WhatsApp inválido degrada sem derrubar site/CRM.
-- Comparação atual F01 × F02 mostra **12 arquivos funcionais** com delta a sincronizar:
-  1. `src/features/client-area/useClientAreaData.ts`;
-  2. `src/features/public-catalog/contracts.ts`;
-  3. `src/features/public-catalog/front03Adapter.ts`;
-  4. `src/features/public-site/Front02IntegrationShell.tsx`;
-  5. `src/features/public-site/HomeCatalogSearch.tsx`;
-  6. `src/features/public-site/PublicExperience.tsx`;
-  7. `src/features/public-site/PublicExperienceBoundary.tsx`;
-  8. `src/features/public-site/catalogQuery.ts`;
-  9. `src/features/public-site/conversionPipeline.ts`;
-  10. `src/features/public-site/front04ConversionAdapter.ts`;
-  11. `src/features/public-site/usePublicFavoritesBridge.ts`;
-  12. `src/features/public-site/whatsappContinuation.ts`.
-- Backend consultado em 16/09/2026: 0 perfis, 0 itens de catálogo, 0 publicados, 0 favoritos, telefone da organização nulo; estado CRM existente, porém com 0 leads e 0 entradas de histórico.
-- Ambiente local disponível: Node `22.16.0`; projeto exige `>=24 <25`, portanto build/typecheck integrado continua NÃO VERIFICADO.
-- Checklist da primeira entrega: `docs/frentes/FRENTE-02-ENTREGA-01.md`.
-- Semáforo detalhado: `docs/frentes/FRENTE-02-STATUS.md`.
+- A F1 já contém todo o lote funcional anterior da F2.
+- Delta funcional atual F02 → F01: **1 arquivo**:
+  - `src/features/public-site/Front02IntegrationShell.tsx` — confirmação visual após lead aceito quando não houver continuação WhatsApp.
+- Último commit funcional F2: `9d55666aeae2b1210325b8dcc8b1277a8690532`.
+- Segurança dos favoritos conferida no Supabase:
+  - RLS ativo;
+  - SELECT/DELETE somente do próprio `auth.uid()`;
+  - INSERT exige cliente ativo e item publicado;
+  - PK `(client_id,item_id)`;
+  - FKs para `user_profiles` e `catalog_items`;
+  - Security Advisor: 0 lints.
+- Segurança do lead público conferida:
+  - `admin_ingest_public_lead` é `SECURITY DEFINER`;
+  - EXECUTE limitado a `postgres` e `service_role`;
+  - `public-lead-ingest` ativo v3;
+  - `client-area-data` ativo v2 com JWT obrigatório.
+- Backend consultado em 16/09/2026: 0 perfis, 0 itens, 0 publicados, 0 favoritos, 0 leads, 0 histórico e telefone da organização nulo.
+- A `gh-pages` atual representa a landing HTML antiga e não a aplicação React integrada.
+- Ambiente desta sessão: Node 22; projeto exige Node `>=24 <25`. Build/typecheck integrado continua NÃO VERIFICADO.
+- Checklist detalhado: `docs/frentes/FRENTE-02-STATUS.md`.
 
 ## Frente03 — Catálogo interno/Dashboard
 
-- Branch: `frente-03`
-- Dependência F02: RESOLVIDA ESTRUTURALMENTE no runtime da Frente01.
-- Contrato público continua compatível com a F2.
-- Producer atual filtra unidade sem empreendimento publicado, usa lookup de código case-insensitive, possui reforços de publicação/mídia e evoluiu para runtime/repositório realtime.
-- A F2 já possui fallback próprio para visibilidade de unidade e lookup case-insensitive, reduzindo a dependência do sync F3 para a jornada pública básica.
-- Ainda é recomendada sincronização F3 → F1 para manter producer/runtime globais alinhados.
-- QA F2 com dado real pendente enquanto não houver item publicado operacional.
+- Branch: `frente-03`.
+- Dependência funcional da F02: RESOLVIDA.
+- A Frente01 já contém o código funcional atual da F3; os deltas F3 → F1 observados na última comparação eram documentação/handoff.
+- Catálogo público atual cobre unidade órfã, preço por unidades, lookup case-insensitive, integridade/publicação, mídia e realtime.
+- QA público com dado real continua pendente porque ainda não há item publicado operacional.
 
 ## Frente04 — CRM/Inbox
 
-- Branch: `frente-04`
-- Dependência F02: RESOLVIDA ESTRUTURALMENTE para site público.
-- Contrato atual continua compatível com o adapter F2.
-- Refatorações recentes de serviço/Inbox não alteraram o contrato público consumido pela F2.
-- Fluxo legítimo F1 injeta `clientId` a partir da sessão; proteção server-side contra caller direto continua pendência do backend/F1.
-- QA real pendente por ausência de lead/conta operacional.
+- Branch: `frente-04`.
+- Dependência funcional da F02: RESOLVIDA para conversão pública.
+- Contrato `LeadConversionEvent` consumido pela F2 continua compatível.
+- Deltas mais novos da F4 observados são internos de CRM/Inbox/leitura e não quebram o contrato público da F2.
+- QA real da jornada depende de lead/conta operacional.
 
 ## Frente05 — SalesBot/Automatize/IA/Integrações
 
-- Branch: `frente-05`
+- Branch: `frente-05`.
 - Sem bloqueio direto adicional para o site público.
-- A própria tela de integrações informa que WhatsApp e Meta permanecem sem conexão real nesta fase; portanto a continuação WhatsApp da F2 continua dependente do dado/configuração oficial.
+- WhatsApp e Meta reais continuam reservados para a fase final; portanto a continuação WhatsApp da F2 depende do telefone/configuração oficial.
 
 ---
 
@@ -80,40 +69,23 @@ Atualizar este arquivo ao iniciar e ao concluir blocos relevantes.
 
 ## F02 → F01 / integrador
 
-- Sincronizar os 12 arquivos funcionais listados acima.
-- Urgência: ALTA antes do QA final da primeira entrega.
-- Status: PENDENTE DE SYNC.
+- Sincronizar somente o novo `src/features/public-site/Front02IntegrationShell.tsx` do commit `9d55666`.
+- Usar `organization_settings.phone` como fonte do telefone oficial quando a operação preencher o número.
+- Publicar/servir a aplicação React integrada atual; não usar a landing estática antiga da `gh-pages` como validação.
+- Executar build/typecheck no Node suportado.
 
-## F02 → F01 / backend
-
-- Endurecer `public-lead-ingest`: remover/ignorar identidade fornecida em `metadata` pelo caller e, quando houver JWT válido de cliente ativo, derivar `clientId` server-side.
-- Urgência: ALTA — integridade de dados.
-- Status: PENDENTE.
-
-## F02 → F01 / favoritos
-
-- Alinhar `SupabaseFavoritesStore.add()` ao RLS atual.
-- Store observado usa `upsert`, enquanto as policies observadas não incluem UPDATE.
-- Preferência: `insert` idempotente com tratamento de `23505`, ou solução equivalente sem ampliar UPDATE desnecessário.
-- Urgência: MÉDIA/ALTA antes do E2E de favoritos.
-- Status: PENDENTE.
-
-## F02 → F03 / integrador
-
-- Sincronizar a versão atual do producer/runtime/realtime do catálogo para a integração global.
-- A jornada pública básica da F2 já possui fallback para os hardenings críticos observados.
-- Urgência: MÉDIA/ALTA antes do QA final com dados reais.
-- Status: PENDENTE DE SYNC.
+Status: PENDENTE DE SYNC/PUBLICAÇÃO.
 
 ---
 
 # Pendências globais relevantes à Frente02
 
-- sincronizar os 12 arquivos funcionais F2;
-- manter producer/runtime atual da F3 alinhado na integração;
-- corrigir hardening server-side de identidade no lead público;
-- alinhar idempotência de favoritos ao RLS;
-- obter dados reais mínimos: conta de cliente, item publicado, atendimento/lead e telefone oficial;
+- sincronizar 1 arquivo funcional novo da F2;
+- obter telefone oficial;
+- criar/usar conta operacional de QA;
+- ter ao menos um item real publicado;
+- ter ao menos um atendimento/lead real;
+- publicar a aplicação React integrada atual;
 - executar build/typecheck no Node suportado;
 - executar QA browser desktop/mobile;
 - executar E2E Auth → catálogo → favorito → lead → área do cliente → WhatsApp.
