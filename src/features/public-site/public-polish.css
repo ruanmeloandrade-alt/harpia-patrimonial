@@ -26,6 +26,52 @@
   opacity: .68;
 }
 
+.client-data-error {
+  margin: 28px 0;
+  min-height: 0;
+}
+
+.client-record-list {
+  display: grid;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.client-record {
+  width: 100%;
+  padding: 15px 16px;
+  display: grid;
+  gap: 5px;
+  border: 1px solid rgba(23, 34, 30, .12);
+  border-radius: 13px;
+  background: rgba(255, 255, 255, .55);
+  color: #17221e;
+  text-align: left;
+}
+
+.client-record strong {
+  font-size: .9rem;
+}
+
+.client-record span,
+.client-record small {
+  color: #68716c;
+  line-height: 1.45;
+}
+
+.client-record small {
+  font-size: .72rem;
+}
+
+.client-record--button {
+  cursor: pointer;
+}
+
+.client-record--button:hover {
+  border-color: rgba(185, 148, 85, .48);
+  background: white;
+}
+
 .harpia-public :where(button, a, input, select):focus-visible,
 .mobile-public-menu :where(button, a):focus-visible,
 .public-contact-modal :where(button, input):focus-visible,
