@@ -1,3 +1,4 @@
+import { validateOutboundWebhookMethod, validateSafeOutboundUrl } from './outboundUrlValidation';
 import type { AutomationAction, AutomationDefinition } from './types';
 
 const requiredByAction: Partial<Record<AutomationAction['type'], string[]>> = {
@@ -27,13 +28,11 @@ export function validateAutomationAction(action: AutomationAction): string[] {
   if (action.type === 'webhook') {
     const url = String(action.config.url ?? '').trim();
     if (url) {
-      try {
-        const parsed = new URL(url);
-        if (!['http:', 'https:'].includes(parsed.protocol)) throw new Error('protocol');
-      } catch {
-        issues.push('Webhook/API: endpoint inválido.');
-      }
+      const urlIssue = validateSafeOutboundUrl(url);
+      if (urlIssue) issues.push(`Webhook/API: ${urlIssue}`);
     }
+    const methodIssue = validateOutboundWebhookMethod(action.config.method);
+    if (methodIssue) issues.push(`Webhook/API: ${methodIssue}`);
   }
 
   return issues;
