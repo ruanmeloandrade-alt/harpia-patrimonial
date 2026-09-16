@@ -126,8 +126,23 @@ begin
     raise exception 'development has active units';
   end if;
 
-  if new.status is distinct from old.status and not can_publish then
-    raise exception 'catalog.publish permission required';
+  if new.status is distinct from old.status then
+    if not can_publish then
+      raise exception 'catalog.publish permission required';
+    end if;
+
+    if old.status = 'sold'::public.catalog_status then
+      raise exception 'sold catalog item is final and cannot change status';
+    elsif old.status = 'draft'::public.catalog_status
+          and new.status not in ('published'::public.catalog_status, 'sold'::public.catalog_status) then
+      raise exception 'invalid catalog status transition: draft -> %', new.status;
+    elsif old.status = 'published'::public.catalog_status
+          and new.status not in ('paused'::public.catalog_status, 'sold'::public.catalog_status) then
+      raise exception 'invalid catalog status transition: published -> %', new.status;
+    elsif old.status = 'paused'::public.catalog_status
+          and new.status not in ('published'::public.catalog_status, 'sold'::public.catalog_status) then
+      raise exception 'invalid catalog status transition: paused -> %', new.status;
+    end if;
   end if;
 
   if new.status = 'published'::public.catalog_status and old.status is distinct from new.status then
