@@ -5,7 +5,7 @@ import { useF05StorageListener } from '../automations/useF05StorageListener';
 import { clearExecutionLogs, listSalesBotExecutions } from './executionRepository';
 import { listSalesBots } from './repository';
 
-export function ExecutionLogsPanel({ canManage = true }: { canManage?: boolean }) {
+export function ExecutionLogsPanel({ canManage = false }: { canManage?: boolean }) {
   const [salesbotLogs, setSalesbotLogs] = useState(() => listSalesBotExecutions());
   const [aiLogs, setAiLogs] = useState(() => listAIAgentExecutions());
   const botsById = useMemo(() => new Map(listSalesBots().map((item) => [item.id, item.name])), [salesbotLogs.length]);
