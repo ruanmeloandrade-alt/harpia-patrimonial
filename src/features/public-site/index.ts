@@ -16,6 +16,15 @@ export type {
   PublicCatalogStatus,
 } from '../public-catalog/contracts';
 
+export {
+  ClientAreaDataProvider,
+  type ClientAreaDataState,
+  type ClientAreaDataView,
+  type ClientHistoryView,
+  type ClientInterestView,
+  type ClientProfileView,
+} from '../client-area/ClientArea';
+
 export { emptyPublicCatalogReader } from '../public-catalog/contracts';
 export {
   createFront03PublicCatalogReader,
