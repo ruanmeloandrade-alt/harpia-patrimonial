@@ -1,3 +1,4 @@
+import { listAIAgents } from '../ai-agents/repository';
 import { createF05Id, readStoredList, writeStoredList } from '../automations/f05Storage';
 import type { SalesBotBlock, SalesBotDefinition, SalesBotStatus } from './types';
 import { validateSalesBot } from './validation';
@@ -11,6 +12,38 @@ export function listSalesBots(): SalesBotDefinition[] {
 
 export function getSalesBot(id: string): SalesBotDefinition | undefined {
   return listSalesBots().find((bot) => bot.id === id);
+}
+
+function validateSalesBotReferences(bot: SalesBotDefinition): string[] {
+  const issues: string[] = [];
+  const agents = listAIAgents();
+  const bots = listSalesBots();
+
+  bot.blocks.forEach((block) => {
+    if (block.type === 'ai_agent') {
+      const agentId = String(block.config.agentId ?? '').trim();
+      if (agentId) {
+        const agent = agents.find((item) => item.id === agentId);
+        if (!agent) issues.push(`${block.label}: agente IA não encontrado.`);
+        else if (agent.status !== 'active') issues.push(`${block.label}: agente IA precisa estar ativo.`);
+      }
+    }
+    if (block.type === 'chain_flow') {
+      const targetId = String(block.config.botId ?? '').trim();
+      if (targetId === bot.id) issues.push(`${block.label}: o fluxo não pode encadear a si mesmo.`);
+      else if (targetId) {
+        const target = bots.find((item) => item.id === targetId);
+        if (!target) issues.push(`${block.label}: SalesBot encadeado não encontrado.`);
+        else if (target.status !== 'active') issues.push(`${block.label}: SalesBot encadeado precisa estar ativo.`);
+      }
+    }
+  });
+
+  return issues;
+}
+
+export function validateSalesBotForActivation(bot: SalesBotDefinition): string[] {
+  return [...validateSalesBot(bot), ...validateSalesBotReferences(bot)];
 }
 
 export function createSalesBot(input: { name: string; description?: string }): SalesBotDefinition {
@@ -36,7 +69,7 @@ export function updateSalesBot(
   const current = items.find((item) => item.id === id);
   if (!current) throw new Error('SalesBot não encontrado.');
   let updated: SalesBotDefinition = { ...current, ...patch, updatedAt: now() };
-  if (current.status === 'active' && patch.status === undefined && validateSalesBot(updated).length > 0) {
+  if (current.status === 'active' && patch.status === undefined && validateSalesBotForActivation(updated).length > 0) {
     updated = { ...updated, status: 'paused' };
   }
   writeStoredList(STORAGE_KEY, items.map((item) => (item.id === id ? updated : item)));
@@ -68,7 +101,7 @@ export function setSalesBotStatus(id: string, status: SalesBotStatus): SalesBotD
   const current = getSalesBot(id);
   if (!current) throw new Error('SalesBot não encontrado.');
   if (status === 'active') {
-    const issues = validateSalesBot(current);
+    const issues = validateSalesBotForActivation(current);
     if (issues.length > 0) throw new Error(issues.join(' '));
   }
   return updateSalesBot(id, { status });
