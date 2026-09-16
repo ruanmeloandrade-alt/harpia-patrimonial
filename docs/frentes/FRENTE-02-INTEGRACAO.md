@@ -18,6 +18,7 @@ import {
   createPublicConversionPipeline,
   createWhatsAppContinuation,
   usePublicFavoritesBridge,
+  useClientAreaData,
   publicRouteManifest,
 } from './features/public-site';
 ```
@@ -113,6 +114,8 @@ O adapter da Frente02 já trata:
 
 Para unidades, a Frente02 resolve `parentId` pelo próprio `getByIdOrCode(parentId)` e usa o nome real do empreendimento. Não é necessário inventar ou duplicar esse dado.
 
+A home já possui busca rápida real por finalidade, cidade, localização e estilo de vida. O catálogo completo acrescenta lançamento e faixa de preço.
+
 Os filtros públicos são serializados na URL. Links como `/imoveis?cidade=...&estilo=...` podem ser recarregados e compartilhados mantendo a busca.
 
 ## 5. CRM — Frente04
@@ -176,25 +179,12 @@ Os formulários `Quero vender` e `Quero alugar` já fornecem contato completo e 
 
 A Frente02 fornece `usePublicFavoritesBridge` e o contrato `PublicFavoritesStorePort`.
 
-Exemplo:
-
 ```ts
 const favoritesState = usePublicFavoritesBridge({
   clientId: auth.user?.id ?? null,
   catalog: publicCatalogReader,
   store: favoritesStore,
 });
-```
-
-Depois:
-
-```tsx
-<PublicExperience
-  auth={authBridge}
-  catalog={publicCatalogReader}
-  favorites={favoritesState.bridge}
-  onConversion={onConversion}
-/>
 ```
 
 O `favoritesStore` real deve implementar:
@@ -213,13 +203,45 @@ Requisitos:
 
 O schema atual da Frente01 ainda não possui a tabela compartilhada de favoritos. Essa persistência deve ser criada/definida no ponto de integração apropriado, sem tabela paralela da Frente02.
 
-## 9. Área do cliente
+## 9. Interesses e histórico da Área do Cliente
 
-`ClientArea` recebe perfil real, favoritos reais e handlers de navegação/atendimento.
+A Frente02 agora aceita dados reais sem exigir alteração da tela.
 
-Interesses e histórico permanecem em empty state até existir fonte real. Não preencher demonstração com dados fictícios.
+A fonte deve implementar:
 
-A entrada autenticada deve continuar protegida pelo `ClientRoute` da Frente01.
+```ts
+interface ClientAreaDataSourcePort {
+  load(clientId: string): Promise<{
+    interests: ClientInterestView[];
+    history: ClientHistoryView[];
+  }>;
+}
+```
+
+Uso:
+
+```ts
+const clientAreaData = useClientAreaData({
+  clientId: auth.user?.id ?? null,
+  source: clientAreaDataSource,
+});
+```
+
+Depois:
+
+```tsx
+<PublicExperience
+  auth={authBridge}
+  catalog={publicCatalogReader}
+  favorites={favoritesState.bridge}
+  clientAreaData={clientAreaData}
+  onConversion={onConversion}
+/>
+```
+
+Sem fonte real, interesses e histórico permanecem em empty state. A interface também trata loading e erro.
+
+A fonte pode ser composta a partir do CRM ou de outra camada integrada, desde que os dados estejam realmente vinculados ao `clientId` autenticado. Não criar histórico fictício para demonstração.
 
 ## 10. Metadados, navegação e acessibilidade
 
@@ -231,7 +253,8 @@ A Frente02 já entrega:
 - fechamento por `Escape`;
 - bloqueio/restauração de scroll em modal/menu;
 - estados `aria-busy`, `aria-pressed`, `aria-modal` e descrições de diálogo;
-- filtros persistidos na URL.
+- filtros persistidos na URL;
+- busca rápida na home conectada à mesma query do catálogo.
 
 ## 11. Checklist obrigatório após merge
 
@@ -241,6 +264,7 @@ Antes de considerar a Frente02 integrada:
 - manter `/entrar`, `/cadastro`, `/conta` e `/interno/**` sob a Frente01;
 - conectar auth bridge real;
 - conectar catálogo real via adapter Frente03;
+- validar busca rápida da home com dados reais;
 - validar empreendimento/unidade real;
 - validar filtros e estilo de vida com dados reais;
 - testar refresh e compartilhamento de URL filtrada;
@@ -249,7 +273,8 @@ Antes de considerar a Frente02 integrada:
 - verificar que falha no CRM impede redirecionamento externo;
 - conectar store real de favoritos;
 - testar favorito deslogado/logado e remoção;
-- testar área do cliente;
+- conectar fonte real de interesses/histórico quando disponível;
+- testar área do cliente com e sem dados;
 - testar vender/alugar em sucesso e falha;
 - testar captura anônima dos CTAs;
 - testar exit-intent;
@@ -266,6 +291,7 @@ Antes de considerar a Frente02 integrada:
 
 - `src/features/public-site/PublicSiteApp.tsx`
 - `src/features/public-site/PublicExperience.tsx`
+- `src/features/public-site/HomeCatalogSearch.tsx`
 - `src/features/public-site/index.ts`
 - `src/features/public-site/catalogQuery.ts`
 - `src/features/public-site/conversionPipeline.ts`
@@ -279,5 +305,6 @@ Antes de considerar a Frente02 integrada:
 - `src/features/public-catalog/contracts.ts`
 - `src/features/public-catalog/front03Adapter.ts`
 - `src/features/client-area/ClientArea.tsx`
+- `src/features/client-area/useClientAreaData.ts`
 
 Em conflito de merge, preservar a intenção funcional dos módulos de ambas as frentes e adaptar no ponto de composição; não substituir a Frente02 por uma implementação paralela no núcleo.
