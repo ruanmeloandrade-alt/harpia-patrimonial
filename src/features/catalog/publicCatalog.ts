@@ -16,27 +16,6 @@ export interface PublicCatalogFilterOptions {
 
 type RepositoryItem = Awaited<ReturnType<CatalogRepository['list']>>[number];
 
-function toPublicItem(item: RepositoryItem): PublicCatalogItem {
-  return {
-    id: item.id,
-    code: item.code,
-    name: item.name,
-    kind: item.kind,
-    parentId: item.parentId,
-    typology: item.typology,
-    purpose: item.purpose,
-    description: item.description,
-    location: item.location,
-    price: item.price,
-    isLaunch: item.isLaunch,
-    features: item.features,
-    lifestyleTags: item.lifestyleTags,
-    developer: item.developer,
-    media: item.media.map(({ storagePath: _storagePath, ...media }) => media),
-    status: 'published',
-  };
-}
-
 export function filterPublicEligibleCatalogItems<T extends Pick<CatalogItem, 'id' | 'kind' | 'parentId'>>(items: T[]): T[] {
   const publishedDevelopmentIds = new Set(
     items.filter((item) => item.kind === 'development').map((item) => item.id),
@@ -59,6 +38,32 @@ function effectivePrices(item: RepositoryItem, allPublishedItems: RepositoryItem
   const unitPrices = developmentUnitPrices(item, allPublishedItems);
   if (unitPrices.length) return unitPrices;
   return item.price === null ? [] : [item.price];
+}
+
+function publicDisplayPrice(item: RepositoryItem, allPublishedItems: RepositoryItem[]) {
+  const prices = effectivePrices(item, allPublishedItems);
+  return prices.length ? Math.min(...prices) : null;
+}
+
+function toPublicItem(item: RepositoryItem, allPublishedItems: RepositoryItem[]): PublicCatalogItem {
+  return {
+    id: item.id,
+    code: item.code,
+    name: item.name,
+    kind: item.kind,
+    parentId: item.parentId,
+    typology: item.typology,
+    purpose: item.purpose,
+    description: item.description,
+    location: item.location,
+    price: publicDisplayPrice(item, allPublishedItems),
+    isLaunch: item.isLaunch,
+    features: item.features,
+    lifestyleTags: item.lifestyleTags,
+    developer: item.developer,
+    media: item.media.map(({ storagePath: _storagePath, ...media }) => media),
+    status: 'published',
+  };
 }
 
 function matchesPriceFilter(
@@ -101,7 +106,7 @@ export class PublicCatalogService {
 
   async list(filters: PublicCatalogFilters = {}): Promise<PublicCatalogItem[]> {
     const items = await this.publishedItems();
-    return applyPublicFilters(items, filters, items).map(toPublicItem);
+    return applyPublicFilters(items, filters, items).map((item) => toPublicItem(item, items));
   }
 
   async listUnits(parentId: string, filters: PublicCatalogFilters = {}): Promise<PublicCatalogItem[]> {
@@ -110,7 +115,7 @@ export class PublicCatalogService {
       items.filter((item) => item.kind === 'unit' && item.parentId === parentId),
       filters,
       items,
-    ).map(toPublicItem);
+    ).map((item) => toPublicItem(item, items));
   }
 
   async getByIdOrCode(value: string): Promise<PublicCatalogItem | null> {
@@ -120,7 +125,7 @@ export class PublicCatalogService {
       (candidate) => candidate.id === value
         || candidate.code.toLocaleLowerCase('pt-BR') === normalized,
     );
-    return item ? toPublicItem(item) : null;
+    return item ? toPublicItem(item, items) : null;
   }
 
   async getDevelopmentWithUnits(value: string): Promise<PublicCatalogDevelopmentBundle | null> {
