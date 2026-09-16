@@ -97,25 +97,27 @@ Implementado/versionado:
 - herança de permissões;
 - exceções individuais allow/deny;
 - bloqueio de autoelevação e autodesativação;
-- Error Boundary global.
+- Error Boundary global;
+- composição estrutural com as demais frentes concluída na branch `frente-01`.
 
-## NÃO VERIFICADO / pendente
+## NÃO VERIFICADO / pendente para verde final
 
-Não marcar como verde até execução real:
+Não marcar como verde final até execução real:
 
-- build/typecheck completo no ambiente com registry npm disponível;
-- cadastro de cliente real;
-- confirmação de e-mail real;
-- login/logout/refresh real;
+- build/typecheck completo em ambiente Node/npm compatível;
+- cadastro/login/logout/refresh com conta real;
 - persistência após fechar/reabrir navegador;
-- recuperação de senha por e-mail real;
-- criação do primeiro administrador real;
-- criação de funcionário real pela Edge Function;
+- confirmação e recuperação de senha por e-mail real;
+- criação do primeiro administrador por caminho oficial do Supabase Auth;
+- criação de funcionário pela Edge Function com conta administrativa real;
 - edição/ativação/desativação com contas reais;
 - permissões por grupo e exceções individuais com usuários reais;
-- configuração de variáveis no ambiente de hospedagem;
-- configuração final dos redirect URLs do Auth;
-- integração com as demais frentes.
+- configuração final das variáveis/redirect URLs no ambiente publicado;
+- E2E autenticado do núcleo já integrado.
+
+## Liberação das outras frentes
+
+As pendências acima são de QA/fase final. Elas **não bloqueiam** o avanço estrutural das Frentes02, 03, 04 e 05. O núcleo e os contratos da F01 já estão disponíveis na branch `frente-01`.
 
 ## Regra para integração
 
