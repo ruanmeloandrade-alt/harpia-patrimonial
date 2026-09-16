@@ -36,22 +36,26 @@ function toPublicItem(item: RepositoryItem): PublicCatalogItem {
   };
 }
 
+function developmentUnitPrices(item: RepositoryItem, allPublishedItems: RepositoryItem[]) {
+  return allPublishedItems
+    .filter((candidate) => candidate.kind === 'unit' && candidate.parentId === item.id && candidate.price !== null)
+    .map((candidate) => candidate.price as number);
+}
+
+function effectivePrices(item: RepositoryItem, allPublishedItems: RepositoryItem[]) {
+  if (item.kind !== 'development') return item.price === null ? [] : [item.price];
+  const unitPrices = developmentUnitPrices(item, allPublishedItems);
+  if (unitPrices.length) return unitPrices;
+  return item.price === null ? [] : [item.price];
+}
+
 function matchesPriceFilter(
   item: RepositoryItem,
   allPublishedItems: RepositoryItem[],
   filters: PublicCatalogFilters,
 ) {
   if (filters.minPrice === undefined && filters.maxPrice === undefined) return true;
-
-  const prices = item.kind === 'development'
-    ? allPublishedItems
-        .filter((candidate) => candidate.kind === 'unit' && candidate.parentId === item.id && candidate.price !== null)
-        .map((candidate) => candidate.price as number)
-    : item.price === null ? [] : [item.price];
-
-  if (!prices.length && item.kind === 'development' && item.price !== null) prices.push(item.price);
-
-  return prices.some(
+  return effectivePrices(item, allPublishedItems).some(
     (price) => (filters.minPrice === undefined || price >= filters.minPrice)
       && (filters.maxPrice === undefined || price <= filters.maxPrice),
   );
@@ -125,13 +129,21 @@ export class PublicCatalogService {
     const locations = new Set<string>();
     const lifestyleTags = new Set<string>();
     const prices: number[] = [];
+    const developmentIdsWithPublishedUnits = new Set(
+      items
+        .filter((item) => item.kind === 'unit' && item.parentId)
+        .map((item) => item.parentId as string),
+    );
 
     for (const item of items) {
       if (item.location.city) cities.add(item.location.city);
       if (item.location.neighborhood) locations.add(item.location.neighborhood);
       if (item.location.condominium) locations.add(item.location.condominium);
       item.lifestyleTags.forEach((tag) => lifestyleTags.add(tag));
-      if (item.price !== null) prices.push(item.price);
+
+      const shouldUseOwnPrice = item.kind !== 'development'
+        || !developmentIdsWithPublishedUnits.has(item.id);
+      if (shouldUseOwnPrice && item.price !== null) prices.push(item.price);
     }
 
     return {
