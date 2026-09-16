@@ -26,6 +26,8 @@ export type {
   SalesBotRuntimeDependencies,
   SalesBotWebhookPort,
 } from '../salesbot/runtime';
+export { createAIAgentCommandPort } from '../ai-agents/runtime';
+export type { AIAgentExecutionLog, AIAgentExecutionStatus } from '../ai-agents/executionTypes';
 export type { AICredentialVaultPort, AICredentialSaveResult } from '../integrations/aiCredentialPort';
 export type {
   AIProviderCatalogItem,
@@ -33,6 +35,11 @@ export type {
   AIProviderProfile,
   AIProviderProfileStatus,
 } from '../integrations/aiProviderTypes';
-export type { AIModelInvocationInput, AIModelInvocationResult, AIModelRuntimePort } from '../integrations/aiRuntimePort';
+export type {
+  AIModelCancelResult,
+  AIModelInvocationInput,
+  AIModelInvocationResult,
+  AIModelRuntimePort,
+} from '../integrations/aiRuntimePort';
 export { buildProviderHttpRequest, invokeConfiguredProvider } from '../integrations/providerAdapters';
 export type { ProviderInvocationRequest, ProviderInvocationResponse } from '../integrations/providerAdapters';
