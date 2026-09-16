@@ -11,6 +11,18 @@ function parseText(value: string | null) {
   return normalized ? normalized : undefined;
 }
 
+function parsePurpose(value: string | null) {
+  const normalized = value
+    ?.trim()
+    .toLocaleLowerCase('pt-BR')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+
+  if (normalized === 'venda' || normalized === 'sale') return 'Venda';
+  if (normalized === 'locacao' || normalized === 'rent') return 'Locação';
+  return undefined;
+}
+
 function parseLaunch(value: string | null) {
   if (value === 'sim') return true;
   if (value === 'nao') return false;
@@ -30,7 +42,7 @@ export function normalizeCatalogFilters(filters: PublicCatalogFilters): PublicCa
   }
 
   return {
-    purpose: parseText(filters.purpose ?? null),
+    purpose: parsePurpose(filters.purpose ?? null),
     city: parseText(filters.city ?? null),
     location: parseText(filters.location ?? null),
     launch: typeof filters.launch === 'boolean' ? filters.launch : undefined,
