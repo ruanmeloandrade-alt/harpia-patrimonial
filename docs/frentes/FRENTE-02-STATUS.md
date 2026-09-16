@@ -56,10 +56,11 @@ A retomada desta rodada confirmou que F01, F03, F04 e F05 continuam avançando. 
 | 🟢 | Conversão F2→F4 — contrato atual | Compatibilidade confirmada com a F4 atual; nome + WhatsApp são exigidos no adapter. |
 | 🟢 | Conversão — metadata pública | Adapter F2 remove chaves de identidade (`clientId`, `userId`, role etc.) antes do ingest. Commit `c738140f85d2cc6443f2ff8e6601a0e0dd6550e5`. |
 | 🟢 | Pipeline CRM → WhatsApp | Continua somente após sucesso da captura; navegação usa mesma aba e não depende de popup. |
+| 🟢 | WhatsApp — degradação segura | Telefone inválido não derruba o site nem impede captura do lead; apenas omite a continuação para WhatsApp. Commit `d6ef7827d9a5ee47f2f4ab0a37419861892d1f8b`. |
+| 🟢 | Rota pública malformada | `PublicExperienceBoundary` impede tela branca/crash por URL externa com encoding inválido e oferece fallback seguro. Commits `4a5c0377c2bf4b74eae50468c04b887610914194`, `4cc14f4b4c3102ce7e2a1ed080308ba8c58526b6` e `158aceae6a6ab37e611509637ba5cb5ec5934bd6`. |
 | 🟢 | Acessibilidade/metadata/404 | Implementados na experiência pública. |
 | 🟢 | Zero mocks permanentes | Backend permanece vazio quando não há dados reais. |
 | 🟠 | Hardening captura nome + WhatsApp no modal | Corrigido na F2 no commit `5f8f1f3984619b930750bcf301a1d0e30da0a9cd`; a cópia observada na F1 ainda usa a versão anterior. |
-| 🟠 | Rota de imóvel com encoding inválido | QA identificou risco de `decodeURIComponent` lançar exceção para URL malformada. Correção F2 ainda pendente por exigir alteração coordenada da navegação já integrada. |
 | 🟠 | Tipos Supabase centrais | `database.types.ts` observado na F1 ainda contém apenas o núcleo antigo; não inclui catálogo/favoritos. Precisa regeneração antes do typecheck integrado. |
 | 🟠 | Idempotência de favoritos central | Store F1 ainda usa `upsert`; policies RLS verificadas não incluem UPDATE. Preferência registrada: `insert` + tratar `23505`, sem abrir UPDATE desnecessário. |
 | 🟠 | Integridade `clientId` do lead — backend | `public-lead-ingest` ainda encaminha `metadata` do caller. A F2 já sanitiza seu próprio fluxo, mas o backend deve remover identidade fornecida pelo caller e derivá-la server-side de JWT válido. |
@@ -74,7 +75,7 @@ A retomada desta rodada confirmou que F01, F03, F04 e F05 continuam avançando. 
 ## QA de integração executado pela Frente02
 
 - contrato atual F4 relido e confirmado compatível com o adapter F2;
-- versão atual F3 relida; producer já filtra unidades órfãs e usa lookup de código case-insensitive;
+- versão atual F3 relida; producer já filtra unidades órfãs, usa lookup de código case-insensitive e evoluiu integridade interna sem quebrar o contrato público F2;
 - cópia atual F1 conferida: ainda não contém os hardenings recentes F2;
 - store central F1 conferido: ainda usa `upsert` em `client_favorites`;
 - `public-lead-ingest` F1 conferido: ainda encaminha `metadata` público sem derivar identidade server-side;
@@ -95,7 +96,7 @@ A retomada desta rodada confirmou que F01, F03, F04 e F05 continuam avançando. 
 ### Frente01 / integração
 
 1. sincronizar o hardening `PublicExperience.tsx` do commit F2 `5f8f1f3984619b930750bcf301a1d0e30da0a9cd`;
-2. sincronizar os hardenings F2 desta retomada: favoritos resilientes/concorrentes, troca de sessão, isolamento de cliente, filtros e adapter de conversão (`39f2cd8`, `a231a10`, `6f232a4`, `14918a0`, `373e73a`, `e639a1f`, `c738140`, `60ae458`, `3845a83`);
+2. sincronizar os hardenings F2 desta retomada: favoritos resilientes/concorrentes, troca de sessão, isolamento de cliente, filtros, adapter de conversão, defesa de catálogo, error boundary e degradação segura de WhatsApp (`39f2cd8`, `a231a10`, `6f232a4`, `14918a0`, `373e73a`, `e639a1f`, `c738140`, `60ae458`, `3845a83`, `4a5c037`, `4cc14f4`, `158aceae`, `d6ef782`);
 3. regenerar `src/core/supabase/database.types.ts` a partir do schema atual;
 4. alinhar idempotência do favorites store ao RLS;
 5. endurecer `public-lead-ingest` para não confiar em identidade enviada em `metadata` pelo caller;
