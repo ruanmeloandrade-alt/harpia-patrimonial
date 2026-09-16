@@ -1,4 +1,5 @@
 import { createF05Id, readStoredList, writeStoredList, writeStoredListConfirmed } from '../automations/f05Storage';
+import { findActiveAIProviderReferences, findAIProviderReferences, formatF05References } from '../automations/referenceIntegrity';
 import type { AIProviderKind, AIProviderProfile, AIProviderProfileStatus } from './aiProviderTypes';
 
 const STORAGE_KEY = 'harpia:f05:ai-provider-profiles';
@@ -43,6 +44,12 @@ function buildUpdatedProfile(
   if (current.status === 'ready' && patch.status === undefined && validateAIProviderProfile(updated).length > 0) {
     updated = { ...updated, status: 'draft' };
   }
+  if (current.status === 'ready' && updated.status !== 'ready') {
+    const activeReferences = findActiveAIProviderReferences(current.id);
+    if (activeReferences.length > 0) {
+      throw new Error(`Pause primeiro os agentes ativos que dependem deste perfil: ${formatF05References(activeReferences)}.`);
+    }
+  }
   return updated;
 }
 
@@ -71,6 +78,12 @@ export async function updateAIProviderProfileConfirmed(
 }
 
 export function deleteAIProviderProfile(id: string): void {
+  const current = listAIProviderProfiles().find((item) => item.id === id);
+  if (!current) throw new Error('Perfil de IA não encontrado.');
+  const references = findAIProviderReferences(id);
+  if (references.length > 0) {
+    throw new Error(`Este perfil ainda é usado por: ${formatF05References(references)}.`);
+  }
   writeStoredList(STORAGE_KEY, listAIProviderProfiles().filter((item) => item.id !== id));
 }
 
@@ -78,6 +91,10 @@ export async function deleteAIProviderProfileConfirmed(id: string): Promise<AIPr
   const items = listAIProviderProfiles();
   const current = items.find((item) => item.id === id);
   if (!current) throw new Error('Perfil de IA não encontrado.');
+  const references = findAIProviderReferences(id);
+  if (references.length > 0) {
+    throw new Error(`Este perfil ainda é usado por: ${formatF05References(references)}.`);
+  }
   await writeStoredListConfirmed(STORAGE_KEY, items.filter((item) => item.id !== id));
   return current;
 }
