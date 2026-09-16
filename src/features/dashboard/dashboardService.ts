@@ -41,6 +41,7 @@ export interface CommercialMetricsProvider {
 export interface DashboardSnapshot {
   catalog: {
     active: number;
+    hiddenPublished: number;
     drafts: number;
     paused: number;
     sold: number;
@@ -104,9 +105,8 @@ export async function getDashboardSnapshot(
   commercialProvider?: CommercialMetricsProvider,
 ): Promise<DashboardSnapshot> {
   const items = await repository.list();
-  const activeItems = filterPublicEligibleCatalogItems(
-    items.filter((item) => item.status === 'published'),
-  );
+  const publishedItems = items.filter((item) => item.status === 'published');
+  const activeItems = filterPublicEligibleCatalogItems(publishedItems);
   const developmentIdsWithUnits = new Set(
     items
       .filter((item) => item.kind === 'unit' && item.parentId)
@@ -118,6 +118,7 @@ export async function getDashboardSnapshot(
   );
   const catalog = {
     active: activeItems.length,
+    hiddenPublished: Math.max(0, publishedItems.length - activeItems.length),
     drafts: items.filter((item) => item.status === 'draft').length,
     paused: items.filter((item) => item.status === 'paused').length,
     sold: items.filter((item) => item.status === 'sold').length,
