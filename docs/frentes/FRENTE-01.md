@@ -162,15 +162,14 @@ Os nomes finais podem variar conforme a arquitetura, mas a capacidade deve exist
 
 ## Handoff da Frente01 — 16/09/2026
 
-- **Status:** BLOQUEADA PARA VALIDAÇÃO REAL. A parte independente do código está estruturalmente concluída; faltam backend dedicado e testes reais antes de qualquer status verde.
+- **Status:** INTEGRADA ESTRUTURALMENTE. A Frente01 não bloqueia mais as Frentes02–05.
 - **Branch:** `frente-01`.
-- **Último commit estrutural antes deste handoff:** `6694741cb1ef256023c87dc6cdcd5536e3dcdfd0`.
-- **O que foi entregue:** shell/roteamento base; `AuthProvider`; sessão persistente; cadastro, login, logout, recuperação e redefinição de senha; separação cliente/equipe; guards de rota; `dashboard.view` protegido também por URL; Error Boundary global; CRUD estrutural de usuários internos (criar, editar dados operacionais, ativar/desativar); grupos configuráveis (criar, editar, ativar/desativar); permissões herdadas por grupo; exceções individuais allow/deny; dados estruturais da organização; preferências compartilhadas via JSON; métricas reais do núcleo sem mocks; cliente Supabase desacoplado; Edge Function `admin-user`; schema RLS e hardening adicional contra autoelevação/autodesativação.
+- **Núcleo entregue:** shell/roteamento base; `AuthProvider`; sessão persistente; cadastro, login, logout, recuperação e redefinição de senha; separação cliente/equipe; guards de rota; RBAC; usuários internos; grupos configuráveis; permissões herdadas por grupo; exceções individuais allow/deny; configurações estruturais; Error Boundary global; persistência compartilhada; cliente Supabase tipado; Edge Function `admin-user`; RLS e hardening contra autoelevação/autodesativação.
+- **Integração global já composta:** Auth com área pública/cliente; catálogo no runtime global; CRM/Inbox no shell; RBAC dos módulos internos; estado compartilhado; métricas e contratos entre módulos já encaixados conforme `docs/STATUS-FRENTES.md`.
 - **Contratos expostos:** `src/core/auth/index.ts` exporta `AuthProvider`, `useAuth`, `ClientRoute`, `InternalRoute`, tipos públicos e `PERMISSIONS`; demais frentes devem usar esse contrato e não criar auth paralelo.
-- **Banco preparado:** `supabase/schema/core_auth.sql` + `supabase/schema/core_auth_hardening.sql`.
-- **Edge Function preparada:** `supabase/functions/admin-user/index.ts`, com JWT obrigatório em `config.toml`.
-- **O que ficou pendente:** criar/conectar projeto Supabase exclusivo da Hárpia; aplicar os dois scripts SQL; publicar Edge Function; configurar URL/chave publishable; criar conscientemente o primeiro administrador; rodar advisors; testar autenticação, sessão persistente, recuperação, RLS, usuários, grupos e exceções ponta a ponta.
-- **Build/testes:** `NÃO VERIFICADOS` integralmente. O ambiente não conseguiu acessar o registry npm para instalar dependências; portanto não declarar build aprovado. A revisão estática foi realizada, mas não substitui build nem teste funcional.
-- **Dependências de outras frentes:** integração com a área do cliente da Frente02 e incorporação dos módulos internos das Frentes02–05 no shell ficam para os respectivos handoffs/pente fino. Não invadir esses módulos antes disso.
-- **Riscos conhecidos:** sem o Supabase dedicado não existe validação real das policies, função administrativa ou persistência; qualquer mudança futura de chave de permissão deve manter `src/core/auth/permissions.ts`, seed SQL e contratos sincronizados.
-- **Instrução para integração:** preservar `src/core/auth/**`, usar `PERMISSIONS` em vez de criar strings divergentes, consumir `useAuth()`/guards e reconciliar o roteador raiz sem substituir a lógica de autenticação silenciosamente.
+- **Backend:** projeto Supabase dedicado Hárpia ativo; schemas e hardening aplicados; `admin-user` ativa com JWT obrigatório.
+- **Pendências finais da própria F01:** criar os usuários temporários autorizados de QA por caminho oficial do Supabase Auth; executar E2E autenticado de login/sessão/RBAC; validar recovery/redirects finais; executar build/typecheck quando houver ambiente Node/npm compatível.
+- **Importante:** essas pendências são de QA/fase final e **não bloqueiam desenvolvimento nem QA estrutural das Frentes02–05**.
+- **Build/typecheck:** ainda `NÃO VERIFICADO` no ambiente atual porque o runner disponível não consegue acessar o registry/checkout externo. Não declarar verde final sem execução real.
+- **Risco operacional conhecido:** o primeiro administrador ainda precisa ser criado por um caminho oficial do Supabase Auth; não inserir registros manualmente em `auth.users`.
+- **Instrução para integração:** preservar `src/core/auth/**`, usar `PERMISSIONS` em vez de strings divergentes e consumir `useAuth()`/guards no roteador e nos módulos internos.
