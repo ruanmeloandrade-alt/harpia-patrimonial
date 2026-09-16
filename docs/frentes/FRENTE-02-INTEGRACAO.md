@@ -2,64 +2,85 @@
 
 Data-base: 16/09/2026
 Branch de origem: `frente-02`
-Estado da frente: aguardando integração/validação real
+Estado da frente: em andamento — backend real disponível; montagem/QA integrado pendentes
 
 Este documento descreve como integrar a experiência pública e a área do cliente da Frente02 com os contratos atuais das Frentes01, 03 e 04.
 
-## 1. Caminho recomendado — shell único
+## 1. Caminho recomendado — experiência pública
 
 A Frente02 exporta `Front02IntegrationShell`, que recebe os ports reais e monta internamente Auth, catálogo, CRM, favoritos, dados do cliente e continuação para WhatsApp.
 
 ```tsx
-import { Front02IntegrationShell } from './features/public-site';
+import {
+  Front02IntegrationShell,
+  matchesFront02PublicRoute,
+} from './features/public-site';
 
-<Front02IntegrationShell
-  auth={auth}
-  requestLogin={() => navigate('/entrar')}
-  catalogService={publicCatalogService}
-  crmIngest={(event) => ingestLeadConversion(crm, event)}
-  favoritesStore={favoritesStore}
-  clientAreaDataSource={clientAreaDataSource}
-  whatsappPhone={realHarpiaPhone}
-  internalAreaHref="/interno"
-/>
+if (matchesFront02PublicRoute(pathname)) {
+  return (
+    <Front02IntegrationShell
+      auth={auth}
+      requestLogin={() => navigate('/entrar')}
+      catalogService={publicCatalogService}
+      crmIngest={(event) => ingestLeadConversion(crm, event)}
+      favoritesStore={favoritesStore}
+      clientAreaDataSource={clientAreaDataSource}
+      whatsappPhone={realHarpiaPhone}
+      internalAreaHref="/interno"
+    />
+  );
+}
 ```
 
-Todos os itens opcionais têm fallback honesto:
+O matcher cobre as rotas estáticas e `/imoveis/:slug`, evitando duplicação de regex no `AppRouter` da Frente01.
 
-- sem `crmIngest`, a interface não simula criação de lead;
-- sem `favoritesStore`, não persiste favorito falsamente;
-- sem `clientAreaDataSource`, interesses/histórico ficam em empty state;
-- sem `whatsappPhone`, não existe redirecionamento externo fictício.
+## 2. `/conta` protegida — caminho recomendado
 
-O shell não cria serviço pertencente a outra frente. Ele apenas compõe os ports recebidos.
+A Frente01 já possui `/conta` dentro de `ClientRoute`. A Frente02 agora exporta `Front02ClientAccountShell` para substituir o conteúdo básico sem remover a guarda central.
 
-Quando favoritos e dados da área do cliente estão conectados, o shell unifica loading/erro/retry. Uma falha de leitura não aparece como “nenhum favorito” e o usuário pode solicitar recarga real.
+```tsx
+<ClientRoute>
+  <Front02ClientAccountShell
+    auth={auth}
+    requestLogin={() => navigate('/entrar')}
+    catalogService={publicCatalogService}
+    favoritesStore={favoritesStore}
+    clientAreaDataSource={clientAreaDataSource}
+    onNavigate={navigate}
+    onRequestService={requestService}
+  />
+</ClientRoute>
+```
 
-## 2. Entry point de baixo nível
+Não criar outro `AuthProvider`, outra sessão ou outra guarda de rota.
+
+## 3. Entry point de baixo nível
 
 Para integração manual ou testes, continuam exportados:
 
 ```ts
 import {
   PublicExperience,
+  ClientArea,
   createFront01PublicAuthBridge,
   createFront03PublicCatalogReader,
   createFront04ConversionHandler,
   createPublicConversionPipeline,
+  createSupabaseFavoritesStore,
   createWhatsAppContinuation,
   usePublicFavoritesBridge,
   useClientAreaData,
   normalizeCatalogFilters,
+  matchesFront02PublicRoute,
   publicRouteManifest,
 } from './features/public-site';
 ```
 
-Não importar implementações internas diretamente no roteador global.
+Não importar implementações internas diretamente no roteador global quando existir export público equivalente.
 
-## 3. Rotas públicas e encaixe com a Frente01
+## 4. Rotas públicas e Frente01
 
-Rotas da Frente02:
+Rotas públicas da Frente02:
 
 - `/`
 - `/sobre`
@@ -71,9 +92,9 @@ Rotas da Frente02:
 - `/imoveis/:slug`
 - `/vender`
 - `/alugar`
-- `/cliente`
+- `/cliente` como rota compatível/legada da experiência pública.
 
-A Frente01 já possui:
+Rotas da Frente01 que permanecem sob o núcleo:
 
 - `/entrar`;
 - `/cadastro`;
@@ -82,18 +103,15 @@ A Frente01 já possui:
 - `/conta` protegido por `ClientRoute`;
 - `/interno/entrar` e `/interno/**`.
 
-Integração:
+Integração recomendada:
 
-1. substituir o placeholder público atual pela Frente02;
-2. encaminhar `publicRouteManifest` para a experiência pública;
-3. manter autenticação e rotas internas sob a Frente01;
-4. preservar `ClientRoute` como guarda;
-5. usar `/conta` como entrada protegida/alias para a área `/cliente`;
-6. não criar outro `AuthProvider` ou outra sessão.
+1. substituir `PublicPlaceholder` por `Front02IntegrationShell` nas rotas reconhecidas por `matchesFront02PublicRoute`;
+2. manter Auth/Internal sob a Frente01;
+3. montar `Front02ClientAccountShell` dentro do `ClientRoute` de `/conta`;
+4. opcionalmente encaminhar `/cliente` para `/conta` no produto final, preservando compatibilidade dos links existentes;
+5. não criar outro roteador de Auth.
 
-A Frente02 expõe “Minha conta” no header desktop e “Área do cliente” no mobile/rodapé.
-
-## 4. Auth — Frente01
+## 5. Auth — Frente01
 
 `Front01AuthContextPort` consome:
 
@@ -103,7 +121,7 @@ A Frente02 expõe “Minha conta” no header desktop e “Área do cliente” n
 - autenticação;
 - tipo de conta.
 
-O contrato foi conferido contra o `AuthContextValue` atual da Frente01. `user.id` é usado como identidade real para favoritos e dados pessoais; a Frente02 não conhece Supabase diretamente.
+O contrato foi conferido contra o `AuthContextValue` atual da Frente01. `user.id` é a identidade real usada para dados persistentes.
 
 ```ts
 const authBridge = createFront01PublicAuthBridge({
@@ -112,9 +130,51 @@ const authBridge = createFront01PublicAuthBridge({
 });
 ```
 
-A rota `/cadastro` já existe para criação explícita de conta.
+O backend dedicado da Hárpia já está ativo. O bloqueio não é mais criação de backend/Auth; é montagem e QA real.
 
-## 5. Catálogo — Frente03
+## 6. Favoritos — Supabase real
+
+A Frente01 já versionou e aplicou `public.client_favorites` no Supabase da Hárpia.
+
+Estrutura observada:
+
+- `client_id uuid` → FK `user_profiles(id)`;
+- `item_id uuid` → FK `catalog_items(id)`;
+- `item_slug text`;
+- PK `(client_id,item_id)`;
+- RLS habilitado;
+- SELECT/INSERT/DELETE limitados ao dono autenticado;
+- INSERT também exige cliente ativo e item publicado.
+
+Validações executadas pela Frente02:
+
+- Security Advisor: 0 lints;
+- RLS ativo;
+- constraints confirmadas no banco;
+- `anon` vê 0 linhas;
+- role `authenticated` sem identidade vê 0 linhas;
+- nenhum usuário/imóvel fictício foi criado.
+
+A Frente02 fornece o adapter:
+
+```ts
+const favoritesStore = createSupabaseFavoritesStore(requireSupabase());
+```
+
+Antes disso, a Frente01 deve regenerar `src/core/supabase/database.types.ts`, pois o arquivo versionado observado ainda não contém `catalog_items`/`client_favorites`, embora os tipos atuais gerados do projeto real já contenham essas tabelas.
+
+`createSupabaseFavoritesStore` usa:
+
+- `list(clientId)`;
+- `add(clientId, { itemId, itemSlug })`;
+- `remove(clientId, itemId)`;
+- chave composta idempotente;
+- validação de UUID;
+- nenhum `localStorage` definitivo.
+
+A camada F02 trata loading, erro, retry e atualização do estado.
+
+## 7. Catálogo — Frente03
 
 Usar:
 
@@ -125,7 +185,7 @@ const publicCatalogReader = createFront03PublicCatalogReader(publicCatalogServic
 O adapter cobre:
 
 - título/tipo/finalidade;
-- `typology` real quando disponível, com fallback honesto por `kind`;
+- `typology` real quando disponível;
 - cidade/bairro/condomínio;
 - código/slug;
 - lançamento e preço;
@@ -136,9 +196,9 @@ O adapter cobre:
 
 A home possui busca real por finalidade, cidade, localização e estilo de vida. O catálogo completo acrescenta lançamento e faixa de preço.
 
-Filtros ficam na URL e suportam refresh/compartilhamento. `normalizeCatalogFilters` impede valores inválidos, NaN, números negativos e valor inválido de lançamento de contaminarem o contrato público.
+Filtros ficam na URL e suportam refresh/compartilhamento. `normalizeCatalogFilters` rejeita valores inválidos, NaN, números negativos e lançamento fora do contrato.
 
-## 6. CRM — Frente04
+## 8. CRM — Frente04
 
 ```ts
 const capture = createFront04ConversionHandler({
@@ -153,11 +213,11 @@ Regras:
 - referência do imóvel/serviço é preservada;
 - origem, ação, página e metadados seguem para o CRM;
 - visitante anônimo não recebe contato fictício;
-- ausência de contato válido gera falha explícita, não “sucesso vazio”.
+- ausência de contato válido gera falha explícita.
 
 O contrato foi conferido contra `LeadConversionEvent`/`ingestLeadConversion` atuais da Frente04.
 
-## 7. CRM primeiro, WhatsApp depois
+## 9. CRM primeiro, WhatsApp depois
 
 ```ts
 const continueToWhatsApp = createWhatsAppContinuation({
@@ -170,8 +230,6 @@ const onConversion = createPublicConversionPipeline({
 });
 ```
 
-O número deve ser oficial, em formato internacional com DDI, e injetado na composição a partir de configuração confiável. A Frente02 rejeita números fora do intervalo válido e não inventa telefone.
-
 Ordem obrigatória:
 
 1. CRM registra;
@@ -179,9 +237,9 @@ Ordem obrigatória:
 3. falta de contato ou falha no CRM interrompe a continuação;
 4. não existe envio automático de mensagem.
 
-A função apenas abre `wa.me` com contexto preenchido.
+O número deve ser oficial, em formato internacional com DDI.
 
-## 8. Captura de contato e proprietário
+## 10. Captura de contato e proprietário
 
 Visitante anônimo em CTA/retensão/interesse:
 
@@ -192,34 +250,7 @@ Visitante anônimo em CTA/retensão/interesse:
 
 `Quero vender` e `Quero alugar` possuem formulário enxuto com estado `idle/busy/success/error` e não exibem falso sucesso.
 
-## 9. Favoritos
-
-```ts
-const favoritesState = usePublicFavoritesBridge({
-  clientId: auth.user?.id ?? null,
-  catalog: publicCatalogReader,
-  store: favoritesStore,
-});
-```
-
-`PublicFavoritesStorePort` exige:
-
-- `list(clientId)`;
-- `add(clientId, { itemId, itemSlug })`;
-- `remove(clientId, itemId)`.
-
-Requisitos do store real:
-
-- usuário real + imóvel real;
-- autorização/RLS;
-- adição/remoção idempotentes;
-- sem `localStorage` definitivo.
-
-A camada da Frente02 trata loading, erro, atualização e recarga. Falha de `add/remove/list` mantém estado real e não gera promise rejeitada solta na UI.
-
-A persistência compartilhada ainda precisa ser criada/definida no ponto apropriado da integração.
-
-## 10. Interesses e histórico da Área do Cliente
+## 11. Interesses e histórico da Área do Cliente
 
 ```ts
 const clientAreaData = useClientAreaData({
@@ -239,11 +270,9 @@ interface ClientAreaDataSourcePort {
 }
 ```
 
-A tela trata dados, loading, erro, retry e ausência de conteúdo. Histórico que referencia imóvel pode abrir o item real pelo slug.
+A tela trata dados, loading, erro, retry e ausência de conteúdo. Não inventar histórico/interesses.
 
-Não inventar histórico/interesses para demonstração.
-
-## 11. Detalhe do imóvel
+## 12. Detalhe do imóvel
 
 O detalhe já prevê:
 
@@ -256,7 +285,7 @@ O detalhe já prevê:
 - CTA de atendimento;
 - serviços relacionados reais: Investimentos, Assessoria Jurídica e Arquitetura.
 
-## 12. Metadados, navegação e acessibilidade
+## 13. Metadados, navegação e acessibilidade
 
 Já implementado:
 
@@ -266,37 +295,23 @@ Já implementado:
 - Escape e scroll lock em overlays;
 - `aria-busy`, `aria-pressed`, `aria-modal`;
 - filtros na URL;
-- busca rápida da home.
+- busca rápida da home;
+- matcher de rotas para o AppRouter.
 
-## 13. O que não deve ser “resolvido” dentro da Frente02
+## 14. Checklist após montagem
 
-Neste ponto, qualquer tentativa de deixar os itens abaixo verdes isoladamente violaria as regras do projeto:
-
-- criar tabela/store definitivo de favoritos dentro da F2;
-- criar Supabase/auth paralelo;
-- duplicar o catálogo da F3;
-- duplicar CRM da F4;
-- editar o roteador/bootstrap global da F1 sem integração;
-- inventar telefone, imóveis, leads, histórico ou usuários;
-- declarar build/E2E/visual como validado sem execução real.
-
-## 14. Checklist após merge
-
-- montar shell/experiência nas rotas públicas;
-- preservar rotas de Auth/Internal da Frente01;
+- regenerar `database.types.ts` da Frente01;
+- montar `Front02IntegrationShell` nas rotas públicas;
+- montar `Front02ClientAccountShell` em `/conta` dentro de `ClientRoute`;
+- ligar client Supabase oficial ao `createSupabaseFavoritesStore`;
 - conectar catálogo real;
-- validar busca da home e catálogo com dados reais;
-- validar tipologia e unidade/empreendimento;
-- testar URL filtrada/reload;
+- testar catálogo/filtros/detalhe com dados reais;
+- testar favorito deslogado/logado/removido/persistido após nova sessão;
 - conectar CRM;
 - configurar WhatsApp oficial;
-- testar falta de contato/falha CRM sem redirecionamento;
-- conectar store real de favoritos;
-- testar favorito deslogado/logado/removido, loading, erro e retry;
+- testar falha CRM sem redirecionamento;
 - conectar dados do cliente quando disponíveis;
-- testar área do cliente com/sem dados e retry;
-- testar vender/alugar sucesso/falha;
-- testar captura anônima e exit-intent;
+- testar vender/alugar e retenção;
 - testar overlays por teclado;
 - testar desktop/mobile;
 - testar 404 e refresh direto;
@@ -306,10 +321,13 @@ Neste ponto, qualquer tentativa de deixar os itens abaixo verdes isoladamente vi
 ## 15. Arquivos a preservar no merge
 
 - `src/features/public-site/Front02IntegrationShell.tsx`
+- `src/features/public-site/Front02ClientAccountShell.tsx`
 - `src/features/public-site/PublicSiteApp.tsx`
 - `src/features/public-site/PublicExperience.tsx`
 - `src/features/public-site/HomeCatalogSearch.tsx`
 - `src/features/public-site/index.ts`
+- `src/features/public-site/routes.ts`
+- `src/features/public-site/supabaseFavoritesStore.ts`
 - `src/features/public-site/catalogQuery.ts`
 - `src/features/public-site/conversionPipeline.ts`
 - `src/features/public-site/front01AuthAdapter.ts`
