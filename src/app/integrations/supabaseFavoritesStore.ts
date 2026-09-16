@@ -34,13 +34,14 @@ export class SupabaseFavoritesStore implements PublicFavoritesStorePort {
 
     const { error } = await supabase
       .from('client_favorites')
-      .upsert({
+      .insert({
         client_id: clientId,
         item_id: item.itemId,
         item_slug: item.itemSlug,
-      }, { onConflict: 'client_id,item_id' });
+      });
 
-    if (error) throw error;
+    // A PK composta torna a operação idempotente sem exigir UPDATE no RLS.
+    if (error && error.code !== '23505') throw error;
   }
 
   async remove(clientId: string, itemId: string): Promise<void> {
