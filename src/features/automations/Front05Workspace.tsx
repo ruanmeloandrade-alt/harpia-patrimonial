@@ -7,6 +7,7 @@ import { IntegrationsWorkspace } from '../integrations/IntegrationsWorkspace';
 import { AutomationsWorkspace } from './AutomationsWorkspace';
 import { FULL_FRONT05_ACCESS, type Front05Access } from './front05Access';
 import './front05.css';
+import './front05-rbac.css';
 
 export type Front05Tab = 'salesbot' | 'automations' | 'ai' | 'logs' | 'integrations';
 
