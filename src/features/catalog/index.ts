@@ -1,6 +1,7 @@
 export * from './types';
 export * from './catalogRepository';
 export * from './supabaseCatalogRepository';
+export * from './realtimeCatalogRepository';
 export * from './catalogMediaStorage';
 export * from './catalogRuntime';
 export * from './publicCatalog';
