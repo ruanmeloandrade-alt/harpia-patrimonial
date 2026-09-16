@@ -14,6 +14,7 @@ export interface CatalogMedia {
   id: string;
   type: CatalogMediaType;
   url: string;
+  storagePath?: string;
   label?: string;
   isCover?: boolean;
 }
