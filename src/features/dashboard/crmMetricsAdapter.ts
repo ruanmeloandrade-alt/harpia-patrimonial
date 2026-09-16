@@ -1,3 +1,4 @@
+import type { CatalogRepository } from '../catalog/catalogRepository';
 import type {
   CommercialDashboardMetrics,
   CommercialMetricKey,
@@ -7,6 +8,10 @@ import type {
 export interface CrmMetricLead {
   id: string;
   source?: string;
+  interest?: {
+    referenceId?: string;
+    label?: string;
+  };
 }
 
 export interface CrmMetricTask {
@@ -40,12 +45,19 @@ function countLabels(values: Array<string | undefined>) {
 /**
  * Adapta somente métricas que o CRM da Frente04 expõe de forma objetiva hoje.
  * Não tenta inferir visita, proposta, negociação ou venda pelo nome configurável das etapas.
+ * Quando recebe o catálogo, cruza o referenceId real do interesse do lead para derivar
+ * demanda por região e performance por produto sem duplicar dados.
  */
 export class CrmSnapshotMetricsProvider implements CommercialMetricsProvider {
-  constructor(private readonly crm: CrmSnapshotPort) {}
+  constructor(
+    private readonly crm: CrmSnapshotPort,
+    private readonly catalog?: CatalogRepository,
+  ) {}
 
   getAvailableMetrics(): CommercialMetricKey[] {
-    return ['leads', 'leadOrigins', 'nextActions'];
+    const metrics: CommercialMetricKey[] = ['leads', 'leadOrigins', 'nextActions'];
+    if (this.catalog) metrics.push('demandByRegion', 'performanceByProduct');
+    return metrics;
   }
 
   async getMetrics(): Promise<CommercialDashboardMetrics> {
@@ -59,6 +71,35 @@ export class CrmSnapshotMetricsProvider implements CommercialMetricsProvider {
         return a.dueAt.localeCompare(b.dueAt);
       });
 
+    const catalogItems = this.catalog ? await this.catalog.list({ includeDeleted: true }) : [];
+    const catalogByReference = new Map<string, (typeof catalogItems)[number]>();
+    for (const item of catalogItems) {
+      catalogByReference.set(item.id, item);
+      catalogByReference.set(item.code, item);
+    }
+
+    const demandLabels: string[] = [];
+    const productLabels: string[] = [];
+
+    for (const lead of snapshot.leads) {
+      const referenceId = lead.interest?.referenceId;
+      const item = referenceId ? catalogByReference.get(referenceId) : undefined;
+
+      if (item) {
+        const region = [item.location.city, item.location.neighborhood].filter(Boolean).join(' / ');
+        if (region) demandLabels.push(region);
+
+        if (item.kind === 'unit' && item.parentId) {
+          const parent = catalogByReference.get(item.parentId);
+          productLabels.push(parent?.name ?? item.name);
+        } else {
+          productLabels.push(item.name);
+        }
+      } else if (lead.interest?.label?.trim()) {
+        productLabels.push(lead.interest.label.trim());
+      }
+    }
+
     return {
       leads: snapshot.leads.length,
       visits: 0,
@@ -69,7 +110,8 @@ export class CrmSnapshotMetricsProvider implements CommercialMetricsProvider {
       ticket: 0,
       conversionRate: 0,
       leadOrigins: countLabels(snapshot.leads.map((lead) => lead.source)),
-      demandByRegion: [],
+      demandByRegion: this.catalog ? countLabels(demandLabels) : [],
+      performanceByProduct: this.catalog ? countLabels(productLabels) : [],
       nextActions: pendingTasks.map((task) => ({
         id: task.id,
         label: task.title,
