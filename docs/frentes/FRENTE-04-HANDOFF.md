@@ -2,16 +2,15 @@
 
 Data-base: 16/09/2026
 Branch: `frente-04`
-Commit de implementação mais recente no momento deste handoff: `b2b6e154fd6a1336fa684fa5b66d18f24d5412e0`
+Último commit de implementação relevante neste handoff: `2b12ad9108c7a96bb7d77b88e248ba13d82f8280`
 
 ## Status visual
 
-- 🟠 Escopo próprio da Frente04: implementação principal concluída, aguardando integração obrigatória e validação completa no produto.
-- 🟠 CRM/Kanban/Lead 360: código implementado e revisão isolada realizada; ainda sem rota final montada pela Frente01.
-- 🟠 Inbox: implementada com transporte desacoplado e estado real de não conectado; ainda sem integração final de shell/automação.
-- 🟠 Entrada automática de leads: contrato implementado; depende da Frente02/Frente01 para evento real de conversão.
-- 🟠 SalesBot/IA pela Inbox: contrato implementado; depende da Frente05 para execução real.
-- 🔴 Validação final integrada pelo usuário: ainda não disponível até montagem das dependências.
+- 🟠 CRM/Kanban/Lead 360: implementação própria concluída e adapters preparados; ainda sem rota/backend final montados.
+- 🟠 Inbox: implementação própria concluída, com telas e automação desacopladas; ainda sem montagem final no shell.
+- 🟠 Entrada automática de leads: contrato e persistência de contexto concluídos; integração real depende do merge com Frente02/Frente01.
+- 🟠 SalesBot/IA/Automatize: adapters reais da Frente04 foram implementados e testados isoladamente; integração ponta a ponta depende do merge com Frente05 e IDs/configurações reais.
+- 🔴 Validação final integrada pelo usuário: ainda indisponível até montagem das frentes e backend.
 
 Nenhum item recebe 🟢 enquanto o usuário ainda não puder abrir e testar o fluxo integrado.
 
@@ -19,44 +18,93 @@ Nenhum item recebe 🟢 enquanto o usuário ainda não puder abrir e testar o fl
 
 ### CRM
 
-- modelo de funil, etapa, lead, tag, campo personalizado, tarefa, histórico e eventos;
+- domínio de funil, etapa, lead, tag, campo personalizado, tarefa, histórico e eventos;
 - persistência local transitória vazia por padrão, sem dados fictícios;
 - criação, renomeação e ativação/desativação de funil;
 - criação, renomeação, reordenação e exclusão protegida de etapa;
-- Kanban configurável;
-- movimentação manual de leads;
-- criação e edição de lead;
-- Lead 360 com nome, e-mail, WhatsApp, origem, página, ação, interesse, referência e observações;
-- associação de responsável por contrato com usuários internos;
-- tags;
-- campos personalizados dos tipos texto, número, data, booleano, seleção única e seleção múltipla;
-- tarefas/próximas ações com responsável, prazo, status e observação;
+- Kanban configurável e movimentação manual;
+- Lead 360 com edição de contato, origem, página, ação, interesse, referência e observações;
+- associação de responsável por usuários internos;
+- tags e campos personalizados;
+- tarefas/próximas ações;
 - histórico de alterações;
-- eventos de domínio para futura automação;
-- fila explícita de leads sem etapa para impedir que conversões novas fiquem invisíveis no CRM.
+- fila de leads sem etapa;
+- eventos idempotentes nos pontos críticos para evitar loops desnecessários de automação ao escrever o mesmo estágio, responsável, valor de campo ou status de tarefa;
+- CSS do CRM restringido ao próprio workspace, evitando vazamento visual para outras frentes.
 
-### Entrada de leads
+### Conversões Frente02 → CRM
 
-- contrato `ingestLeadConversion`;
-- captura de contato, origem, página, ação e interesse;
-- criação sem disparo automático de mensagem;
-- retorno explícito `automaticMessageSent: false`.
+`ingestLeadConversion` preserva:
+
+- nome/e-mail/WhatsApp;
+- origem;
+- página;
+- ação;
+- interesse/referência;
+- `occurredAt` em `sourceOccurredAt`;
+- `metadata` em `sourceMetadata`.
+
+Regra absoluta mantida: criar lead não envia mensagem automaticamente e retorna `automaticMessageSent: false`.
+
+### Integração Frente01
+
+Criado `src/features/crm/front01Adapter.ts`:
+
+- `mapFront01Assignees(users)`;
+- `loadFront01Assignees(listInternalUsers)`.
+
+O adapter filtra somente usuários `internal` ativos e converte para `{ id, name }`.
+
+A Frente04 também expõe entradas separadas:
+
+- `Front04CrmScreen` — indicada para `/interno/crm` com `crm.view`;
+- `Front04InboxScreen` — indicada para `/interno/inbox` com `inbox.view`;
+- `Front04Workspace` — composição conjunta quando ambas as permissões forem garantidas.
+
+As telas aceitam injeção de `CrmService`, `InboxService`, `CrmRepository`, `InboxRepository` e `CrmEventSink`, permitindo trocar a persistência local pelo backend real sem reescrever UI.
 
 ### Inbox
 
 - layout de três colunas;
 - lista de conversas;
-- área central da conversa;
+- chat central;
 - contexto CRM à direita;
 - sessões internas sem fingir canal real;
-- texto, áudio, imagem, vídeo, documento e formulário previstos no contrato;
-- bloqueio real de envio sem transporte conectado;
+- contratos para texto, áudio, imagem, vídeo, documento e formulário;
+- bloqueio de envio sem transporte conectado;
 - ingestão de mensagens recebidas por contrato;
-- alteração de etapa, responsável, tags, campos personalizados e próxima ação pela Inbox;
-- contrato para iniciar/pausar SalesBot;
-- contrato para iniciar/pausar IA;
-- consulta de status;
-- fallback `unavailable` sem simular execução.
+- alteração de etapa, responsável, tags, campos e tarefas pela Inbox;
+- fallback explícito quando automação ou transporte não estiverem configurados.
+
+### Integração Frente05
+
+Criado `src/features/crm/front05Adapter.ts` com:
+
+- `createFront05InboxAutomationAdapter`;
+- `createFront05CrmActionPort`;
+- `Front05CrmEventSink`;
+- `toFront05CrmAutomationEvent`.
+
+O adapter:
+
+- inicia SalesBot com `botId` real;
+- preserva `executionId` por lead/conversa;
+- pausa e retoma SalesBot usando o mesmo `executionId` quando aplicável;
+- inicia/pausa IA por `agentId`/`executionId`;
+- converte status runtime para o estado da Inbox;
+- retorna indisponível quando não existe configuração real;
+- converte ações do Automatize para o `CrmService` real;
+- mapeia eventos CRM para o contrato atual da Frente05.
+
+Mapeamento explícito:
+
+- `lead.created` → `lead.created`;
+- `lead.stage_changed` → `lead.stage_changed`;
+- `lead.custom_field_changed` → `lead.field_changed`;
+- `lead.tag_added` → `lead.tag_added`;
+- `lead.tag_removed` → `lead.tag_removed`;
+- `lead.inactivity_detected` → `lead.inactivity`;
+- demais eventos → `custom.event` com `sourceEventType`.
 
 ## Arquivos principais
 
@@ -64,6 +112,8 @@ Nenhum item recebe 🟢 enquanto o usuário ainda não puder abrir e testar o fl
 - `src/features/crm/repository.ts`
 - `src/features/crm/service.ts`
 - `src/features/crm/contracts.ts`
+- `src/features/crm/front01Adapter.ts`
+- `src/features/crm/front05Adapter.ts`
 - `src/features/crm/CrmWorkspace.tsx`
 - `src/features/crm/UnassignedLeadsQueue.tsx`
 - `src/features/crm/Front04Workspace.tsx`
@@ -76,60 +126,56 @@ Nenhum item recebe 🟢 enquanto o usuário ainda não puder abrir e testar o fl
 
 ## Validações executadas
 
-- branch e propriedade de arquivos conferidas antes das alterações;
-- revisão estrutural dos serviços CRM e Inbox;
-- checagem isolada de TypeScript/sintaxe do `CrmWorkspace` atualizado com stubs equivalentes das dependências: sem erros;
-- checagem isolada de TypeScript/sintaxe do `UnassignedLeadsQueue` em conjunto com o CRM: sem erros;
-- verificado por leitura que o serviço de Inbox bloqueia `sendMessage` quando não há transporte conectado;
-- verificado por leitura que exclusão de etapa com lead é bloqueada;
-- verificado por leitura que eventos de CRM são desacoplados por `CrmEventSink`;
-- verificado que a interface começa sem dados fictícios e possui empty states.
+- revisão estrutural dos serviços CRM/Inbox;
+- checagens TypeScript isoladas dos componentes principais realizadas em etapas anteriores;
+- TypeScript isolado do adapter F04↔F05 atualizado: OK;
+- teste comportamental do adapter F04↔F05 atualizado: OK para `botId` explícito, start, pause, resume, status e mapeamento de evento;
+- proteção de exclusão de etapa com leads conferida;
+- envio Inbox sem transporte real bloqueado;
+- empty states e ausência de dados fictícios conferidos;
+- compatibilidade estrutural com `listInternalUsers()` da Frente01 conferida;
+- compatibilidade do adapter de conversão da Frente02 conferida;
+- estilos do CRM revisados para não aplicar seletor global em inputs/selects/buttons.
 
 ## NÃO VERIFICADO ainda
 
-- `npm run build` da aplicação integrada;
-- TypeScript completo de todas as cinco frentes montadas juntas;
-- rota protegida real da Frente01;
-- permissões/RBAC reais;
-- persistência multiusuário/backend;
-- evento real site → CRM vindo da Frente02;
-- referências reais catálogo/produto vindas da Frente03;
-- execução real de SalesBot/IA/Automatize da Frente05;
+- `npm run build` com as cinco frentes montadas;
+- TypeScript completo do produto integrado;
+- `/interno/crm` e `/interno/inbox` montados no router da Frente01;
+- autorização backend/RLS para `crm.manage` e `inbox.manage`;
+- persistência multiusuário real;
+- evento real site → CRM no produto montado;
+- integração com referências reais da Frente03;
+- execução ponta a ponta de SalesBot/IA/Automatize com configurações reais;
 - WhatsApp real;
-- teste ponta a ponta pelo usuário.
+- teste final pelo usuário.
 
-## Dependências esperadas
+## Dependências restantes
 
-### Frente01
+### Frente01 / integrador
 
-1. Montar `Front04Workspace` no shell/rota interna protegida.
-2. Fornecer usuários internos para `assignees` no formato `{ id, name }`.
-3. Fornecer adapter definitivo de persistência/backend compatível com `CrmRepository` e `InboxRepository`, ou coordenar adaptação equivalente na integração.
-4. Aplicar permissões reais na rota e operações conforme RBAC.
+1. Montar `Front04CrmScreen` e `Front04InboxScreen` nas rotas protegidas.
+2. Carregar usuários com `listInternalUsers` e passar pelo adapter F04.
+3. Injetar persistência backend real em `CrmRepository` e `InboxRepository`.
+4. Aplicar autorização real de leitura/escrita conforme `crm.view`, `crm.manage`, `inbox.view`, `inbox.manage`.
+5. O backend Supabase dedicado da Hárpia precisa estar disponível antes de validar persistência/RLS reais.
 
-### Frente02
+### Frente02 / integrador
 
-- Chamar `ingestLeadConversion` ou adapter equivalente em conversões reais do site/área do cliente, mantendo a regra de não enviar mensagem automaticamente.
+- Montar `createFront04ConversionHandler` com `ingestLeadConversion` após merge e executar conversão real.
 
-### Frente03
+### Frente03 / integrador
 
-- Fornecer referência real de imóvel/produto/serviço no contexto do lead quando aplicável.
-- Consumir métricas comerciais da Frente04 no dashboard por contrato, sem duplicar fonte de verdade.
+- Fornecer referências reais de catálogo no interesse do lead e consumir métricas CRM no dashboard por contrato.
 
-### Frente05
+### Frente05 / integrador
 
-- Implementar `InboxAutomationPort` para SalesBot e IA.
-- Consumir eventos `CrmEventSink` no Automatize.
-- Conectar transporte real somente na fase definida de integrações, sem alterar a regra zero-mock.
+1. Passar `salesBotCommandPort`/port criado pela F05 e `aiAgentCommandPort` ao `createFront05InboxAutomationAdapter`.
+2. Resolver `botId` e `agentId` configurados para cada contexto; não escolher padrão fictício.
+3. Ligar `Front05CrmEventSink` a `processCrmAutomationEvent`.
+4. Passar `createFront05CrmActionPort(crmService)` como dependência CRM do engine da Frente05.
+5. Exercitar start/pause/resume/status/eventos ponta a ponta após merge.
 
-## Riscos conhecidos
+## Critério de fechamento
 
-- persistência local atual é transitória e não é adequada como fonte definitiva multiusuário;
-- não marcar CRM como operacional multiusuário antes de adapter/backend real;
-- não marcar SalesBot/IA como funcionando antes da Frente05 conectar as portas;
-- não marcar envio de WhatsApp como disponível antes do transporte real;
-- qualquer alteração de contratos compartilhados deve ser coordenada antes de merge.
-
-## Instrução ao integrador
-
-Usar `Front04Workspace` como ponto único de montagem. Não recriar CRM/Inbox em arquivos globais. Passar usuários internos por `assignees` e a implementação de automação por `automationPort`. Manter `src/features/crm/**` e `src/features/inbox/**` como propriedade funcional da Frente04 durante o pente-fino. Após integração, executar build completo, TypeScript, rotas, CRUD principal, refresh/persistência, RBAC, entrada de lead, Inbox e comandos de automação antes de qualquer 🟢.
+A Frente04 só muda para 🟢 quando as rotas estiverem montadas, persistência/RBAC reais estiverem ativos, build/typecheck integrados passarem e o usuário puder abrir/testar os fluxos relevantes.
