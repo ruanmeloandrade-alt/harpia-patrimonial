@@ -8,6 +8,7 @@ export type {
 } from './PublicSiteApp';
 
 export type {
+  PublicCatalogFilterOptions,
   PublicCatalogFilters,
   PublicCatalogItem,
   PublicCatalogMedia,
@@ -32,6 +33,15 @@ export {
   createFront01PublicAuthBridge,
   type Front01AuthContextPort,
 } from './front01AuthAdapter';
+export {
+  createWhatsAppContinuation,
+  type WhatsAppContinuationOptions,
+} from './whatsappContinuation';
+export {
+  hasCatalogFilters,
+  readCatalogFilters,
+  writeCatalogFilters,
+} from './catalogQuery';
 
 /**
  * Rotas de propriedade da Frente02. O roteador global pertence à Frente01;
