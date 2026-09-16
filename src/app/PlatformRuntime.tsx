@@ -32,6 +32,7 @@ import { SupabaseAICredentialVault } from './integrations/supabaseAICredentialVa
 import { SupabaseAIModelRuntime } from './integrations/supabaseAIModelRuntime';
 import { SupabaseFavoritesStore } from './integrations/supabaseFavoritesStore';
 import { loadInternalAssignees } from './integrations/internalAssignees';
+import { salesBotConditionEvaluator } from './integrations/salesBotConditionEvaluator';
 import { hydrateSharedF05Storage } from './integrations/sharedF05Storage';
 import {
   hydrateSharedCrmRepository,
@@ -166,6 +167,7 @@ export function PlatformRuntimeProvider({ children }: PropsWithChildren) {
           ...unconfiguredSalesBotRuntimeDependencies,
           crm: crmActions,
           ai: aiCommandPort,
+          condition: salesBotConditionEvaluator,
         });
         const automationDependencies = {
           ...unconfiguredAutomationEngineDependencies,
