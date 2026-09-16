@@ -19,31 +19,26 @@ Já confirmado na branch `frente-01`:
 - hidratação do estado F05 antes de renderizar os módulos;
 - CRM conectado ao `processCrmAutomationEvent`;
 - Inbox conectada aos command ports de SalesBot e IA;
-- SalesBot composto com ações CRM e agente IA;
+- SalesBot composto com ações CRM, agente IA, avaliador de condição e webhook;
 - runtime IA seguro server-side composto no `PlatformRuntime`.
 
 ## Contratos canônicos da Frente05
 
-A API pública permanece em:
+A API pública permanece em `src/features/automations/index.ts`.
 
-```ts
-import {
-  buildFront05Access,
-  configureF05SharedStorage,
-  createAIAgentCommandPort,
-  createSalesBotCommandPort,
-  createSupabaseAICredentialVault,
-  createSupabaseAIModelRuntime,
-  processCrmAutomationEvent,
-  resetF05SharedStorage,
-  unconfiguredAutomationEngineDependencies,
-  unconfiguredSalesBotRuntimeDependencies,
-} from '../features/automations';
-```
+Os workspaces da F05 também suportam permissão granular de edição:
+
+- `SalesBotWorkspace canManage={...}`;
+- `AutomationsWorkspace canManage={...}`;
+- `AIAgentsWorkspace canManage={...}`;
+- `ExecutionLogsPanel canManage={...}`;
+- `IntegrationsWorkspace canManage={...}`.
+
+O `Front05Workspace` já faz esse mapeamento quando usado de forma consolidada.
 
 ## Persistência compartilhada
 
-A Frente05 agora suporta oficialmente dois modos:
+A Frente05 suporta oficialmente dois modos:
 
 1. standalone/isolado: fallback local para desenvolvimento e testes da branch;
 2. produto integrado: `configureF05SharedStorage(...)` substitui o armazenamento local por backend compartilhado.
@@ -51,6 +46,13 @@ A Frente05 agora suporta oficialmente dois modos:
 Na integração atual da Frente01, o backend compartilhado é Supabase com optimistic locking por revisão.
 
 Depois da hidratação compartilhada, `localStorage` não é mais fonte de verdade da F05.
+
+Hardening adicional feito pela F05 nesta rodada:
+
+- escrita compartilhada é otimista na UI;
+- se o backend rejeitar a escrita por RLS/conflito/revisão, a F05 desfaz a alteração em memória;
+- rollback atrasado nunca apaga uma edição posterior, pois cada chave possui geração de escrita;
+- workspaces SalesBot, Automatize, Agentes IA, Provedores/Integrações e Execuções escutam hidratação, confirmação e rollback do storage compartilhado.
 
 ## Cofre de credenciais IA
 
@@ -81,27 +83,61 @@ O executor server-side:
 - executa OpenAI/Codex, Anthropic/Claude, Google Gemini ou provedor customizado;
 - nunca devolve a chave ao browser.
 
-A função experimental `ai-provider-runtime` criada durante a integração não é mais o caminho canônico e foi removida da fonte da branch F05.
-
 ## Hardening do estado compartilhado F05
 
-Aplicado no Supabase real:
+Estado canônico atual do banco e da fonte da Frente01:
 
 - `anon` não possui `EXECUTE` em `save_f05_shared_storage`;
-- o RPC público `save_f05_shared_storage` agora é `SECURITY INVOKER`;
-- a escrita privilegiada ficou em função do schema privado;
-- a função privada continua validando `private.can_write_f05_storage(storage_key)`;
-- o alerta do Security Advisor referente ao RPC da Frente05 foi eliminado.
+- o RPC público `save_f05_shared_storage` é `SECURITY INVOKER`;
+- escrita usa `UPDATE` protegido por RLS;
+- policy `f05_shared_storage_update` valida `private.can_write_f05_storage(storage_key)` em `USING` e `WITH CHECK`;
+- `authenticated` possui somente os grants necessários de `select/update` na tabela e `execute` no RPC;
+- Security Advisor do projeto ficou em 0 lints após a convergência de hardening.
 
-A migration correspondente está registrada em:
+A branch F05 não deve restaurar o writer privado intermediário criado durante o QA; o desenho final é RLS + `SECURITY INVOKER`.
 
-`supabase/schema/f05_shared_storage_hardening.sql`
+## Bloqueio RBAC encontrado no QA integrado
+
+A branch `frente-01` ainda precisa corrigir o encaixe de leitura/edição da F05 antes do verde final.
+
+### AppRouter
+
+Hoje SalesBot, Automatize, Agentes IA e Integrações exigem apenas `*.manage`. Isso impede usuário que possui somente `*.view` de abrir a tela em modo leitura.
+
+Correção esperada: permitir acesso quando existir `view` **ou** `manage` do módulo, mantendo edição condicionada ao `manage`.
+
+Exemplos:
+
+- SalesBot: `[salesbot.view, salesbot.manage]`;
+- Automatize: `[automations.view, automations.manage]`;
+- Agentes IA: `[ai.view, ai.manage]`;
+- Integrações: `[integrations.view, integrations.manage]`.
+
+### IntegratedInternalModules
+
+Os workspaces são montados hoje sem `canManage`, portanto o integrador deve passar explicitamente:
+
+```tsx
+<SalesBotWorkspace canManage={auth.hasPermission(PERMISSIONS.SALESBOT_MANAGE)} />
+<AutomationsWorkspace canManage={auth.hasPermission(PERMISSIONS.AUTOMATIONS_MANAGE)} />
+<AIAgentsWorkspace canManage={auth.hasPermission(PERMISSIONS.AI_MANAGE)} />
+<ExecutionLogsPanel canManage={
+  auth.hasPermission(PERMISSIONS.SALESBOT_MANAGE)
+  || auth.hasPermission(PERMISSIONS.AI_MANAGE)
+} />
+<IntegrationsWorkspace
+  credentialVault={runtime.credentialVault}
+  canManage={auth.hasPermission(PERMISSIONS.INTEGRATIONS_MANAGE)}
+/>
+```
+
+A F05 já endureceu `ExecutionLogsPanel` para `canManage=false` por padrão. Assim um usuário que só possui `view` não consegue limpar logs mesmo se o integrador esquecer a prop.
 
 ## Pendências reais para a Frente01
 
-1. Sincronizar os commits recentes da branch `frente-05` antes do QA final, especialmente RBAC somente-leitura, storage compartilhado oficial e adapters canônicos de cofre/runtime.
-2. Manter `ai-model-invoke` como executor IA canônico.
-3. Hardening recomendado para `ai-model-invoke`: adicionar timeout explícito de chamada ao provedor e bloquear também faixa IPv4 CGNAT `100.64.0.0/10` nos endpoints customizados.
+1. Sincronizar os commits recentes da branch `frente-05`, incluindo rollback de persistência e listeners de UI.
+2. Corrigir RBAC integrado conforme seção acima: rota aceita `view/manage`; edição recebe `canManage` explicitamente.
+3. Manter `ai-model-invoke` como executor IA canônico.
 4. Executar build/typecheck do produto consolidado quando o ambiente Node/npm estiver disponível.
 5. Com um administrador interno real, executar E2E de permissões e salvar/remover chave pela UI.
 
@@ -112,6 +148,7 @@ A Frente05 não está mais aguardando desenho de shell, definição de permissõ
 ## O que ainda impede o “verde final integrado”
 
 - branch consolidada ainda precisa conter os últimos commits F05;
+- RBAC `view/manage` ainda precisa ser aplicado no shell integrador;
 - build/typecheck conjunto ainda não foi registrado como aprovado;
 - E2E autenticado com usuário real ainda não foi executado;
 - chamada real a provedor exige uma chave real configurada pelo administrador;
