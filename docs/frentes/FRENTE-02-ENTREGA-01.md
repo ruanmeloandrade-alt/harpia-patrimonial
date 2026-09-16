@@ -10,21 +10,25 @@ Objetivo: deixar a experiência pública e a área do cliente prontas para a pri
 
 - home pública e páginas institucionais;
 - busca rápida de imóveis com finalidade, cidade, localização e estilo de vida;
-- localização da busca da home filtrada pela cidade selecionada;
-- filtros sanitizados e compartilháveis por URL;
+- localização da busca da home filtrada pela cidade selecionada, com fallback compatível para readers anteriores;
+- filtros sanitizados e compartilháveis por URL, incluindo limpeza de caracteres de controle e limite de tamanho nos campos textuais;
 - faixa de preço coerente com unidades publicadas quando um empreendimento possui unidades;
 - catálogo público protegido contra unidade órfã sem empreendimento publicado;
+- detalhe público com fallback de lookup de código case-insensitive mesmo quando o producer integrado ainda estiver em versão anterior;
 - detalhe do imóvel com galeria, vídeo, dados, empreendimento/unidade, serviços relacionados, CTA e favorito;
 - captura de proprietário para venda/locação com sucesso somente após conversão aceita;
 - retenção de comprador;
 - Auth consumido exclusivamente da Frente01;
 - isolamento de dados pessoais somente para conta cliente ativa;
 - favoritos por ID estável, fallback por slug, proteção de troca de sessão e serialização contra clique duplo;
+- reload antigo de favoritos não pode sobrescrever mutação já concluída;
 - área do cliente com perfil, favoritos, interesses, histórico, loading, erro e retry;
 - proteção contra respostas assíncronas obsoletas ao trocar de conta;
 - adapter F2→F4 compatível com o contrato atual, exigindo nome + WhatsApp;
-- metadata pública sanitizada para não enviar identidade confiável pelo body;
-- pipeline CRM antes de WhatsApp;
+- metadata pública sanitizada para não enviar identidade confiável pelo body, incluindo variantes equivalentes de chave;
+- pipeline registra CRM antes de WhatsApp;
+- sucesso do lead permanece válido mesmo se apenas a continuação externa para WhatsApp falhar, evitando falso negativo na UI;
+- mensagem contextual de WhatsApp normaliza/quebra valores de usuário antes de compor o texto;
 - WhatsApp mal configurado não derruba o site nem impede criação do lead;
 - Error Boundary público para impedir tela branca em URL malformada;
 - metadata de página, 404 e navegação mobile;
@@ -43,6 +47,8 @@ A branch integrada da Frente01 ainda precisa receber os hardenings recentes da F
 - `src/features/public-catalog/contracts.ts`;
 - `src/features/public-site/HomeCatalogSearch.tsx`;
 - `src/features/public-site/front04ConversionAdapter.ts`;
+- `src/features/public-site/conversionPipeline.ts`;
+- `src/features/public-site/whatsappContinuation.ts`;
 - `src/features/public-site/PublicExperienceBoundary.tsx`;
 - `src/features/public-site/public-experience.css`.
 
@@ -53,6 +59,7 @@ A branch integrada da Frente01 ainda precisa receber os hardenings recentes da F
 - `database.types.ts` da Frente01 regenerado com `catalog_items` e `client_favorites`;
 - `PlatformRuntime` usa `SupabaseCatalogRepository` quando o backend está configurado;
 - `PublicCatalogService` da Frente03 já possui implementação real;
+- F2 já possui defesa própria contra unidade órfã e fallback case-insensitive no detalhe, reduzindo dependência de sync F3 para a jornada pública básica;
 - `public-lead-ingest` e `client-area-data` existem como Edge Functions;
 - contrato atual da Frente04 continua compatível com o adapter da Frente02.
 
@@ -68,7 +75,7 @@ A branch integrada da Frente01 ainda precisa receber os hardenings recentes da F
 
 ### Frente03 / integração
 
-- sincronizar a versão atual do catálogo público na integração global, incluindo lookup de código case-insensitive e regras atuais de visibilidade/integridade.
+- sincronizar a versão atual do catálogo na integração global para manter producer, integridade e dashboard alinhados; a jornada pública básica da F2 já possui fallback local para visibilidade de unidade e lookup de código.
 
 ### Dados reais / operação
 
