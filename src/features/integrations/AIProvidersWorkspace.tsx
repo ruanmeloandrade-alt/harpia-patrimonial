@@ -34,6 +34,7 @@ export function AIProvidersWorkspace({ credentialVault = unconfiguredAICredentia
   const issues = selected ? validateAIProviderProfile(selected) : [];
   const dependentAgents = selected ? listAIAgents().filter((agent) => agent.providerProfileId === selected.id) : [];
   const activeDependentAgents = dependentAgents.filter((agent) => agent.status === 'active');
+  const executionConfigLocked = activeDependentAgents.length > 0;
 
   const refresh = (focusId?: string) => {
     const next = listAIProviderProfiles();
@@ -43,11 +44,27 @@ export function AIProvidersWorkspace({ credentialVault = unconfiguredAICredentia
   };
   useF05StorageListener(() => refresh());
 
+  const patchProfile = (patch: Parameters<typeof updateAIProviderProfile>[1]) => {
+    if (!selected || !canManage) return;
+    try {
+      updateAIProviderProfile(selected.id, patch);
+      setCredentialMessage('');
+      refresh(selected.id);
+    } catch (error) {
+      setCredentialMessage(errorMessage(error, 'Não foi possível alterar o perfil de IA.'));
+    }
+  };
+
   const create = () => {
     if (!newName.trim() || !canManage) return;
-    const profile = createAIProviderProfile({ name: newName, provider: newProvider });
-    setNewName('');
-    refresh(profile.id);
+    try {
+      const profile = createAIProviderProfile({ name: newName, provider: newProvider });
+      setNewName('');
+      setCredentialMessage('');
+      refresh(profile.id);
+    } catch (error) {
+      setCredentialMessage(errorMessage(error, 'Não foi possível criar o perfil de IA.'));
+    }
   };
 
   const saveKey = async () => {
@@ -61,8 +78,6 @@ export function AIProvidersWorkspace({ credentialVault = unconfiguredAICredentia
       return;
     }
 
-    // Substituição de uma chave já configurada preserva o mesmo secretRef no Vault.
-    // Nesse caso o perfil já aponta para a referência correta e não precisa de segunda escrita.
     if (profileBefore.apiKeyConfigured && profileBefore.secretRef === result.secretRef) {
       setCredentialMessage('Chave atualizada com segurança.');
       refresh(selected.id);
@@ -208,20 +223,21 @@ export function AIProvidersWorkspace({ credentialVault = unconfiguredAICredentia
       <fieldset className="f05-editor f05-readonly-fieldset" disabled={!canManage}>
         {!selected ? <div className="f05-empty f05-empty--large">Crie ou selecione um perfil de IA.</div> : <>
           <div className="f05-form-grid">
-            <label>Nome do perfil<input value={selected.name} onChange={(event) => { updateAIProviderProfile(selected.id, { name: event.target.value }); refresh(selected.id); }} /></label>
-            <label>Provedor<select value={selected.provider} onChange={(event) => { updateAIProviderProfile(selected.id, { provider: event.target.value as AIProviderKind, status: 'draft' }); refresh(selected.id); }}>
+            <label>Nome do perfil<input value={selected.name} onChange={(event) => patchProfile({ name: event.target.value })} /></label>
+            <label>Provedor<select disabled={executionConfigLocked} value={selected.provider} onChange={(event) => patchProfile({ provider: event.target.value as AIProviderKind, status: 'draft' })}>
               {AI_PROVIDER_CATALOG.map((provider) => <option key={provider.id} value={provider.id}>{provider.label}</option>)}
             </select></label>
           </div>
 
           <div className="f05-form-grid">
-            <label>Modelo<input value={selected.model} onChange={(event) => { updateAIProviderProfile(selected.id, { model: event.target.value, status: 'draft' }); refresh(selected.id); }} placeholder={selectedMeta?.modelPlaceholder ?? 'Informe o modelo'} /></label>
-            <label>Endpoint/base URL<input value={selected.baseUrl} onChange={(event) => { updateAIProviderProfile(selected.id, { baseUrl: event.target.value, status: 'draft' }); refresh(selected.id); }} placeholder="Opcional, exceto provedor customizado" /></label>
+            <label>Modelo<input disabled={executionConfigLocked} value={selected.model} onChange={(event) => patchProfile({ model: event.target.value, status: 'draft' })} placeholder={selectedMeta?.modelPlaceholder ?? 'Informe o modelo'} /></label>
+            <label>Endpoint/base URL<input disabled={executionConfigLocked} value={selected.baseUrl} onChange={(event) => patchProfile({ baseUrl: event.target.value, status: 'draft' })} placeholder="Opcional, exceto provedor customizado" /></label>
           </div>
 
-          <label className="f05-field">Observações<textarea rows={2} value={selected.notes} onChange={(event) => { updateAIProviderProfile(selected.id, { notes: event.target.value }); refresh(selected.id); }} placeholder="Uso deste perfil, limites ou observações internas" /></label>
+          <label className="f05-field">Observações<textarea rows={2} value={selected.notes} onChange={(event) => patchProfile({ notes: event.target.value })} placeholder="Uso deste perfil, limites ou observações internas" /></label>
 
           {dependentAgents.length > 0 ? <div className="f05-inline-message">Usado por {dependentAgents.length} agente(s): {dependentAgents.map((agent) => `${agent.name} (${agent.status})`).join(', ')}.</div> : null}
+          {executionConfigLocked ? <div className="f05-inline-message">Provedor, modelo e endpoint ficam bloqueados enquanto houver agente ativo usando este perfil. Pause os agentes antes de alterar a configuração de execução.</div> : null}
 
           <div className="f05-secret-box">
             <div className="f05-secret-box__head"><strong>Chave API</strong><span className={`f05-status f05-status--${selected.apiKeyConfigured ? 'connected' : 'not_connected'}`}>{selected.apiKeyConfigured ? 'Configurada' : 'Não configurada'}</span></div>
