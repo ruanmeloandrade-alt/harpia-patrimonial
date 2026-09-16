@@ -2,18 +2,18 @@ import { useMemo, useState } from 'react';
 import { DashboardPage } from '../dashboard/DashboardPage';
 import type { CommercialMetricsProvider } from '../dashboard/dashboardService';
 import { LocalCatalogRepository, type CatalogRepository } from './catalogRepository';
-import { CatalogAdminPage } from './CatalogAdminPage';
+import { CatalogAdminPage, type CatalogAccess } from './CatalogAdminPage';
 import './workspace.css';
 
 interface Front03WorkspaceProps {
-  canManage: boolean;
+  catalogAccess: CatalogAccess;
   catalogRepository?: CatalogRepository;
   commercialProvider?: CommercialMetricsProvider;
   initialView?: 'dashboard' | 'catalog';
 }
 
 export function Front03Workspace({
-  canManage,
+  catalogAccess,
   catalogRepository,
   commercialProvider,
   initialView = 'dashboard',
@@ -30,7 +30,7 @@ export function Front03Workspace({
       {view === 'dashboard' ? (
         <DashboardPage catalogRepository={repository} commercialProvider={commercialProvider} />
       ) : (
-        <CatalogAdminPage canManage={canManage} repository={repository} />
+        <CatalogAdminPage access={catalogAccess} repository={repository} />
       )}
     </div>
   );
