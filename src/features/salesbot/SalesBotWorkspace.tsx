@@ -12,9 +12,9 @@ import {
   setSalesBotStatus,
   updateSalesBot,
   updateSalesBotBlock,
+  validateSalesBotForActivation,
 } from './repository';
 import type { SalesBotBlock, SalesBotBlockConfigValue, SalesBotDefinition } from './types';
-import { validateSalesBot } from './validation';
 
 function BlockConfigEditor({ botId, block, onChange }: { botId: string; block: SalesBotBlock; onChange: () => void }) {
   const set = (key: string, value: SalesBotBlockConfigValue) => {
@@ -54,7 +54,7 @@ export function SalesBotWorkspace() {
   const [newName, setNewName] = useState('');
   const [error, setError] = useState('');
   const selected = useMemo(() => bots.find((bot) => bot.id === selectedId) ?? null, [bots, selectedId]);
-  const validationIssues = useMemo(() => selected ? validateSalesBot(selected) : [], [selected]);
+  const validationIssues = useMemo(() => selected ? validateSalesBotForActivation(selected) : [], [selected, bots]);
 
   const refresh = (focusId?: string) => {
     const next = listSalesBots(); setBots(next);
