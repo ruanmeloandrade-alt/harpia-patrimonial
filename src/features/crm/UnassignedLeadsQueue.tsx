@@ -6,10 +6,11 @@ import styles from './crm.module.css';
 
 export interface UnassignedLeadsQueueProps {
   service: CrmService;
+  canManage?: boolean;
   onChanged?: () => void;
 }
 
-export function UnassignedLeadsQueue({ service, onChanged }: UnassignedLeadsQueueProps) {
+export function UnassignedLeadsQueue({ service, canManage = true, onChanged }: UnassignedLeadsQueueProps) {
   const [state, setState] = useState<CrmState>(() => service.snapshot());
   const [feedback, setFeedback] = useState('');
 
@@ -34,7 +35,7 @@ export function UnassignedLeadsQueue({ service, onChanged }: UnassignedLeadsQueu
   if (unassigned.length === 0) return null;
 
   const moveToStage = (leadId: string, stageId: string) => {
-    if (!stageId) return;
+    if (!canManage || !stageId) return;
     if (!activeStageIds.has(stageId)) {
       setFeedback('A etapa selecionada não pertence a um funil ativo.');
       return;
@@ -65,30 +66,34 @@ export function UnassignedLeadsQueue({ service, onChanged }: UnassignedLeadsQueu
               <strong>{lead.name}</strong>
               <span>{lead.interest?.label || lead.source || 'Sem contexto informado'}</span>
               <small>{lead.whatsapp || lead.email || 'Contato não informado'}</small>
-              <select
-                defaultValue=""
-                aria-label={`Definir etapa de ${lead.name}`}
-                disabled={!hasActiveStage}
-                onChange={(event) => moveToStage(lead.id, event.target.value)}
-              >
-                <option value="">Encaminhar para etapa…</option>
-                {activePipelines.map((pipeline) => {
-                  const stages = state.stages
-                    .filter((stage) => stage.pipelineId === pipeline.id)
-                    .sort((a, b) => a.position - b.position);
-                  if (stages.length === 0) return null;
-                  return (
-                    <optgroup key={pipeline.id} label={pipeline.name}>
-                      {stages.map((stage) => <option key={stage.id} value={stage.id}>{stage.name}</option>)}
-                    </optgroup>
-                  );
-                })}
-              </select>
+              {canManage ? (
+                <select
+                  defaultValue=""
+                  aria-label={`Definir etapa de ${lead.name}`}
+                  disabled={!hasActiveStage}
+                  onChange={(event) => moveToStage(lead.id, event.target.value)}
+                >
+                  <option value="">Encaminhar para etapa…</option>
+                  {activePipelines.map((pipeline) => {
+                    const stages = state.stages
+                      .filter((stage) => stage.pipelineId === pipeline.id)
+                      .sort((a, b) => a.position - b.position);
+                    if (stages.length === 0) return null;
+                    return (
+                      <optgroup key={pipeline.id} label={pipeline.name}>
+                        {stages.map((stage) => <option key={stage.id} value={stage.id}>{stage.name}</option>)}
+                      </optgroup>
+                    );
+                  })}
+                </select>
+              ) : (
+                <small>Somente leitura — classificação indisponível.</small>
+              )}
             </article>
           ))}
         </div>
 
-        {!hasActiveStage && (
+        {canManage && !hasActiveStage && (
           <small>Crie ao menos uma etapa em um funil ativo para classificar estes leads.</small>
         )}
       </div>
