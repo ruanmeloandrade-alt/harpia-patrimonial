@@ -4,7 +4,15 @@ import {
   useMemo,
   useState,
 } from 'react';
-import { CrmId, CrmState, CustomFieldDefinition, Lead, PipelineStage } from './domain';
+import {
+  CrmId,
+  CrmState,
+  CustomFieldDefinition,
+  CustomFieldType,
+  InterestType,
+  Lead,
+  PipelineStage,
+} from './domain';
 import { BrowserCrmRepository } from './repository';
 import { CrmIntegrityError, CrmService } from './service';
 import styles from './crm.module.css';
@@ -20,6 +28,20 @@ export interface CrmWorkspaceProps {
 }
 
 const emptyMessage = 'Nenhum dado real cadastrado ainda.';
+const interestTypes: Array<{ value: InterestType; label: string }> = [
+  { value: 'property', label: 'Imóvel' },
+  { value: 'product', label: 'Produto' },
+  { value: 'service', label: 'Serviço' },
+  { value: 'other', label: 'Outro' },
+];
+const customFieldTypes: Array<{ value: CustomFieldType; label: string }> = [
+  { value: 'text', label: 'Texto' },
+  { value: 'number', label: 'Número' },
+  { value: 'date', label: 'Data' },
+  { value: 'boolean', label: 'Sim/Não' },
+  { value: 'select', label: 'Seleção única' },
+  { value: 'multiselect', label: 'Seleção múltipla' },
+];
 
 export function CrmWorkspace({ service: injectedService, assignees = [] }: CrmWorkspaceProps) {
   const service = useMemo(
@@ -31,7 +53,7 @@ export function CrmWorkspace({ service: injectedService, assignees = [] }: CrmWo
     () => service.snapshot().pipelines.find((pipeline) => pipeline.active)?.id,
   );
   const [selectedLeadId, setSelectedLeadId] = useState<string | undefined>();
-  const [feedback, setFeedback] = useState<string>('');
+  const [feedback, setFeedback] = useState('');
 
   const refresh = (message?: string) => {
     const snapshot = service.snapshot();
@@ -77,8 +99,7 @@ export function CrmWorkspace({ service: injectedService, assignees = [] }: CrmWo
     event.preventDefault();
     if (!selectedPipeline) return;
     const form = new FormData(event.currentTarget);
-    const name = String(form.get('stageName') ?? '');
-    run(() => service.createStage(selectedPipeline.id, name), 'Etapa criada.');
+    run(() => service.createStage(selectedPipeline.id, String(form.get('stageName') ?? '')), 'Etapa criada.');
     event.currentTarget.reset();
   };
 
@@ -86,6 +107,10 @@ export function CrmWorkspace({ service: injectedService, assignees = [] }: CrmWo
     event.preventDefault();
     const form = new FormData(event.currentTarget);
     const stageId = String(form.get('stageId') ?? '') || undefined;
+    const interestType = String(form.get('interestType') ?? '') as InterestType | '';
+    const interestLabel = String(form.get('interestLabel') ?? '').trim();
+    const interestReferenceId = String(form.get('interestReferenceId') ?? '').trim();
+
     try {
       const lead = service.createLead({
         name: String(form.get('name') ?? ''),
@@ -94,6 +119,13 @@ export function CrmWorkspace({ service: injectedService, assignees = [] }: CrmWo
         source: String(form.get('source') ?? ''),
         pipelineId: selectedPipeline?.id,
         stageId,
+        interest: interestType
+          ? {
+              type: interestType,
+              label: interestLabel || undefined,
+              referenceId: interestReferenceId || undefined,
+            }
+          : undefined,
       });
       setSelectedLeadId(lead.id);
       event.currentTarget.reset();
@@ -186,7 +218,7 @@ export function CrmWorkspace({ service: injectedService, assignees = [] }: CrmWo
         </div>
 
         <form className={styles.inlineForm} onSubmit={handleCreatePipeline}>
-          <input name="pipelineName" placeholder="Novo funil" aria-label="Nome do novo funil" />
+          <input name="pipelineName" required placeholder="Novo funil" aria-label="Nome do novo funil" />
           <button type="submit">Criar funil</button>
         </form>
       </div>
@@ -218,7 +250,7 @@ export function CrmWorkspace({ service: injectedService, assignees = [] }: CrmWo
                 <strong>Adicionar etapa</strong>
                 <span>Você define a operação; nada vem pré-configurado.</span>
               </div>
-              <input name="stageName" placeholder="Ex.: Qualificação" aria-label="Nome da etapa" />
+              <input name="stageName" required placeholder="Ex.: Qualificação" aria-label="Nome da etapa" />
               <button type="submit">Adicionar</button>
             </form>
 
@@ -234,10 +266,14 @@ export function CrmWorkspace({ service: injectedService, assignees = [] }: CrmWo
                 <input name="source" placeholder="Origem" />
                 <select name="stageId" defaultValue="">
                   <option value="">Sem etapa</option>
-                  {stages.map((stage) => (
-                    <option key={stage.id} value={stage.id}>{stage.name}</option>
-                  ))}
+                  {stages.map((stage) => <option key={stage.id} value={stage.id}>{stage.name}</option>)}
                 </select>
+                <select name="interestType" defaultValue="">
+                  <option value="">Tipo de interesse</option>
+                  {interestTypes.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
+                </select>
+                <input name="interestLabel" placeholder="Imóvel/produto/serviço" />
+                <input name="interestReferenceId" placeholder="ID/referência (opcional)" />
               </div>
               <button type="submit">Criar lead</button>
             </form>
@@ -271,7 +307,6 @@ export function CrmWorkspace({ service: injectedService, assignees = [] }: CrmWo
                         <button type="button" onClick={() => removeStage(stage)} aria-label="Remover etapa">×</button>
                       </div>
                     </div>
-
                     <div className={styles.leadList}>
                       {leads.length === 0 ? (
                         <div className={styles.columnEmpty}>Sem leads nesta etapa.</div>
@@ -316,13 +351,7 @@ export function CrmWorkspace({ service: injectedService, assignees = [] }: CrmWo
   );
 }
 
-function LeadCard({
-  lead,
-  state,
-  assignees,
-  selected,
-  onSelect,
-}: {
+function LeadCard({ lead, state, assignees, selected, onSelect }: {
   lead: Lead;
   state: CrmState;
   assignees: AssigneeOption[];
@@ -331,7 +360,6 @@ function LeadCard({
 }) {
   const tags = state.tags.filter((tag) => lead.tagIds.includes(tag.id));
   const assignee = assignees.find((item) => item.id === lead.assigneeId);
-
   return (
     <button
       type="button"
@@ -343,24 +371,12 @@ function LeadCard({
       <strong>{lead.name}</strong>
       <span>{lead.interest?.label || lead.source || 'Sem contexto informado'}</span>
       {assignee && <small>Responsável: {assignee.name}</small>}
-      {tags.length > 0 && (
-        <div className={styles.tagRow}>
-          {tags.map((tag) => <em key={tag.id}>{tag.name}</em>)}
-        </div>
-      )}
+      {tags.length > 0 && <div className={styles.tagRow}>{tags.map((tag) => <em key={tag.id}>{tag.name}</em>)}</div>}
     </button>
   );
 }
 
-function LeadDetailsPanel({
-  lead,
-  state,
-  service,
-  assignees,
-  onClose,
-  onChanged,
-  onError,
-}: {
+function LeadDetailsPanel({ lead, state, service, assignees, onClose, onChanged, onError }: {
   lead: Lead;
   state: CrmState;
   service: CrmService;
@@ -382,12 +398,32 @@ function LeadDetailsPanel({
     }
   };
 
+  const submitLeadEdit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    const interestType = String(form.get('interestType') ?? '') as InterestType | '';
+    const interestLabel = String(form.get('interestLabel') ?? '').trim();
+    const interestReferenceId = String(form.get('interestReferenceId') ?? '').trim();
+
+    safeRun(() => service.updateLead(lead.id, {
+      name: String(form.get('name') ?? ''),
+      email: String(form.get('email') ?? ''),
+      whatsapp: String(form.get('whatsapp') ?? ''),
+      source: String(form.get('source') ?? ''),
+      sourcePage: String(form.get('sourcePage') ?? ''),
+      sourceAction: String(form.get('sourceAction') ?? ''),
+      notes: String(form.get('notes') ?? ''),
+      interest: interestType
+        ? { type: interestType, label: interestLabel || undefined, referenceId: interestReferenceId || undefined }
+        : undefined,
+    }), 'Dados e observações do lead atualizados.');
+  };
+
   const submitTag = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
-    const name = String(form.get('tagName') ?? '');
     try {
-      const tag = service.createTag(name);
+      const tag = service.createTag(String(form.get('tagName') ?? ''));
       service.addTagToLead(lead.id, tag.id);
       event.currentTarget.reset();
       onChanged('Tag adicionada ao lead.');
@@ -405,6 +441,7 @@ function LeadDetailsPanel({
         title: String(form.get('taskTitle') ?? ''),
         dueAt: String(form.get('dueAt') ?? '') || undefined,
         assigneeId: String(form.get('taskAssigneeId') ?? '') || undefined,
+        notes: String(form.get('taskNotes') ?? '') || undefined,
       });
       event.currentTarget.reset();
       onChanged('Próxima ação criada.');
@@ -413,46 +450,68 @@ function LeadDetailsPanel({
     }
   };
 
-  const createField = () => {
-    const name = window.prompt('Nome do campo personalizado');
-    if (!name) return;
-    safeRun(() => service.createCustomField({ name, type: 'text' }), 'Campo personalizado criado.');
+  const submitCustomField = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    const type = String(form.get('fieldType') ?? 'text') as CustomFieldType;
+    const options = String(form.get('fieldOptions') ?? '')
+      .split(',')
+      .map((item) => item.trim())
+      .filter(Boolean);
+    try {
+      service.createCustomField({
+        name: String(form.get('fieldName') ?? ''),
+        type,
+        options: type === 'select' || type === 'multiselect' ? options : undefined,
+      });
+      event.currentTarget.reset();
+      onChanged('Campo personalizado criado.');
+    } catch (error) {
+      onError(error instanceof Error ? error.message : 'Não foi possível criar o campo.');
+    }
   };
 
   return (
     <aside className={styles.drawer} aria-label={`Detalhes de ${lead.name}`}>
       <div className={styles.drawerHeader}>
-        <div>
-          <span>Lead</span>
-          <h2>{lead.name}</h2>
-        </div>
+        <div><span>Lead 360º</span><h2>{lead.name}</h2></div>
         <button type="button" onClick={onClose} aria-label="Fechar detalhes">×</button>
       </div>
 
       <div className={styles.detailSection}>
-        <h3>Contato e contexto</h3>
-        <dl className={styles.detailsList}>
-          <dt>E-mail</dt><dd>{lead.email || 'Não informado'}</dd>
-          <dt>WhatsApp</dt><dd>{lead.whatsapp || 'Não informado'}</dd>
-          <dt>Origem</dt><dd>{lead.source || 'Não informada'}</dd>
-          <dt>Página/ação</dt><dd>{lead.sourcePage || lead.sourceAction || 'Não informada'}</dd>
-          <dt>Interesse</dt><dd>{lead.interest?.label || 'Não informado'}</dd>
-        </dl>
+        <h3>Contato, contexto e observações</h3>
+        <form className={styles.taskForm} onSubmit={submitLeadEdit}>
+          <input name="name" required defaultValue={lead.name} placeholder="Nome" />
+          <input name="email" type="email" defaultValue={lead.email ?? ''} placeholder="E-mail" />
+          <input name="whatsapp" defaultValue={lead.whatsapp ?? ''} placeholder="WhatsApp" />
+          <input name="source" defaultValue={lead.source ?? ''} placeholder="Origem" />
+          <input name="sourcePage" defaultValue={lead.sourcePage ?? ''} placeholder="Página de origem" />
+          <input name="sourceAction" defaultValue={lead.sourceAction ?? ''} placeholder="Ação de origem" />
+          <select name="interestType" defaultValue={lead.interest?.type ?? ''}>
+            <option value="">Sem tipo de interesse</option>
+            {interestTypes.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
+          </select>
+          <input name="interestLabel" defaultValue={lead.interest?.label ?? ''} placeholder="Interesse" />
+          <input name="interestReferenceId" defaultValue={lead.interest?.referenceId ?? ''} placeholder="ID/referência" />
+          <textarea
+            name="notes"
+            rows={4}
+            defaultValue={lead.notes ?? ''}
+            placeholder="Observações internas"
+            style={{ gridColumn: '1 / -1', resize: 'vertical', border: '1px solid #cbc5ba', borderRadius: 10, padding: '10px 12px' }}
+          />
+          <button type="submit">Salvar ficha do lead</button>
+        </form>
       </div>
 
       <div className={styles.detailSection}>
         <h3>Responsável</h3>
         <select
           value={lead.assigneeId ?? ''}
-          onChange={(event) => safeRun(
-            () => service.assignLead(lead.id, event.target.value || undefined),
-            'Responsável atualizado.',
-          )}
+          onChange={(event) => safeRun(() => service.assignLead(lead.id, event.target.value || undefined), 'Responsável atualizado.')}
         >
           <option value="">Sem responsável</option>
-          {assignees.map((assignee) => (
-            <option key={assignee.id} value={assignee.id}>{assignee.name}</option>
-          ))}
+          {assignees.map((assignee) => <option key={assignee.id} value={assignee.id}>{assignee.name}</option>)}
         </select>
         {assignees.length === 0 && <small>Aguardando usuários internos da Frente01.</small>}
       </div>
@@ -463,41 +522,31 @@ function LeadDetailsPanel({
           {lead.tagIds.map((tagId) => {
             const tag = state.tags.find((item) => item.id === tagId);
             if (!tag) return null;
-            return (
-              <button
-                key={tag.id}
-                type="button"
-                title="Remover tag"
-                onClick={() => safeRun(() => service.removeTagFromLead(lead.id, tag.id), 'Tag removida.')}
-              >
-                {tag.name} ×
-              </button>
-            );
+            return <button key={tag.id} type="button" title="Remover tag" onClick={() => safeRun(() => service.removeTagFromLead(lead.id, tag.id), 'Tag removida.')}>{tag.name} ×</button>;
           })}
           {availableTags.length > 0 && (
-            <select
-              value=""
-              onChange={(event) => {
-                if (!event.target.value) return;
-                safeRun(() => service.addTagToLead(lead.id, event.target.value), 'Tag adicionada.');
-              }}
-            >
+            <select value="" onChange={(event) => event.target.value && safeRun(() => service.addTagToLead(lead.id, event.target.value), 'Tag adicionada.')}>
               <option value="">Adicionar existente…</option>
               {availableTags.map((tag) => <option key={tag.id} value={tag.id}>{tag.name}</option>)}
             </select>
           )}
         </div>
         <form className={styles.compactForm} onSubmit={submitTag}>
-          <input name="tagName" placeholder="Nova tag" />
+          <input name="tagName" required placeholder="Nova tag" />
           <button type="submit">Adicionar</button>
         </form>
       </div>
 
       <div className={styles.detailSection}>
-        <div className={styles.sectionTitleRow}>
-          <h3>Campos personalizados</h3>
-          <button type="button" onClick={createField}>Criar campo</button>
-        </div>
+        <h3>Campos personalizados</h3>
+        <form className={styles.taskForm} onSubmit={submitCustomField}>
+          <input name="fieldName" required placeholder="Nome do campo" />
+          <select name="fieldType" defaultValue="text">
+            {customFieldTypes.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
+          </select>
+          <input name="fieldOptions" placeholder="Opções separadas por vírgula (se aplicável)" style={{ gridColumn: '1 / -1' }} />
+          <button type="submit">Criar campo</button>
+        </form>
         {state.customFieldDefinitions.length === 0 ? (
           <small>Nenhum campo personalizado configurado.</small>
         ) : (
@@ -506,10 +555,7 @@ function LeadDetailsPanel({
               key={field.id}
               field={field}
               value={lead.customFields[field.id]}
-              onChange={(value) => safeRun(
-                () => service.setCustomFieldValue(lead.id, field.id, value),
-                'Campo personalizado atualizado.',
-              )}
+              onChange={(value) => safeRun(() => service.setCustomFieldValue(lead.id, field.id, value), 'Campo personalizado atualizado.')}
             />
           ))
         )}
@@ -524,6 +570,7 @@ function LeadDetailsPanel({
             <option value="">Sem responsável</option>
             {assignees.map((assignee) => <option key={assignee.id} value={assignee.id}>{assignee.name}</option>)}
           </select>
+          <input name="taskNotes" placeholder="Observação da tarefa" />
           <button type="submit">Criar</button>
         </form>
         {tasks.length === 0 ? (
@@ -535,14 +582,9 @@ function LeadDetailsPanel({
                 <div>
                   <strong>{task.title}</strong>
                   <span>{task.dueAt ? new Date(task.dueAt).toLocaleString('pt-BR') : 'Sem prazo'}</span>
+                  {task.notes && <span>{task.notes}</span>}
                 </div>
-                <select
-                  value={task.status}
-                  onChange={(event) => safeRun(
-                    () => service.updateTaskStatus(task.id, event.target.value as typeof task.status),
-                    'Tarefa atualizada.',
-                  )}
-                >
+                <select value={task.status} onChange={(event) => safeRun(() => service.updateTaskStatus(task.id, event.target.value as typeof task.status), 'Tarefa atualizada.')}>
                   <option value="pending">Pendente</option>
                   <option value="done">Concluída</option>
                   <option value="cancelled">Cancelada</option>
@@ -572,24 +614,14 @@ function LeadDetailsPanel({
   );
 }
 
-function CustomFieldEditor({
-  field,
-  value,
-  onChange,
-}: {
+function CustomFieldEditor({ field, value, onChange }: {
   field: CustomFieldDefinition;
   value: Lead['customFields'][string];
   onChange: (value: Lead['customFields'][string]) => void;
 }) {
   if (field.type === 'boolean') {
-    return (
-      <label className={styles.fieldEditor}>
-        <span>{field.name}</span>
-        <input type="checkbox" checked={Boolean(value)} onChange={(event) => onChange(event.target.checked)} />
-      </label>
-    );
+    return <label className={styles.fieldEditor}><span>{field.name}</span><input type="checkbox" checked={Boolean(value)} onChange={(event) => onChange(event.target.checked)} /></label>;
   }
-
   if (field.type === 'select') {
     return (
       <label className={styles.fieldEditor}>
@@ -601,27 +633,46 @@ function CustomFieldEditor({
       </label>
     );
   }
-
+  if (field.type === 'multiselect') {
+    const selected = Array.isArray(value) ? value : [];
+    return (
+      <fieldset className={styles.detailSection} style={{ padding: 0, border: 0 }}>
+        <legend style={{ fontSize: 12, marginBottom: 6 }}>{field.name}</legend>
+        <div className={styles.tagManager}>
+          {(field.options ?? []).map((option) => (
+            <label key={option} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              <input
+                type="checkbox"
+                checked={selected.includes(option)}
+                onChange={(event) => onChange(event.target.checked ? [...selected, option] : selected.filter((item) => item !== option))}
+              />
+              <span>{option}</span>
+            </label>
+          ))}
+        </div>
+      </fieldset>
+    );
+  }
   return (
     <label className={styles.fieldEditor}>
       <span>{field.name}</span>
       <input
         type={field.type === 'number' ? 'number' : field.type === 'date' ? 'date' : 'text'}
         value={typeof value === 'string' || typeof value === 'number' ? value : ''}
-        onChange={(event) => onChange(field.type === 'number' ? Number(event.target.value) : event.target.value || null)}
+        onChange={(event) => {
+          if (field.type === 'number') {
+            onChange(event.target.value === '' ? null : Number(event.target.value));
+            return;
+          }
+          onChange(event.target.value || null);
+        }}
       />
     </label>
   );
 }
 
 function EmptyState({ title, description }: { title: string; description: string }) {
-  return (
-    <div className={styles.emptyState}>
-      <span>◌</span>
-      <h2>{title}</h2>
-      <p>{description}</p>
-    </div>
-  );
+  return <div className={styles.emptyState}><span>◌</span><h2>{title}</h2><p>{description}</p></div>;
 }
 
 export function isCrmIntegrityError(error: unknown): error is CrmIntegrityError {
