@@ -1,6 +1,7 @@
 import { FormEvent, useState } from 'react';
 import { useAuth } from '../../core/auth/AuthProvider';
 import { useAppRouter } from '../../core/router/router';
+import { FullPageState } from '../../shared/components/FullPageState';
 import { AuthCard } from './AuthCard';
 
 export function ResetPasswordPage() {
@@ -10,6 +11,19 @@ export function ResetPasswordPage() {
   const [confirmation, setConfirmation] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  if (auth.loading) return <FullPageState title="Validando link de recuperação" />;
+  if (auth.configurationReady && !auth.isAuthenticated && !auth.recoveryMode) {
+    return (
+      <FullPageState
+        eyebrow="RECUPERAÇÃO DE SENHA"
+        title="Este link não possui uma sessão válida"
+        description="Solicite um novo e-mail de recuperação para definir outra senha com segurança."
+        actionHref="/recuperar-senha"
+        actionLabel="Solicitar novo link"
+      />
+    );
+  }
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
