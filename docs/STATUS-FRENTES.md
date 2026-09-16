@@ -18,13 +18,13 @@ Atualizar este arquivo ao iniciar e ao concluir blocos relevantes.
 - Branch: `frente-02`
 - Status: EM ANDAMENTO
 - Responsável: chat/agente Frente02 designado pelo usuário em 16/09/2026
-- Último commit funcional relevante: `ed28574c651995b0ecc35f7aab7b3df2e1712e1d`
-- Entregue no bloco atual: contrato consumidor de catálogo público sem mocks; área do cliente enxuta; estrutura pública navegável; home; páginas institucionais; catálogo/filtros; detalhe de imóvel; captação vender/alugar; retenção de comprador; UI responsiva da Frente02.
-- Validação executada: releitura no GitHub dos arquivos gravados, conferência de ownership/branch, conferência do bootstrap atual e revisão estrutural dos fluxos/empty states.
-- NÃO VERIFICADO: build integrado, TypeScript/lint em runtime, navegação no navegador e responsividade visual em dispositivo, porque a Frente02 ainda não está montada no `App.tsx`/roteador global da Frente01 e este chat não deve sobrescrever o bootstrap protegido apenas para simular a validação.
-- Em andamento: preparação dos pontos de integração reais com Auth, Catálogo e CRM e posterior validação após montagem pelo núcleo/integrador.
-- Bloqueios: `App.tsx`/bootstrap e roteador raiz pertencem à Frente01; contratos reais de Auth, catálogo publicado e criação de lead ainda não estão integrados nesta branch.
-- Próximo passo: integrar os contratos reais e montar `PublicSiteApp` pelo ponto de extensão da Frente01; então executar build e teste ponta a ponta antes de alterar o status para PRONTA PARA INTEGRAÇÃO.
+- Último commit relevante: `24b4a7159fe480d4e434998befc3af7dc92efb6e`
+- Entregue no bloco atual: home pública; páginas institucionais; catálogo/filtros/detalhe em empty state real; área do cliente; retenção; vender/alugar; menu mobile; captura de contato anônimo; entrypoint público; adapters reais para Auth da Frente01, catálogo da Frente03 e CRM da Frente04; semáforo executivo em `docs/frentes/FRENTE-02-STATUS.md`.
+- Validação executada: releitura no GitHub dos arquivos gravados; conferência de ownership/branch; conferência dos contratos reais atualmente implementados nas Frentes01/03/04; revisão estrutural dos fluxos, adapters e empty states.
+- NÃO VERIFICADO: build integrado; TypeScript/lint no produto conjunto; navegação ponta a ponta; persistência real de favoritos; responsividade visual em navegador/dispositivos.
+- Em andamento: handoff de integração e revisão final da camada pública contra os contratos reais.
+- Bloqueios: montagem em `App.tsx`/roteador raiz pertence à Frente01; instâncias reais dos serviços ficam disponíveis somente após integração das branches; WhatsApp real permanece fase final.
+- Próximo passo: entregar instruções de integração exatas, integrar no pente fino e executar build/testes antes de alterar o status para PRONTA PARA INTEGRAÇÃO.
 
 ## Frente03 — Catálogo interno/Dashboard
 
@@ -79,29 +79,29 @@ Formato obrigatório:
 - Data/hora: 16/09/2026 11:51 BRT
 - Origem: Frente02
 - Destino: Frente01 / integrador
-- Necessidade: montar `PublicSiteApp` no bootstrap/roteador raiz e expor as rotas públicas da Frente02 sem mover a propriedade do arquivo global.
-- Arquivo/contrato afetado: `src/App.tsx` e/ou roteador raiz definido pela Frente01.
-- Motivo: `App.tsx`, providers e roteamento global são arquivos protegidos da Frente01; a Frente02 já criou a experiência pública em `src/features/public-site/**` e não deve sobrescrever o bootstrap.
-- Urgência: ALTA — necessário para a experiência pública aparecer na aplicação integrada.
-- Status: PENDENTE
+- Necessidade: montar `PublicExperience` no bootstrap/roteador raiz e expor as rotas listadas em `publicRouteManifest`.
+- Arquivo/contrato afetado: `src/App.tsx`, `src/core/router/**` e composição global de providers, propriedade da Frente01.
+- Motivo: a Frente02 já entregou o entrypoint, `createFront01PublicAuthBridge` e a experiência pública, mas não deve sobrescrever os arquivos globais da Frente01.
+- Urgência: ALTA.
+- Status: EM ANDAMENTO
 
 - Data/hora: 16/09/2026 11:51 BRT
 - Origem: Frente02
-- Destino: Frente03
-- Necessidade: disponibilizar implementação real do contrato de catálogo publicado para substituir `emptyPublicCatalogReader`.
-- Arquivo/contrato afetado: contrato de catálogo publicado definido em `docs/CONTRATOS-ENTRE-MODULOS.md`.
-- Motivo: a Frente02 não pode duplicar repositório/banco do catálogo nem usar imóveis fictícios.
-- Urgência: ALTA
-- Status: PENDENTE
+- Destino: Frente03 / integrador
+- Necessidade: instanciar o serviço real de catálogo publicado após o merge e passá-lo por `createFront03PublicCatalogReader`.
+- Arquivo/contrato afetado: `PublicCatalogService` da Frente03 + adapter `src/features/public-catalog/front03Adapter.ts` da Frente02.
+- Motivo: a Frente03 já expôs contrato real, e a Frente02 já criou o adapter compatível sem duplicar modelo/banco.
+- Urgência: ALTA.
+- Status: EM ANDAMENTO
 
 - Data/hora: 16/09/2026 11:51 BRT
 - Origem: Frente02
-- Destino: Frente04
-- Necessidade: expor contrato real de criação de lead/evento de conversão para CTAs e formulários do site.
-- Arquivo/contrato afetado: contrato `Criação de lead pelo site` em `docs/CONTRATOS-ENTRE-MODULOS.md`.
-- Motivo: formulários e CTAs da Frente02 devem registrar conversões sem disparar mensagem automática e sem simular integração.
-- Urgência: ALTA
-- Status: PENDENTE
+- Destino: Frente04 / integrador
+- Necessidade: instanciar `createFront04ConversionHandler` sobre o contrato real de ingestão de lead da Frente04.
+- Arquivo/contrato afetado: `LeadConversionEvent`/`ingestLeadConversion` da Frente04 + `src/features/public-site/front04ConversionAdapter.ts` da Frente02.
+- Motivo: a Frente04 já expôs contrato real; a Frente02 já captura contato, preserva contexto e não dispara mensagem automaticamente.
+- Urgência: ALTA.
+- Status: EM ANDAMENTO
 
 ---
 
