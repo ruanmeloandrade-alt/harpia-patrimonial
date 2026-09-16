@@ -173,6 +173,8 @@ export class LocalCatalogRepository implements CatalogRepository {
     const updated: CatalogItem = {
       ...current,
       ...clone(merged),
+      parentId: merged.kind === 'unit' ? merged.parentId : undefined,
+      typology: merged.kind === 'unit' ? normalizeText(merged.typology) || undefined : undefined,
       code: normalizeText(merged.code),
       name: normalizeText(merged.name),
       updatedAt: nowIso(),
