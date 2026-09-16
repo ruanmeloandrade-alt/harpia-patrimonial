@@ -114,21 +114,29 @@ Verificações executadas em 16/09/2026:
 
 ## 9. Sincronização de UI / falha de persistência
 
-Status: IMPLEMENTADA NA BRANCH F05; E2E BROWSER/SUPABASE AINDA PENDENTE.
+Status: IMPLEMENTADA E TESTADA EM CORRIDA CONTROLADA; E2E BROWSER/SUPABASE AINDA PENDENTE.
 
 Implementado nesta rodada:
 
 - hidratação compartilhada dispara atualização dos workspaces;
 - confirmação de escrita dispara atualização da UI;
 - erro de persistência dispara rollback em memória;
-- rollback só ocorre se a escrita rejeitada ainda for a geração mais recente daquela chave, evitando apagar edição posterior;
-- SalesBot, Automatize, Agentes IA, Provedores/Integrações e Execuções escutam eventos de storage compartilhado.
+- rollback só ocorre se a escrita rejeitada ainda for a geração mais recente daquela chave;
+- `replaceStoredListFromRemote(...)` restaura snapshot autoritativo vindo do backend e invalida rollbacks antigos;
+- SalesBot, Automatize, Agentes IA, Provedores/Integrações e Execuções escutam eventos de storage compartilhado;
+- contrato alinhado ao adapter `sharedF05Storage` da Frente01.
+
+Teste controlado realmente executado:
+
+- duas escritas locais consecutivas + refresh remoto autoritativo + duas rejeições atrasadas => snapshot remoto permaneceu intacto;
+- uma escrita isolada rejeitada => rollback voltou ao valor anterior;
+- resultado: `F05 storage race/rollback tests: OK`.
 
 Ainda falta validar esse comportamento dentro do browser autenticado do produto consolidado.
 
 ## 10. RBAC Frente01 ↔ Frente05
 
-Status: NÚCLEO F05 IMPLEMENTADO; DESVIO ENCONTRADO NO INTEGRADOR.
+Status: NÚCLEO F05 ENDURECIDO; DESVIO AINDA EXISTE NO INTEGRADOR F01.
 
 A F05 suporta:
 
@@ -138,11 +146,18 @@ A F05 suporta:
 - `integrations.view` / `integrations.manage`;
 - modo leitura quando existe `view` sem `manage`.
 
+Hardening aplicado na branch F05:
+
+- `Front05Workspace` usa `NO_FRONT05_ACCESS` quando `access` não é informado;
+- SalesBot, Automatize, Agentes IA, Integrações, Provedores IA e Execuções usam `canManage=false` por padrão;
+- `FULL_FRONT05_ACCESS` continua disponível apenas para uso explícito em harness standalone/QA;
+- omissão de props de autorização nunca concede edição por acidente.
+
 QA da branch `frente-01` encontrou:
 
 - SalesBot/Automatize/Agentes/Integrações ainda estão protegidos por `*.manage` na rota, portanto `*.view` sozinho não abre a tela;
 - workspaces integrados são montados sem `canManage` explícito;
-- rota de Execuções aceita `view`, portanto o `ExecutionLogsPanel` foi endurecido na F05 para `canManage=false` por padrão, evitando exclusão de logs por omissão de prop.
+- após sincronizar o novo default-deny da F05, a F01 precisa passar `canManage={auth.hasPermission(...manage)}` para que administradores editem e viewers permaneçam somente leitura.
 
 Correção necessária na F01 está documentada em `docs/frentes/FRENTE-05-INTEGRACAO-F01.md`.
 
@@ -161,7 +176,25 @@ Confirmado na composição atual da Frente01:
 - seleção de SalesBot/agente continua explícita por conversa;
 - canal de mensagem real permanece não conectado, sem envio fictício.
 
-## 12. Não verificado ainda
+## 12. Usuários temporários de QA
+
+Status: AUTORIZADOS PELO RESPONSÁVEL DO PROJETO; CRIAÇÃO BLOQUEADA PELA FERRAMENTA DESTA SESSÃO.
+
+Autorização recebida em 16/09/2026 para criar:
+
+- um administrador interno temporário de QA;
+- um usuário interno temporário com permissões restritas para testar `view` sem `manage`;
+- ambos devem ser excluídos ao término dos testes.
+
+Limitação desta sessão:
+
+- o conector Supabase bloqueou operações que criam credenciais/Auth;
+- o runtime local não possui resolução de rede para chamar o endpoint público do Supabase Auth;
+- não foi feito bypass por insert direto em `auth.users`.
+
+Estado real conferido após a tentativa: `auth.users = 0`; nenhum usuário de QA foi criado.
+
+## 13. Não verificado ainda
 
 Não tratar como concluído:
 
