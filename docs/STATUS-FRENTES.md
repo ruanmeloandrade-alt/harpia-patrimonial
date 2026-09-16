@@ -49,13 +49,13 @@ Atualizar este arquivo ao iniciar e ao concluir blocos relevantes.
 ## Frente05 — SalesBot/Automatize/IA/Integrações
 
 - Branch: `frente-05`
-- Status inicial: NÃO INICIADA
-- Responsável: chat/agente designado pelo usuário
-- Último commit relevante: —
-- Entregue: —
-- Em andamento: —
-- Bloqueios: —
-- Próximo passo: iniciar pela leitura da documentação obrigatória.
+- Status inicial: EM ANDAMENTO
+- Responsável: chat atual — Frente05
+- Último commit relevante: `1eed131920e762f33a03c89bdad6865e94cbd8c0` (regras obrigatórias de produção)
+- Entregue: leitura e validação do contexto, regras, escopo, contratos e propriedade da Frente05.
+- Em andamento: fundação dos módulos SalesBot, Automatize, agentes de IA, logs e integrações preparatórias.
+- Bloqueios: nenhum bloqueio estrutural; integração final depende dos contratos da Frente04 e do shell/roteamento da Frente01.
+- Próximo passo: implementar os módulos exclusivamente em `src/features/automations/**`, `src/features/salesbot/**`, `src/features/ai-agents/**` e `src/features/integrations/**` sem alterar arquivos globais.
 
 ---
 
