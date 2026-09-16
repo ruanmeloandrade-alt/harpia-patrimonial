@@ -57,5 +57,6 @@ export type {
 export { createProviderAIModelRuntime } from '../integrations/providerRuntime';
 export { createRemoteAIModelRuntime } from '../integrations/remoteAIModelRuntime';
 export type { RemoteAIModelRuntimeTransport } from '../integrations/remoteAIModelRuntime';
+export { createSupabaseAIModelRuntime } from '../integrations/supabaseAIModelRuntime';
 export { buildProviderHttpRequest, invokeConfiguredProvider } from '../integrations/providerAdapters';
 export type { ProviderInvocationRequest, ProviderInvocationResponse } from '../integrations/providerAdapters';
