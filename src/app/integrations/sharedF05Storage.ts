@@ -1,6 +1,7 @@
 import { requireSupabase } from '../../core/supabase/client';
 import {
   configureF05SharedStorage,
+  replaceStoredListFromRemote,
   type F05SharedStorageBackend,
 } from '../../features/automations/f05Storage';
 
@@ -50,12 +51,16 @@ class SupabaseF05SharedStorageBackend implements F05SharedStorageBackend {
     if (data === null) {
       const { data: latest, error: latestError } = await supabase
         .from('f05_shared_storage')
-        .select('revision')
+        .select('value,revision')
         .eq('storage_key', key)
         .maybeSingle();
       if (latestError) throw latestError;
+      if (latest) {
+        this.revisions.set(key, Number(latest.revision ?? 0));
+        replaceStoredListFromRemote(key, normalizeArray(latest.value));
+      }
       const remoteRevision = latest?.revision === undefined ? 'desconhecida' : String(latest.revision);
-      throw new Error(`O módulo foi alterado por outra sessão (revisão ${remoteRevision}). Recarregue antes de salvar novamente.`);
+      throw new Error(`O módulo foi alterado por outra sessão (revisão ${remoteRevision}). O estado remoto foi restaurado; revise antes de salvar novamente.`);
     }
 
     this.revisions.set(key, Number(data));
