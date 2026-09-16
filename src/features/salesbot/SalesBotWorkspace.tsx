@@ -17,10 +17,27 @@ import {
 } from './repository';
 import type { SalesBotBlock, SalesBotBlockConfigValue, SalesBotDefinition } from './types';
 
-function BlockConfigEditor({ botId, block, onChange }: { botId: string; block: SalesBotBlock; onChange: () => void }) {
+const errorMessage = (error: unknown, fallback: string) => error instanceof Error ? error.message : fallback;
+
+function BlockConfigEditor({
+  botId,
+  block,
+  onChange,
+  onError,
+}: {
+  botId: string;
+  block: SalesBotBlock;
+  onChange: () => void;
+  onError: (message: string) => void;
+}) {
   const set = (key: string, value: SalesBotBlockConfigValue) => {
-    updateSalesBotBlock(botId, block.id, { config: { ...block.config, [key]: value } });
-    onChange();
+    try {
+      updateSalesBotBlock(botId, block.id, { config: { ...block.config, [key]: value } });
+      onError('');
+      onChange();
+    } catch (error) {
+      onError(errorMessage(error, 'Não foi possível alterar o bloco.'));
+    }
   };
   const value = (key: string) => String(block.config[key] ?? '');
 
@@ -63,12 +80,23 @@ export function SalesBotWorkspace({ canManage = false }: { canManage?: boolean }
   };
   useF05StorageListener(() => refresh());
 
+  const mutate = (operation: () => void, focusId?: string, fallback = 'Não foi possível alterar o SalesBot.') => {
+    try {
+      operation();
+      setError('');
+      refresh(focusId);
+    } catch (error) {
+      setError(errorMessage(error, fallback));
+    }
+  };
+
   const create = () => {
     const name = newName.trim(); if (!name || !canManage) return;
     const bot = createSalesBot({ name }); setNewName(''); setError(''); refresh(bot.id);
   };
   const patchSelected = (patch: Partial<Pick<SalesBotDefinition, 'name' | 'description'>>) => {
-    if (!selected || !canManage) return; updateSalesBot(selected.id, patch); refresh(selected.id);
+    if (!selected || !canManage) return;
+    mutate(() => { updateSalesBot(selected.id, patch); }, selected.id);
   };
 
   return <section className="f05-module">
@@ -77,15 +105,15 @@ export function SalesBotWorkspace({ canManage = false }: { canManage?: boolean }
     <fieldset className="f05-readonly-fieldset" disabled={!canManage}><div className="f05-create-row"><input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="Nome do novo SalesBot"/><button onClick={create} disabled={!newName.trim()}>Criar bot</button></div></fieldset>
     {error && <div className="f05-alert">{error}</div>}
     <div className="f05-split">
-      <aside className="f05-list">{bots.length === 0 ? <div className="f05-empty">Nenhum SalesBot criado.</div> : bots.map((bot) => <button key={bot.id} className={`f05-list-item ${selectedId === bot.id ? 'is-active' : ''}`} onClick={() => setSelectedId(bot.id)}><strong>{bot.name}</strong><span>{bot.status} · {bot.blocks.length} blocos</span></button>)}</aside>
+      <aside className="f05-list">{bots.length === 0 ? <div className="f05-empty">Nenhum SalesBot criado.</div> : bots.map((bot) => <button key={bot.id} className={`f05-list-item ${selectedId === bot.id ? 'is-active' : ''}`} onClick={() => { setSelectedId(bot.id); setError(''); }}><strong>{bot.name}</strong><span>{bot.status} · {bot.blocks.length} blocos</span></button>)}</aside>
       <fieldset className="f05-editor f05-readonly-fieldset" disabled={!canManage}>{!selected ? <div className="f05-empty f05-empty--large">Crie ou selecione um SalesBot para editar.</div> : <>
         <div className="f05-form-grid"><label>Nome<input value={selected.name} onChange={(e) => patchSelected({ name: e.target.value })}/></label><label>Descrição<input value={selected.description} onChange={(e) => patchSelected({ description: e.target.value })} placeholder="Objetivo interno do fluxo"/></label></div>
         <div className={`f05-validation ${validationIssues.length === 0 ? 'f05-validation--ok' : ''}`}><strong>{validationIssues.length === 0 ? 'Configuração válida para ativação' : `${validationIssues.length} pendência(s) de configuração`}</strong>{validationIssues.length > 0 && <span>{validationIssues[0]}</span>}</div>
-        <div className="f05-actions"><button onClick={() => { try { setSalesBotStatus(selected.id, selected.status === 'active' ? 'paused' : 'active'); setError(''); refresh(selected.id); } catch (e) { setError(e instanceof Error ? e.message : 'Não foi possível alterar o status.'); } }}>{selected.status === 'active' ? 'Pausar' : 'Ativar'}</button><button className="secondary" onClick={() => { const copy = duplicateSalesBot(selected.id); refresh(copy.id); }}>Duplicar</button><button className="danger" onClick={() => { if (window.confirm('Excluir este SalesBot?')) { deleteSalesBot(selected.id); refresh(); } }}>Excluir</button></div>
-        <div className="f05-palette"><h3>Adicionar bloco</h3><div className="f05-palette__grid">{SALESBOT_BLOCK_CATALOG.map((item) => <button key={item.type} className="secondary" onClick={() => { addSalesBotBlock(selected.id, { type: item.type, label: item.label, config: {} }); refresh(selected.id); }}>{item.label}</button>)}</div></div>
+        <div className="f05-actions"><button onClick={() => mutate(() => { setSalesBotStatus(selected.id, selected.status === 'active' ? 'paused' : 'active'); }, selected.id, 'Não foi possível alterar o status.')}>{selected.status === 'active' ? 'Pausar' : 'Ativar'}</button><button className="secondary" onClick={() => { try { const copy = duplicateSalesBot(selected.id); setError(''); refresh(copy.id); } catch (error) { setError(errorMessage(error, 'Não foi possível duplicar o SalesBot.')); } }}>Duplicar</button><button className="danger" onClick={() => { if (window.confirm('Excluir este SalesBot?')) mutate(() => { deleteSalesBot(selected.id); }, undefined, 'Não foi possível excluir o SalesBot.'); }}>Excluir</button></div>
+        <div className="f05-palette"><h3>Adicionar bloco</h3><div className="f05-palette__grid">{SALESBOT_BLOCK_CATALOG.map((item) => <button key={item.type} className="secondary" onClick={() => mutate(() => { addSalesBotBlock(selected.id, { type: item.type, label: item.label, config: {} }); }, selected.id, 'Não foi possível adicionar o bloco.')}>{item.label}</button>)}</div></div>
         <div className="f05-flow">{selected.blocks.length === 0 ? <div className="f05-empty">Fluxo vazio. Adicione o primeiro bloco.</div> : selected.blocks.map((block, index) => {
           const meta = SALESBOT_BLOCK_CATALOG.find((item) => item.type === block.type);
-          return <div className="f05-block f05-block--stacked" key={block.id}><div className="f05-block__row"><div className="f05-block__index">{index + 1}</div><div className="f05-block__body"><strong>{block.label}</strong><span>{meta?.description}</span></div><div className="f05-block__actions"><button className="icon" disabled={index === 0} onClick={() => { moveSalesBotBlock(selected.id, block.id, -1); refresh(selected.id); }}>↑</button><button className="icon" disabled={index === selected.blocks.length - 1} onClick={() => { moveSalesBotBlock(selected.id, block.id, 1); refresh(selected.id); }}>↓</button><button className="icon danger" onClick={() => { removeSalesBotBlock(selected.id, block.id); refresh(selected.id); }}>×</button></div></div><BlockConfigEditor botId={selected.id} block={block} onChange={() => refresh(selected.id)}/></div>;
+          return <div className="f05-block f05-block--stacked" key={block.id}><div className="f05-block__row"><div className="f05-block__index">{index + 1}</div><div className="f05-block__body"><strong>{block.label}</strong><span>{meta?.description}</span></div><div className="f05-block__actions"><button className="icon" disabled={index === 0} onClick={() => mutate(() => { moveSalesBotBlock(selected.id, block.id, -1); }, selected.id)}>↑</button><button className="icon" disabled={index === selected.blocks.length - 1} onClick={() => mutate(() => { moveSalesBotBlock(selected.id, block.id, 1); }, selected.id)}>↓</button><button className="icon danger" onClick={() => mutate(() => { removeSalesBotBlock(selected.id, block.id); }, selected.id, 'Não foi possível remover o bloco.')}>×</button></div></div><BlockConfigEditor botId={selected.id} block={block} onChange={() => refresh(selected.id)} onError={setError}/></div>;
         })}</div>
       </>}</fieldset>
     </div>
