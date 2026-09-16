@@ -37,23 +37,22 @@ export const FULL_FRONT05_ACCESS: Front05Access = {
   integrations: { view: true, manage: true },
 };
 
+function moduleAccess(
+  hasPermission: (permission: string) => boolean,
+  keys: { readonly view: string; readonly manage: string },
+): Front05ModuleAccess {
+  const manage = hasPermission(keys.manage);
+  return {
+    view: manage || hasPermission(keys.view),
+    manage,
+  };
+}
+
 export function buildFront05Access(hasPermission: (permission: string) => boolean): Front05Access {
   return {
-    salesbot: {
-      view: hasPermission(FRONT05_PERMISSION_KEYS.salesbot.view),
-      manage: hasPermission(FRONT05_PERMISSION_KEYS.salesbot.manage),
-    },
-    automations: {
-      view: hasPermission(FRONT05_PERMISSION_KEYS.automations.view),
-      manage: hasPermission(FRONT05_PERMISSION_KEYS.automations.manage),
-    },
-    ai: {
-      view: hasPermission(FRONT05_PERMISSION_KEYS.ai.view),
-      manage: hasPermission(FRONT05_PERMISSION_KEYS.ai.manage),
-    },
-    integrations: {
-      view: hasPermission(FRONT05_PERMISSION_KEYS.integrations.view),
-      manage: hasPermission(FRONT05_PERMISSION_KEYS.integrations.manage),
-    },
+    salesbot: moduleAccess(hasPermission, FRONT05_PERMISSION_KEYS.salesbot),
+    automations: moduleAccess(hasPermission, FRONT05_PERMISSION_KEYS.automations),
+    ai: moduleAccess(hasPermission, FRONT05_PERMISSION_KEYS.ai),
+    integrations: moduleAccess(hasPermission, FRONT05_PERMISSION_KEYS.integrations),
   };
 }
