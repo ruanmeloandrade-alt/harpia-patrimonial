@@ -6,12 +6,13 @@ Atualizar este arquivo ao iniciar e ao concluir blocos relevantes.
 
 - Branch: `frente-01`
 - Status: **INTEGRADA ESTRUTURALMENTE — F02/F03/F04/F05 LIBERADAS PARA CONTINUAR**
-- Último commit funcional antes deste status: `3b5c3cc5d3e15e4c51bbb93cef15cc1558d78f51`.
+- Último commit funcional de código antes deste status: `603af07f66f52428d9f21de32ef441831eb82ad7`.
+- Handoff/QA da F01 atualizado nos commits `d2dd1a6631db55b5e933819f307a3d862e00b48c` e `d4495f2be306555b752c48593e18815f30d33d7a`.
 - Backend dedicado Hárpia ativo.
 - Núcleo entregue: autenticação cliente/equipe, sessão, cadastro/login/logout/recuperação, guards, usuários, grupos, permissões, overrides individuais, configurações, shell e roteador global.
 - Integração F02: experiência pública ligada ao Auth, catálogo, favoritos, área do cliente e ingestão de leads reais; `/conta` protegido antes do caminho legado `/cliente`.
 - Integração F03: `createCatalogRuntime` adotado; repository, Realtime e Storage usam o cliente Supabase global; mídia do catálogo injetada na tela interna.
-- Integração F04: CRM/Inbox usam estado compartilhado; fila de leads sem etapa está visível; Inbox recebe SalesBots e agentes IA ativos explicitamente.
+- Integração F04: CRM/Inbox usam estado compartilhado; fila de leads sem etapa está visível; Inbox recebe SalesBots e agentes IA ativos explicitamente; rotas CRM/Inbox aceitam `view OR manage` e o integrador envia capacidades `manage` separadas.
 - Integração F05: estado compartilhado, RBAC `view/manage`, `canManage`, engine de automação, runtime IA e integrações server-side compostos no integrador.
 - Conversão F02 → F04 ligada; criação de lead não envia mensagem automaticamente.
 - Métricas F04 → F03 ligadas sem inventar métricas indisponíveis.
@@ -27,10 +28,9 @@ As Frentes02, 03, 04 e 05 **não precisam mais aguardar a Frente01 para continua
 Estas pendências permanecem para QA/fase final e **não bloqueiam o avanço das outras frentes**:
 
 - executar build/typecheck quando houver ambiente Node/npm disponível;
-- criar os dois usuários temporários de QA já autorizados quando houver caminho seguro pelo Auth;
+- criar os dois usuários temporários de QA já autorizados por caminho oficial do Supabase Auth;
 - executar E2E autenticado, persistência e concorrência entre sessões;
 - validar e-mail/recovery e redirects finais na etapa posterior já definida;
-- conectar WhatsApp e Meta na fase final;
 - ajustes visuais/UX ficam depois da funcionalidade.
 
 ## Frente02 — Site público/Área do cliente
@@ -49,7 +49,7 @@ Estas pendências permanecem para QA/fase final e **não bloqueiam o avanço das
 
 - Branch: `frente-04`
 - Dependência estrutural da Frente01: **LIBERADA**.
-- Próximo passo: continuar QA funcional de CRM/Inbox. Rotas CRM/Inbox seguem `*.manage` enquanto não existir modo somente leitura seguro.
+- Próximo passo: continuar QA funcional de CRM/Inbox usando leitura `view` e mutações condicionadas a `manage`.
 
 ## Frente05 — SalesBot/Automatize/IA/Integrações
 
