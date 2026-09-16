@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { CSSProperties } from 'react';
 import type { CrmEventSink } from './domain';
 import { BrowserCrmRepository } from './repository';
@@ -37,22 +37,20 @@ function useCrmService({
   crmRepository,
   crmEventSinks = [],
 }: CrmCompositionProps): CrmService {
-  const [crmService] = useState(
-    () => injectedCrmService
-      ?? new CrmService(crmRepository ?? new BrowserCrmRepository(), crmEventSinks),
+  const [fallbackService] = useState(
+    () => new CrmService(crmRepository ?? new BrowserCrmRepository(), crmEventSinks),
   );
-  return crmService;
+  return injectedCrmService ?? fallbackService;
 }
 
 function useInboxService({
   inboxService: injectedInboxService,
   inboxRepository,
 }: InboxCompositionProps): InboxService {
-  const [inboxService] = useState(
-    () => injectedInboxService
-      ?? new InboxService(inboxRepository ?? new BrowserInboxRepository()),
+  const [fallbackService] = useState(
+    () => new InboxService(inboxRepository ?? new BrowserInboxRepository()),
   );
-  return inboxService;
+  return injectedInboxService ?? fallbackService;
 }
 
 export function Front04CrmScreen({
@@ -90,9 +88,19 @@ export function Front04InboxScreen({
     inboxService: injectedInboxService,
     inboxRepository,
   });
+  const previousRuntimeRef = useRef({ crmService, inboxService });
+  const [runtimeRevision, setRuntimeRevision] = useState(0);
+
+  useEffect(() => {
+    const previous = previousRuntimeRef.current;
+    if (previous.crmService === crmService && previous.inboxService === inboxService) return;
+    previousRuntimeRef.current = { crmService, inboxService };
+    setRuntimeRevision((value) => value + 1);
+  }, [crmService, inboxService]);
 
   return (
     <InboxWorkspace
+      key={`inbox-${runtimeRevision}`}
       crmService={crmService}
       inboxService={inboxService}
       automationPort={automationPort}
