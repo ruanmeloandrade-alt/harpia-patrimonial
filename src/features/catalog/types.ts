@@ -24,6 +24,7 @@ export interface CatalogItem {
   name: string;
   kind: CatalogItemKind;
   parentId?: string;
+  typology?: string;
   purpose: CatalogPurpose;
   description: string;
   location: CatalogLocation;
@@ -69,6 +70,7 @@ export interface PublicCatalogItem {
   name: string;
   kind: CatalogItemKind;
   parentId?: string;
+  typology?: string;
   purpose: CatalogPurpose;
   description: string;
   location: CatalogLocation;
@@ -79,4 +81,9 @@ export interface PublicCatalogItem {
   developer?: string;
   media: CatalogMedia[];
   status: 'published';
+}
+
+export interface PublicCatalogDevelopmentBundle {
+  development: PublicCatalogItem;
+  units: PublicCatalogItem[];
 }
