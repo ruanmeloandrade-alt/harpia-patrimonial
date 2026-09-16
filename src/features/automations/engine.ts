@@ -86,6 +86,7 @@ function matchesDefinition(definition: AutomationDefinition, event: CrmAutomatio
 }
 
 const configString = (action: AutomationAction, key: string) => String(action.config[key] ?? '').trim();
+const webhookMethod = (action: AutomationAction) => (configString(action, 'method') || 'POST').toUpperCase();
 
 async function executeAction(
   action: AutomationAction,
@@ -119,7 +120,7 @@ async function executeAction(
     case 'webhook':
       return deps.webhook.invoke({
         url: configString(action, 'url'),
-        method: configString(action, 'method') || 'POST',
+        method: webhookMethod(action),
         payload: { eventId: event.id, eventType: event.type, leadId, conversationId: event.conversationId, ...event.payload },
       });
     default:
