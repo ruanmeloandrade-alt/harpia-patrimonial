@@ -34,7 +34,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
     if (permissionError) throw permissionError;
 
     setProfile((profileData as UserProfile | null) ?? null);
-    setPermissions(new Set((permissionData ?? []).map((item: { permission_key: string }) => item.permission_key)));
+    setPermissions(new Set((permissionData ?? []).flatMap((item) => item.permission_key ? [item.permission_key] : [])));
   }, []);
 
   const adoptSession = useCallback(async (nextSession: Session | null) => {
