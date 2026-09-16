@@ -3,14 +3,29 @@
 
 -- Um usuário autenticado não pode desativar/rebaixar a própria conta interna.
 -- service_role continua autorizado para bootstrap e manutenção controlada.
+-- Supabase moderno envia a role dentro de request.jwt.claims e também em current_setting('role');
+-- manter compatibilidade com o claim legado request.jwt.claim.role.
 create or replace function private.protect_profile_security_fields()
 returns trigger
 language plpgsql
 security definer
 set search_path = ''
 as $$
+declare
+  jwt_role text := '';
 begin
-  if coalesce(current_setting('request.jwt.claim.role', true), '') <> 'service_role' then
+  begin
+    jwt_role := coalesce(
+      (coalesce(nullif(current_setting('request.jwt.claims', true), ''), '{}')::jsonb ->> 'role'),
+      ''
+    );
+  exception when others then
+    jwt_role := '';
+  end;
+
+  if coalesce(current_setting('request.jwt.claim.role', true), '') <> 'service_role'
+     and jwt_role <> 'service_role'
+     and coalesce(current_setting('role', true), '') <> 'service_role' then
     if old.id = (select auth.uid())
        and (
          old.account_type is distinct from new.account_type
