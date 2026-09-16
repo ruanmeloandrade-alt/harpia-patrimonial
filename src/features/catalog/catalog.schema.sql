@@ -227,6 +227,54 @@ create trigger validate_catalog_insert
 before insert on public.catalog_items
 for each row execute function private.validate_catalog_insert();
 
+create or replace function private.validate_catalog_media_payload()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  item jsonb;
+  media_type text;
+  media_id text;
+  media_url text;
+begin
+  if jsonb_typeof(new.media) is distinct from 'array' then
+    raise exception 'catalog media must be an array';
+  end if;
+
+  for item in select value from jsonb_array_elements(new.media)
+  loop
+    if jsonb_typeof(item) is distinct from 'object' then
+      raise exception 'catalog media item must be an object';
+    end if;
+
+    media_id := nullif(btrim(item ->> 'id'), '');
+    media_type := item ->> 'type';
+    media_url := nullif(btrim(item ->> 'url'), '');
+
+    if media_id is null then
+      raise exception 'catalog media item requires id';
+    end if;
+
+    if media_type not in ('image', 'video', 'document', 'floorplan') then
+      raise exception 'catalog media type is invalid';
+    end if;
+
+    if media_url is null or media_url !~* '^https?://[^[:space:]]+$' then
+      raise exception 'catalog media url must use http or https';
+    end if;
+  end loop;
+
+  return new;
+end;
+$$;
+
+revoke all on function private.validate_catalog_media_payload() from public;
+create trigger validate_catalog_media_payload
+before insert or update of media on public.catalog_items
+for each row execute function private.validate_catalog_media_payload();
+
 create or replace function private.catalog_parent_is_published(p_parent_id uuid)
 returns boolean
 language sql
