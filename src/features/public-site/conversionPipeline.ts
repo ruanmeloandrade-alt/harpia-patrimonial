@@ -25,7 +25,12 @@ export function createPublicConversionPipeline(options: PublicConversionPipeline
     try {
       await options.continueToWhatsApp(event);
     } catch (error) {
-      await options.onContinuationError?.(error, event);
+      if (!options.onContinuationError) return;
+      try {
+        await options.onContinuationError(error, event);
+      } catch {
+        // Diagnóstico de uma continuação externa nunca invalida o lead já aceito.
+      }
     }
   };
 }
