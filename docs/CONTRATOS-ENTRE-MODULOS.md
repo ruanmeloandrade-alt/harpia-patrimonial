@@ -30,14 +30,21 @@ Contrato mínimo de leitura pública:
 - filtrar por bairro/condomínio/localização;
 - filtrar lançamento sim/não;
 - filtrar faixa de preço;
-- abrir item por id/slug/código;
-- retornar fotos, vídeos, preço, localização, características, status e tipo;
-- informar relação produto/empreendimento/unidade quando aplicável.
+- abrir item por id/código;
+- retornar fotos, vídeos, plantas/documentos, preço, localização, características, status, tipo e tipologia quando unidade;
+- informar relação empreendimento/unidade;
+- derivar faixa de preço do empreendimento pelas unidades publicadas.
 
 Implementação da Frente03:
 
 - `CatalogRepository` é o contrato de persistência do domínio;
 - `PublicCatalogService` é o contrato de leitura pública e retorna somente `published`;
+- `PublicCatalogService.list(filters)` lista itens publicados;
+- `PublicCatalogService.listUnits(parentId, filters)` lista unidades publicadas do empreendimento;
+- `PublicCatalogService.getByIdOrCode(value)` retorna detalhe publicado;
+- `PublicCatalogService.getDevelopmentWithUnits(value)` retorna empreendimento, unidades publicadas e faixa de preço real;
+- `PublicCatalogService.getFilterOptions()` deriva cidades, localizações, estilos de vida e limites de preço;
+- filtro de preço de empreendimento considera preços das unidades publicadas quando elas existem;
 - `SupabaseCatalogRepository` é o adapter de produção preparado para receber o cliente Supabase oficial da Frente01 por injeção;
 - `LocalCatalogRepository` é adapter transitório local, começa vazio e não pode ser tratado como persistência multiusuário final;
 - `src/features/catalog/catalog.schema.sql` contém o schema/RLS do domínio e depende das funções/permissões definidas pela Frente01.
@@ -91,6 +98,8 @@ Contrato funcional:
 - criar tarefa/próxima ação;
 - registrar histórico;
 - emitir eventos de CRM para automações.
+
+Quando um lead tiver interesse em item real do catálogo, `interest.referenceId` deve apontar para o `id` ou código real do item, sem duplicar a entidade imobiliária dentro do CRM.
 
 ## 6. Eventos para automação
 
@@ -159,10 +168,18 @@ Métricas comerciais usam `CommercialMetricsProvider`.
 Contrato atual com a Frente04:
 
 - a Frente03 pode adaptar a `snapshot()` real do CRM sem importar a implementação interna;
-- `CrmSnapshotMetricsProvider` considera objetivamente disponíveis hoje: quantidade de leads, origem dos leads e próximas tarefas pendentes;
-- visitas, propostas, negociações, vendas, pipeline/VGV, ticket, conversão e demanda por região NÃO podem ser inferidos pelo nome das etapas porque funis/etapas são configuráveis;
-- métricas não suportadas devem permanecer em `0`/empty state e ser marcadas como indisponíveis até existir contrato/configuração explícita;
+- `CrmSnapshotMetricsProvider` considera objetivamente disponíveis sem catálogo: quantidade de leads, origem dos leads e próximas tarefas pendentes;
+- quando recebe o mesmo `CatalogRepository` e o lead possui `interest.referenceId` real, também deriva demanda por região e interesse por produto medido por quantidade de leads/interesses;
+- interesse por produto não deve ser apresentado como venda, receita ou conversão por produto;
+- visitas, propostas, negociações, vendas, pipeline/VGV, ticket e conversão NÃO podem ser inferidos pelo nome das etapas porque funis/etapas são configuráveis;
+- métricas não suportadas permanecem em `0`/empty state e são marcadas como indisponíveis até existir contrato/configuração explícita;
 - `CommercialMetricsProvider.getAvailableMetrics()` informa quais métricas a fonte realmente sustenta.
+
+Regra de valor do estoque:
+
+- se um empreendimento possui unidades ativas, somar as unidades e não somar novamente o preço do empreendimento pai;
+- empreendimento sem unidades ativas pode usar seu próprio preço;
+- itens vendidos não entram no valor de estoque.
 
 Sem integração disponível:
 
@@ -196,8 +213,12 @@ Contrato:
 - `catalog.view` permite consulta interna;
 - `catalog.manage` permite criar/editar/duplicar/excluir logicamente;
 - `catalog.publish` permite transições de status publicar/pausar/vendido;
-- usuário apenas com `catalog.publish` não pode alterar campos comerciais do item;
-- RLS e trigger de banco devem validar as permissões; esconder botão na UI não é suficiente;
+- `catalog.manage` e `catalog.publish` implicam leitura do catálogo na composição da UI, coerente com RLS;
+- usuário apenas com `catalog.publish` não pode alterar campos comerciais nem timestamps de publicação/venda;
+- `published_at` e `sold_at` são controlados por transições de status no banco;
+- RLS e trigger de banco validam as permissões; esconder botão na UI não é suficiente;
+- código, nome e cidade não podem ser vazios;
+- unidade exige tipologia e empreendimento pai ativo;
 - exclusão de empreendimento ou mudança de tipo não pode deixar unidades ativas órfãs.
 
 ## 12. Arquivos compartilhados
