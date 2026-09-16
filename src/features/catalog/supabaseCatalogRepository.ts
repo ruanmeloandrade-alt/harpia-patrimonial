@@ -13,9 +13,11 @@ interface SupabaseResultLike<T> {
 /**
  * A tipagem estrutural evita que a Frente03 importe/crie outro cliente Supabase.
  * Na integração, injete o cliente oficial exportado pela Frente01.
+ * `any` na relação é intencional na borda: o Database global pode ter sido gerado
+ * antes de uma migration da Frente03 e não deve bloquear a composição do adapter.
  */
 export interface CatalogSupabaseClient {
-  from(table: string): any;
+  from(table: any): any;
 }
 
 interface CatalogRow {
