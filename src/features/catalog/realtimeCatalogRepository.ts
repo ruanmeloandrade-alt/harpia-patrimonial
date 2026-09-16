@@ -10,9 +10,14 @@ export interface CatalogRealtimeChannel {
   subscribe(): CatalogRealtimeChannel;
 }
 
+/**
+ * Borda estrutural propositalmente flexível para aceitar os overloads do SDK real.
+ * O adapter converte o retorno de `channel()` para o contrato mínimo usado abaixo,
+ * sem importar nem instanciar outro cliente Supabase.
+ */
 export interface CatalogRealtimeSupabaseClient {
-  channel(name: string): CatalogRealtimeChannel;
-  removeChannel(channel: CatalogRealtimeChannel): unknown;
+  channel(name: string): any;
+  removeChannel(channel: any): unknown;
 }
 
 function channelId() {
