@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { listAIAgents } from '../ai-agents/repository';
 import { listSalesBots } from '../salesbot/repository';
+import { useF05StorageListener } from './useF05StorageListener';
 import {
   addAutomationAction,
   createAutomation,
@@ -53,7 +54,14 @@ export function AutomationsWorkspace({ canManage = true }: { canManage?: boolean
   const [error, setError] = useState('');
   const selected = useMemo(() => items.find((item) => item.id === selectedId) ?? null, [items, selectedId]);
   const validationIssues = useMemo(() => selected ? validateAutomationForActivation(selected) : [], [selected, items]);
-  const refresh = (focusId?: string) => { const next = listAutomations(); setItems(next); if (focusId) setSelectedId(focusId); else if (selectedId && !next.some((item) => item.id === selectedId)) setSelectedId(next[0]?.id ?? null); };
+  const refresh = (focusId?: string) => {
+    const next = listAutomations();
+    setItems(next);
+    if (focusId) setSelectedId(focusId);
+    else setSelectedId((current) => current && next.some((item) => item.id === current) ? current : next[0]?.id ?? null);
+  };
+  useF05StorageListener(() => refresh());
+
   const patch = (value: Partial<Omit<AutomationDefinition, 'id' | 'createdAt'>>) => { if (!selected || !canManage) return; updateAutomation(selected.id, value); refresh(selected.id); };
 
   return <section className="f05-module">
