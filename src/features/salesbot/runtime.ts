@@ -167,9 +167,11 @@ async function executeBlock(
       else result = await deps.crm.addTag({ leadId, tagId: stringConfig(block, 'tagId') });
       break;
     }
-    case 'webhook':
-      result = await deps.webhook.invoke({ url: stringConfig(block, 'url'), method: stringConfig(block, 'method') || 'POST', payload: data });
+    case 'webhook': {
+      const method = (stringConfig(block, 'method') || 'POST').toUpperCase();
+      result = await deps.webhook.invoke({ url: stringConfig(block, 'url'), method, payload: data });
       break;
+    }
     case 'chain_flow':
       result = await deps.chain.start({ botId: stringConfig(block, 'botId'), leadId, conversationId, context: data });
       break;
