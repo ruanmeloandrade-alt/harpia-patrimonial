@@ -5,78 +5,54 @@ Atualizar este arquivo ao iniciar e ao concluir blocos relevantes.
 ## Frente01 — Núcleo/Auth/Usuários/Permissões
 
 - Branch: `frente-01`
-- Status inicial: NÃO INICIADA
-- Responsável: chat/agente designado pelo usuário
-- Último commit relevante: —
-- Entregue: —
-- Em andamento: —
-- Bloqueios: —
-- Próximo passo: iniciar pela leitura da documentação obrigatória.
+- Observação da Frente05 em 16/09/2026: a branch da Frente01 já possui shell interno, autenticação/RBAC, permissões dos módulos e backend Supabase ativo. O status autoritativo da Frente01 permanece na própria branch `frente-01`.
 
 ## Frente02 — Site público/Área do cliente
 
 - Branch: `frente-02`
-- Status inicial: NÃO INICIADA
-- Responsável: chat/agente designado pelo usuário
-- Último commit relevante: —
-- Entregue: —
-- Em andamento: —
-- Bloqueios: —
-- Próximo passo: iniciar pela leitura da documentação obrigatória.
+- Status autoritativo: consultar a própria branch/chat da Frente02.
 
 ## Frente03 — Catálogo interno/Dashboard
 
 - Branch: `frente-03`
-- Status inicial: NÃO INICIADA
-- Responsável: chat/agente designado pelo usuário
-- Último commit relevante: —
-- Entregue: —
-- Em andamento: —
-- Bloqueios: —
-- Próximo passo: iniciar pela leitura da documentação obrigatória.
+- Status autoritativo: consultar a própria branch/chat da Frente03.
 
 ## Frente04 — CRM/Inbox
 
 - Branch: `frente-04`
-- Status inicial: NÃO INICIADA
-- Responsável: chat/agente designado pelo usuário
-- Último commit relevante: —
-- Entregue: —
-- Em andamento: —
-- Bloqueios: —
-- Próximo passo: iniciar pela leitura da documentação obrigatória.
+- Status autoritativo: consultar a própria branch/chat da Frente04.
 
 ## Frente05 — SalesBot/Automatize/IA/Integrações
 
 - Branch: `frente-05`
-- Status: EM ANDAMENTO — escopo isolado da F05 concluído; aguardando integrações externas para validação final do produto.
+- Status: EM ANDAMENTO — Frente01 destravou backend/RBAC; integração de shell e CRM/Inbox ainda pendentes.
 - Responsável: chat atual — Frente05
-- Último commit relevante de código: `05bc1eaeaa9df9bea23d24250a71bb2016218f6d`
+- Último commit relevante de integração antes deste status: `ee685f5ce6cd1a1d5a1dabbb6716cc5451542e75`
 - Relatório de testes: `docs/frentes/FRENTE-05-TESTES.md`
-- Entregue: contratos CRM/Inbox; persistência local sem dados fictícios; CRUD de SalesBot; catálogo completo de blocos; configuração e validação por bloco; duplicar/ativar/pausar/excluir; runtime real e retomável de SalesBot; `createSalesBotCommandPort`; Automatize com gatilhos, condições, ações configuráveis, duplicação, ordenação e motor de eventos; CRUD/configuração de agentes IA; execução e logs de agentes; logs consolidados SalesBot/IA; workspace consolidado; API pública da Frente05; tela de integrações; perfis configuráveis de provedor/modelo IA; seleção de provedor por agente; cofre de credenciais por contrato; resolvedor server-side de segredo; runtime server-side de provedor; adaptadores OpenAI/Codex, Anthropic/Claude, Gemini e customizado.
-- Integridade: SalesBot/Automatize não ativam configuração incompleta; referências a bot/agente são verificadas; edição que invalida configuração ativa provoca pausa automática; `delay` retoma no próximo bloco sem reagendamento duplicado; ação `not_configured` no Automatize interrompe a sequência para evitar estado parcial.
-- Provedores IA preparados: OpenAI; OpenAI/Codex; Anthropic/Claude; Google Gemini; provedor customizado. Modelo e endpoint ficam configuráveis, sem lista rígida de modelos.
-- Segurança de chave API: chave não é salva em `localStorage`, código ou documentação. A UI usa `AICredentialVaultPort`; a execução server-side usa `AICredentialResolverPort`; a chave bruta só chega ao adaptador no backend.
-- Validações executadas nesta rodada: SalesBot runtime = OK; SalesBot command port = OK; Automatize engine = OK; adaptadores de provedor = OK; cadeia cofre/resolvedor -> runtime -> agente IA -> log = OK; TypeScript dos núcleos usados nesses testes = OK. Os testes e limites estão documentados em `docs/frentes/FRENTE-05-TESTES.md`.
-- NÃO VERIFICADO: build Vite do produto final com F05 montada no shell; teste visual integrado na navegação; autenticação/permissões reais da Frente01; integração ponta a ponta com CRM/Inbox reais da Frente04; persistência/resolução real de segredo no backend da Frente01; chamada real aos provedores com chave do cliente.
-- Em andamento: nenhum novo bloco exclusivamente F05 pendente nesta rodada. Aguardar F01/F04 e executar pente fino de integração assim que os contratos forem conectados.
-- Bloqueios externos: shell/roteador/auth/cofre pertencem à Frente01; CRM/Inbox pertence à Frente04. WhatsApp e Meta reais permanecem deliberadamente para a fase final.
-- Próximo passo: Frente01 montar `Front05Workspace`, implementar `AICredentialVaultPort` e `AICredentialResolverPort`; Frente04 conectar eventos/ações CRM e Inbox aos ports públicos. Depois, executar build e teste visual conjunto.
+- Handoff para Frente01: `docs/frentes/FRENTE-05-INTEGRACAO-F01.md`
+- Entregue no núcleo F05: contratos CRM/Inbox; CRUD e editor de SalesBot; catálogo completo de blocos; validação e referências cruzadas; runtime retomável; Automatize com gatilhos, condições, ações e motor; agentes IA; logs; provedores configuráveis; adaptadores OpenAI/Codex, Anthropic/Claude, Gemini e customizado; workspace consolidado e API pública.
+- Novo após desbloqueio da Frente01: mapa RBAC compatível com `salesbot.*`, `automations.*`, `ai.*` e `integrations.*`; abas ocultas sem permissão de leitura; modo somente leitura quando existe `view` sem `manage`; adaptador `createSupabaseAICredentialVault` para o cliente Supabase da Frente01.
+- Cofre real IA: migration aplicada no Supabase real da Hárpia; schema privado `private_f05`; segredo armazenado no Supabase Vault; RPCs restritas a `service_role`; round-trip salvar -> resolver -> remover testado; 0 resíduos do segredo de teste; Security Advisor = 0 lints após hardening.
+- Edge Function IA: `ai-credentials` publicada, `ACTIVE`, `verify_jwt = true`, exige usuário autenticado + `integrations.manage`; nunca devolve chave bruta ao navegador.
+- Segurança: API key não é persistida em `localStorage`, código ou documentação. O navegador recebe somente `secretRef` após armazenamento confirmado pelo backend.
+- NÃO VERIFICADO AINDA: build Vite conjunto; navegação visual da F05 no shell; E2E de RBAC com usuário interno real; salvar/remover chave pela tela com administrador real; CRM/Inbox reais da Frente04; chamada real ao provedor com chave do cliente.
+- Em andamento: handoff de montagem para Frente01 e preparação para integração final.
+- Bloqueios atuais: `AppRouter.tsx` e `InternalShell.tsx` pertencem à Frente01; CRM/Inbox pertencem à Frente04. O primeiro administrador real ainda é necessário para E2E autenticado do cofre.
+- Próximo passo Frente01: montar as rotas/sidebar conforme `docs/frentes/FRENTE-05-INTEGRACAO-F01.md` e passar `buildFront05Access(auth.hasPermission)` + `createSupabaseAICredentialVault(requireSupabase())` ao workspace.
+- Próximo passo Frente04: consumir `createSalesBotCommandPort`/`AIAgentCommandPort` na Inbox e emitir `CrmAutomationEvent` para `processCrmAutomationEvent`.
 
 ---
 
 # Pedidos entre frentes
 
-Use esta seção quando uma frente precisar que outra altere um arquivo ou contrato que não pertence ao seu escopo.
-
 - Data/hora: 16/09/2026 12:10 BRT
 - Origem: Frente05
 - Destino: Frente01
 - Necessidade: montar/importar `Front05Workspace` na navegação interna da plataforma usando a API pública `src/features/automations/index.ts`.
-- Arquivo/contrato afetado: roteador/shell global da Frente01; não editar pela Frente05.
-- Motivo: permitir teste visual integrado de SalesBot, Automatize, Agentes IA, Execuções e Integrações sem violar propriedade de arquivos.
-- Urgência: alta para demonstração.
-- Status: PENDENTE
+- Arquivo/contrato afetado: `AppRouter.tsx` e `InternalShell.tsx` da Frente01.
+- Motivo: liberar navegação/teste visual integrado.
+- Urgência: alta para integração.
+- Status: PENDENTE — contrato e instruções F05 já entregues em `docs/frentes/FRENTE-05-INTEGRACAO-F01.md`.
 
 - Data/hora: 16/09/2026 12:10 BRT
 - Origem: Frente05
@@ -85,22 +61,18 @@ Use esta seção quando uma frente precisar que outra altere um arquivo ou contr
 - Arquivo/contrato afetado: `src/features/automations/contracts.ts` e `src/features/automations/index.ts`.
 - Motivo: integração ponta a ponta CRM/Inbox ↔ automações/SalesBot/IA sem acoplamento.
 - Urgência: alta para integração final.
-- Status: PENDENTE
+- Status: PENDENTE.
 
 - Data/hora: 16/09/2026 12:24 BRT
 - Origem: Frente05
 - Destino: Frente01
-- Necessidade: implementar backend/cofre seguro compatível com `AICredentialVaultPort` e `AICredentialResolverPort`; injetar o vault na UI e usar o resolvedor no runtime server-side criado pela F05.
-- Arquivo/contrato afetado: `src/features/integrations/aiCredentialPort.ts`, `src/features/integrations/aiCredentialResolverPort.ts`, `src/features/integrations/providerRuntime.ts` e API pública `src/features/automations/index.ts`.
-- Motivo: permitir que o administrador cole a chave API do provedor escolhido sem armazenar segredo no navegador/GitHub e permitir que o backend resolva `secretRef` somente no momento da chamada ao modelo.
-- Urgência: alta antes de conectar provedor IA real.
-- Status: PENDENTE
+- Necessidade original: fornecer backend/cofre seguro para credenciais IA.
+- Resultado: Supabase/Vault + Edge Function `ai-credentials` implementados pela Frente05 usando o backend disponibilizado pela Frente01; adaptador frontend público entregue.
+- Status: RESOLVIDO NO BACKEND. Pendente somente E2E autenticado após existir administrador real e workspace montado.
 
 ---
 
 # Pendências de integração global
-
-Registrar aqui somente itens que dependem de merge ou decisão entre duas ou mais frentes.
 
 - Integrar autenticação da Frente01 com área do cliente da Frente02.
 - Integrar catálogo publicado da Frente03 com busca pública da Frente02.
@@ -109,8 +81,7 @@ Registrar aqui somente itens que dependem de merge ou decisão entre duas ou mai
 - Integrar comandos Inbox da Frente04 com SalesBot/IA da Frente05.
 - Integrar eventos CRM da Frente04 com Automatize da Frente05.
 - Montar `Front05Workspace` no shell/roteador da Frente01.
-- Implementar e injetar cofre seguro de credenciais IA pelo contrato `AICredentialVaultPort`.
-- Implementar resolvedor server-side de `secretRef` pelo contrato `AICredentialResolverPort`.
+- Executar E2E autenticado do cofre IA após criação do primeiro administrador real.
 - Executar build/teste visual conjunto após montagem das frentes.
 - Conectar WhatsApp e Meta somente na fase final.
 
