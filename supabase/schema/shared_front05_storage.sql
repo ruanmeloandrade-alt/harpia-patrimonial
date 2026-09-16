@@ -54,8 +54,17 @@ for select
 to authenticated
 using (private.can_read_f05_storage(storage_key));
 
-revoke all on public.f05_shared_storage from anon;
-grant select on public.f05_shared_storage to authenticated;
+drop policy if exists f05_shared_storage_update on public.f05_shared_storage;
+create policy f05_shared_storage_update
+on public.f05_shared_storage
+for update
+to authenticated
+using (private.can_write_f05_storage(storage_key))
+with check (private.can_write_f05_storage(storage_key));
+
+revoke all on public.f05_shared_storage from anon, authenticated;
+grant select, update on public.f05_shared_storage to authenticated;
+grant select on public.f05_shared_storage to service_role;
 
 insert into public.f05_shared_storage(storage_key, value)
 values
@@ -75,7 +84,7 @@ create or replace function public.save_f05_shared_storage(
 )
 returns bigint
 language plpgsql
-security definer
+security invoker
 set search_path = ''
 as $$
 declare
@@ -101,5 +110,5 @@ begin
 end;
 $$;
 
-revoke all on function public.save_f05_shared_storage(text, jsonb, bigint) from public;
+revoke all on function public.save_f05_shared_storage(text, jsonb, bigint) from public, anon;
 grant execute on function public.save_f05_shared_storage(text, jsonb, bigint) to authenticated;
