@@ -20,7 +20,22 @@ export async function listGroups() {
 
 export async function createGroup(input: { name: string; slug: string; description?: string }) {
   const supabase = requireSupabase();
-  const { error } = await supabase.from('permission_groups').insert({ ...input, is_active: true, is_system: false });
+  const name = input.name.trim();
+  const slug = input.slug.trim().toLowerCase();
+  if (!name || !slug) throw new Error('Nome e identificador do grupo são obrigatórios.');
+  const { error } = await supabase.from('permission_groups').insert({ name, slug, description: input.description?.trim() || null, is_active: true, is_system: false });
+  if (error) throw error;
+}
+
+export async function updateGroup(groupId: string, input: { name: string; description?: string }) {
+  const name = input.name.trim();
+  if (!name) throw new Error('O nome do grupo é obrigatório.');
+  const supabase = requireSupabase();
+  const { error } = await supabase
+    .from('permission_groups')
+    .update({ name, description: input.description?.trim() || null })
+    .eq('id', groupId)
+    .eq('is_system', false);
   if (error) throw error;
 }
 
