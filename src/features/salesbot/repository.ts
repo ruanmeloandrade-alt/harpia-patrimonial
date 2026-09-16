@@ -1,5 +1,6 @@
 import { listAIAgents } from '../ai-agents/repository';
 import { createF05Id, readStoredList, writeStoredList } from '../automations/f05Storage';
+import { findActiveSalesBotReferences, findSalesBotReferences, formatF05References } from '../automations/referenceIntegrity';
 import type { SalesBotBlock, SalesBotDefinition, SalesBotStatus } from './types';
 import { validateSalesBot } from './validation';
 
@@ -70,6 +71,10 @@ export function updateSalesBot(
   if (!current) throw new Error('SalesBot não encontrado.');
   let updated: SalesBotDefinition = { ...current, ...patch, updatedAt: now() };
   if (current.status === 'active' && patch.status === undefined && validateSalesBotForActivation(updated).length > 0) {
+    const activeReferences = findActiveSalesBotReferences(id);
+    if (activeReferences.length > 0) {
+      throw new Error(`Pause primeiro os recursos ativos que dependem deste SalesBot: ${formatF05References(activeReferences)}.`);
+    }
     updated = { ...updated, status: 'paused' };
   }
   writeStoredList(STORAGE_KEY, items.map((item) => (item.id === id ? updated : item)));
@@ -77,6 +82,12 @@ export function updateSalesBot(
 }
 
 export function deleteSalesBot(id: string): void {
+  const current = getSalesBot(id);
+  if (!current) throw new Error('SalesBot não encontrado.');
+  const references = findSalesBotReferences(id);
+  if (references.length > 0) {
+    throw new Error(`Este SalesBot ainda é referenciado por: ${formatF05References(references)}.`);
+  }
   writeStoredList(STORAGE_KEY, listSalesBots().filter((item) => item.id !== id));
 }
 
@@ -103,6 +114,11 @@ export function setSalesBotStatus(id: string, status: SalesBotStatus): SalesBotD
   if (status === 'active') {
     const issues = validateSalesBotForActivation(current);
     if (issues.length > 0) throw new Error(issues.join(' '));
+  } else if (current.status === 'active') {
+    const activeReferences = findActiveSalesBotReferences(id);
+    if (activeReferences.length > 0) {
+      throw new Error(`Pause primeiro os recursos ativos que dependem deste SalesBot: ${formatF05References(activeReferences)}.`);
+    }
   }
   return updateSalesBot(id, { status });
 }
