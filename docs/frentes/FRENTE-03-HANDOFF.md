@@ -5,77 +5,38 @@ Branch: `frente-03`
 
 Legenda obrigatória:
 
-- 🟢 completo e testável no escopo isolado;
+- 🟢 completo e testável no escopo validado;
 - 🟠 parcial/aguardando integração ou validação essencial;
 - 🔴 não iniciado.
 
 ## Status geral
 
-🟠 **AGUARDANDO INTEGRAÇÕES E VALIDAÇÃO FINAL.**
+🟠 **BACKEND REAL VALIDADO / AGUARDANDO INTEGRAÇÃO GLOBAL E QA VISUAL.**
 
-Todo bloco funcional essencial que pertence exclusivamente à Frente03 e não depende de outra frente foi implementado. A frente não recebe 🟢 geral porque o produto integrado ainda depende de Supabase real, shell/RBAC, consumo pela Frente02, fonte real do CRM no produto montado, storage e build/browser final.
-
-Último commit funcional relevante antes deste handoff: `532f04daf04c6bede662d31ad78be3d27559d1df` (`[F03] dashboard: atualizar ao receber mudancas do CRM`).
+A dependência de Supabase da Frente01 foi destravada. O catálogo já existe no projeto dedicado da Hárpia, com RLS, grants, triggers e testes reais. A frente continua sem 🟢 geral porque ainda faltam montagem no shell/roteador global, tipos Supabase globais atualizados, build/browser integrado, consumo público final e storage de mídia.
 
 ## 🟢 Catálogo — domínio e regras
 
-Implementado:
+Implementado e validado:
 
 - empreendimento;
 - unidade de empreendimento;
 - imóvel avulso;
 - código, nome, finalidade, descrição e localização;
-- preço;
+- preço e faixa derivada;
 - tipologia obrigatória para unidade;
 - lançamento;
-- características;
-- estilos de vida;
+- características e estilos de vida;
 - incorporadora/origem;
 - fotos, vídeos, plantas e documentos;
 - primeira foto como capa;
-- status `draft`, `published`, `paused`, `sold`;
+- estados `draft`, `published`, `paused`, `sold`;
 - timestamps de publicação/venda;
-- exclusão lógica.
-
-Regras implementadas:
-
-- cadastro nasce como rascunho;
-- código ativo é único no adapter local e no schema de produção;
-- código, nome e cidade não podem ser vazios;
-- preço não pode ser negativo;
+- exclusão lógica;
+- código ativo único;
 - unidade exige empreendimento pai ativo;
-- unidade exige tipologia explícita;
-- tipologia é removida quando item deixa de ser unidade;
-- empreendimento com unidades ativas não pode ser excluído;
-- empreendimento com unidades ativas não pode mudar de tipo deixando unidades órfãs;
-- duplicação gera novo id/código, renova ids de mídia e volta para rascunho;
-- publicação/pausa/vendido são ações explícitas.
-
-## 🟢 Catálogo — interface administrativa
-
-Código implementado em `CatalogAdminPage.tsx`:
-
-- loading;
-- erro;
-- empty state;
-- criação;
-- edição;
-- busca;
-- filtro por status;
-- filtro por tipo;
-- duplicação;
-- publicação;
-- pausa;
-- vendido;
-- exclusão com confirmação;
-- mídia separada em fotos, vídeos, plantas e documentos;
-- IDs de mídia existentes preservados quando a URL permanece na edição;
-- tipologia visível em unidades;
-- modo leitura;
-- RBAC separado em `catalog.view`, `catalog.manage`, `catalog.publish`;
-- `catalog.manage`/`catalog.publish` também habilitam leitura, coerente com RLS.
-
-A tela permanece 🟠 como entrega final porque o build Vite/browser integrado não pôde ser executado após as últimas mudanças no executor disponível.
+- empreendimento com unidades ativas não pode ser excluído nem convertido deixando órfãos;
+- duplicação gera novo id/código e volta para rascunho.
 
 ## 🟢 Contrato público
 
@@ -89,90 +50,86 @@ A tela permanece 🟠 como entrega final porque o build Vite/browser integrado n
 
 Garantias:
 
-- somente `published` é exposto;
+- somente `published` é elegível ao público;
 - cidades/localizações/estilos vêm de dados reais;
 - relação empreendimento/unidades é explícita;
 - tipologia é exposta para unidade;
-- faixa de preço do empreendimento é derivada de unidades publicadas;
-- filtro de preço de empreendimento verifica os preços das unidades publicadas;
-- preço do pai só é usado quando não existe unidade publicada com preço;
-- limites globais de preço evitam contar preço do pai quando unidades publicadas existem.
+- faixa de preço do empreendimento é derivada das unidades publicadas;
+- filtro de preço de empreendimento usa unidades publicadas;
+- preço do pai só entra quando não existe unidade publicada com preço.
 
-Compatibilidade com a Frente02:
+A compatibilidade estrutural com `src/features/public-catalog/front03Adapter.ts` da Frente02 já foi revisada.
 
-- `src/features/public-catalog/front03Adapter.ts` da branch `frente-02` foi revisado;
-- `list`, `getByIdOrCode`, `getFilterOptions`, tipologia e formatos de mídia estão estruturalmente compatíveis;
-- se a experiência pública precisar da faixa completa, usar `getDevelopmentWithUnits()` e não criar uma segunda regra de preço.
+## 🟢 Persistência real — Supabase
 
-## 🟢 Persistência — contratos/adapters
+Projeto dedicado: `Harpia Patrimonial`, ref `desxomqvtjaymwwxivwq`.
 
-- `CatalogRepository`: contrato único do domínio.
-- `LocalCatalogRepository`: adapter transitório local, vazio por padrão.
-- `SupabaseCatalogRepository`: adapter de produção por injeção do cliente oficial da Frente01.
-- adapters emitem `harpia:catalog-changed` após mutações.
-- adapter Supabase valida os campos básicos antes de enviar dados.
+Dependências da Frente01 verificadas no banco:
 
-## 🟠 Supabase/RLS real
+- `private.user_has_permission(uuid,text)`;
+- `private.touch_updated_at()`;
+- permissões `catalog.view`, `catalog.manage`, `catalog.publish`.
 
-Arquivo: `src/features/catalog/catalog.schema.sql`.
+Migrations aplicadas:
 
-Implementado no SQL:
+- `catalog_front03`;
+- `catalog_front03_grants_hardening`;
+- `catalog_front03_select_policy_performance`.
 
-- tabela do catálogo;
-- enums;
-- índices;
-- unicidade de código ativo;
-- campos obrigatórios;
-- validação de mídia JSON array;
-- unidade/pai/tipologia;
-- proteção contra órfãos;
-- RLS público somente para publicados;
-- RLS interno;
-- `catalog.view`;
-- `catalog.manage`;
-- `catalog.publish`;
-- publish-only impedido de alterar campos comerciais;
-- `published_at`/`sold_at` controlados por transições de status;
-- `service_role` reconhecido para operações server-side legítimas.
+Validações reais executadas:
 
-Permanece 🟠 porque o projeto Supabase dedicado da Hárpia ainda não existe/foi aplicado e não houve teste RLS real.
+- `anon` visualizou 2 registros publicados de QA e 0 rascunhos;
+- após hardening, `anon` possui SELECT e não possui INSERT/UPDATE/DELETE;
+- unidade sem tipologia foi rejeitada por `private.validate_catalog_insert()`;
+- exclusão lógica de empreendimento com unidade ativa foi rejeitada por `private.protect_catalog_integrity()`;
+- publicação preencheu `published_at`;
+- registros temporários `QA-F03-%` foram removidos e o banco terminou com 0 registros de QA.
 
-## 🟢 Dashboard — catálogo
+Advisors:
 
-Métricas reais implementadas:
+- Security Advisor: nenhum finding relacionado ao catálogo;
+- há um INFO em schema privado de outra frente (`private_f05.ai_provider_credentials`), fora do escopo da Frente03;
+- Performance Advisor: o warning de políticas permissivas duplicadas da Frente03 foi resolvido;
+- restam apenas INFOs de índices ainda não utilizados, esperado para banco novo sem tráfego.
+
+## 🟢 Segurança/RBAC do catálogo
+
+- `catalog.view`: leitura interna;
+- `catalog.manage`: criar, editar, duplicar e excluir logicamente;
+- `catalog.publish`: publicar, pausar e marcar vendido;
+- `catalog.manage`/`catalog.publish` permitem leitura interna;
+- usuário publish-only não pode alterar campos comerciais;
+- `published_at` e `sold_at` são controlados pelas transições de status;
+- grants do Data API foram explicitamente revogados e concedidos pelo princípio do menor privilégio;
+- RLS permanece a autorização por linha.
+
+## 🟢 Dashboard — catálogo e CRM seguro
+
+Métricas de catálogo:
 
 - publicados;
 - rascunhos;
 - pausados;
 - vendidos;
-- valor de estoque;
+- valor de estoque sem dupla contagem;
 - publicados por cidade;
 - publicados por finalidade.
 
-Valor de estoque evita dupla contagem:
-
-- se empreendimento tem unidades ativas, usa as unidades;
-- não soma novamente o preço do pai;
-- empreendimento sem unidades pode usar próprio preço;
-- vendidos não entram no estoque.
-
-## 🟢 Dashboard — CRM seguro
-
-Contratos:
+Contratos comerciais:
 
 - `CommercialMetricsProvider`;
 - `CrmSnapshotMetricsProvider`;
 - `CrmRepositorySnapshotSource`.
 
-Métricas objetivamente deriváveis hoje:
+Métricas objetivamente deriváveis:
 
 - leads;
-- origem dos leads;
-- próximas tarefas pendentes;
+- origem;
+- próximas tarefas;
 - demanda por região quando existe `interest.referenceId` real;
-- interesse por produto em quantidade de leads/interesses quando existe referência real.
+- interesse por produto medido por quantidade de leads/interesses referenciados.
 
-Não inferir pelo nome de etapa:
+Não inferir por nome de etapa:
 
 - visitas;
 - propostas;
@@ -182,80 +139,84 @@ Não inferir pelo nome de etapa:
 - ticket;
 - conversão.
 
-Essas métricas permanecem indisponíveis/zeradas até contrato/configuração explícita.
+`CrmRepositorySnapshotSource` lê `load()` compatível com o repositório da Frente04 e escuta `harpia:crm-updated`, reduzindo a dependência de compartilhar a mesma instância de `CrmService`.
 
-`CrmRepositorySnapshotSource` aceita `load()` compatível com `BrowserCrmRepository` da Frente04, lê o estado atual a cada snapshot e escuta `harpia:crm-updated` por padrão. Assim, não é mais obrigatório compartilhar a mesma instância de `CrmService` para as métricas locais.
+## 🟠 UI / integração com Frente01
 
-`DashboardPage` também assina atualizações do provider comercial quando disponíveis.
+A Frente01 já entrega:
 
-## Testes executados
+- `src/core/supabase/client.ts` com `requireSupabase()`;
+- `useAuth()`/permissões;
+- constantes `PERMISSIONS.CATALOG_VIEW`, `CATALOG_MANAGE`, `CATALOG_PUBLISH`;
+- `InternalShell`;
+- `AppRouter` protegido.
 
-🟢 Passaram em harness TypeScript isolado:
+Ainda falta no produto integrado:
 
-- criação de empreendimento/unidade/avulso;
-- unidade sem tipologia rejeitada;
-- tipologia removida fora de unidade;
-- rascunho não aparece publicamente;
-- publicação pública;
-- relação empreendimento/unidades;
-- faixa de preço `500000–700000` derivada de unidades;
-- filtro `650000–750000` retornando empreendimento + unidade compatível e excluindo unidade fora da faixa;
-- limites globais de preço `300000–700000` sem teto artificial do pai;
-- proteção contra unidade órfã;
-- duplicação segura;
-- exclusão lógica;
-- vendido;
-- valor de estoque sem dupla contagem;
-- leads/origens/tarefas;
-- demanda por região;
-- interesse por produto;
-- disponibilidade explícita de métricas;
-- `CrmRepositorySnapshotSource` carregando estado novo e reagindo a `harpia:crm-updated`;
-- unsubscribe do evento comercial.
+1. regenerar `src/core/supabase/database.types.ts` após as migrations da Frente03;
+2. montar `Front03Workspace` no `AppRouter`/`InternalShell`;
+3. mapear `useAuth().hasPermission()` para as 3 permissões de catálogo;
+4. criar `SupabaseCatalogRepository(requireSupabase())` na composição global;
+5. executar QA browser ponta a ponta.
 
-Testes anteriores também validaram estruturalmente `SupabaseCatalogRepository` com cliente Supabase simulado. As últimas mudanças nesse adapter foram validação/normalização e emissão do mesmo evento já usado pelo adapter local; Supabase real permanece não verificado.
+A geração atual do Supabase já confirma que `Database` contém:
 
-## 🟠 Validações ainda pendentes
+- tabela `catalog_items`;
+- enum `catalog_item_kind`;
+- enum `catalog_purpose`;
+- enum `catalog_status`.
 
-- build Vite completo;
-- teste visual em navegador no shell final;
-- RLS real no Supabase dedicado;
-- RBAC real via `useAuth()` no produto integrado;
-- persistência multiusuário real;
-- storage/upload binário real;
-- consumo real da Frente02 depois do merge;
-- CRM real montado no mesmo produto;
-- métricas comerciais avançadas quando a Frente04 definir semântica/configuração explícita.
+O arquivo `database.types.ts` existente na branch Frente01 ainda foi gerado antes da tabela de catálogo e precisa ser atualizado pela própria Frente01/integrador, pois é arquivo global de ownership dela.
 
-### Motivo do build não verificado nesta sessão
+## 🟠 Interface administrativa
 
-O executor local disponível usa Node 22, enquanto o repositório exige Node `>=24 <25`; Vite/React não estão instalados no executor; clone/instalação direta ficaram bloqueados por resolução de rede. A branch também não possui script/configuração de lint. Nenhum teste não executado foi declarado como aprovado.
+`CatalogAdminPage` já contém:
 
-## Dependências restantes
+- loading;
+- erro;
+- empty state;
+- criação/edição/busca/filtros;
+- duplicação/publicação/pausa/vendido/exclusão;
+- mídia separada;
+- tipologia de unidade;
+- modo leitura;
+- RBAC granular.
 
-### Frente01 / integrador
+Falta somente build/browser integrado depois do merge para receber 🟢 como tela final.
 
-- criar/conectar Supabase dedicado;
-- aplicar `core_auth.sql` e depois `catalog.schema.sql`;
-- injetar cliente oficial no `SupabaseCatalogRepository`;
-- montar `Front03Workspace` no shell;
-- fornecer permissões reais `catalog.view/manage/publish`.
+## 🟠 Validações restantes
 
-### Frente02 / integrador
+- build Vite completo no produto integrado;
+- teste visual/browser no shell final;
+- teste positivo com usuário interno real do grupo Administrador;
+- regeneração dos tipos globais Supabase;
+- consumo real pela Frente02 após integração;
+- CRM real montado na mesma aplicação;
+- storage/upload binário de mídia;
+- métricas comerciais avançadas quando houver semântica explícita.
+
+## Dependências atuais
+
+### Frente01 / integrador — ALTA
+
+- regenerar `database.types.ts`;
+- montar `Front03Workspace` no shell/roteador;
+- injetar cliente oficial e RBAC real.
+
+### Frente02 / integrador — ALTA
 
 - instanciar `PublicCatalogService` real no adapter já preparado;
-- usar `getDevelopmentWithUnits()` quando precisar de faixa completa.
+- usar relação/faixa real do catálogo.
 
-### Frente04 / integrador
+### Frente04 / integrador — MÉDIA/ALTA
 
-- para adapter local, pode fornecer `BrowserCrmRepository` a `CrmRepositorySnapshotSource` sem alterar o CRM;
-- na persistência final, fornecer fonte/repositório compatível com o mesmo contrato;
-- definir semântica explícita se quiser liberar visitas/propostas/negociações/vendas/VGV/ticket/conversão.
+- fornecer repositório/estado real do CRM para `CrmRepositorySnapshotSource`;
+- definir semântica explícita para métricas avançadas se necessário.
 
 ### Infraestrutura compartilhada
 
-- storage/upload binário real de mídia.
+- storage/upload binário real.
 
 ## Próximo passo
 
-Não há novo bloco funcional essencial exclusivamente da Frente03 identificado após este pente-fino. A continuação útil exige uma das integrações acima ou ambiente capaz de executar build/browser final.
+A Frente03 já avançou tudo o que a liberação recente da Frente01 permitiu no backend. O próximo avanço relevante depende agora da Frente01/integrador atualizar os tipos e montar a Frente03 no shell global; depois disso deve ser executado QA browser real e corrigidas eventuais regressões de integração.
