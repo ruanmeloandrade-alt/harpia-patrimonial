@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import type { ClientAreaDataState } from '../client-area/ClientArea';
 import { useClientAreaData, type ClientAreaDataSourcePort } from '../client-area/useClientAreaData';
 import { createFront03PublicCatalogReader, type Front03PublicCatalogServicePort } from '../public-catalog/front03Adapter';
 import PublicExperience from './PublicExperience';
@@ -116,12 +117,21 @@ function ExperienceWithFavorites({
 }) {
   const favorites = usePublicFavoritesBridge({ clientId, catalog, store });
 
+  const accountData: ClientAreaDataState = {
+    data: clientAreaData.data,
+    loading: Boolean(clientAreaData.loading || favorites.loading),
+    error: [clientAreaData.error, favorites.error].filter(Boolean).join(' · '),
+    reload: async () => {
+      await Promise.all([clientAreaData.reload(), favorites.reload()]);
+    },
+  };
+
   return (
     <PublicExperience
       catalog={catalog}
       auth={authBridge}
       favorites={favorites.bridge}
-      clientAreaData={clientAreaData}
+      clientAreaData={accountData}
       onConversion={onConversion}
       internalAreaHref={internalAreaHref}
     />
