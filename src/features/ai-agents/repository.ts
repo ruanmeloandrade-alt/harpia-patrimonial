@@ -1,4 +1,5 @@
 import { createF05Id, readStoredList, writeStoredList } from '../automations/f05Storage';
+import { listAIProviderProfiles } from '../integrations/aiProviderRepository';
 import type { AIAgentDefinition, AIAgentStatus } from './types';
 
 const STORAGE_KEY = 'harpia:f05:ai-agents';
@@ -44,5 +45,14 @@ export function deleteAIAgent(id: string): void {
 }
 
 export function setAIAgentStatus(id: string, status: AIAgentStatus): AIAgentDefinition {
+  if (status === 'active') {
+    const agent = listAIAgents().find((item) => item.id === id);
+    if (!agent) throw new Error('Agente IA não encontrado.');
+    if (!agent.providerProfileId) throw new Error('Selecione um perfil de provedor IA antes de ativar o agente.');
+    const profile = listAIProviderProfiles().find((item) => item.id === agent.providerProfileId);
+    if (!profile || profile.status !== 'ready' || !profile.apiKeyConfigured) {
+      throw new Error('O perfil de provedor IA precisa estar pronto e com chave API configurada.');
+    }
+  }
   return updateAIAgent(id, { status });
 }
