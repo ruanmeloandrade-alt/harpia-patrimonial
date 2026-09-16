@@ -5,7 +5,7 @@ Atualizar este arquivo ao iniciar e ao concluir blocos relevantes.
 ## Frente01 — Núcleo/Auth/Usuários/Permissões
 
 - Branch: `frente-01`
-- Observação da Frente05 em 16/09/2026: a Frente01 já possui shell/rotas internos, autenticação/RBAC, backend Supabase, estado compartilhado, cofre IA e composição dos runtimes da F05. O status autoritativo da Frente01 permanece na própria branch/chat da Frente01.
+- Observação da Frente05 em 16/09/2026: a Frente01 já possui shell/rotas internos, autenticação/RBAC, backend Supabase, estado compartilhado, Realtime, cofre IA e composição dos runtimes da F05. O status autoritativo da Frente01 permanece na própria branch/chat da Frente01.
 
 ## Frente02 — Site público/Área do cliente
 
@@ -26,9 +26,8 @@ Atualizar este arquivo ao iniciar e ao concluir blocos relevantes.
 ## Frente05 — SalesBot/Automatize/IA/Integrações
 
 - Branch: `frente-05`
-- Status: PRONTA PARA INTEGRAÇÃO — núcleo F05 concluído; integração estrutural existe na F01; faltam sincronização dos commits mais recentes, ajuste RBAC do integrador, build/typecheck e E2E real.
+- Status: PRONTA PARA INTEGRAÇÃO — núcleo F05 concluído e endurecido; integração estrutural existe na F01; faltam sincronização dos commits mais recentes, ajuste RBAC do integrador, build/typecheck e E2E autenticado.
 - Responsável: chat atual — Frente05
-- Últimos commits relevantes desta rodada: `91237df68b038c6d565576f03fc2b93e464b4759` (rollback storage), `43fdd363d7d381bcf6ea7d49b09ab3af69def7a5` (listener storage), `3acd63a04675d33ff9d0c967554da1a401075141` (SalesBot sync), `74f56a72da4f01364a0254e3449b78f7de5aca5d` (Automatize sync), `d816e3cdfe448f9014424cc4ed3f679c182f8161` (Agentes IA sync), `ae8a449e67a6f9e8cd5c43ccb13343f95e97e94e` (provedores sync), `6326abf662ec63132c506f3e00973813804eace0` (integrações sync), `3b2e9c4d97b26a02c7d6dbe804bc95a4c5b7284d` (logs default deny).
 - Relatório de testes: `docs/frentes/FRENTE-05-TESTES.md`
 - Handoff atualizado para Frente01: `docs/frentes/FRENTE-05-INTEGRACAO-F01.md`
 
@@ -41,23 +40,39 @@ Atualizar este arquivo ao iniciar e ao concluir blocos relevantes.
 - logs SalesBot + IA sem histórico fictício;
 - integrações configuráveis;
 - provedores OpenAI/Codex, Anthropic/Claude, Google Gemini e customizado;
-- RBAC F05 com view/manage e modo somente leitura;
+- RBAC F05 com view/manage, `manage => view`, default deny e modo somente leitura;
 - API pública consolidada em `src/features/automations/index.ts`.
 
 ### Persistência compartilhada / multiusuário
 
 - F05 possui contrato oficial de storage compartilhado com fallback local somente para standalone/testes;
 - quando `configureF05SharedStorage` é usado, backend compartilhado vira fonte de verdade e localStorage deixa de ser usado;
-- integração F01 usa Supabase com optimistic locking por revisão;
-- escrita F05 faz rollback em memória se backend rejeitar a persistência;
+- integração F01 usa Supabase com optimistic locking por revisão e fila por chave;
+- escrita otimista F05 faz rollback em memória se backend rejeitar;
 - rollback usa geração por chave para não apagar edição posterior;
-- SalesBot, Automatize, Agentes IA, Provedores/Integrações e Execuções escutam hidratação/confirmação/rollback;
+- `replaceStoredListFromRemote(...)` restaura snapshot autoritativo e invalida rollbacks antigos;
+- `writeStoredListConfirmed(...)` permite mutações críticas aguardarem confirmação do backend;
+- SalesBot, Automatize, Agentes IA, Provedores/Integrações e Execuções escutam hidratação, refresh remoto, confirmação e rollback;
+- testes de corrida/rollback e escrita confirmada passaram em ambiente controlado;
 - banco real contém sete coleções estruturais F05, todas vazias e em revisão 0, sem dado fictício.
+
+### Consistência provedor IA / Vault
+
+- primeira chave só é marcada como configurada depois que o perfil confirma persistência;
+- falha nessa persistência aciona limpeza compensatória da credencial recém-criada;
+- atualização de chave existente preserva o mesmo `secretRef` do Vault;
+- remoção confirma primeiro o perfil sem referência e depois limpa o Vault;
+- se a limpeza do Vault falhar, o perfil anterior é restaurado;
+- exclusão de perfil é persistida de forma confirmada e revertida se a limpeza do Vault falhar;
+- perfil não pode ser excluído enquanto houver qualquer agente referenciando-o;
+- chave não pode ser removida nem perfil pronto desativado enquanto houver agente ativo dependente;
+- fluxo de compensação passou em teste controlado (`F05 credential/profile consistency tests: OK`).
 
 ### Integração estrutural confirmada na Frente01
 
 - rotas/sidebar para SalesBot, Automatize, Agentes IA, Execuções e Integrações;
 - gate de hidratação antes de renderizar módulos F05;
+- Realtime para estado F05/CRM/Inbox entre sessões;
 - CRM → `processCrmAutomationEvent`;
 - ações CRM consumidas por SalesBot/Automatize;
 - Inbox → command ports SalesBot/IA;
@@ -77,15 +92,25 @@ Atualizar este arquivo ao iniciar e ao concluir blocos relevantes.
 - `anon` não possui EXECUTE em `save_f05_shared_storage`;
 - escrita compartilhada usa `SECURITY INVOKER` + RLS `f05_shared_storage_update`;
 - Security Advisor atual do projeto: 0 lints;
-- `ExecutionLogsPanel` é `canManage=false` por padrão para evitar exclusão de logs por omissão de prop.
+- `Front05Workspace` sem `access` usa `NO_FRONT05_ACCESS`;
+- workspaces diretos usam `canManage=false` por padrão, inclusive Execuções e Provedores IA.
 
 ### Desvio RBAC encontrado no integrador F01
 
 - rotas SalesBot/Automatize/Agentes IA/Integrações ainda exigem somente `*.manage`, bloqueando usuários com apenas `*.view`;
 - workspaces integrados são montados sem `canManage` explícito;
+- após sincronizar o default-deny F05, administradores também ficarão somente leitura se a F01 não passar `canManage` explicitamente;
 - correção esperada: rota aceita `view OR manage`; componente recebe `canManage={hasPermission(*.manage)}`;
 - patch/instrução detalhada está em `docs/frentes/FRENTE-05-INTEGRACAO-F01.md`;
 - não editar `AppRouter.tsx`, `InternalShell.tsx` ou `IntegratedInternalModules.tsx` a partir da F05.
+
+### Usuários temporários de QA
+
+- responsável do projeto autorizou criar um admin interno temporário e um viewer interno temporário para E2E, com exclusão ao final;
+- nesta sessão, criação de Auth foi bloqueada pelo conector Supabase e o runtime local não alcança o endpoint público do Auth;
+- não foi feito bypass direto em `auth.users`;
+- última conferência: `auth.users = 0`;
+- F01 ou outra frente com acesso ao Auth pode criar os dois usuários sem pedir nova autorização.
 
 ### NÃO VERIFICADO AINDA
 
@@ -104,12 +129,12 @@ Atualizar este arquivo ao iniciar e ao concluir blocos relevantes.
 
 - Frente01: sincronizar commits recentes da `frente-05` antes do QA final.
 - Frente01: aplicar correção RBAC `view/manage` documentada no handoff.
-- Produto: criar/promover primeiro administrador real para liberar E2E autenticado sem dado fictício.
+- Frente01/Auth: criar os dois usuários temporários de QA já autorizados, se o ambiente daquela frente permitir.
 - Frente04: nenhuma mudança nova de contrato F05 exigida; E2E conjunto permanece pendente.
 
 ### Próximo passo da Frente05
 
-Quando a Frente01 sincronizar os commits e aplicar o RBAC integrado, executar pente fino conjunto: build/typecheck, navegação, permissões, persistência compartilhada, Inbox↔SalesBot/IA, CRM↔Automatize, cofre pela UI e correções de incompatibilidade. Até lá, não criar usuário fake, chave fake persistente, WhatsApp ou Meta reais.
+Quando a Frente01 sincronizar os commits/aplicar RBAC ou quando os usuários de QA aparecerem no Auth, executar imediatamente o pente fino conjunto: build/typecheck, navegação, permissões, persistência compartilhada, Inbox↔SalesBot/IA, CRM↔Automatize e cofre pela UI. Até lá, não criar dados operacionais fake, WhatsApp ou Meta reais.
 
 ---
 
@@ -124,7 +149,7 @@ Quando a Frente01 sincronizar os commits e aplicar o RBAC integrado, executar pe
 - Data/hora: 16/09/2026
 - Origem: Frente05
 - Destino: Frente01
-- Necessidade atual: sincronizar commits recentes da branch `frente-05`, aplicar RBAC `view/manage` e executar QA/build conjunto.
+- Necessidade atual: sincronizar commits recentes da branch `frente-05`, aplicar RBAC `view/manage`, criar usuários temporários de QA autorizados e executar QA/build conjunto.
 - Arquivo/contrato principal: `src/features/automations/index.ts`, storage compartilhado, workspaces F05 e integração em `AppRouter`/`IntegratedInternalModules`.
 - Status: PENDENTE.
 
@@ -140,8 +165,9 @@ Quando a Frente01 sincronizar os commits e aplicar o RBAC integrado, executar pe
 
 - sincronizar branches/frentes no produto consolidado sem perder commits recentes;
 - corrigir RBAC view/manage da F05 no shell integrador;
+- criar usuários temporários de QA autorizados;
 - executar build/typecheck conjunto;
-- executar QA autenticado com administrador real;
+- executar QA autenticado;
 - validar persistência compartilhada e conflito de revisão;
 - validar CRM/Inbox ↔ SalesBot/Automatize/IA ponta a ponta;
 - conectar WhatsApp e Meta somente na fase final.
