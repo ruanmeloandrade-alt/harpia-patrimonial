@@ -45,18 +45,19 @@ Estado executivo: AGUARDANDO INTEGRAÇÃO / VALIDAÇÃO REAL
 | 🟢 | Pipeline CRM → WhatsApp | CRM precisa concluir antes do redirecionamento. |
 | 🟢 | Continuação para WhatsApp | `wa.me` contextual preparado sem telefone fictício; telefone exige formato internacional válido. |
 | 🟢 | Adapter Frente01 | Reutiliza sessão/perfil reais da Frente01 e consome `user.id` como identidade para dados persistentes. |
-| 🟠 | Login/cadastro integrado | Rotas reais `/entrar` e `/cadastro` identificadas; falta composição no roteador global. |
+| 🟢 | Compatibilidade com Auth real da Frente01 | Contrato atual `src/core/auth/index.ts`/`AuthContextValue` conferido; `useAuth`, `ClientRoute`, `InternalRoute`, usuário, perfil e sessão permanecem compatíveis com o adapter da Frente02. O backend dedicado da Hárpia já está ativo e com RLS/migrations do núcleo aplicados. |
+| 🟠 | Login/cadastro integrado | Auth/backend da Frente01 já estão estruturados; ainda falta montar a experiência da Frente02 no `AppRouter` e executar login/cadastro no produto conjunto. |
 | 🟢 | Bridge de favoritos | Cliente real + item real + `PublicFavoritesStorePort`, sem `localStorage`. |
 | 🟢 | Estados de favoritos | Carregamento, falha, retry e atualização sem promise rejeitada solta estão tratados na camada F2. |
-| 🟠 | Persistência definitiva de favoritos | Falta store/tabela real compartilhada com RLS/autorização. |
+| 🟠 | Persistência definitiva de favoritos | O backend compartilhado agora existe, mas a tabela/store real de favoritos ainda não foi definida/aplicada. |
 | 🟢 | Área do cliente — interface | Perfil, favoritos, serviços, interesses e histórico têm dados/loading/erro/empty state. |
 | 🟢 | Retry da área do cliente | Falha em favoritos/interesses/histórico expõe tentativa de recarga real. |
 | 🟢 | Porta de interesses/histórico | `useClientAreaData` aceita qualquer fonte real por `clientId` sem acoplar a tela ao CRM. |
-| 🟠 | Área do cliente com dados persistidos reais | Falta fonte integrada de favoritos/interesses/histórico. |
+| 🟠 | Área do cliente com dados persistidos reais | Auth/identidade real já existem; ainda falta persistência/fonte real de favoritos, interesses e histórico e montagem da área no fluxo integrado. |
 | 🟢 | Zero mocks permanentes | Ausência de dados gera estado vazio/erro real. |
 | 🟢 | Loading/erro/vazio | Cobertura explícita nas principais jornadas. |
 | 🟠 | Responsividade | Código responsivo pronto; falta teste visual real desktop/mobile. |
-| 🟠 | Montagem no bootstrap global | Shell/experiência e handoff prontos; montagem pertence à Frente01/integrador. |
+| 🟠 | Montagem no bootstrap global | `AppRouter` da Frente01 ainda renderiza `PublicPlaceholder` em `/` e `ClientAccountShell` próprio em `/conta`; falta substituir/compor esses pontos com a Frente02 durante integração. |
 | 🔴 | Build integrado e E2E | NÃO VERIFICADO até merge e execução no Node `>=24 <25` exigido pelo projeto. |
 | 🔴 | Teste visual real | NÃO VERIFICADO sem execução no produto integrado. |
 
@@ -65,11 +66,11 @@ Estado executivo: AGUARDANDO INTEGRAÇÃO / VALIDAÇÃO REAL
 No pente-fino atual não restou implementação funcional conhecida que possa ser concluída isoladamente sem:
 
 - montar os módulos no roteador/bootstrap compartilhado;
-- dispor do backend/persistência real;
-- instanciar serviços reais de outras frentes;
+- definir/aplicar persistência compartilhada ainda ausente, principalmente favoritos;
+- instanciar serviços reais das Frentes03/04;
 - executar o produto integrado em ambiente compatível.
 
-Portanto a Frente02 não deve inventar banco, mocks, autenticação paralela, catálogo paralelo ou CRM paralelo apenas para transformar itens 🟠/🔴 em verde.
+O avanço recente da Frente01 removeu o bloqueio de inexistência do backend: o projeto Supabase dedicado da Hárpia está ativo e o contrato Auth foi novamente conferido como compatível. O bloqueio referente à Frente01 ficou reduzido à composição real no `AppRouter`, testes de autenticação no produto conjunto e persistência compartilhada que ainda não existe.
 
 ## Arquivos funcionais principais
 
@@ -94,10 +95,18 @@ Portanto a Frente02 não deve inventar banco, mocks, autenticação paralela, ca
 
 ### Frente01 / integrador
 
-- montar `Front02IntegrationShell`/`PublicExperience` no `AppRouter` substituindo o placeholder público;
-- manter `/entrar`, `/cadastro`, `/conta` e `/interno/**` sob o núcleo;
-- fornecer persistência real de favoritos associada ao usuário autenticado;
-- validar sessão/guardas no produto conjunto.
+Resolvido/confirmado:
+
+- backend Supabase dedicado da Hárpia ativo;
+- migrations/RLS do núcleo aplicados;
+- contrato público Auth estável e compatível com o adapter da Frente02.
+
+Ainda pendente:
+
+- montar `Front02IntegrationShell`/`PublicExperience` no `AppRouter` substituindo o `PublicPlaceholder`;
+- decidir composição de `/conta` (`ClientRoute`) com a área rica da Frente02 sem duplicar experiência;
+- definir/aplicar persistência real de favoritos associada ao usuário autenticado;
+- executar cadastro/login/logout/sessão/guardas com a Frente02 montada.
 
 ### Frente03 / integrador
 
@@ -117,4 +126,4 @@ Portanto a Frente02 não deve inventar banco, mocks, autenticação paralela, ca
 
 ## Próximo passo da Frente02
 
-Aguardar os pontos compartilhados ficarem disponíveis. Assim que houver integração/merge, executar build e QA ponta a ponta, corrigir regressões pertencentes à Frente02 e somente então mudar o status para `PRONTA PARA INTEGRAÇÃO`/`INTEGRADA` conforme os critérios do projeto.
+Referente à Frente01, o backend/Auth já não bloqueiam preparação adicional. O próximo passo exige composição compartilhada no `AppRouter`/merge. Assim que esse ponto estiver montado, a Frente02 deve executar QA de login/cadastro/conta/rotas e corrigir regressões próprias. Paralelamente continuam as integrações com Frente03 e Frente04.
