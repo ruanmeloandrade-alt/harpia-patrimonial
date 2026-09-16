@@ -74,6 +74,15 @@ export {
   type SupabaseFavoritesClientPort,
 } from './supabaseFavoritesStore';
 export {
+  createSupabaseClientAreaDataSource,
+  createSupabasePublicLeadIngest,
+  type SupabaseFunctionsClientPort,
+} from './supabaseEdgeAdapters';
+export {
+  createFront02SupabasePorts,
+  type Front02SupabaseClientPort,
+} from './supabaseRuntime';
+export {
   hasCatalogFilters,
   normalizeCatalogFilters,
   readCatalogFilters,
