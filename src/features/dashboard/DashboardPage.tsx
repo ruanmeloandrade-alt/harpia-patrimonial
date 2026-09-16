@@ -35,6 +35,7 @@ const initialSnapshot: DashboardSnapshot = {
     conversionRate: 0,
     leadOrigins: [],
     demandByRegion: [],
+    performanceByProduct: [],
     nextActions: [],
   },
   commercialAvailability: commercialAvailability(),
@@ -191,7 +192,11 @@ export function DashboardPage({ catalogRepository, commercialProvider }: Dashboa
         </section>
         <section className="f03-dashboard-panel">
           <h3>Demanda por região</h3>
-          <StatList items={availability.demandByRegion ? snapshot.commercial.demandByRegion : []} emptyText={availability.demandByRegion ? 'Nenhuma demanda regional registrada.' : 'Métrica aguardando contrato/configuração do CRM.'} />
+          <StatList items={availability.demandByRegion ? snapshot.commercial.demandByRegion : []} emptyText={availability.demandByRegion ? 'Nenhum lead com imóvel referenciado para consolidar região.' : 'Métrica aguardando catálogo + referência real do CRM.'} />
+        </section>
+        <section className="f03-dashboard-panel">
+          <h3>Performance por produto</h3>
+          <StatList items={availability.performanceByProduct ? snapshot.commercial.performanceByProduct : []} emptyText={availability.performanceByProduct ? 'Nenhum interesse real vinculado a produto do catálogo.' : 'Métrica aguardando catálogo + referência real do CRM.'} />
         </section>
         <section className="f03-dashboard-panel">
           <h3>Integridade dos dados</h3>
