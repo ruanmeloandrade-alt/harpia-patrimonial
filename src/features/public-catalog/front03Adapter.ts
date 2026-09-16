@@ -152,7 +152,16 @@ function unique(values: string[]) {
 }
 
 function deriveFilterOptions(items: Front03PublishedItem[]): PublicCatalogFilterOptions {
-  const prices = items.map((item) => item.price).filter((value): value is number => value !== null);
+  const developmentIdsWithPublishedUnits = new Set(
+    items
+      .filter((item) => item.kind === 'unit' && item.parentId)
+      .map((item) => item.parentId as string),
+  );
+  const prices = items
+    .filter((item) => item.price !== null)
+    .filter((item) => item.kind !== 'development' || !developmentIdsWithPublishedUnits.has(item.id))
+    .map((item) => item.price as number);
+
   return {
     purposes: unique(items.map((item) => mapPurposeToPublic(item.purpose))),
     cities: unique(items.map((item) => item.location.city)),
