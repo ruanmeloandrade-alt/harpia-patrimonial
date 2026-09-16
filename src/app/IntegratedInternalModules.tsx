@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { useAuth } from '../core/auth/AuthProvider';
 import { PERMISSIONS } from '../core/auth/permissions';
 import { CatalogAdminPage } from '../features/catalog/CatalogAdminPage';
@@ -13,7 +14,7 @@ import '../features/automations/front05.css';
 import { FullPageState } from '../shared/components/FullPageState';
 import { usePlatformRuntime } from './PlatformRuntime';
 
-function OperationalGate({ children }: { children: React.ReactNode }) {
+function OperationalGate({ children }: { children: ReactNode }) {
   const runtime = usePlatformRuntime();
   if (runtime.operationalLoading) return <FullPageState title="Carregando operação" description="Sincronizando CRM e Inbox com o banco compartilhado." />;
   if (runtime.operationalError) return <FullPageState title="Falha ao carregar operação" description={runtime.operationalError} actionHref="/interno" actionLabel="Voltar ao painel" />;
@@ -50,7 +51,7 @@ export function IntegratedInbox() {
   return <OperationalGate>{runtime.crmService && runtime.inboxService && runtime.inboxAutomationPort ? <InboxWorkspace crmService={runtime.crmService} inboxService={runtime.inboxService} automationPort={runtime.inboxAutomationPort} assignees={runtime.assignees} /> : <FullPageState title="Inbox indisponível" description="CRM ou Inbox compartilhados não foram carregados." />}</OperationalGate>;
 }
 
-function Front05Shell({ children }: { children: React.ReactNode }) {
+function Front05Shell({ children }: { children: ReactNode }) {
   return <div className="f05-shell"><div className="f05-shell__intro"><div><span className="f05-kicker">Hárpia Patrimonial</span><h1>Automação inteligente</h1><p>Configuração operacional sem dados fictícios e sem envio externo enquanto os canais não estiverem conectados.</p></div><div className="f05-readiness"><span>WhatsApp</span><strong>Não conectado</strong><span>Meta</span><strong>Não conectado</strong></div></div>{children}</div>;
 }
 
