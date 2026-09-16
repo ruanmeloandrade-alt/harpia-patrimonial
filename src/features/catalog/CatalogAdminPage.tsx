@@ -1,5 +1,6 @@
-import { FormEvent, useEffect, useMemo, useState } from 'react';
+import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from 'react';
 import { CATALOG_CHANGED_EVENT, LocalCatalogRepository, type CatalogRepository } from './catalogRepository';
+import type { CatalogMediaStorage } from './catalogMediaStorage';
 import type { CatalogItem, CatalogItemDraft, CatalogItemKind, CatalogMedia } from './types';
 import './catalog.css';
 
@@ -12,6 +13,7 @@ export interface CatalogAccess {
 interface CatalogAdminPageProps {
   access: CatalogAccess;
   repository?: CatalogRepository;
+  mediaStorage?: CatalogMediaStorage;
 }
 
 interface FormState {
@@ -36,6 +38,8 @@ interface FormState {
   floorplanUrls: string;
   documentUrls: string;
 }
+
+type MediaUrlField = 'imageUrls' | 'videoUrls' | 'floorplanUrls' | 'documentUrls';
 
 const emptyForm = (): FormState => ({
   code: '', name: '', kind: 'standalone', parentId: '', typology: '', purpose: 'sale', description: '', city: '', neighborhood: '', condominium: '', address: '', price: '', isLaunch: false, features: '', lifestyleTags: '', developer: '', imageUrls: '', videoUrls: '', floorplanUrls: '', documentUrls: '',
@@ -125,7 +129,7 @@ function money(value: number | null) {
 const kindLabel: Record<CatalogItemKind, string> = { development: 'Empreendimento', unit: 'Unidade', standalone: 'Imóvel avulso' };
 const statusLabel = { draft: 'Rascunho', published: 'Publicado', paused: 'Pausado', sold: 'Vendido' } as const;
 
-export function CatalogAdminPage({ access, repository }: CatalogAdminPageProps) {
+export function CatalogAdminPage({ access, repository, mediaStorage }: CatalogAdminPageProps) {
   const catalog = useMemo(() => repository ?? new LocalCatalogRepository(), [repository]);
   const canRead = access.canView || access.canManage || access.canPublish;
   const [items, setItems] = useState<CatalogItem[]>([]);
@@ -136,6 +140,7 @@ export function CatalogAdminPage({ access, repository }: CatalogAdminPageProps) 
   const [kindFilter, setKindFilter] = useState('all');
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
+  const [uploadingType, setUploadingType] = useState<CatalogMedia['type'] | null>(null);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
 
@@ -177,6 +182,43 @@ export function CatalogAdminPage({ access, repository }: CatalogAdminPageProps) 
     } catch (actionError) {
       setError(actionError instanceof Error ? actionError.message : 'Não foi possível concluir a ação.');
     } finally { setBusy(false); }
+  };
+
+  const appendMediaUrls = (field: MediaUrlField, urls: string[]) => {
+    setForm((current) => ({
+      ...current,
+      [field]: [...splitList(current[field]), ...urls].join('\n'),
+    }));
+  };
+
+  const uploadFiles = async (
+    event: ChangeEvent<HTMLInputElement>,
+    type: CatalogMedia['type'],
+    field: MediaUrlField,
+  ) => {
+    const input = event.currentTarget;
+    const files = Array.from(input.files ?? []);
+    input.value = '';
+    if (!files.length) return;
+    if (!access.canManage) { setError('Permissão catalog.manage necessária para enviar mídia.'); return; }
+    if (!mediaStorage) { setError('Storage de mídia ainda não foi conectado a esta tela.'); return; }
+
+    try {
+      setUploadingType(type);
+      setError('');
+      setNotice('');
+      const uploadedUrls: string[] = [];
+      for (const file of files) {
+        const uploaded = await mediaStorage.upload(file, type);
+        uploadedUrls.push(uploaded.url);
+      }
+      appendMediaUrls(field, uploadedUrls);
+      setNotice(`${uploadedUrls.length} arquivo(s) enviado(s). Salve o cadastro para vincular a mídia ao item.`);
+    } catch (uploadError) {
+      setError(uploadError instanceof Error ? uploadError.message : 'Não foi possível enviar a mídia.');
+    } finally {
+      setUploadingType(null);
+    }
   };
 
   const submit = async (event: FormEvent) => {
@@ -247,13 +289,18 @@ export function CatalogAdminPage({ access, repository }: CatalogAdminPageProps) 
               <label>Estilo de vida<textarea rows={3} value={form.lifestyleTags} onChange={(event) => setForm({ ...form, lifestyleTags: event.target.value })} placeholder="praia, família, investimento" /></label>
             </div>
             <div className="f03-media-box">
-              <div><strong>Mídia</strong><p>Use URLs permanentes do storage. A primeira foto da lista é tratada como capa. Upload binário será conectado pela infraestrutura.</p></div>
+              <div><strong>Mídia</strong><p>{mediaStorage ? 'Envie arquivos diretamente para o Storage ou informe URLs permanentes. A primeira foto da lista é tratada como capa.' : 'Informe URLs permanentes. O adapter de Storage pode ser injetado para habilitar upload direto. A primeira foto da lista é tratada como capa.'}</p></div>
+              {mediaStorage && <label>Enviar fotos<input type="file" accept="image/jpeg,image/png,image/webp,image/gif" multiple disabled={uploadingType !== null} onChange={(event) => void uploadFiles(event, 'image', 'imageUrls')} /></label>}
               <label>Fotos — uma URL por linha<textarea rows={3} value={form.imageUrls} onChange={(event) => setForm({ ...form, imageUrls: event.target.value })} /></label>
+              {mediaStorage && <label>Enviar vídeos<input type="file" accept="video/mp4,video/webm" multiple disabled={uploadingType !== null} onChange={(event) => void uploadFiles(event, 'video', 'videoUrls')} /></label>}
               <label>Vídeos — uma URL por linha<textarea rows={3} value={form.videoUrls} onChange={(event) => setForm({ ...form, videoUrls: event.target.value })} /></label>
+              {mediaStorage && <label>Enviar plantas<input type="file" accept="application/pdf,image/jpeg,image/png,image/webp" multiple disabled={uploadingType !== null} onChange={(event) => void uploadFiles(event, 'floorplan', 'floorplanUrls')} /></label>}
               <label>Plantas — uma URL por linha<textarea rows={3} value={form.floorplanUrls} onChange={(event) => setForm({ ...form, floorplanUrls: event.target.value })} /></label>
+              {mediaStorage && <label>Enviar documentos<input type="file" accept="application/pdf,image/jpeg,image/png,image/webp" multiple disabled={uploadingType !== null} onChange={(event) => void uploadFiles(event, 'document', 'documentUrls')} /></label>}
               <label>Documentos — uma URL por linha<textarea rows={3} value={form.documentUrls} onChange={(event) => setForm({ ...form, documentUrls: event.target.value })} /></label>
+              {uploadingType && <p>Enviando mídia…</p>}
             </div>
-            <button className="f03-button f03-button-primary" type="submit" disabled={busy}>{busy ? 'Salvando…' : editingId ? 'Salvar alterações' : 'Criar rascunho'}</button>
+            <button className="f03-button f03-button-primary" type="submit" disabled={busy || uploadingType !== null}>{busy ? 'Salvando…' : editingId ? 'Salvar alterações' : 'Criar rascunho'}</button>
           </form>
         ) : (
           <aside className="f03-card f03-form">
