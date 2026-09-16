@@ -27,13 +27,13 @@ Atualizar este arquivo ao iniciar e ao concluir blocos relevantes.
 ## Frente03 — Catálogo interno/Dashboard
 
 - Branch: `frente-03`
-- Status inicial: NÃO INICIADA
-- Responsável: chat/agente designado pelo usuário
-- Último commit relevante: —
+- Status: EM ANDAMENTO
+- Responsável: ChatGPT — Frente03
+- Último commit relevante: início da execução da frente
 - Entregue: —
-- Em andamento: —
-- Bloqueios: —
-- Próximo passo: iniciar pela leitura da documentação obrigatória.
+- Em andamento: modelo de catálogo, persistência local desacoplada, CRUD administrativo, contrato de leitura pública e dashboard sem mocks.
+- Bloqueios: integração visual/roteamento global depende da Frente01; métricas comerciais dependem da Frente04.
+- Próximo passo: implementar módulos próprios em `src/features/catalog/**` e `src/features/dashboard/**`, validar isoladamente e preparar handoff.
 
 ## Frente04 — CRM/Inbox
 
@@ -74,7 +74,14 @@ Formato obrigatório:
 - Urgência:
 - Status: PENDENTE / EM ANDAMENTO / RESOLVIDO
 
-Nenhuma solicitação registrada ainda.
+- Data/hora: 16/09/2026 — sessão atual
+- Origem: Frente03
+- Destino: Frente01
+- Necessidade: integrar os módulos exportados pela Frente03 ao shell/roteador interno quando disponíveis.
+- Arquivo/contrato afetado: roteador raiz / navegação interna (propriedade da Frente01)
+- Motivo: a Frente03 não deve alterar arquivos globais protegidos; entregará `CatalogAdminPage`, `DashboardPage` e `Front03Workspace` desacoplados.
+- Urgência: alta para demonstração.
+- Status: PENDENTE
 
 ---
 
