@@ -1,5 +1,9 @@
 export { default as PublicExperience } from './PublicExperience';
 export { default as PublicSiteApp } from './PublicSiteApp';
+export {
+  Front02IntegrationShell,
+  type Front02IntegrationShellProps,
+} from './Front02IntegrationShell';
 
 export type {
   PublicAuthBridge,
