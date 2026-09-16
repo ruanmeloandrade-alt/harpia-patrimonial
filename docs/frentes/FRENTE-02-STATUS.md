@@ -18,13 +18,15 @@ Este arquivo é o quadro executivo da Frente02 e deve ser mantido atualizado dur
 | 🟢 | Estrutura da home pública | Hero, posicionamento, catálogo publicado, serviços, estilo de vida, DUMU, jurídico, atendimento consultivo e captação de proprietário estruturados. |
 | 🟢 | Menu público desktop | Sobre, Investimentos, Leilões, Assessoria Jurídica, Arquitetura, Área Interna e CTA de atendimento presentes. |
 | 🟢 | Navegação mobile | `PublicExperience` cria menu mobile desacoplado, com rotas públicas, área do cliente, vender/alugar e Área Interna. |
+| 🟢 | Sincronização com roteador global | `PublicExperience` sincroniza `history.pushState`/`replaceState` com evento de localização para que o RouterProvider da Frente01 não fique defasado durante navegação pública. A tipagem isolada dessa instrumentação foi verificada com TypeScript. |
+| 🟢 | Fallback de rota pública inválida | Rotas não pertencentes ao manifesto público recebem tela de página não encontrada com retorno para início/catálogo, em vez de tela vazia. |
 | 🟢 | Páginas institucionais | Sobre, Investimentos, Leilões, Assessoria Jurídica e Arquitetura usam somente conteúdo disponível/aprovado, sem inventar portfólio. |
 | 🟢 | Entrypoint da Frente02 | `src/features/public-site/index.ts` expõe `PublicExperience`, contratos, adapters e manifesto das rotas públicas para a integração. |
 | 🟢 | Contrato consumidor do catálogo | `PublicCatalogReader`, tipos de item, mídia e filtros criados em `src/features/public-catalog/contracts.ts`. |
 | 🟢 | Adapter do catálogo da Frente03 | `createFront03PublicCatalogReader` adapta o contrato real já criado pela Frente03 (`name/kind/sale|rent/location`) ao view model público da Frente02 sem alterar o domínio da Frente03. |
 | 🟠 | Catálogo público com dados reais | UI e adapter estão prontos; o serviço real existe na branch `frente-03`, mas ainda precisa ser integrado/instanciado no produto conjunto. |
 | 🟠 | Busca e filtros públicos | Finalidade, cidade, localização, lançamento e faixa de preço estão implementados e mapeados ao contrato real da Frente03; falta integração conjunta e teste com dados publicados reais. |
-| 🟠 | Página de imóvel/produto | Galeria, vídeo, dados, status, empreendimento/unidade, favorito e CTA existem; falta integração conjunta com item publicado real. |
+| 🟠 | Página de imóvel/produto | Galeria, vídeo, dados, status, empreendimento/unidade, favorito e CTA existem; falta integração conjunta com item publicado real. O contrato atual da Frente03 ainda não fornece o nome do empreendimento-pai da unidade, portanto a Frente02 não inventa esse dado. |
 | 🟢 | Estilo de vida | Componente consome `lifestyleTags` reais e mostra empty state quando não houver classificações. |
 | 🟢 | Captura de contato para CTAs anônimos | `PublicExperience` intercepta conversões sem contato e abre modal que exige nome + WhatsApp e aceita e-mail opcional antes de encaminhar ao CRM. |
 | 🟠 | Quero vender meu imóvel | Formulário, validação básica e payload de conversão existem; criação de lead está mapeada à Frente04, mas encaminhamento real para WhatsApp fica para a integração final. |
@@ -33,14 +35,14 @@ Este arquivo é o quadro executivo da Frente02 e deve ser mantido atualizado dur
 | 🟢 | Adapter de conversão da Frente04 | `createFront04ConversionHandler` converte `PublicSiteConversion` no contrato real `LeadConversionEvent`, preserva contexto e garante `automaticMessageSent: false`. |
 | 🟢 | Adapter de autenticação da Frente01 | `createFront01PublicAuthBridge` usa o `AuthContext` real da Frente01 e não cria segunda sessão/autenticação. |
 | 🟠 | Login/cadastro acionado pelas ações públicas | O bridge real está pronto; a Frente01 já possui autenticação/páginas, mas o roteamento integrado e a abertura efetiva de login/cadastro ainda dependem do merge. |
-| 🟠 | Favoritos/salvos | UX e bridge de favoritos existem; a persistência final usuário + item ainda precisa ser conectada às camadas reais no produto integrado. |
+| 🟠 | Favoritos/salvos | UX e bridge de favoritos existem; a persistência final usuário + item ainda precisa ser conectada às camadas reais no produto integrado. O schema atual da Frente01 ainda não possui tabela de favoritos, portanto a Frente02 não cria persistência paralela por conta própria. |
 | 🟠 | Área do cliente final | Perfil, favoritos, interesses, histórico vazio, serviços e atendimento estruturados; bridge de identidade está pronto, mas persistência e navegação integradas ainda precisam do merge. |
 | 🟢 | Eventos de conversão produzidos pela Frente02 | Origem, ação, página, serviço, contato, imóvel e metadados são preservados; CTAs sem contato passam pela captura antes do envio. |
 | 🟢 | Zero mocks permanentes | Sem imóvel, usuário, métrica ou histórico fictício; ausência de dados gera empty state ou aviso de integração. |
 | 🟢 | Tratamento de loading/erro/vazio | Catálogo e detalhe possuem estados explícitos; área do cliente e estilo de vida possuem empty states. |
-| 🟠 | Responsividade | CSS responsivo, menu mobile e modal de contato responsivo implementados; validação visual real em navegador/dispositivos ainda não executada. |
-| 🟠 | Montagem no bootstrap/roteador global | A Frente02 entregou `PublicExperience`, adapters e `publicRouteManifest`; a montagem em `App.tsx`/roteador é propriedade da Frente01 e ainda não está integrada. |
-| 🔴 | Build integrado e teste ponta a ponta | NÃO VERIFICADO enquanto as branches não forem integradas e os contratos reais não estiverem instanciados no mesmo build. |
+| 🟠 | Responsividade | CSS responsivo, menu mobile, modal de contato e fallback de rota implementados; validação visual real em navegador/dispositivos ainda não executada. |
+| 🟠 | Montagem no bootstrap/roteador global | A Frente02 entregou `PublicExperience`, adapters, `publicRouteManifest` e handoff em `FRENTE-02-INTEGRACAO.md`; a montagem em `App.tsx`/roteador é propriedade da Frente01 e ainda não está integrada. |
+| 🔴 | Build integrado e teste ponta a ponta | NÃO VERIFICADO enquanto as branches não forem integradas e os contratos reais não estiverem instanciados no mesmo build. O projeto integrado exige Node `>=24 <25`; o ambiente isolado disponível para conferência está em Node 22 e não será usado para alegar build válido. |
 | 🔴 | Teste visual real desktop/mobile | NÃO VERIFICADO no produto integrado. O CSS foi implementado, mas não será marcado como validado sem execução real. |
 
 ## Arquivos funcionais principais
@@ -55,6 +57,7 @@ Este arquivo é o quadro executivo da Frente02 e deve ser mantido atualizado dur
 - `src/features/public-catalog/contracts.ts`
 - `src/features/public-catalog/front03Adapter.ts`
 - `src/features/client-area/ClientArea.tsx`
+- `docs/frentes/FRENTE-02-INTEGRACAO.md`
 
 ## Dependências formais
 
@@ -65,11 +68,11 @@ A Frente01 já possui `AuthProvider`, `useAuth`, perfil de cliente e roteador pr
 - montar `PublicExperience` nas rotas públicas;
 - usar `createFront01PublicAuthBridge` com o estado real de `useAuth()`;
 - definir no integrador a navegação para login/cadastro quando `requestLogin` for chamado;
-- conectar a persistência final de favoritos à identidade real.
+- definir a persistência real de favoritos vinculando identidade real + item real, sem persistência paralela fictícia.
 
 ### Frente03
 
-A Frente03 já possui `PublicCatalogService` e tipos reais. A Frente02 já entregou `createFront03PublicCatalogReader` para compatibilizar os dois contratos sem duplicar catálogo. Falta instanciar esse adapter após o merge.
+A Frente03 já possui `PublicCatalogService` e tipos reais. A Frente02 já entregou `createFront03PublicCatalogReader` para compatibilizar os dois contratos sem duplicar catálogo. Falta instanciar esse adapter após o merge. Para exibir o nome real do empreendimento-pai de uma unidade, o contrato público precisa expor esse rótulo ou permitir resolução do pai.
 
 ### Frente04
 
@@ -83,9 +86,8 @@ A Frente04 já possui `LeadConversionEvent` e `ingestLeadConversion`. A Frente02
 
 ## Prioridade imediata da Frente02
 
-1. revisar os componentes próprios contra os contratos reais já expostos pelas Frentes01/03/04;
-2. manter adapters de integração sem invadir os domínios das outras frentes;
-3. preparar handoff exato para o integrador;
-4. após o merge, executar build e fluxo ponta a ponta;
-5. corrigir qualquer regressão encontrada na integração;
-6. só então mudar o status para `PRONTA PARA INTEGRAÇÃO`/`INTEGRADA` conforme os critérios do projeto.
+1. manter o handoff de integração alinhado às implementações reais das outras frentes;
+2. não duplicar autenticação, catálogo, CRM ou persistência compartilhada dentro da Frente02;
+3. após o merge, executar build e fluxo ponta a ponta em Node compatível com o projeto;
+4. testar desktop/mobile e corrigir regressões de integração;
+5. só então mudar o status para `PRONTA PARA INTEGRAÇÃO`/`INTEGRADA` conforme os critérios do projeto.
