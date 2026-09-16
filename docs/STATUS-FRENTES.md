@@ -51,11 +51,13 @@ Atualizar este arquivo ao iniciar e ao concluir blocos relevantes.
 - Branch: `frente-05`
 - Status: EM ANDAMENTO
 - Responsável: chat atual — Frente05
-- Último commit relevante: `6f5f26386dd757c0788d6ce64d5212971c520c10`
+- Último commit relevante de código: `6f5f26386dd757c0788d6ce64d5212971c520c10`
 - Entregue: contratos CRM/Inbox; persistência local sem dados fictícios; CRUD de SalesBot; catálogo completo de blocos; configuração por bloco; duplicar/ativar/pausar/excluir; Automatize com gatilhos, condições e ações configuráveis; CRUD/configuração de agentes IA; estrutura e tela de integrações; logs/execuções; workspace consolidado; API pública da Frente05.
-- Em andamento: validação técnica isolada, ajustes de acabamento e preparação do handoff.
-- Bloqueios: a Frente05 não pode editar o shell/roteador raiz da Frente01; portanto o workspace ainda não está montado na navegação geral. Integração real com CRM/Inbox depende da Frente04. WhatsApp/Meta/provedor IA reais permanecem fora desta fase por decisão de produto.
-- Próximo passo: validar build após montagem pelo integrador/Frente01 e validar contratos ponta a ponta com Frente04.
+- Validações executadas: parse/sintaxe dos componentes SalesBot, Automatize, Agentes IA, Integrações e workspace = OK; checagem TypeScript isolada dos módulos F05 = OK; teste de comportamento dos repositórios/contratos = OK para criar/configurar/ativar/duplicar SalesBot, iniciar/pausar/retomar execução, criar log, validar Automação sem ação, ativar Automação configurada, criar/ativar agente, retorno `not_configured` sem provedor IA e estados das integrações.
+- NÃO VERIFICADO: build Vite completo da branch dentro do shell final; teste visual integrado na navegação da plataforma; integração ponta a ponta com CRM/Inbox reais. Motivo: shell/roteador pertence à Frente01 e CRM/Inbox pertence à Frente04.
+- Em andamento: integração visual com shell, integração com CRM/Inbox e pente fino após montagem.
+- Bloqueios: a Frente05 não pode editar o shell/roteador raiz da Frente01. Integração real com CRM/Inbox depende da Frente04. WhatsApp/Meta/provedor IA reais permanecem fora desta fase por decisão de produto.
+- Próximo passo: Frente01 montar `Front05Workspace`; Frente04 consumir/expor os contratos; então executar build e teste visual conjunto.
 
 ---
 
