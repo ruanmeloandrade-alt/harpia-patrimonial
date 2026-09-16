@@ -1,0 +1,42 @@
+.catalog-toolbar {
+  min-height: 42px;
+  margin: -14px 0 22px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  color: #68716c;
+  font-size: .82rem;
+}
+
+.catalog-toolbar .text-button {
+  flex: 0 0 auto;
+}
+
+.form-feedback--error {
+  background: #fff0ed;
+  color: #8a3a2e;
+}
+
+.owner-form button:disabled,
+.filter-grid input:disabled,
+.filter-grid select:disabled,
+.owner-form input:disabled {
+  cursor: wait;
+  opacity: .68;
+}
+
+.harpia-public :where(button, a, input, select):focus-visible,
+.mobile-public-menu :where(button, a):focus-visible,
+.public-contact-modal :where(button, input):focus-visible,
+.public-not-found button:focus-visible {
+  outline: 3px solid rgba(185, 148, 85, .48);
+  outline-offset: 3px;
+}
+
+@media (max-width: 720px) {
+  .catalog-toolbar {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
