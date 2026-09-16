@@ -146,7 +146,7 @@ export async function processCrmAutomationEvent(
       for (const action of definition.actions) {
         const result = await executeAction(action, event, deps);
         report.actions.push({ actionId: action.id, type: action.type, result });
-        if (result.status === 'rejected') break;
+        if (result.status !== 'accepted') break;
       }
     }
     reports.push(report);
