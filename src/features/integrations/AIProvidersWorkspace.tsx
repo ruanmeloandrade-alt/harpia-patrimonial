@@ -1,10 +1,12 @@
 import { useMemo, useState } from 'react';
+import { listAIAgents } from '../ai-agents/repository';
 import { useF05StorageListener } from '../automations/useF05StorageListener';
 import { AI_PROVIDER_CATALOG, getAIProviderCatalogItem, type AIProviderKind } from './aiProviderTypes';
 import {
   createAIProviderProfile,
-  deleteAIProviderProfile,
+  deleteAIProviderProfileConfirmed,
   listAIProviderProfiles,
+  restoreAIProviderProfileConfirmed,
   setAIProviderProfileStatus,
   updateAIProviderProfile,
   updateAIProviderProfileConfirmed,
@@ -30,6 +32,8 @@ export function AIProvidersWorkspace({ credentialVault = unconfiguredAICredentia
   const selected = useMemo(() => profiles.find((profile) => profile.id === selectedId) ?? null, [profiles, selectedId]);
   const selectedMeta = selected ? getAIProviderCatalogItem(selected.provider) : undefined;
   const issues = selected ? validateAIProviderProfile(selected) : [];
+  const dependentAgents = selected ? listAIAgents().filter((agent) => agent.providerProfileId === selected.id) : [];
+  const activeDependentAgents = dependentAgents.filter((agent) => agent.status === 'active');
 
   const refresh = (focusId?: string) => {
     const next = listAIProviderProfiles();
@@ -70,8 +74,6 @@ export function AIProvidersWorkspace({ credentialVault = unconfiguredAICredentia
       setCredentialMessage('Chave armazenada com segurança e perfil sincronizado.');
       refresh(selected.id);
     } catch (error) {
-      // Primeira configuração: se o perfil não persistiu, removemos o segredo recém-criado
-      // para não deixar credencial órfã sem referência canônica no estado compartilhado.
       const cleanup = await credentialVault.removeApiKey({ profileId: selected.id, secretRef: result.secretRef });
       const base = errorMessage(error, 'O perfil não confirmou a persistência da credencial.');
       setCredentialMessage(cleanup.status === 'stored'
@@ -83,13 +85,15 @@ export function AIProvidersWorkspace({ credentialVault = unconfiguredAICredentia
 
   const removeKey = async () => {
     if (!selected || !canManage) return;
+    if (activeDependentAgents.length > 0) {
+      setCredentialMessage(`Pause os agentes ativos que usam este perfil antes de remover a chave: ${activeDependentAgents.map((agent) => agent.name).join(', ')}.`);
+      return;
+    }
+
     const profileBefore = selected;
     setCredentialMessage('');
 
     try {
-      // Primeiro removemos a referência canônica do perfil e aguardamos o backend.
-      // Só depois apagamos o segredo. Assim o produto nunca fica apontando para uma
-      // credencial já removida por causa de falha de persistência do perfil.
       await updateAIProviderProfileConfirmed(selected.id, {
         apiKeyConfigured: false,
         secretRef: undefined,
@@ -108,8 +112,6 @@ export function AIProvidersWorkspace({ credentialVault = unconfiguredAICredentia
       return;
     }
 
-    // Se o Vault não conseguiu remover, restauramos o perfil anterior para manter
-    // a referência utilizável e permitir nova tentativa sem estado quebrado.
     try {
       await updateAIProviderProfileConfirmed(selected.id, {
         apiKeyConfigured: profileBefore.apiKeyConfigured,
@@ -121,6 +123,61 @@ export function AIProvidersWorkspace({ credentialVault = unconfiguredAICredentia
       setCredentialMessage(`${result.reason} Também não foi possível restaurar o perfil: ${errorMessage(restoreError, 'falha de restauração')}`);
     }
     refresh(selected.id);
+  };
+
+  const toggleStatus = () => {
+    if (!selected || !canManage) return;
+    if (selected.status === 'ready' && activeDependentAgents.length > 0) {
+      setCredentialMessage(`Pause os agentes ativos antes de desativar este perfil: ${activeDependentAgents.map((agent) => agent.name).join(', ')}.`);
+      return;
+    }
+    try {
+      setAIProviderProfileStatus(selected.id, selected.status === 'ready' ? 'disabled' : 'ready');
+      setCredentialMessage('');
+      refresh(selected.id);
+    } catch (error) {
+      setCredentialMessage(errorMessage(error, 'Não foi possível alterar o status do perfil.'));
+    }
+  };
+
+  const deleteProfile = async () => {
+    if (!selected || !canManage) return;
+    if (dependentAgents.length > 0) {
+      setCredentialMessage(`Reatribua ou exclua os agentes que usam este perfil antes de excluí-lo: ${dependentAgents.map((agent) => agent.name).join(', ')}.`);
+      return;
+    }
+    if (!window.confirm('Excluir este perfil de IA?')) return;
+
+    const profileBefore = selected;
+    try {
+      await deleteAIProviderProfileConfirmed(selected.id);
+    } catch (error) {
+      setCredentialMessage(errorMessage(error, 'Não foi possível persistir a exclusão do perfil.'));
+      refresh(selected.id);
+      return;
+    }
+
+    if (!profileBefore.apiKeyConfigured || !profileBefore.secretRef) {
+      setCredentialMessage('Perfil excluído.');
+      refresh();
+      return;
+    }
+
+    const cleanup = await credentialVault.removeApiKey({ profileId: profileBefore.id, secretRef: profileBefore.secretRef });
+    if (cleanup.status === 'stored') {
+      setCredentialMessage('Perfil e credencial excluídos com segurança.');
+      refresh();
+      return;
+    }
+
+    try {
+      await restoreAIProviderProfileConfirmed(profileBefore);
+      setCredentialMessage(`${cleanup.reason} A exclusão do perfil foi revertida para preservar a referência da credencial.`);
+      refresh(profileBefore.id);
+    } catch (restoreError) {
+      setCredentialMessage(`${cleanup.reason} Também não foi possível restaurar o perfil: ${errorMessage(restoreError, 'falha de restauração')}`);
+      refresh();
+    }
   };
 
   return <div className="f05-ai-provider">
@@ -164,19 +221,21 @@ export function AIProvidersWorkspace({ credentialVault = unconfiguredAICredentia
 
           <label className="f05-field">Observações<textarea rows={2} value={selected.notes} onChange={(event) => { updateAIProviderProfile(selected.id, { notes: event.target.value }); refresh(selected.id); }} placeholder="Uso deste perfil, limites ou observações internas" /></label>
 
+          {dependentAgents.length > 0 ? <div className="f05-inline-message">Usado por {dependentAgents.length} agente(s): {dependentAgents.map((agent) => `${agent.name} (${agent.status})`).join(', ')}.</div> : null}
+
           <div className="f05-secret-box">
             <div className="f05-secret-box__head"><strong>Chave API</strong><span className={`f05-status f05-status--${selected.apiKeyConfigured ? 'connected' : 'not_connected'}`}>{selected.apiKeyConfigured ? 'Configurada' : 'Não configurada'}</span></div>
             <div className="f05-create-row"><input type="password" autoComplete="new-password" value={apiKey} onChange={(event) => setApiKey(event.target.value)} placeholder="Cole a chave API" /><button disabled={!apiKey.trim()} onClick={saveKey}>{selected.apiKeyConfigured ? 'Atualizar chave' : 'Salvar chave'}</button></div>
             <small>A chave só pode ser persistida por um cofre/backend seguro. Ela nunca é salva em localStorage nem no repositório.</small>
             {credentialMessage ? <div className="f05-inline-message">{credentialMessage}</div> : null}
-            {selected.apiKeyConfigured ? <button className="secondary" onClick={removeKey}>Remover chave</button> : null}
+            {selected.apiKeyConfigured ? <button className="secondary" disabled={activeDependentAgents.length > 0} onClick={removeKey}>Remover chave</button> : null}
           </div>
 
           {issues.length > 0 ? <div className="f05-validation"><strong>Falta configurar:</strong><ul>{issues.map((issue) => <li key={issue}>{issue}</li>)}</ul></div> : <div className="f05-validation f05-validation--ok">Perfil pronto para ativação.</div>}
 
           <div className="f05-actions">
-            <button disabled={issues.length > 0} onClick={() => { setAIProviderProfileStatus(selected.id, selected.status === 'ready' ? 'disabled' : 'ready'); refresh(selected.id); }}>{selected.status === 'ready' ? 'Desativar perfil' : 'Ativar perfil'}</button>
-            <button className="danger" onClick={() => { if (window.confirm('Excluir este perfil de IA?')) { deleteAIProviderProfile(selected.id); refresh(); } }}>Excluir perfil</button>
+            <button disabled={issues.length > 0 || (selected.status === 'ready' && activeDependentAgents.length > 0)} onClick={toggleStatus}>{selected.status === 'ready' ? 'Desativar perfil' : 'Ativar perfil'}</button>
+            <button className="danger" disabled={dependentAgents.length > 0} onClick={deleteProfile}>Excluir perfil</button>
           </div>
         </>}
       </fieldset>
