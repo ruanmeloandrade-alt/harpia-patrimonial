@@ -7,6 +7,7 @@ import {
   listAIProviderProfiles,
   setAIProviderProfileStatus,
   updateAIProviderProfile,
+  updateAIProviderProfileConfirmed,
   validateAIProviderProfile,
 } from './aiProviderRepository';
 import { unconfiguredAICredentialVault, type AICredentialVaultPort } from './aiCredentialPort';
@@ -15,6 +16,8 @@ interface AIProvidersWorkspaceProps {
   credentialVault?: AICredentialVaultPort;
   canManage?: boolean;
 }
+
+const errorMessage = (error: unknown, fallback: string) => error instanceof Error ? error.message : fallback;
 
 export function AIProvidersWorkspace({ credentialVault = unconfiguredAICredentialVault, canManage = false }: AIProvidersWorkspaceProps) {
   const [profiles, setProfiles] = useState(() => listAIProviderProfiles());
@@ -46,27 +49,78 @@ export function AIProvidersWorkspace({ credentialVault = unconfiguredAICredentia
   const saveKey = async () => {
     if (!selected || !apiKey.trim() || !canManage) return;
     setCredentialMessage('');
+    const profileBefore = selected;
     const result = await credentialVault.saveApiKey({ profileId: selected.id, apiKey: apiKey.trim() });
     setApiKey('');
-    if (result.status === 'stored') {
-      updateAIProviderProfile(selected.id, { apiKeyConfigured: true, secretRef: result.secretRef });
-      setCredentialMessage('Chave armazenada com segurança.');
+    if (result.status !== 'stored') {
+      setCredentialMessage(result.reason);
+      return;
+    }
+
+    // Substituição de uma chave já configurada preserva o mesmo secretRef no Vault.
+    // Nesse caso o perfil já aponta para a referência correta e não precisa de segunda escrita.
+    if (profileBefore.apiKeyConfigured && profileBefore.secretRef === result.secretRef) {
+      setCredentialMessage('Chave atualizada com segurança.');
       refresh(selected.id);
       return;
     }
-    setCredentialMessage(result.reason);
+
+    try {
+      await updateAIProviderProfileConfirmed(selected.id, { apiKeyConfigured: true, secretRef: result.secretRef });
+      setCredentialMessage('Chave armazenada com segurança e perfil sincronizado.');
+      refresh(selected.id);
+    } catch (error) {
+      // Primeira configuração: se o perfil não persistiu, removemos o segredo recém-criado
+      // para não deixar credencial órfã sem referência canônica no estado compartilhado.
+      const cleanup = await credentialVault.removeApiKey({ profileId: selected.id, secretRef: result.secretRef });
+      const base = errorMessage(error, 'O perfil não confirmou a persistência da credencial.');
+      setCredentialMessage(cleanup.status === 'stored'
+        ? `${base} A credencial recém-criada foi revertida do cofre.`
+        : `${base} A limpeza automática do cofre também falhou; revise o perfil antes de tentar novamente.`);
+      refresh(selected.id);
+    }
   };
 
   const removeKey = async () => {
     if (!selected || !canManage) return;
-    const result = await credentialVault.removeApiKey({ profileId: selected.id, secretRef: selected.secretRef });
-    if (result.status === 'stored') {
-      updateAIProviderProfile(selected.id, { apiKeyConfigured: false, secretRef: undefined, status: 'draft' });
-      setCredentialMessage('Chave removida.');
+    const profileBefore = selected;
+    setCredentialMessage('');
+
+    try {
+      // Primeiro removemos a referência canônica do perfil e aguardamos o backend.
+      // Só depois apagamos o segredo. Assim o produto nunca fica apontando para uma
+      // credencial já removida por causa de falha de persistência do perfil.
+      await updateAIProviderProfileConfirmed(selected.id, {
+        apiKeyConfigured: false,
+        secretRef: undefined,
+        status: 'draft',
+      });
+    } catch (error) {
+      setCredentialMessage(errorMessage(error, 'Não foi possível atualizar o perfil antes de remover a chave.'));
       refresh(selected.id);
       return;
     }
-    setCredentialMessage(result.reason);
+
+    const result = await credentialVault.removeApiKey({ profileId: selected.id, secretRef: profileBefore.secretRef });
+    if (result.status === 'stored') {
+      setCredentialMessage('Chave removida e perfil sincronizado.');
+      refresh(selected.id);
+      return;
+    }
+
+    // Se o Vault não conseguiu remover, restauramos o perfil anterior para manter
+    // a referência utilizável e permitir nova tentativa sem estado quebrado.
+    try {
+      await updateAIProviderProfileConfirmed(selected.id, {
+        apiKeyConfigured: profileBefore.apiKeyConfigured,
+        secretRef: profileBefore.secretRef,
+        status: profileBefore.status,
+      });
+      setCredentialMessage(`${result.reason} O perfil anterior foi restaurado.`);
+    } catch (restoreError) {
+      setCredentialMessage(`${result.reason} Também não foi possível restaurar o perfil: ${errorMessage(restoreError, 'falha de restauração')}`);
+    }
+    refresh(selected.id);
   };
 
   return <div className="f05-ai-provider">
@@ -112,7 +166,7 @@ export function AIProvidersWorkspace({ credentialVault = unconfiguredAICredentia
 
           <div className="f05-secret-box">
             <div className="f05-secret-box__head"><strong>Chave API</strong><span className={`f05-status f05-status--${selected.apiKeyConfigured ? 'connected' : 'not_connected'}`}>{selected.apiKeyConfigured ? 'Configurada' : 'Não configurada'}</span></div>
-            <div className="f05-create-row"><input type="password" autoComplete="new-password" value={apiKey} onChange={(event) => setApiKey(event.target.value)} placeholder="Cole a chave API" /><button disabled={!apiKey.trim()} onClick={saveKey}>Salvar chave</button></div>
+            <div className="f05-create-row"><input type="password" autoComplete="new-password" value={apiKey} onChange={(event) => setApiKey(event.target.value)} placeholder="Cole a chave API" /><button disabled={!apiKey.trim()} onClick={saveKey}>{selected.apiKeyConfigured ? 'Atualizar chave' : 'Salvar chave'}</button></div>
             <small>A chave só pode ser persistida por um cofre/backend seguro. Ela nunca é salva em localStorage nem no repositório.</small>
             {credentialMessage ? <div className="f05-inline-message">{credentialMessage}</div> : null}
             {selected.apiKeyConfigured ? <button className="secondary" onClick={removeKey}>Remover chave</button> : null}
