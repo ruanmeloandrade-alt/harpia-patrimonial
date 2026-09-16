@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { BrowserCrmRepository } from './repository';
 import { CrmService } from './service';
 import {
@@ -21,16 +21,24 @@ export function CrmWorkspace({ service: injectedService, assignees = [] }: CrmWo
     () => injectedService ?? new CrmService(new BrowserCrmRepository()),
     [injectedService],
   );
+  const previousServiceRef = useRef(service);
   const [revision, setRevision] = useState(0);
+
+  useEffect(() => {
+    if (previousServiceRef.current === service) return;
+    previousServiceRef.current = service;
+    setRevision((value) => value + 1);
+  }, [service]);
 
   return (
     <>
       <UnassignedLeadsQueue
+        key={`queue-${revision}`}
         service={service}
         onChanged={() => setRevision((value) => value + 1)}
       />
       <CrmWorkspaceCore
-        key={revision}
+        key={`crm-${revision}`}
         service={service}
         assignees={assignees}
       />
