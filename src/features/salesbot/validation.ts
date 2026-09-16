@@ -47,10 +47,6 @@ export function validateSalesBotBlock(block: SalesBotBlock): string[] {
     }
   }
 
-  if (block.type === 'chain_flow' && block.config.botId === block.id) {
-    issues.push(`${block.label}: o fluxo não pode encadear a si mesmo.`);
-  }
-
   return issues;
 }
 
@@ -58,6 +54,13 @@ export function validateSalesBot(bot: SalesBotDefinition): string[] {
   const issues: string[] = [];
   if (!bot.name.trim()) issues.push('Nome do SalesBot é obrigatório.');
   if (bot.blocks.length === 0) issues.push('Adicione pelo menos um bloco antes de ativar o SalesBot.');
-  bot.blocks.forEach((block) => issues.push(...validateSalesBotBlock(block)));
+
+  bot.blocks.forEach((block) => {
+    issues.push(...validateSalesBotBlock(block));
+    if (block.type === 'chain_flow' && block.config.botId === bot.id) {
+      issues.push(`${block.label}: o fluxo não pode encadear a si mesmo.`);
+    }
+  });
+
   return issues;
 }
