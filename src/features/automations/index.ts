@@ -18,6 +18,13 @@ export type {
   CrmAutomationEventType,
   SalesBotCommandPort,
 } from './contracts';
+export {
+  configureF05SharedStorage,
+  isF05SharedStorageReady,
+  resetF05SharedStorage,
+  subscribeF05StorageEvents,
+} from './f05Storage';
+export type { F05SharedStorageBackend } from './f05Storage';
 export { runSalesBotExecution, unconfiguredSalesBotRuntimeDependencies } from '../salesbot/runtime';
 export type {
   SalesBotConditionPort,
@@ -48,5 +55,7 @@ export type {
   AIModelRuntimePort,
 } from '../integrations/aiRuntimePort';
 export { createProviderAIModelRuntime } from '../integrations/providerRuntime';
+export { createRemoteAIModelRuntime } from '../integrations/remoteAIModelRuntime';
+export type { RemoteAIModelRuntimeTransport } from '../integrations/remoteAIModelRuntime';
 export { buildProviderHttpRequest, invokeConfiguredProvider } from '../integrations/providerAdapters';
 export type { ProviderInvocationRequest, ProviderInvocationResponse } from '../integrations/providerAdapters';
