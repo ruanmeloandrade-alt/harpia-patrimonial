@@ -70,13 +70,18 @@ export function updateSalesBot(
   const current = items.find((item) => item.id === id);
   if (!current) throw new Error('SalesBot não encontrado.');
   let updated: SalesBotDefinition = { ...current, ...patch, updatedAt: now() };
+
   if (current.status === 'active' && patch.status === undefined && validateSalesBotForActivation(updated).length > 0) {
+    updated = { ...updated, status: 'paused' };
+  }
+
+  if (current.status === 'active' && updated.status !== 'active') {
     const activeReferences = findActiveSalesBotReferences(id);
     if (activeReferences.length > 0) {
       throw new Error(`Pause primeiro os recursos ativos que dependem deste SalesBot: ${formatF05References(activeReferences)}.`);
     }
-    updated = { ...updated, status: 'paused' };
   }
+
   writeStoredList(STORAGE_KEY, items.map((item) => (item.id === id ? updated : item)));
   return updated;
 }
@@ -114,11 +119,6 @@ export function setSalesBotStatus(id: string, status: SalesBotStatus): SalesBotD
   if (status === 'active') {
     const issues = validateSalesBotForActivation(current);
     if (issues.length > 0) throw new Error(issues.join(' '));
-  } else if (current.status === 'active') {
-    const activeReferences = findActiveSalesBotReferences(id);
-    if (activeReferences.length > 0) {
-      throw new Error(`Pause primeiro os recursos ativos que dependem deste SalesBot: ${formatF05References(activeReferences)}.`);
-    }
   }
   return updateSalesBot(id, { status });
 }
