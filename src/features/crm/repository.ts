@@ -9,9 +9,9 @@ export interface CrmRepository {
   clear(): void;
 }
 
-const cloneState = (state: CrmState): CrmState => JSON.parse(JSON.stringify(state)) as CrmState;
+export const cloneCrmState = (state: CrmState): CrmState => JSON.parse(JSON.stringify(state)) as CrmState;
 
-const normalizeState = (value: unknown): CrmState => {
+export const normalizeCrmState = (value: unknown): CrmState => {
   if (!value || typeof value !== 'object') return createEmptyCrmState();
 
   const candidate = value as Partial<CrmState>;
@@ -29,7 +29,7 @@ const normalizeState = (value: unknown): CrmState => {
   };
 };
 
-const notifyCrmUpdated = (): void => {
+export const notifyCrmUpdated = (): void => {
   if (typeof window === 'undefined') return;
   window.dispatchEvent(new CustomEvent(CRM_UPDATED_EVENT));
 };
@@ -49,20 +49,20 @@ export class BrowserCrmRepository implements CrmRepository {
   }
 
   load(): CrmState {
-    if (!this.storage) return cloneState(this.memoryState);
+    if (!this.storage) return cloneCrmState(this.memoryState);
 
     try {
       const raw = this.storage.getItem(CRM_STORAGE_KEY);
       if (!raw) return createEmptyCrmState();
-      return normalizeState(JSON.parse(raw));
+      return normalizeCrmState(JSON.parse(raw));
     } catch {
       return createEmptyCrmState();
     }
   }
 
   save(state: CrmState): void {
-    const safeState = normalizeState(state);
-    this.memoryState = cloneState(safeState);
+    const safeState = normalizeCrmState(state);
+    this.memoryState = cloneCrmState(safeState);
 
     if (this.storage) {
       try {
