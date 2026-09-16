@@ -52,9 +52,11 @@ interface PlatformRuntimeValue {
   assignees: AssigneeOption[];
   operationalLoading: boolean;
   operationalError: string;
+  operationalRevision: number;
   f05Ready: boolean;
   f05Loading: boolean;
   f05Error: string;
+  f05Revision: number;
 }
 
 const PlatformRuntimeContext = createContext<PlatformRuntimeValue | null>(null);
@@ -79,15 +81,21 @@ export function PlatformRuntimeProvider({ children }: PropsWithChildren) {
   const [assignees, setAssignees] = useState<AssigneeOption[]>([]);
   const [operationalLoading, setOperationalLoading] = useState(false);
   const [operationalError, setOperationalError] = useState('');
+  const [operationalRevision, setOperationalRevision] = useState(0);
   const [f05Ready, setF05Ready] = useState(false);
   const [f05Loading, setF05Loading] = useState(false);
   const [f05Error, setF05Error] = useState('');
+  const [f05Revision, setF05Revision] = useState(0);
+
+  const canUseInbox = auth.isInternalUser && (
+    auth.hasPermission(PERMISSIONS.INBOX_VIEW)
+    || auth.hasPermission(PERMISSIONS.INBOX_MANAGE)
+  );
 
   const canUseCrm = auth.isInternalUser && (
     auth.hasPermission(PERMISSIONS.CRM_VIEW)
     || auth.hasPermission(PERMISSIONS.CRM_MANAGE)
-    || auth.hasPermission(PERMISSIONS.INBOX_VIEW)
-    || auth.hasPermission(PERMISSIONS.INBOX_MANAGE)
+    || canUseInbox
   );
 
   const canUseF05 = auth.isInternalUser && (
@@ -103,8 +111,39 @@ export function PlatformRuntimeProvider({ children }: PropsWithChildren) {
 
   useEffect(() => {
     let active = true;
+    let reloading = false;
+    let pendingReload = false;
+    let channel: ReturnType<NonNullable<typeof supabase>['channel']> | null = null;
 
-    if (!canUseF05 || !isSupabaseConfigured) {
+    const load = async (showLoading: boolean) => {
+      if (reloading) {
+        pendingReload = true;
+        return;
+      }
+      reloading = true;
+      if (showLoading) setF05Loading(true);
+      setF05Error('');
+      try {
+        await hydrateSharedF05Storage();
+        if (!active) return;
+        setF05Ready(true);
+        setF05Revision((value) => value + 1);
+      } catch (error) {
+        if (!active) return;
+        resetF05SharedStorage();
+        setF05Ready(false);
+        setF05Error(error instanceof Error ? error.message : 'Não foi possível carregar SalesBot, automações e IA.');
+      } finally {
+        reloading = false;
+        if (active && showLoading) setF05Loading(false);
+        if (active && pendingReload) {
+          pendingReload = false;
+          void load(false);
+        }
+      }
+    };
+
+    if (!canUseF05 || !isSupabaseConfigured || !supabase) {
       resetF05SharedStorage();
       setF05Ready(false);
       setF05Loading(false);
@@ -113,56 +152,51 @@ export function PlatformRuntimeProvider({ children }: PropsWithChildren) {
     }
 
     setF05Ready(false);
-    setF05Loading(true);
-    setF05Error('');
+    void load(true);
 
-    hydrateSharedF05Storage()
-      .then(() => {
-        if (active) setF05Ready(true);
-      })
-      .catch((error) => {
-        if (!active) return;
-        resetF05SharedStorage();
-        setF05Ready(false);
-        setF05Error(error instanceof Error ? error.message : 'Não foi possível carregar SalesBot, automações e IA.');
-      })
-      .finally(() => {
-        if (active) setF05Loading(false);
-      });
+    channel = supabase
+      .channel(`harpia-f05-shared-${auth.user?.id ?? 'internal'}`)
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'f05_shared_storage' },
+        () => { void load(false); },
+      )
+      .subscribe();
 
     return () => {
       active = false;
+      if (channel) void supabase.removeChannel(channel);
     };
-  }, [canUseF05]);
+  }, [auth.user?.id, canUseF05]);
 
   useEffect(() => {
     let active = true;
+    let reloading = false;
+    let pendingReload = false;
     let unsubscribeEvents: (() => void) | undefined;
+    let channel: ReturnType<NonNullable<typeof supabase>['channel']> | null = null;
 
-    if (!canUseCrm || !isSupabaseConfigured) {
-      setCrmService(null);
-      setInboxService(null);
-      setInboxAutomationPort(null);
-      setCommercialMetricsProvider(null);
-      setAssignees([]);
-      setOperationalLoading(false);
+    const installOperationalRuntime = async (showLoading: boolean) => {
+      if (reloading) {
+        pendingReload = true;
+        return;
+      }
+      reloading = true;
+      if (showLoading) setOperationalLoading(true);
       setOperationalError('');
-      return () => undefined;
-    }
 
-    setOperationalLoading(true);
-    setOperationalError('');
-
-    Promise.all([
-      hydrateSharedCrmRepository(),
-      hydrateSharedInboxRepository(),
-      loadInternalAssignees(),
-    ])
-      .then(([crmRepository, inboxRepository, assigneeRows]) => {
+      try {
+        const [crmRepository, inboxRepository, assigneeRows] = await Promise.all([
+          hydrateSharedCrmRepository(),
+          canUseInbox ? hydrateSharedInboxRepository() : Promise.resolve(null),
+          loadInternalAssignees(),
+        ]);
         if (!active) return;
 
+        unsubscribeEvents?.();
+
         const crm = new CrmService(crmRepository);
-        const inbox = new InboxService(inboxRepository);
+        const inbox = inboxRepository ? new InboxService(inboxRepository) : null;
         const crmActions = createFront05CrmActionPort(crm);
         const aiCommandPort = createAIAgentCommandPort(aiModelRuntime);
         const salesBotCommandPort = createSalesBotCommandPort({
@@ -191,13 +225,13 @@ export function PlatformRuntimeProvider({ children }: PropsWithChildren) {
 
         setCrmService(crm);
         setInboxService(inbox);
-        setInboxAutomationPort(automationPort);
+        setInboxAutomationPort(canUseInbox ? automationPort : null);
         setCommercialMetricsProvider(
           new CrmSnapshotMetricsProvider(new CrmRepositorySnapshotSource(crmRepository), catalogRepository),
         );
         setAssignees(assigneeRows);
-      })
-      .catch((error) => {
+        setOperationalRevision((value) => value + 1);
+      } catch (error) {
         if (!active) return;
         setOperationalError(error instanceof Error ? error.message : 'Não foi possível carregar CRM/Inbox compartilhados.');
         setCrmService(null);
@@ -205,16 +239,44 @@ export function PlatformRuntimeProvider({ children }: PropsWithChildren) {
         setInboxAutomationPort(null);
         setCommercialMetricsProvider(null);
         setAssignees([]);
-      })
-      .finally(() => {
-        if (active) setOperationalLoading(false);
-      });
+      } finally {
+        reloading = false;
+        if (active && showLoading) setOperationalLoading(false);
+        if (active && pendingReload) {
+          pendingReload = false;
+          void installOperationalRuntime(false);
+        }
+      }
+    };
+
+    if (!canUseCrm || !isSupabaseConfigured || !supabase) {
+      setCrmService(null);
+      setInboxService(null);
+      setInboxAutomationPort(null);
+      setCommercialMetricsProvider(null);
+      setAssignees([]);
+      setOperationalLoading(false);
+      setOperationalError('');
+      return () => undefined;
+    }
+
+    void installOperationalRuntime(true);
+
+    channel = supabase
+      .channel(`harpia-operational-state-${auth.user?.id ?? 'internal'}`)
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'platform_module_state' },
+        () => { void installOperationalRuntime(false); },
+      )
+      .subscribe();
 
     return () => {
       active = false;
       unsubscribeEvents?.();
+      if (channel) void supabase.removeChannel(channel);
     };
-  }, [aiModelRuntime, automationWebhook, canUseCrm, catalogRepository]);
+  }, [aiModelRuntime, auth.user?.id, automationWebhook, canUseCrm, canUseInbox, catalogRepository, f05Revision]);
 
   const value = useMemo<PlatformRuntimeValue>(() => ({
     catalogRepository,
@@ -228,9 +290,11 @@ export function PlatformRuntimeProvider({ children }: PropsWithChildren) {
     assignees,
     operationalLoading,
     operationalError,
+    operationalRevision,
     f05Ready,
     f05Loading,
     f05Error,
+    f05Revision,
   }), [
     assignees,
     catalogRepository,
@@ -241,10 +305,12 @@ export function PlatformRuntimeProvider({ children }: PropsWithChildren) {
     f05Error,
     f05Loading,
     f05Ready,
+    f05Revision,
     inboxAutomationPort,
     inboxService,
     operationalError,
     operationalLoading,
+    operationalRevision,
     publicCatalogService,
   ]);
 
