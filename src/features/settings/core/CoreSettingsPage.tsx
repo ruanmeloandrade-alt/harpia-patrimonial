@@ -34,7 +34,7 @@ export function CoreSettingsPage() {
         state: String(form.get('state') || '').trim().toUpperCase() || null,
       };
       await updateOrganizationSettings(input);
-      setSettings({ id: 1, ...input });
+      setSettings({ id: 1, ...input, preferences: settings?.preferences ?? {} });
       setNotice('Dados estruturais atualizados.');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Não foi possível salvar as configurações.');
