@@ -53,6 +53,8 @@ export interface SalesBotExecutionLog {
   status: SalesBotExecutionStatus;
   currentBlockId?: string;
   resumeMode?: SalesBotResumeMode;
+  /** Horário absoluto em que uma pausa por delay fica elegível para retomada durável. */
+  resumeAt?: string;
   error?: string;
   action?: string;
   aiAgentId?: string;
