@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { useF05StorageListener } from '../automations/useF05StorageListener';
 import { listAIProviderProfiles } from '../integrations/aiProviderRepository';
 import { getAIProviderCatalogItem } from '../integrations/aiProviderTypes';
 import { createAIAgent, deleteAIAgent, listAIAgents, setAIAgentStatus, updateAIAgent } from './repository';
@@ -18,8 +19,9 @@ export function AIAgentsWorkspace({ canManage = true }: { canManage?: boolean })
     const next = listAIAgents();
     setAgents(next);
     if (focusId) setSelectedId(focusId);
-    else if (selectedId && !next.some((agent) => agent.id === selectedId)) setSelectedId(next[0]?.id ?? null);
+    else setSelectedId((current) => current && next.some((agent) => agent.id === current) ? current : next[0]?.id ?? null);
   };
+  useF05StorageListener(() => refresh());
 
   const patch = (value: Partial<Omit<AIAgentDefinition, 'id' | 'createdAt'>>) => {
     if (!selected || !canManage) return;
