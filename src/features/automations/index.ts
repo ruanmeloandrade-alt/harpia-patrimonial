@@ -1,6 +1,6 @@
 export { Front05Workspace } from './Front05Workspace';
 export type { Front05Tab } from './Front05Workspace';
-export { buildFront05Access, FRONT05_PERMISSION_KEYS, FULL_FRONT05_ACCESS } from './front05Access';
+export { buildFront05Access, FRONT05_PERMISSION_KEYS, FULL_FRONT05_ACCESS, NO_FRONT05_ACCESS } from './front05Access';
 export type { Front05Access, Front05Module, Front05ModuleAccess } from './front05Access';
 export { salesBotCommandPort, aiAgentCommandPort, createSalesBotCommandPort } from './runtimePorts';
 export { processCrmAutomationEvent, unconfiguredAutomationEngineDependencies } from './engine';
