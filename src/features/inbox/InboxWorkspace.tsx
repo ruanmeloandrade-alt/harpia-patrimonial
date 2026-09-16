@@ -14,11 +14,18 @@ import { InboxService } from './service';
 import type { InboxConversation, InboxState, MessageType } from './domain';
 import styles from './inbox.module.css';
 
+export interface AutomationOption {
+  id: string;
+  name: string;
+}
+
 export interface InboxWorkspaceProps {
   crmService: CrmService;
   inboxService?: InboxService;
   automationPort?: InboxAutomationPort;
   assignees?: AssigneeOption[];
+  salesBots?: AutomationOption[];
+  aiAgents?: AutomationOption[];
 }
 
 export function InboxWorkspace({
@@ -26,6 +33,8 @@ export function InboxWorkspace({
   inboxService: injectedInboxService,
   automationPort: injectedAutomationPort,
   assignees = [],
+  salesBots = [],
+  aiAgents = [],
 }: InboxWorkspaceProps) {
   const inboxService = useMemo(
     () => injectedInboxService ?? new InboxService(new BrowserInboxRepository()),
@@ -41,6 +50,8 @@ export function InboxWorkspace({
   const [selectedConversationId, setSelectedConversationId] = useState<string | undefined>(
     () => inboxService.snapshot().conversations[0]?.id,
   );
+  const [selectedBotId, setSelectedBotId] = useState('');
+  const [selectedAgentId, setSelectedAgentId] = useState('');
   const [feedback, setFeedback] = useState('');
   const [automationStatus, setAutomationStatus] = useState<ConversationAutomationStatus>({
     salesBot: 'unavailable',
@@ -59,6 +70,11 @@ export function InboxWorkspace({
   const messages = selectedConversation ? inboxService.getMessages(selectedConversation.id) : [];
 
   useEffect(() => {
+    setSelectedBotId('');
+    setSelectedAgentId('');
+  }, [selectedConversationId]);
+
+  useEffect(() => {
     if (!selectedConversation) {
       setAutomationStatus({ salesBot: 'unavailable', aiAgent: 'unavailable' });
       return;
@@ -66,7 +82,12 @@ export function InboxWorkspace({
 
     let active = true;
     automationPort
-      .getStatus({ leadId: selectedConversation.leadId, conversationId: selectedConversation.id })
+      .getStatus({
+        leadId: selectedConversation.leadId,
+        conversationId: selectedConversation.id,
+        botId: selectedBotId || undefined,
+        agentId: selectedAgentId || undefined,
+      })
       .then((status) => {
         if (active) setAutomationStatus(status);
       })
@@ -77,7 +98,7 @@ export function InboxWorkspace({
     return () => {
       active = false;
     };
-  }, [automationPort, selectedConversation]);
+  }, [automationPort, selectedAgentId, selectedBotId, selectedConversation]);
 
   const openInternalSession = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -94,23 +115,80 @@ export function InboxWorkspace({
     }
   };
 
-  const executeAutomation = async (
-    action: 'startSalesBot' | 'pauseSalesBot' | 'startAiAgent' | 'pauseAiAgent',
-  ) => {
+  const refreshAutomationStatus = async () => {
+    if (!selectedConversation) return;
+    const status = await automationPort.getStatus({
+      leadId: selectedConversation.leadId,
+      conversationId: selectedConversation.id,
+      botId: selectedBotId || undefined,
+      agentId: selectedAgentId || undefined,
+    });
+    setAutomationStatus(status);
+  };
+
+  const startSalesBot = async () => {
+    if (!selectedConversation) return;
+    if (!selectedBotId) {
+      setFeedback('Selecione um SalesBot ativo antes de iniciar.');
+      return;
+    }
+    try {
+      await automationPort.startSalesBot({
+        leadId: selectedConversation.leadId,
+        conversationId: selectedConversation.id,
+        botId: selectedBotId,
+      });
+      await refreshAutomationStatus();
+      setFeedback('SalesBot selecionado iniciado pela integração da Frente05.');
+    } catch (error) {
+      setFeedback(error instanceof Error ? error.message : 'Não foi possível iniciar o SalesBot.');
+    }
+  };
+
+  const pauseSalesBot = async () => {
     if (!selectedConversation) return;
     try {
-      await automationPort[action]({
+      await automationPort.pauseSalesBot({
         leadId: selectedConversation.leadId,
         conversationId: selectedConversation.id,
       });
-      const status = await automationPort.getStatus({
-        leadId: selectedConversation.leadId,
-        conversationId: selectedConversation.id,
-      });
-      setAutomationStatus(status);
-      setFeedback('Comando executado pela integração de automação.');
+      await refreshAutomationStatus();
+      setFeedback('SalesBot pausado.');
     } catch (error) {
-      setFeedback(error instanceof Error ? error.message : 'Integração de automação indisponível.');
+      setFeedback(error instanceof Error ? error.message : 'Não foi possível pausar o SalesBot.');
+    }
+  };
+
+  const startAiAgent = async () => {
+    if (!selectedConversation) return;
+    if (!selectedAgentId) {
+      setFeedback('Selecione um agente IA ativo antes de iniciar.');
+      return;
+    }
+    try {
+      await automationPort.startAiAgent({
+        leadId: selectedConversation.leadId,
+        conversationId: selectedConversation.id,
+        agentId: selectedAgentId,
+      });
+      await refreshAutomationStatus();
+      setFeedback('Agente IA selecionado iniciado pela integração da Frente05.');
+    } catch (error) {
+      setFeedback(error instanceof Error ? error.message : 'Não foi possível iniciar o agente IA.');
+    }
+  };
+
+  const pauseAiAgent = async () => {
+    if (!selectedConversation) return;
+    try {
+      await automationPort.pauseAiAgent({
+        leadId: selectedConversation.leadId,
+        conversationId: selectedConversation.id,
+      });
+      await refreshAutomationStatus();
+      setFeedback('Agente IA pausado.');
+    } catch (error) {
+      setFeedback(error instanceof Error ? error.message : 'Não foi possível pausar o agente IA.');
     }
   };
 
@@ -369,7 +447,7 @@ export function InboxWorkspace({
                   <option key={assignee.id} value={assignee.id}>{assignee.name}</option>
                 ))}
               </select>
-              {assignees.length === 0 && <small>Aguardando usuários internos da Frente01.</small>}
+              {assignees.length === 0 && <small>Nenhum usuário interno disponível para atribuição.</small>}
             </section>
 
             <section className={styles.contextSection}>
@@ -430,17 +508,23 @@ export function InboxWorkspace({
                 <AutomationControl
                   label="SalesBot"
                   status={automationStatus.salesBot}
-                  onStart={() => executeAutomation('startSalesBot')}
-                  onPause={() => executeAutomation('pauseSalesBot')}
+                  options={salesBots}
+                  selectedId={selectedBotId}
+                  onSelectedIdChange={setSelectedBotId}
+                  onStart={() => void startSalesBot()}
+                  onPause={() => void pauseSalesBot()}
                 />
                 <AutomationControl
                   label="Agente IA"
                   status={automationStatus.aiAgent}
-                  onStart={() => executeAutomation('startAiAgent')}
-                  onPause={() => executeAutomation('pauseAiAgent')}
+                  options={aiAgents}
+                  selectedId={selectedAgentId}
+                  onSelectedIdChange={setSelectedAgentId}
+                  onStart={() => void startAiAgent()}
+                  onPause={() => void pauseAiAgent()}
                 />
               </div>
-              <small>Comandos usam contrato da Frente05; não há motor duplicado nesta frente.</small>
+              <small>A Inbox nunca escolhe um fluxo automaticamente. A Frente05 fornece a lista de recursos ativos; a escolha é explícita por conversa.</small>
             </section>
           </>
         ) : (
@@ -566,24 +650,40 @@ function TransportBadge({ conversation }: { conversation: InboxConversation }) {
 function AutomationControl({
   label,
   status,
+  options,
+  selectedId,
+  onSelectedIdChange,
   onStart,
   onPause,
 }: {
   label: string;
   status: string;
+  options: AutomationOption[];
+  selectedId: string;
+  onSelectedIdChange: (id: string) => void;
   onStart: () => void;
   onPause: () => void;
 }) {
-  const unavailable = status === 'unavailable';
+  const running = status === 'running';
   return (
     <div className={styles.automationControl}>
       <div>
         <strong>{label}</strong>
         <span>{statusLabel(status)}</span>
       </div>
+      <select
+        value={selectedId}
+        onChange={(event) => onSelectedIdChange(event.target.value)}
+        disabled={running}
+        aria-label={`Selecionar ${label}`}
+      >
+        <option value="">Selecione…</option>
+        {options.map((option) => <option key={option.id} value={option.id}>{option.name}</option>)}
+      </select>
+      {options.length === 0 && <small>Nenhum recurso ativo configurado.</small>}
       <div>
-        <button type="button" onClick={onStart} disabled={unavailable}>Iniciar</button>
-        <button type="button" onClick={onPause} disabled={unavailable}>Pausar</button>
+        <button type="button" onClick={onStart} disabled={!selectedId || running}>Iniciar</button>
+        <button type="button" onClick={onPause} disabled={!running}>Pausar</button>
       </div>
     </div>
   );
@@ -613,7 +713,7 @@ function messageTypeLabel(type: MessageType): string {
 
 function statusLabel(status: string): string {
   const labels: Record<string, string> = {
-    unavailable: 'Aguardando integração',
+    unavailable: 'Selecione um recurso',
     idle: 'Disponível',
     running: 'Em execução',
     paused: 'Pausado',
