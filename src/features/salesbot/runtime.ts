@@ -161,8 +161,9 @@ async function executeBlock(
       else result = await deps.crm.updateField({ leadId, fieldId: stringConfig(block, 'fieldId'), value: block.config.fieldValue });
       break;
     case 'tag': {
+      const operation = stringConfig(block, 'operation').toLowerCase();
       if (!leadId) result = { status: 'rejected', reason: 'Lead obrigatório para alterar tag.' };
-      else if (stringConfig(block, 'operation') === 'remove') result = await deps.crm.removeTag({ leadId, tagId: stringConfig(block, 'tagId') });
+      else if (operation === 'remove') result = await deps.crm.removeTag({ leadId, tagId: stringConfig(block, 'tagId') });
       else result = await deps.crm.addTag({ leadId, tagId: stringConfig(block, 'tagId') });
       break;
     }
