@@ -1,5 +1,9 @@
 import type { CatalogRepository } from './catalogRepository';
-import type { PublicCatalogFilters, PublicCatalogItem } from './types';
+import type {
+  PublicCatalogDevelopmentBundle,
+  PublicCatalogFilters,
+  PublicCatalogItem,
+} from './types';
 
 export interface PublicCatalogFilterOptions {
   cities: string[];
@@ -16,6 +20,7 @@ function toPublicItem(item: Awaited<ReturnType<CatalogRepository['list']>>[numbe
     name: item.name,
     kind: item.kind,
     parentId: item.parentId,
+    typology: item.typology,
     purpose: item.purpose,
     description: item.description,
     location: item.location,
@@ -29,31 +34,55 @@ function toPublicItem(item: Awaited<ReturnType<CatalogRepository['list']>>[numbe
   };
 }
 
+function applyPublicFilters(
+  items: Awaited<ReturnType<CatalogRepository['list']>>,
+  filters: PublicCatalogFilters,
+) {
+  return items
+    .filter((item) => !filters.purpose || item.purpose === filters.purpose)
+    .filter((item) => !filters.city || item.location.city === filters.city)
+    .filter((item) => {
+      if (!filters.location) return true;
+      return [item.location.neighborhood, item.location.condominium]
+        .filter(Boolean)
+        .some((value) => value === filters.location);
+    })
+    .filter((item) => filters.isLaunch === undefined || item.isLaunch === filters.isLaunch)
+    .filter((item) => filters.minPrice === undefined || (item.price !== null && item.price >= filters.minPrice))
+    .filter((item) => filters.maxPrice === undefined || (item.price !== null && item.price <= filters.maxPrice))
+    .filter((item) => !filters.lifestyleTag || item.lifestyleTags.includes(filters.lifestyleTag));
+}
+
 export class PublicCatalogService {
   constructor(private readonly repository: CatalogRepository) {}
 
   async list(filters: PublicCatalogFilters = {}): Promise<PublicCatalogItem[]> {
     const items = await this.repository.list({ status: 'published' });
-    return items
-      .filter((item) => !filters.purpose || item.purpose === filters.purpose)
-      .filter((item) => !filters.city || item.location.city === filters.city)
-      .filter((item) => {
-        if (!filters.location) return true;
-        return [item.location.neighborhood, item.location.condominium]
-          .filter(Boolean)
-          .some((value) => value === filters.location);
-      })
-      .filter((item) => filters.isLaunch === undefined || item.isLaunch === filters.isLaunch)
-      .filter((item) => filters.minPrice === undefined || (item.price !== null && item.price >= filters.minPrice))
-      .filter((item) => filters.maxPrice === undefined || (item.price !== null && item.price <= filters.maxPrice))
-      .filter((item) => !filters.lifestyleTag || item.lifestyleTags.includes(filters.lifestyleTag))
-      .map(toPublicItem);
+    return applyPublicFilters(items, filters).map(toPublicItem);
+  }
+
+  async listUnits(parentId: string, filters: PublicCatalogFilters = {}): Promise<PublicCatalogItem[]> {
+    const items = await this.repository.list({ status: 'published', kind: 'unit' });
+    return applyPublicFilters(
+      items.filter((item) => item.parentId === parentId),
+      filters,
+    ).map(toPublicItem);
   }
 
   async getByIdOrCode(value: string): Promise<PublicCatalogItem | null> {
     const items = await this.repository.list({ status: 'published' });
     const item = items.find((candidate) => candidate.id === value || candidate.code === value);
     return item ? toPublicItem(item) : null;
+  }
+
+  async getDevelopmentWithUnits(value: string): Promise<PublicCatalogDevelopmentBundle | null> {
+    const item = await this.getByIdOrCode(value);
+    if (!item || item.kind !== 'development') return null;
+
+    return {
+      development: item,
+      units: await this.listUnits(item.id),
+    };
   }
 
   async getFilterOptions(): Promise<PublicCatalogFilterOptions> {
