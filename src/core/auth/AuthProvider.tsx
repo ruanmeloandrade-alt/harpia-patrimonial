@@ -102,7 +102,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
             full_name: input.fullName.trim(),
             whatsapp: input.whatsapp.trim(),
           },
-          emailRedirectTo: `${window.location.origin}/conta`,
+          emailRedirectTo: `${window.location.origin}/cliente`,
         },
       });
       if (error) throw error;
