@@ -5,141 +5,146 @@ Atualizar este arquivo ao iniciar e ao concluir blocos relevantes.
 ## Frente01 — Núcleo/Auth/Usuários/Permissões
 
 - Branch: `frente-01`
-- Status inicial: NÃO INICIADA
-- Responsável: chat/agente designado pelo usuário
-- Último commit relevante: —
-- Entregue: —
-- Em andamento: —
-- Bloqueios: —
-- Próximo passo: iniciar pela leitura da documentação obrigatória.
+- Estado observado pela Frente04: 🟠 EM ANDAMENTO — backend dedicado ativo, shell/rotas integradas evoluíram; QA final ainda pendente.
+- A Frente04 não substitui o status autoritativo mantido pela própria Frente01.
 
 ## Frente02 — Site público/Área do cliente
 
 - Branch: `frente-02`
-- Status inicial: NÃO INICIADA
-- Responsável: chat/agente designado pelo usuário
-- Último commit relevante: —
-- Entregue: —
-- Em andamento: —
-- Bloqueios: —
-- Próximo passo: iniciar pela leitura da documentação obrigatória.
+- Consultar status autoritativo na própria branch.
 
 ## Frente03 — Catálogo interno/Dashboard
 
 - Branch: `frente-03`
-- Status inicial: NÃO INICIADA
-- Responsável: chat/agente designado pelo usuário
-- Último commit relevante: —
-- Entregue: —
-- Em andamento: —
-- Bloqueios: —
-- Próximo passo: iniciar pela leitura da documentação obrigatória.
+- Consultar status autoritativo na própria branch.
 
 ## Frente04 — CRM/Inbox
 
 - Branch: `frente-04`
-- Status: 🟠 EM ANDAMENTO — ESCOPO PRÓPRIO, ADAPTERS E SCHEMA DE PRODUÇÃO PREPARADOS; AGUARDANDO MONTAGEM/BACKEND/VALIDAÇÃO GLOBAL
+- Status geral: 🟠 EM ANDAMENTO — ESCOPO PRÓPRIO CONCLUÍDO EM GRANDE PARTE; INTEGRAÇÃO REAL AGORA EXISTE E ESTÁ EM PENTE-FINO.
 - Responsável: chat atual — Frente04
-- Último commit de implementação relevante: `81d76447b0b65b8f6cd884a9f1b942f25bd6d07a`
-- Entregue/implementado: domínio CRM; repositórios vazios por padrão; serviços de funis, etapas, leads, tags, campos personalizados, tarefas, histórico e eventos; Kanban configurável; Lead 360; fila de leads sem etapa; contrato de conversão sem mensagem automática; Inbox de três colunas; campos personalizados tipados também dentro da Inbox; movimentação de lead pela Inbox entre etapas de qualquer funil ativo; contratos de mensagem; ações de CRM pela Inbox; `Front04Workspace`; entradas separadas `Front04CrmScreen` e `Front04InboxScreen` para RBAC; injeção de services/repositories/event sinks; adapter de usuários reais da Frente01; adapter real para SalesBot/IA/Automatize da Frente05; persistência de `occurredAt` e `metadata` da conversão na origem do lead; proteção contra eventos redundantes; estilos CRM restritos ao próprio workspace.
-- Banco preparado: `src/features/crm/crm.schema.sql` define estrutura CRM/Inbox, integridade, índices, RLS e grants alinhados às permissões `crm.view`, `crm.manage`, `inbox.view`, `inbox.manage`. IDs CRM/Inbox são `text` para compatibilidade com o domínio atual; usuários permanecem UUID. `anon` não recebe acesso direto ao CRM; conversão pública e transporte real devem passar por backend seguro/Edge Function. O schema ainda NÃO FOI APLICADO nem validado no Supabase dedicado.
-- Integração Frente01 preparada: `mapFront01Assignees`/`loadFront01Assignees` convertem somente usuários internos ativos; telas separadas permitem montar CRM com `crm.view` e Inbox com `inbox.view`; persistência definitiva pode ser injetada por `CrmRepository`/`InboxRepository`. A Frente01 já contém shell, permissões e usuários, mas o `AppRouter` atual ainda não monta as rotas da Frente04.
-- Integração Frente02 preparada: `createFront04ConversionHandler` da Frente02 foi conferido contra o contrato real da Frente04; `ingestLeadConversion` preserva contato, origem, página, ação, interesse, `occurredAt` e `metadata`, mantendo `automaticMessageSent: false`.
-- Integração Frente03 preparada: o adapter `CrmRepositorySnapshotSource` da Frente03 escuta `harpia:crm-updated`; `BrowserCrmRepository` da Frente04 já dispara exatamente esse evento em `save`/`clear`. Além disso, a Frente04 permite injetar a mesma instância/repositório CRM, então não há necessidade de duplicar estado para métricas.
-- Integração Frente05 preparada: `createFront05InboxAutomationAdapter`, `createFront05CrmActionPort`, `Front05CrmEventSink` e `toFront05CrmAutomationEvent` implementados; start/pause/status preservam `executionId`; SalesBot pausado é retomado via `resume`; eventos CRM são mapeados explicitamente para o Automatize.
-- Validações próprias executadas: revisão estrutural CRM/Inbox; checagens isoladas de TypeScript dos componentes anteriores; TypeScript isolado do adapter F04↔F05 = OK; teste comportamental do adapter = OK para `botId` explícito, start, pause, resume, status e mapeamento `lead.custom_field_changed` → `lead.field_changed`; revisão de proteção de integridade/empty states; revisão de CSS para evitar vazamento global; comparação estrutural com contratos atuais F01/F02/F03/F05.
-- NÃO VERIFICADO: execução SQL do `crm.schema.sql`; advisors/RLS no Supabase real; build completo com as cinco frentes montadas; rotas F04 no shell da Frente01; persistência multiusuário; fluxo Frente02 → backend seguro → CRM; referências reais Frente03 no produto integrado; SalesBot/IA/Automatize ponta a ponta com IDs/configurações reais; WhatsApp real; teste final pelo usuário.
-- Bloqueios atuais para ficar VERDE/testável: Frente01 precisa montar `Front04CrmScreen`/`Front04InboxScreen` no roteador; o Supabase dedicado da Hárpia ainda precisa estar disponível para aplicar/testar schema e persistência; a conversão pública precisa de endpoint/Edge Function segura porque `anon` não deve gravar diretamente no CRM; integração final com Frente05 depende de branches montadas juntas e `botId`/`agentId` reais/configurados.
-- Próximo passo da Frente04: após montagem/backend, executar schema/advisors em ambiente Hárpia, build/typecheck e testes de rotas, RBAC, CRUD, refresh/persistência, site→CRM, dashboard CRM e Inbox↔SalesBot/IA/Automatize; corrigir regressões encontradas.
-- Handoff: `docs/frentes/FRENTE-04-HANDOFF.md`.
-- Adapter Frente05: `docs/frentes/FRENTE-04-FRENTE-05-ADAPTER.md`.
+- Último commit funcional relevante antes deste status: `fcd78c9acb8ba5a37ea77a844723d050d870babc`.
+- Regra visual: 🟢 completo e testável | 🟠 parcial/em andamento | 🔴 não iniciado.
+
+### Bloco A — fundação CRM
+
+- 🟠 Domínio, serviços, eventos, repositórios e composição: implementados; falta build/typecheck integrado final.
+- 🟠 Persistência compartilhada: a Frente01 já criou/aplicou `platform_module_state` no Supabase dedicado e a composição integrada já hidrata CRM/Inbox a partir dele. Falta QA multi-sessão e feedback de conflito.
+- 🟠 Usuários internos: a Frente01 já possui carregamento de responsáveis reais; falta teste com usuário interno real.
+
+### Bloco B — funis, etapas e Kanban
+
+- 🟠 Criar/renomear/ativar/desativar funis: implementado.
+- 🟠 Criar/renomear/reordenar/remover etapas com integridade: implementado.
+- 🟠 Kanban e movimentação manual: implementados.
+- 🟠 Fila de leads sem etapa: implementada em `Front04CrmScreen`, mas a composição observada da Frente01 ainda monta `CrmWorkspace` diretamente; integração precisa usar a entrada correta para não ocultar conversões novas sem `stageId`.
+
+### Bloco C — Lead 360
+
+- 🟠 Contato, origem, página, ação, interesse/referência e observações: implementados.
+- 🟠 Responsável, tags, campos personalizados tipados, tarefas/próximas ações e histórico: implementados.
+- 🟠 Teste real com persistência/RBAC: pendente.
+
+### Bloco D — conversão site → CRM
+
+- 🟠 Contrato preserva contato, origem, página, ação, interesse, `occurredAt` e `metadata`.
+- 🟠 Regra absoluta `automaticMessageSent: false` mantida.
+- 🟠 Backend da Frente01 já possui `public-lead-ingest` e RPC segura para criar lead no estado compartilhado sem INSERT anônimo direto.
+- 🟠 Ponta a ponta público → backend → lead → fila sem etapa ainda precisa de teste integrado.
+
+### Bloco E — Inbox
+
+- 🟠 Layout obrigatório de três colunas implementado.
+- 🟠 Contexto CRM, mudança de etapa entre funis, responsável, tags, campos tipados e tarefas implementados.
+- 🟠 Envio continua bloqueado sem transporte real; nenhuma mensagem é simulada.
+- 🟠 Rotas `/interno/crm` e `/interno/inbox` já existem na Frente01.
+
+### Bloco F — SalesBot / IA / Automatize
+
+- 🟠 Adapter F04↔F05 implementado.
+- 🟠 Seleção explícita de SalesBot e agente IA adicionada ao contrato da Frente04 por composição (`salesBots` / `aiAgents`), sem importar repositories internos da Frente05.
+- 🟠 `getStatus` agora considera `botId`/`agentId` selecionados.
+- 🟠 SalesBot pausado só é retomado se o recurso selecionado for o mesmo; trocar o bot cria outra execução em vez de retomar a errada.
+- 🟠 IA com a mesma execução já rodando não dispara invocação duplicada.
+- 🟠 Ponta a ponta com configurações reais continua pendente.
+
+### Bloco G — Dashboard / métricas
+
+- 🟠 Frente03 já possui adapter para snapshot CRM e evento `harpia:crm-updated`.
+- 🟠 Runtime integrado da Frente01 já compõe provider comercial com o repository CRM compartilhado.
+- 🟠 Teste visual/dados reais pendente.
+
+### Bloco H — validação final
+
+- 🔴 `npm run build` do produto integrado: NÃO VERIFICADO.
+- 🔴 TypeScript completo das cinco frentes juntas: NÃO VERIFICADO.
+- 🔴 Teste com primeiro administrador real: NÃO EXECUTADO.
+- 🔴 CRUD + refresh/persistência real: NÃO EXECUTADO ponta a ponta.
+- 🔴 teste de conflito de revisão em duas sessões: NÃO EXECUTADO.
+- 🔴 WhatsApp real: NÃO CONECTADO, por decisão de fase.
+- 🔴 validação final pelo usuário: ainda não executada.
+
+### Bloqueios/restante para 🟢
+
+1. Frente01/integrador montar `Front04CrmScreen` em vez de `CrmWorkspace` direto, preservando `UnassignedLeadsQueue`.
+2. Integrador fornecer à Inbox as listas reais de SalesBots e agentes IA ativos usando as props públicas da Frente04.
+3. Criar/promover usuário administrador real e executar RBAC real.
+4. Executar build/typecheck do conjunto integrado.
+5. Executar QA público→CRM, CRUD CRM, persistência/refresh, dashboard e Inbox↔F05.
+6. Validar conflitos de edição concorrente e feedback de persistência.
+
+Handoff principal: `docs/frentes/FRENTE-04-HANDOFF.md`.
+Nota de integração atual: `docs/frentes/FRENTE-04-INTEGRACAO-F01-ATUAL.md`.
 
 ## Frente05 — SalesBot/Automatize/IA/Integrações
 
 - Branch: `frente-05`
-- Status inicial: NÃO INICIADA
-- Responsável: chat/agente designado pelo usuário
-- Último commit relevante: —
-- Entregue: —
-- Em andamento: —
-- Bloqueios: —
-- Próximo passo: iniciar pela leitura da documentação obrigatória.
+- Consultar status autoritativo na própria branch.
 
 ---
 
 # Pedidos entre frentes
 
-Use esta seção quando uma frente precisar que outra altere um arquivo ou contrato que não pertence ao seu escopo.
-
-Formato obrigatório:
-
-- Data/hora:
-- Origem:
-- Destino:
-- Necessidade:
-- Arquivo/contrato afetado:
-- Motivo:
-- Urgência:
-- Status: PENDENTE / EM ANDAMENTO / RESOLVIDO
-
 - Data/hora: 16/09/2026 11:51 BRT
 - Origem: Frente04
 - Destino: Frente01 / integração global
-- Necessidade: incorporar às regras gerais o semáforo obrigatório 🔴/🟠/🟢.
-- Arquivo/contrato afetado: `docs/REGRAS-DE-PRODUCAO.md`.
-- Motivo: solicitação explícita do usuário.
-- Urgência: ALTA
-- Status: RESOLVIDO — regra incorporada na seção 21.
+- Necessidade: incorporar semáforo obrigatório 🔴/🟠/🟢 nas regras gerais.
+- Status: RESOLVIDO.
 
-- Data/hora: 16/09/2026 12:10 BRT
+- Data/hora: 16/09/2026 — atualização atual
 - Origem: Frente04
 - Destino: Frente01 / integrador
-- Necessidade: montar `Front04CrmScreen` em rota protegida por `crm.view` e `Front04InboxScreen` por `inbox.view`; usar `loadFront01Assignees(listInternalUsers)`; injetar persistência compartilhada/backend.
-- Arquivo/contrato afetado: shell/roteador interno, autenticação/RBAC, persistência e `src/features/crm/**`.
-- Motivo: liberar CRM/Inbox para teste integrado sem a Frente04 editar arquivos globais da Frente01.
-- Urgência: ALTA
-- Status: EM ANDAMENTO — shell, permissões, usuários e arquivos F04 já estão presentes na Frente01; o `AppRouter` ainda não expõe as rotas CRM/Inbox e a persistência de produção ainda não foi ligada.
+- Necessidade: usar `Front04CrmScreen` em `/interno/crm` no lugar de `CrmWorkspace` direto, mantendo a fila de leads sem etapa.
+- Motivo: conversões públicas entram legitimamente sem `stageId`; sem a fila, o lead existe mas fica invisível nas colunas do Kanban.
+- Urgência: ALTA.
+- Status: PENDENTE NO ENCAIXE OBSERVADO.
 
-- Data/hora: 16/09/2026 12:10 BRT
+- Data/hora: 16/09/2026 — atualização atual
 - Origem: Frente04
-- Destino: Frente05 / integrador
-- Necessidade: conectar ports públicos reais da Frente05 ao adapter `src/features/crm/front05Adapter.ts` e ligar `Front05CrmEventSink` a `processCrmAutomationEvent`.
-- Arquivo/contrato afetado: adapter F04 + API pública da Frente05.
-- Motivo: permitir SalesBot/IA/Automatize reais sem duplicar motores.
-- Urgência: ALTA
-- Status: EM ANDAMENTO — adapter F04 implementado e testado isoladamente; faltam montagem conjunta, IDs/configurações reais e teste ponta a ponta.
+- Destino: Frente01 / Frente05 / integrador
+- Necessidade: fornecer SalesBots e agentes IA ativos à `InboxWorkspace`/`Front04InboxScreen` pelas props públicas `salesBots` e `aiAgents`.
+- Motivo: preservar seleção explícita sem dependência direta da Frente04 em repositories internos da Frente05.
+- Urgência: ALTA para QA de automação.
+- Status: PENDENTE DE COMPOSIÇÃO FINAL.
 
-- Data/hora: 16/09/2026 13:15 BRT
+- Data/hora: 16/09/2026 — atualização atual
 - Origem: Frente04
-- Destino: Frente01 / integrador de backend
-- Necessidade: após disponibilizar o projeto Supabase dedicado da Hárpia, revisar/aplicar `src/features/crm/crm.schema.sql`, rodar advisors e conectar persistência real. Criar também caminho backend/Edge Function autenticado/validado para conversões públicas gravarem leads sem conceder INSERT `anon` direto no CRM.
-- Arquivo/contrato afetado: Supabase dedicado, `src/features/crm/crm.schema.sql`, composição backend de `LeadConversionEvent`.
-- Motivo: concluir persistência multiusuário e preservar RLS/segurança do CRM público.
-- Urgência: ALTA antes da operação real.
-- Status: PENDENTE — schema preparado, mas não existe validação/aplicação em projeto Hárpia nesta frente.
-
-- Data/hora: 16/09/2026 13:15 BRT
-- Origem: Frente03
-- Destino: Frente04 / integrador
-- Necessidade: compartilhar a mesma fonte de CRM com `CrmSnapshotMetricsProvider`.
-- Arquivo/contrato afetado: `BrowserCrmRepository`/`CrmRepository`, `Front04Workspace`, adapter de métricas F03.
-- Motivo: dashboard deve ler o mesmo CRM sem duplicar estado.
-- Urgência: MÉDIA/ALTA
-- Status: RESOLVIDO DO LADO F04 — repository/service são injetáveis e `BrowserCrmRepository` já dispara `harpia:crm-updated`, exatamente o evento esperado pelo `CrmRepositorySnapshotSource` da Frente03. Falta somente a composição no integrador.
+- Destino: Integração global
+- Necessidade: executar build/typecheck e QA real após consolidação das branches.
+- Status: PENDENTE.
 
 ---
 
 # Pendências de integração global
 
-- Montar `Front04CrmScreen` e `Front04InboxScreen` no shell interno protegido da Frente01.
-- Aplicar/testar `crm.schema.sql` somente no Supabase dedicado da Hárpia e conectar persistência real.
-- Criar caminho backend seguro para conversão Frente02 → CRM sem INSERT anônimo direto.
-- Montar o adapter já compatível da Frente02 com `ingestLeadConversion`.
-- Compor o mesmo `CrmRepository`/snapshot com métricas da Frente03.
-- Conectar usuários internos da Frente01 por `loadFront01Assignees`.
-- Conectar `createFront05InboxAutomationAdapter` aos ports reais da Frente05.
-- Conectar `Front05CrmEventSink` a `processCrmAutomationEvent` e fornecer `createFront05CrmActionPort` ao engine.
-- Executar build/typecheck/teste visual conjunto após montagem.
+- Trocar montagem direta do CRM por `Front04CrmScreen`.
+- Injetar listas reais de SalesBot/IA na Inbox pelo contrato público F04.
+- Criar/promover primeiro administrador real e testar RBAC.
+- Testar conversão Frente02 → `public-lead-ingest` → CRM → fila sem etapa.
+- Testar métricas CRM no dashboard Frente03.
+- Testar Inbox ↔ SalesBot/IA/Automatize ponta a ponta.
+- Testar edição concorrente/persistência compartilhada.
+- Executar build/typecheck/teste visual conjunto.
 - Conectar WhatsApp e Meta somente na fase final.
 
 ---
