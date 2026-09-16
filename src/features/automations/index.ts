@@ -21,6 +21,7 @@ export type {
 export {
   configureF05SharedStorage,
   isF05SharedStorageReady,
+  replaceStoredListFromRemote,
   resetF05SharedStorage,
   subscribeF05StorageEvents,
 } from './f05Storage';
