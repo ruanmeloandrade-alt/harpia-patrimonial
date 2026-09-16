@@ -21,6 +21,14 @@ function OperationalGate({ children }: { children: ReactNode }) {
   return <>{children}</>;
 }
 
+function Front05Gate({ children }: { children: ReactNode }) {
+  const runtime = usePlatformRuntime();
+  if (runtime.f05Loading) return <FullPageState title="Carregando automações" description="Sincronizando SalesBot, Automatize, agentes de IA e integrações com o banco compartilhado." />;
+  if (runtime.f05Error) return <FullPageState title="Falha ao carregar automações" description={runtime.f05Error} actionHref="/interno" actionLabel="Voltar ao painel" />;
+  if (!runtime.f05Ready) return <FullPageState title="Automação indisponível" description="O estado compartilhado da automação ainda não foi carregado para esta sessão." actionHref="/interno" actionLabel="Voltar ao painel" />;
+  return <>{children}</>;
+}
+
 export function IntegratedDashboard() {
   const runtime = usePlatformRuntime();
   return <DashboardPage catalogRepository={runtime.catalogRepository} commercialProvider={runtime.commercialMetricsProvider ?? undefined} />;
@@ -55,11 +63,15 @@ function Front05Shell({ children }: { children: ReactNode }) {
   return <div className="f05-shell"><div className="f05-shell__intro"><div><span className="f05-kicker">Hárpia Patrimonial</span><h1>Automação inteligente</h1><p>Configuração operacional sem dados fictícios e sem envio externo enquanto os canais não estiverem conectados.</p></div><div className="f05-readiness"><span>WhatsApp</span><strong>Não conectado</strong><span>Meta</span><strong>Não conectado</strong></div></div>{children}</div>;
 }
 
-export function IntegratedSalesBot() { return <Front05Shell><SalesBotWorkspace /></Front05Shell>; }
-export function IntegratedAutomations() { return <Front05Shell><AutomationsWorkspace /></Front05Shell>; }
-export function IntegratedAIAgents() { return <Front05Shell><AIAgentsWorkspace /></Front05Shell>; }
-export function IntegratedExecutionLogs() { return <Front05Shell><ExecutionLogsPanel /></Front05Shell>; }
+function Front05Module({ children }: { children: ReactNode }) {
+  return <Front05Gate><Front05Shell>{children}</Front05Shell></Front05Gate>;
+}
+
+export function IntegratedSalesBot() { return <Front05Module><SalesBotWorkspace /></Front05Module>; }
+export function IntegratedAutomations() { return <Front05Module><AutomationsWorkspace /></Front05Module>; }
+export function IntegratedAIAgents() { return <Front05Module><AIAgentsWorkspace /></Front05Module>; }
+export function IntegratedExecutionLogs() { return <Front05Module><ExecutionLogsPanel /></Front05Module>; }
 export function IntegratedIntegrations() {
   const runtime = usePlatformRuntime();
-  return <Front05Shell><IntegrationsWorkspace credentialVault={runtime.credentialVault} /></Front05Shell>;
+  return <Front05Module><IntegrationsWorkspace credentialVault={runtime.credentialVault} /></Front05Module>;
 }
