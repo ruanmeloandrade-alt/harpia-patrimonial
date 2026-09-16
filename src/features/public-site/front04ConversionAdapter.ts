@@ -42,6 +42,29 @@ export type PublicConversionHandlingResult =
       reason: 'contact-required';
     };
 
+const forbiddenIdentityMetadataKeys = new Set([
+  'clientid',
+  'client_id',
+  'userid',
+  'user_id',
+  'accountid',
+  'account_id',
+  'accounttype',
+  'account_type',
+  'authorization',
+  'role',
+]);
+
+function sanitizeMetadata(metadata?: Record<string, string | number | boolean>) {
+  if (!metadata) return undefined;
+
+  const safeEntries = Object.entries(metadata).filter(
+    ([key]) => !forbiddenIdentityMetadataKeys.has(key.trim().toLowerCase()),
+  );
+
+  return safeEntries.length ? Object.fromEntries(safeEntries) : undefined;
+}
+
 function resolveInterest(event: PublicSiteConversion): Front04LeadInterest | undefined {
   if (event.propertyId) {
     return {
@@ -66,12 +89,13 @@ function resolveContact(
   currentClient?: ClientProfileView | null,
 ): Front04LeadConversionEventPort['contact'] | null {
   const name = event.contact?.name?.trim() || currentClient?.name?.trim();
-  if (!name) return null;
+  const whatsapp = event.contact?.whatsapp?.trim() || currentClient?.whatsapp?.trim();
+  if (!name || !whatsapp) return null;
 
   return {
     name,
     email: event.contact?.email?.trim() || currentClient?.email?.trim() || undefined,
-    whatsapp: event.contact?.whatsapp?.trim() || currentClient?.whatsapp?.trim() || undefined,
+    whatsapp,
   };
 }
 
@@ -83,8 +107,10 @@ function resolveContact(
  * Resultados de ingestão são expostos por `onResult`, sem alterar a assinatura
  * pública usada pelos componentes.
  *
- * Falta de contato é uma falha explícita. Isso garante que um pipeline
+ * Falta de nome ou WhatsApp é uma falha explícita. Isso garante que um pipeline
  * CRM -> WhatsApp nunca avance sem que a captura do lead tenha sido aceita.
+ * Metadados de identidade fornecidos pelo caller público são descartados: a
+ * identidade autenticada deve ser derivada apenas no backend.
  */
 export function createFront04ConversionHandler(options: {
   ingest: Front04LeadConversionIngestPort;
@@ -107,7 +133,7 @@ export function createFront04ConversionHandler(options: {
 
       await options.onContactRequired?.(event);
       await options.onResult?.(result, event);
-      throw new Error('Nome do contato é obrigatório para registrar o atendimento.');
+      throw new Error('Nome e WhatsApp são obrigatórios para registrar o atendimento.');
     }
 
     const result = await options.ingest({
@@ -117,7 +143,7 @@ export function createFront04ConversionHandler(options: {
       page: event.page,
       interest: resolveInterest(event),
       occurredAt: new Date().toISOString(),
-      metadata: event.metadata,
+      metadata: sanitizeMetadata(event.metadata),
     });
 
     await options.onResult?.(
