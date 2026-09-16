@@ -49,18 +49,19 @@ Atualizar este arquivo ao iniciar e ao concluir blocos relevantes.
 ## Frente05 — SalesBot/Automatize/IA/Integrações
 
 - Branch: `frente-05`
-- Status: EM ANDAMENTO
+- Status: EM ANDAMENTO — escopo isolado da F05 concluído; aguardando integrações externas para validação final do produto.
 - Responsável: chat atual — Frente05
-- Último commit relevante de código: `82036aebed1f5d9a15cba426392ec63c49913571`
-- Entregue: contratos CRM/Inbox; persistência local sem dados fictícios; CRUD de SalesBot; catálogo completo de blocos; configuração por bloco; duplicar/ativar/pausar/excluir; Automatize com gatilhos, condições e ações configuráveis; CRUD/configuração de agentes IA; logs/execuções; workspace consolidado; API pública da Frente05; tela de integrações; perfis configuráveis de provedor/modelo IA; seleção de provedor por agente; contratos de cofre seguro/runtime; adaptadores de execução por provedor.
+- Último commit relevante de código: `05bc1eaeaa9df9bea23d24250a71bb2016218f6d`
+- Relatório de testes: `docs/frentes/FRENTE-05-TESTES.md`
+- Entregue: contratos CRM/Inbox; persistência local sem dados fictícios; CRUD de SalesBot; catálogo completo de blocos; configuração e validação por bloco; duplicar/ativar/pausar/excluir; runtime real e retomável de SalesBot; `createSalesBotCommandPort`; Automatize com gatilhos, condições, ações configuráveis, duplicação, ordenação e motor de eventos; CRUD/configuração de agentes IA; execução e logs de agentes; logs consolidados SalesBot/IA; workspace consolidado; API pública da Frente05; tela de integrações; perfis configuráveis de provedor/modelo IA; seleção de provedor por agente; cofre de credenciais por contrato; resolvedor server-side de segredo; runtime server-side de provedor; adaptadores OpenAI/Codex, Anthropic/Claude, Gemini e customizado.
+- Integridade: SalesBot/Automatize não ativam configuração incompleta; referências a bot/agente são verificadas; edição que invalida configuração ativa provoca pausa automática; `delay` retoma no próximo bloco sem reagendamento duplicado; ação `not_configured` no Automatize interrompe a sequência para evitar estado parcial.
 - Provedores IA preparados: OpenAI; OpenAI/Codex; Anthropic/Claude; Google Gemini; provedor customizado. Modelo e endpoint ficam configuráveis, sem lista rígida de modelos.
-- Adaptadores preparados: OpenAI/Codex usam rota configurável com fallback de Responses API; Anthropic usa Messages API; Gemini usa Interactions API; customizado usa endpoint definido pelo administrador. Adaptadores são destinados ao backend seguro, não à execução direta no navegador.
-- Segurança de chave API: chave não é salva em `localStorage`, código ou documentação. A UI recebe a chave e usa o contrato `AICredentialVaultPort`; só marca a credencial como configurada quando o cofre/backend seguro confirma armazenamento.
-- Validações executadas: parse/sintaxe dos componentes SalesBot, Automatize, Agentes IA, Integrações e workspace = OK; checagem TypeScript isolada dos módulos F05 = OK; teste de comportamento dos repositórios/contratos = OK; teste dos adaptadores de provedor = OK para URLs/headers/regras de OpenAI, Codex, Anthropic, Gemini e customizado; agente sem provedor pronto não ativa; agente com perfil pronto ativa; sem adaptador/backend real a execução não finge sucesso.
-- NÃO VERIFICADO: build Vite completo da branch dentro do shell final; teste visual integrado na navegação da plataforma; integração ponta a ponta com CRM/Inbox reais; persistência real de segredo/API key no backend; chamada real aos provedores com chave do cliente.
-- Em andamento: integração visual com shell, cofre seguro de credenciais, integração CRM/Inbox e pente fino após montagem.
-- Bloqueios: a Frente05 não pode editar o shell/roteador raiz da Frente01. Persistência segura de chave precisa de backend/cofre. Integração real com CRM/Inbox depende da Frente04. WhatsApp e Meta reais permanecem fora desta fase por decisão de produto.
-- Próximo passo: Frente01 montar `Front05Workspace` e fornecer implementação de `AICredentialVaultPort`; Frente04 consumir/expor os contratos; então executar build e teste visual conjunto.
+- Segurança de chave API: chave não é salva em `localStorage`, código ou documentação. A UI usa `AICredentialVaultPort`; a execução server-side usa `AICredentialResolverPort`; a chave bruta só chega ao adaptador no backend.
+- Validações executadas nesta rodada: SalesBot runtime = OK; SalesBot command port = OK; Automatize engine = OK; adaptadores de provedor = OK; cadeia cofre/resolvedor -> runtime -> agente IA -> log = OK; TypeScript dos núcleos usados nesses testes = OK. Os testes e limites estão documentados em `docs/frentes/FRENTE-05-TESTES.md`.
+- NÃO VERIFICADO: build Vite do produto final com F05 montada no shell; teste visual integrado na navegação; autenticação/permissões reais da Frente01; integração ponta a ponta com CRM/Inbox reais da Frente04; persistência/resolução real de segredo no backend da Frente01; chamada real aos provedores com chave do cliente.
+- Em andamento: nenhum novo bloco exclusivamente F05 pendente nesta rodada. Aguardar F01/F04 e executar pente fino de integração assim que os contratos forem conectados.
+- Bloqueios externos: shell/roteador/auth/cofre pertencem à Frente01; CRM/Inbox pertence à Frente04. WhatsApp e Meta reais permanecem deliberadamente para a fase final.
+- Próximo passo: Frente01 montar `Front05Workspace`, implementar `AICredentialVaultPort` e `AICredentialResolverPort`; Frente04 conectar eventos/ações CRM e Inbox aos ports públicos. Depois, executar build e teste visual conjunto.
 
 ---
 
@@ -80,7 +81,7 @@ Use esta seção quando uma frente precisar que outra altere um arquivo ou contr
 - Data/hora: 16/09/2026 12:10 BRT
 - Origem: Frente05
 - Destino: Frente04
-- Necessidade: consumir `salesBotCommandPort`/`aiAgentCommandPort` pela Inbox e emitir eventos CRM conforme `CrmAutomationEvent` para Automatize.
+- Necessidade: consumir `createSalesBotCommandPort`/`AIAgentCommandPort` pela Inbox e emitir eventos CRM conforme `CrmAutomationEvent` para `processCrmAutomationEvent`.
 - Arquivo/contrato afetado: `src/features/automations/contracts.ts` e `src/features/automations/index.ts`.
 - Motivo: integração ponta a ponta CRM/Inbox ↔ automações/SalesBot/IA sem acoplamento.
 - Urgência: alta para integração final.
@@ -89,9 +90,9 @@ Use esta seção quando uma frente precisar que outra altere um arquivo ou contr
 - Data/hora: 16/09/2026 12:24 BRT
 - Origem: Frente05
 - Destino: Frente01
-- Necessidade: implementar cofre/backend seguro compatível com `AICredentialVaultPort` e injetá-lo em `Front05Workspace`.
-- Arquivo/contrato afetado: `src/features/integrations/aiCredentialPort.ts` e API pública `src/features/automations/index.ts`; backend/persistência segura da Frente01.
-- Motivo: permitir que o administrador cole a chave API do provedor escolhido sem armazenar segredo no navegador, GitHub ou documentação.
+- Necessidade: implementar backend/cofre seguro compatível com `AICredentialVaultPort` e `AICredentialResolverPort`; injetar o vault na UI e usar o resolvedor no runtime server-side criado pela F05.
+- Arquivo/contrato afetado: `src/features/integrations/aiCredentialPort.ts`, `src/features/integrations/aiCredentialResolverPort.ts`, `src/features/integrations/providerRuntime.ts` e API pública `src/features/automations/index.ts`.
+- Motivo: permitir que o administrador cole a chave API do provedor escolhido sem armazenar segredo no navegador/GitHub e permitir que o backend resolva `secretRef` somente no momento da chamada ao modelo.
 - Urgência: alta antes de conectar provedor IA real.
 - Status: PENDENTE
 
@@ -109,6 +110,8 @@ Registrar aqui somente itens que dependem de merge ou decisão entre duas ou mai
 - Integrar eventos CRM da Frente04 com Automatize da Frente05.
 - Montar `Front05Workspace` no shell/roteador da Frente01.
 - Implementar e injetar cofre seguro de credenciais IA pelo contrato `AICredentialVaultPort`.
+- Implementar resolvedor server-side de `secretRef` pelo contrato `AICredentialResolverPort`.
+- Executar build/teste visual conjunto após montagem das frentes.
 - Conectar WhatsApp e Meta somente na fase final.
 
 ---
