@@ -3,239 +3,220 @@
 Data: 16/09/2026
 Branch: `frente-05`
 
-Este documento registra somente verificações realmente executadas para a Frente05. Não substitui o build/E2E integrado da plataforma.
+Este documento registra somente verificações realmente executadas. Não substitui build/E2E autenticado do produto consolidado.
 
-## 1. SalesBot — runtime
+## 1. SalesBot — runtime e command port
 
-Status: OK em teste isolado.
+Status: 🟢 OK em testes isolados.
 
-Cenários executados em ambiente isolado com dependências controladas:
+Validado:
 
-- fluxo com `delay` pausa após o agendamento;
-- `resumeMode=next_block` retoma no bloco posterior ao `delay`;
-- o mesmo `delay` não é agendado duas vezes na retomada;
-- ação externa `not_configured` pausa com `resumeMode=retry_current`;
-- após disponibilizar a dependência, a retomada repete somente o bloco pendente e conclui;
-- TypeScript do núcleo usado no teste: OK.
+- `delay` pausa a execução;
+- `resumeMode=next_block` retoma após o delay sem reagendar o mesmo bloco;
+- dependência `not_configured` pausa com `retry_current`;
+- retomada repete somente o bloco pendente;
+- `start()` cria execução;
+- `resume()` continua execução pausada;
+- encadeamento usa o mesmo factory de command port;
+- erros não são mascarados como sucesso.
 
-## 2. SalesBot — command port
+## 2. Contexto de retomada e encadeamento
 
-Status: OK em teste isolado.
+Status: 🟢 OK em harness isolado executado em 16/09/2026.
 
-- `start()` cria execução e chama o runtime;
-- fluxo em espera retorna `accepted` com estado `paused`;
-- `resume()` continua a execução;
-- dependência ausente retorna `not_configured` sem fingir sucesso;
-- após disponibilizar a dependência, `resume()` conclui;
-- encadeamento usa o factory `createSalesBotCommandPort`.
+Código testado: `runtimePorts.ts`, contrato atual de `runtime.ts` e repositório de execuções com dependências controladas.
 
-## 3. Automatize — motor de eventos
+Cenário 1 — pausa/recriação/retomada:
 
-Status: OK em teste isolado.
+- `start()` recebeu contexto inicial;
+- contexto foi persistido junto da execução pausada;
+- command port foi recriado;
+- `resume()` recuperou contexto anterior;
+- contexto novo sobrescreveu somente chaves novas/alteradas;
+- `leadId` e `conversationId` permaneceram canônicos;
+- bloco posterior ao delay recebeu o contexto mesclado;
+- ao concluir, `runtimeContext` foi removido do log.
 
-- evento correto + condição verdadeira executa ações em ordem;
+Resultado: `F05_CONTEXT_RESUME_TEST_OK`.
+
+Cenário 2 — SalesBot A → SalesBot B:
+
+- A chamou B por `chain_flow`;
+- B recebeu o mesmo payload operacional;
+- `leadId` e `conversationId` foram preservados.
+
+Resultado: `F05_CHAIN_CONTEXT_TEST_OK`.
+
+## 3. Automatize
+
+Status: 🟢 OK em teste isolado.
+
+- evento + condição verdadeira executa ações em ordem;
 - condição falsa não executa ações;
-- dependência ausente retorna estado real;
-- sequência para em `not_configured` ou `rejected`, evitando estado parcial.
+- `not_configured`/`rejected` interrompem sequência para evitar estado parcial;
+- referências de SalesBot/agente são validadas.
 
-## 4. Provedores de IA — adaptadores
+## 4. Integridade de referências
 
-Status: OK em testes isolados. Chamada real com chave de cliente: NÃO EXECUTADA.
+Status: 🟢 OK em testes controlados.
 
-- OpenAI/OpenAI-Codex: Bearer + Responses API;
-- Anthropic/Claude: `x-api-key` + `anthropic-version` + Messages API;
-- Google Gemini: `x-goog-api-key` + Interactions API;
-- customizado: endpoint configurável;
-- extração de texto testada com respostas controladas.
+- SalesBot referenciado não pode ser excluído;
+- agente IA referenciado não pode ser excluído;
+- provedor usado por agente não pode ser excluído;
+- recurso ativo não pode ser pausado/desativado quando recurso ativo depende dele;
+- ciclos A→B→A em SalesBots são detectados;
+- autoencadeamento é bloqueado.
 
-## 5. Agente IA — runtime isolado
+Resultado registrado anteriormente: `F05 reference-integrity/cycle tests: OK`.
 
-Status: OK em teste isolado.
+## 5. Provedores e runtime IA
 
-- `secretRef` chega ao resolvedor server-side;
-- chave bruta só é resolvida no backend;
-- resultado retorna pelo `AIAgentCommandPort`;
-- execução conclui como `completed` quando o runtime conclui;
-- `not_configured` é propagado;
-- log não persiste prompt nem resposta.
+Status: 🟢 estrutural/isolado; 🟠 chamada real depende de credencial real.
 
-## 6. Cofre real Supabase / Vault
+Validado com respostas controladas:
 
-Status: OK no backend real da Hárpia.
+- OpenAI/OpenAI-Codex;
+- Anthropic/Claude;
+- Google Gemini;
+- customizado;
+- resolução de `secretRef` somente no backend;
+- logs de IA não persistem prompt/resposta.
 
-Projeto: Supabase `Harpia Patrimonial`, ref `desxomqvtjaymwwxivwq`.
+Runtime integrado da F01 usa `ai-model-invoke`.
 
-Verificações executadas durante a implementação:
+## 6. Cofre Supabase/Vault
 
-- armazenamento de segredo em Supabase Vault;
-- round-trip real salvar -> resolver por `secretRef` -> remover;
+Status: 🟢 backend real validado.
+
+Projeto: `desxomqvtjaymwwxivwq`.
+
+Validado:
+
+- salvar segredo;
+- resolver por `secretRef`;
+- remover segredo;
 - segredo de teste removido ao final;
-- caminho canônico atual consolidado pela Frente01: Edge Function `ai-credential-vault` + `private.ai_credential_refs` + RPCs `admin_store_ai_credential`, `admin_delete_ai_credential`, `admin_resolve_ai_credential`;
-- o browser não recebe a chave bruta.
+- browser não recebe chave bruta;
+- caminho canônico atual: `ai-credential-vault` + `private.ai_credential_refs` + Supabase Vault.
 
-A função anterior `ai-credentials` existiu durante a integração, mas não é mais o caminho canônico da aplicação.
+## 7. Consistência perfil IA ↔ Vault
 
-## 7. Runtime IA server-side integrado
+Status: 🟢 em testes controlados; 🟠 E2E autenticado ainda pendente.
 
-Status: ESTRUTURA ATIVA. CHAMADA REAL A PROVEDOR: PENDENTE.
+Validado:
 
-Confirmado na composição da Frente01:
+- primeira chave só fica configurada após persistência confirmada do perfil;
+- falha de persistência aciona compensação no Vault;
+- atualização de chave preserva `secretRef` existente quando aplicável;
+- remoção confirma perfil antes de apagar segredo;
+- falha de remoção restaura perfil anterior;
+- exclusão de perfil é revertida se limpeza do Vault falhar.
 
-- Edge Function canônica `ai-model-invoke`;
-- adapter seguro `SupabaseAIModelRuntime`;
-- `createAIAgentCommandPort` usa esse runtime;
-- SalesBot usa o mesmo command port de IA;
-- perfil e credencial são resolvidos no backend;
-- executor suporta OpenAI/Codex, Anthropic/Claude, Gemini e customizado;
-- endpoint customizado exige HTTPS e bloqueia hosts locais/privados conhecidos.
+Resultado: `F05 credential/profile consistency tests: OK`.
 
-Não foi executada chamada real porque não há API key real cadastrada.
+## 8. Storage compartilhado / multiusuário
 
-## 8. Estado compartilhado F05 / Supabase
+Status: 🟢 em backend e testes controlados; 🟠 browser autenticado pendente.
 
-Status: BACKEND REAL VALIDADO SEM CRIAR DADO FICTÍCIO.
+Validado:
 
-Verificações executadas em 16/09/2026:
+- sete coleções estruturais F05 existem sem dados operacionais fictícios;
+- optimistic locking por revisão;
+- rollback por geração;
+- refresh remoto invalida rollback atrasado;
+- `writeStoredListConfirmed(...)` confirma/rejeita mutações críticas;
+- listeners atualizam SalesBot, Automatize, Agentes, Integrações e Execuções;
+- RLS/default-deny verificados;
+- Security Advisor já foi validado com 0 lints após hardening.
 
-- `public.f05_shared_storage` contém exatamente as sete chaves estruturais esperadas;
-- SalesBots = 0 itens / revisão 0;
-- execuções SalesBot = 0 itens / revisão 0;
-- Automatize = 0 itens / revisão 0;
-- agentes IA = 0 itens / revisão 0;
-- execuções IA = 0 itens / revisão 0;
-- perfis de provedor = 0 itens / revisão 0;
-- integrações = 0 itens / revisão 0;
-- `anon` não possui SELECT na tabela e a consulta como role `anon` foi recusada;
-- role `authenticated` sem identidade/JWT válida visualizou 0 linhas por RLS;
-- `anon` não possui EXECUTE em `save_f05_shared_storage`;
-- `authenticated` possui EXECUTE no RPC, sujeito às policies/permissões;
-- desenho final: `SECURITY INVOKER` + policy RLS `f05_shared_storage_update`;
-- Security Advisor após a convergência: 0 lints.
+Resultados:
 
-## 9. Sincronização de UI / falha de persistência
+- `F05 storage race/rollback tests: OK`;
+- `F05 confirmed-write tests: OK`.
 
-Status: IMPLEMENTADA E TESTADA EM CORRIDA CONTROLADA; E2E BROWSER/SUPABASE AINDA PENDENTE.
+## 9. URLs externas / webhook
 
-Implementado nesta rodada:
+Status: 🟢 F05; 🟢 hardening correspondente no worker F01.
 
-- hidratação compartilhada dispara atualização dos workspaces;
-- confirmação de escrita dispara atualização da UI;
-- erro de persistência dispara rollback em memória;
-- rollback só ocorre se a escrita rejeitada ainda for a geração mais recente daquela chave;
-- `replaceStoredListFromRemote(...)` restaura snapshot autoritativo vindo do backend e invalida rollbacks antigos;
-- `writeStoredListConfirmed(...)` aguarda confirmação/rejeição real do backend para mutações críticas;
-- SalesBot, Automatize, Agentes IA, Provedores/Integrações e Execuções escutam eventos de storage compartilhado;
-- contrato alinhado ao adapter `sharedF05Storage` da Frente01.
+Validado/bloqueado:
 
-Testes controlados realmente executados:
+- HTTPS obrigatório;
+- localhost e hosts `.local`;
+- IPv4 privada/link-local;
+- CGNAT `100.64.0.0/10`;
+- IPv6 local/privado literal;
+- métodos fora do conjunto permitido;
+- worker server-side recusa redirects externos.
 
-- duas escritas locais consecutivas + refresh remoto autoritativo + duas rejeições atrasadas => snapshot remoto permaneceu intacto;
-- uma escrita isolada rejeitada => rollback voltou ao valor anterior;
-- escrita confirmada com backend aceitando => Promise concluiu e estado permaneceu;
-- escrita confirmada com backend rejeitando => Promise rejeitou e estado voltou ao anterior;
-- refresh remoto durante escrita confirmada + falha atrasada => snapshot remoto permaneceu autoritativo;
-- resultados: `F05 storage race/rollback tests: OK` e `F05 confirmed-write tests: OK`.
-
-Ainda falta validar esse comportamento dentro do browser autenticado do produto consolidado.
+Resultado anterior: `F05 outbound URL validation tests: OK`.
 
 ## 10. RBAC Frente01 ↔ Frente05
 
-Status: NÚCLEO F05 ENDURECIDO; DESVIO AINDA EXISTE NO INTEGRADOR F01.
+Status: 🟢 estruturalmente RESOLVIDO na F01; 🟠 E2E com usuários reais pendente.
 
-A F05 suporta:
+Confirmado na branch F01:
 
-- `salesbot.view` / `salesbot.manage`;
-- `automations.view` / `automations.manage`;
-- `ai.view` / `ai.manage`;
-- `integrations.view` / `integrations.manage`;
-- modo leitura quando existe `view` sem `manage`;
-- `manage` implica `view` no mapeamento interno, evitando esconder módulo de um gerente que recebeu apenas a permissão de gestão.
+- rotas SalesBot aceitam `salesbot.view OR salesbot.manage`;
+- Automatize aceita `automations.view OR automations.manage`;
+- Agentes IA aceita `ai.view OR ai.manage`;
+- Integrações aceita `integrations.view OR integrations.manage`;
+- `canManage` é passado explicitamente;
+- F05 continua default-deny quando acesso não é informado.
 
-Hardening aplicado na branch F05:
+## 11. Integração CRM/Inbox
 
-- `Front05Workspace` usa `NO_FRONT05_ACCESS` quando `access` não é informado;
-- SalesBot, Automatize, Agentes IA, Integrações, Provedores IA e Execuções usam `canManage=false` por padrão;
-- `FULL_FRONT05_ACCESS` continua disponível apenas para uso explícito em harness standalone/QA;
-- omissão de props de autorização nunca concede edição por acidente.
+Status: 🟢 estrutural; 🟠 E2E real pendente.
 
-QA da branch `frente-01` encontrou:
+Confirmado:
 
-- SalesBot/Automatize/Agentes/Integrações ainda estão protegidos por `*.manage` na rota, portanto `*.view` sozinho não abre a tela;
-- workspaces integrados são montados sem `canManage` explícito;
-- após sincronizar o novo default-deny da F05, a F01 precisa passar `canManage={auth.hasPermission(...manage)}` para que administradores editem e viewers permaneçam somente leitura.
+- CRM → Automatize;
+- ações CRM usadas por SalesBot/Automatize;
+- Inbox → command ports SalesBot/IA;
+- condição e webhook ligados ao runtime interno;
+- contexto de SalesBot agora sobrevive a pausa/recriação/retomada;
+- canais de mensagem não fingem conexão real.
 
-Correção necessária na F01 está documentada em `docs/frentes/FRENTE-05-INTEGRACAO-F01.md`.
+## 12. Worker server-side de automações
 
-## 11. Integração CRM / Inbox / Automatize
+Status: 🟠 parcial.
 
-Status: ESTRUTURALMENTE CONECTADA NA FRENTE01; E2E COM RECURSO REAL PENDENTE.
+O worker atual da F01 executa:
 
-Confirmado na composição atual da Frente01:
+- CRM: conectado;
+- webhook: conectado;
+- `start_salesbot`: `not_configured`;
+- `invoke_ai`: `not_configured`.
 
-- `Front05CrmEventSink` recebe eventos do `CrmService`;
-- Automatize recebe ações CRM;
-- SalesBot recebe ações CRM;
-- SalesBot recebe avaliador de condição;
-- SalesBot e Automatize recebem executor de webhook;
-- Inbox usa adapter F04↔F05;
-- seleção de SalesBot/agente continua explícita por conversa;
-- canal de mensagem real permanece não conectado, sem envio fictício.
+Consequência: automação originada no outbox server-side ainda não é ponta a ponta para SalesBot/IA. O runtime interno/browser já possui esses dois recursos conectados.
 
-## 12. Usuários temporários de QA
+## 13. Usuários temporários de QA
 
-Status: AUTORIZADOS PELO RESPONSÁVEL DO PROJETO; CRIAÇÃO BLOQUEADA PELA FERRAMENTA DESTA SESSÃO.
+Status: 🟠 autorizados, ainda inexistentes.
 
-Autorização recebida em 16/09/2026 para criar:
+Autorizado criar:
 
-- um administrador interno temporário de QA;
-- um usuário interno temporário com permissões restritas para testar `view` sem `manage`;
-- ambos devem ser excluídos ao término dos testes.
+- 1 admin interno temporário;
+- 1 viewer interno temporário com `*.view` sem `*.manage`;
+- excluir ambos após QA.
 
-Limitação desta sessão:
+Última conferência real nesta rodada:
 
-- o conector Supabase bloqueou operações que criam credenciais/Auth;
-- o runtime local não possui resolução de rede para chamar o endpoint público do Supabase Auth;
-- não foi feito bypass por insert direto em `auth.users`.
+- `auth.users = 0`;
+- usuários internos ativos = 0.
 
-Estado real conferido após a tentativa: `auth.users = 0`; nenhum usuário de QA foi criado.
+A sessão F05 não possui caminho seguro para criar Auth e não fez bypass direto em `auth.users`.
 
-## 13. Consistência perfil IA ↔ Vault
+## 14. Ainda não verificado
 
-Status: PROTEÇÕES IMPLEMENTADAS; FLUXO DE COMPENSAÇÃO TESTADO COM DEPENDÊNCIAS CONTROLADAS.
+Não marcar como verde final:
 
-Implementado:
-
-- metadados críticos de credencial usam `updateAIProviderProfileConfirmed(...)`;
-- primeira chave só fica marcada como configurada depois da persistência confirmada do perfil;
-- se essa persistência falhar, a UI tenta remover do Vault a credencial recém-criada;
-- atualização de uma chave já configurada preserva o mesmo `secretRef` do Vault e não cria referência paralela;
-- remoção de chave primeiro confirma o perfil sem `secretRef`; depois remove do Vault;
-- se o Vault falhar na remoção, o perfil anterior é restaurado com escrita confirmada;
-- exclusão de perfil usa escrita confirmada; se a limpeza do Vault falhar, o perfil é restaurado;
-- perfil não pode ser excluído enquanto qualquer agente o referencia;
-- chave não pode ser removida nem perfil `ready` desativado enquanto houver agente ativo usando-o;
-- UI mostra quais agentes dependem do perfil.
-
-Teste controlado realmente executado:
-
-- primeira configuração + falha ao persistir perfil => limpeza compensatória do segredo chamada;
-- substituição de chave com mesmo `secretRef` => não executa segunda escrita desnecessária do perfil;
-- remoção do Vault falha após perfil ter sido atualizado => perfil anterior é restaurado;
-- resultado: `F05 credential/profile consistency tests: OK`.
-
-E2E real pela Edge Function/Vault continua dependente de usuário autenticado de QA.
-
-## 14. Não verificado ainda
-
-Não tratar como concluído:
-
-- build Vite/typecheck do produto consolidado;
-- navegação visual/E2E autenticado dos módulos F05;
-- RBAC `view/manage` corrigido no integrador F01 e validado com usuários reais;
-- persistência/rollback testados pelo browser autenticado;
-- salvar/remover API key real pela tela;
-- chamada real OpenAI/Anthropic/Gemini com credencial do cliente;
-- execução ponta a ponta Inbox/CRM → SalesBot/IA com recurso real configurado;
-- `delay` com agendador durável de produção;
-- envio de mensagem por WhatsApp;
+- build Vite/typecheck consolidado;
+- navegação visual autenticada;
+- E2E RBAC admin/viewer;
+- persistência/concorrência via browser autenticado;
+- cofre pela UI autenticada;
+- chamada real a provedor IA com chave real;
+- outbox server-side → SalesBot/IA;
+- agendador durável de produção para `delay`;
+- WhatsApp real;
 - Meta real.
