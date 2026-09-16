@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ClientAreaDataState, ClientAreaDataView } from './ClientArea';
 
 export interface ClientAreaDataSourcePort {
@@ -18,8 +18,11 @@ export function useClientAreaData(options: {
 }): ClientAreaDataState & { reload: () => Promise<void> } {
   const { clientId, source } = options;
   const [state, setState] = useState<ClientAreaDataState>({ data: emptyData });
+  const requestVersionRef = useRef(0);
 
   const reload = useCallback(async () => {
+    const requestVersion = ++requestVersionRef.current;
+
     if (!clientId || !source) {
       setState({ data: emptyData });
       return;
@@ -28,8 +31,10 @@ export function useClientAreaData(options: {
     setState((current) => ({ ...current, loading: true, error: '' }));
     try {
       const data = await source.load(clientId);
+      if (requestVersion !== requestVersionRef.current) return;
       setState({ data, loading: false, error: '' });
     } catch (cause) {
+      if (requestVersion !== requestVersionRef.current) return;
       setState({
         data: emptyData,
         loading: false,
