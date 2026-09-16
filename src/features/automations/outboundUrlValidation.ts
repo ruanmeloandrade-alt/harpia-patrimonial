@@ -1,23 +1,39 @@
-const normalizeHostname = (hostname: string) => hostname.toLowerCase().replace(/^\[/, '').replace(/\]$/, '');
+const normalizeHostname = (hostname: string) => hostname.trim().toLowerCase().replace(/^\[/, '').replace(/\]$/, '').replace(/\.$/, '');
 
-function isPrivateIpv4(hostname: string) {
+function isIpv4(hostname: string) {
   const parts = hostname.split('.').map(Number);
-  if (parts.length !== 4 || parts.some((part) => !Number.isInteger(part) || part < 0 || part > 255)) return false;
-  if (parts[0] === 0 || parts[0] === 10 || parts[0] === 127) return true;
-  if (parts[0] === 169 && parts[1] === 254) return true;
-  if (parts[0] === 172 && parts[1] >= 16 && parts[1] <= 31) return true;
-  if (parts[0] === 192 && parts[1] === 168) return true;
-  if (parts[0] === 100 && parts[1] >= 64 && parts[1] <= 127) return true;
+  return parts.length === 4 && parts.every((part) => Number.isInteger(part) && part >= 0 && part <= 255);
+}
+
+function isPrivateOrReservedIpv4(hostname: string) {
+  const parts = hostname.split('.').map(Number);
+  if (!isIpv4(hostname)) return false;
+  const [a, b, c] = parts;
+  if (a === 0 || a === 10 || a === 127) return true;
+  if (a === 100 && b >= 64 && b <= 127) return true;
+  if (a === 169 && b === 254) return true;
+  if (a === 172 && b >= 16 && b <= 31) return true;
+  if (a === 192 && b === 168) return true;
+  if (a === 192 && b === 0 && c === 0) return true;
+  if (a === 192 && b === 0 && c === 2) return true;
+  if (a === 198 && (b === 18 || b === 19)) return true;
+  if (a === 198 && b === 51 && c === 100) return true;
+  if (a === 203 && b === 0 && c === 113) return true;
+  if (a >= 224) return true;
   return false;
 }
 
-function isPrivateIpv6(hostname: string) {
+function isPrivateOrReservedIpv6(hostname: string) {
   const host = normalizeHostname(hostname);
-  return host === '::1'
-    || host === '::'
-    || host.startsWith('fc')
-    || host.startsWith('fd')
-    || host.startsWith('fe80:');
+  if (!host.includes(':')) return false;
+  if (host === '::1' || host === '::') return true;
+  if (host.startsWith('fc') || host.startsWith('fd')) return true;
+  if (/^fe[89ab]/.test(host)) return true;
+  if (host.startsWith('ff')) return true;
+  if (host.startsWith('2001:db8:') || host === '2001:db8::') return true;
+
+  const mapped = host.match(/^::ffff:(\d{1,3}(?:\.\d{1,3}){3})$/);
+  return mapped ? isPrivateOrReservedIpv4(mapped[1]) : false;
 }
 
 export function validateSafeOutboundUrl(raw: string): string | null {
@@ -29,6 +45,7 @@ export function validateSafeOutboundUrl(raw: string): string | null {
   }
 
   if (url.protocol !== 'https:') return 'endpoint precisa usar HTTPS.';
+  if (url.username || url.password) return 'credenciais embutidas na URL não são permitidas.';
 
   const hostname = normalizeHostname(url.hostname);
   if (!hostname) return 'endpoint sem host.';
@@ -36,10 +53,10 @@ export function validateSafeOutboundUrl(raw: string): string | null {
     hostname === 'localhost'
     || hostname.endsWith('.localhost')
     || hostname.endsWith('.local')
-    || isPrivateIpv4(hostname)
-    || isPrivateIpv6(hostname)
+    || isPrivateOrReservedIpv4(hostname)
+    || isPrivateOrReservedIpv6(hostname)
   ) {
-    return 'endpoint local/privado não é permitido.';
+    return 'endpoint local/privado/reservado não é permitido.';
   }
 
   return null;
