@@ -4,6 +4,7 @@ import { BrowserCrmRepository } from './repository';
 import { CrmService } from './service';
 import { CrmWorkspace } from './CrmWorkspace';
 import type { AssigneeOption } from './CrmWorkspace';
+import { UnassignedLeadsQueue } from './UnassignedLeadsQueue';
 import { InboxWorkspace } from '../inbox/InboxWorkspace';
 import { BrowserInboxRepository } from '../inbox/repository';
 import { InboxService } from '../inbox/service';
@@ -18,6 +19,7 @@ export function Front04Workspace({ assignees = [], automationPort }: Front04Work
   const crmService = useMemo(() => new CrmService(new BrowserCrmRepository()), []);
   const inboxService = useMemo(() => new InboxService(new BrowserInboxRepository()), []);
   const [view, setView] = useState<'crm' | 'inbox'>('crm');
+  const [crmRevision, setCrmRevision] = useState(0);
 
   return (
     <div>
@@ -50,7 +52,17 @@ export function Front04Workspace({ assignees = [], automationPort }: Front04Work
       </nav>
 
       {view === 'crm' ? (
-        <CrmWorkspace service={crmService} assignees={assignees} />
+        <>
+          <UnassignedLeadsQueue
+            service={crmService}
+            onChanged={() => setCrmRevision((value) => value + 1)}
+          />
+          <CrmWorkspace
+            key={crmRevision}
+            service={crmService}
+            assignees={assignees}
+          />
+        </>
       ) : (
         <InboxWorkspace
           crmService={crmService}
