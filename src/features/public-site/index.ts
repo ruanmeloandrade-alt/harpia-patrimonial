@@ -21,6 +21,13 @@ export {
   type Front03PublicCatalogServicePort,
   type Front03PublishedItem,
 } from '../public-catalog/front03Adapter';
+export {
+  createFront04ConversionHandler,
+  type Front04LeadConversionEventPort,
+  type Front04LeadConversionIngestPort,
+  type Front04LeadConversionResultPort,
+  type PublicConversionHandlingResult,
+} from './front04ConversionAdapter';
 
 /**
  * Rotas de propriedade da Frente02. O roteador global pertence à Frente01;
