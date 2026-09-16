@@ -5,7 +5,7 @@ import { AIAgentsWorkspace } from '../ai-agents/AIAgentsWorkspace';
 import type { AICredentialVaultPort } from '../integrations/aiCredentialPort';
 import { IntegrationsWorkspace } from '../integrations/IntegrationsWorkspace';
 import { AutomationsWorkspace } from './AutomationsWorkspace';
-import { FULL_FRONT05_ACCESS, type Front05Access } from './front05Access';
+import { NO_FRONT05_ACCESS, type Front05Access } from './front05Access';
 import './front05.css';
 import './front05-rbac.css';
 
@@ -27,7 +27,7 @@ interface Front05WorkspaceProps {
 
 export function Front05Workspace({
   credentialVault,
-  access = FULL_FRONT05_ACCESS,
+  access = NO_FRONT05_ACCESS,
   initialTab = 'salesbot',
 }: Front05WorkspaceProps) {
   const visibleTabs = TABS.filter((item) => {
