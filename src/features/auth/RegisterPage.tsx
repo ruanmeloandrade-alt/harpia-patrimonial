@@ -24,7 +24,7 @@ export function RegisterPage() {
     setBusy(false);
     if (!result.ok) return setError(result.message || 'Não foi possível criar sua conta.');
     if (result.needsEmailConfirmation) return setMessage(result.message || 'Confirme seu e-mail para continuar.');
-    navigate('/conta', { replace: true });
+    navigate('/cliente', { replace: true });
   }
 
   return (
