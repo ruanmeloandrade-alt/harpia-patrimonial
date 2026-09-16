@@ -19,6 +19,18 @@ export async function listInternalUsers() {
   return (data ?? []) as InternalUserRow[];
 }
 
+export async function updateInternalUser(userId: string, input: { fullName: string; whatsapp?: string }) {
+  const fullName = input.fullName.trim();
+  if (!fullName) throw new Error('O nome do usuário é obrigatório.');
+  const supabase = requireSupabase();
+  const { error } = await supabase
+    .from('user_profiles')
+    .update({ full_name: fullName, whatsapp: input.whatsapp?.trim() || null })
+    .eq('id', userId)
+    .eq('account_type', 'internal');
+  if (error) throw error;
+}
+
 export async function setInternalUserActive(userId: string, isActive: boolean) {
   const supabase = requireSupabase();
   const { error } = await supabase.from('user_profiles').update({ is_active: isActive }).eq('id', userId).eq('account_type', 'internal');
