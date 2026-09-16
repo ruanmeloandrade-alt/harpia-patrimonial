@@ -1,0 +1,40 @@
+.f03-workspace {
+  min-height: 100%;
+}
+
+.f03-workspace-nav {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  gap: 8px;
+  width: min(1500px, calc(100% - 40px));
+  margin: 0 auto;
+  padding: 14px 0;
+  background: rgba(250, 251, 250, .94);
+  backdrop-filter: blur(14px);
+}
+
+.f03-workspace-nav button {
+  border: 1px solid #dfe5e1;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #47554f;
+  padding: 9px 14px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.f03-workspace-nav button[aria-selected='true'] {
+  border-color: #234b3d;
+  background: #234b3d;
+  color: #ffffff;
+}
+
+@media (max-width: 760px) {
+  .f03-workspace-nav {
+    width: min(100% - 24px, 1500px);
+  }
+}
