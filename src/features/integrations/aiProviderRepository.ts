@@ -1,4 +1,5 @@
 import { createF05Id, readStoredList, writeStoredList, writeStoredListConfirmed } from '../automations/f05Storage';
+import { validateSafeOutboundUrl } from '../automations/outboundUrlValidation';
 import { findActiveAIProviderReferences, findAIProviderReferences, formatF05References } from '../automations/referenceIntegrity';
 import type { AIProviderKind, AIProviderProfile, AIProviderProfileStatus } from './aiProviderTypes';
 
@@ -32,6 +33,10 @@ export function validateAIProviderProfile(profile: AIProviderProfile): string[] 
   if (!profile.name.trim()) issues.push('Nome do perfil é obrigatório.');
   if (!profile.model.trim()) issues.push('Modelo é obrigatório.');
   if (profile.provider === 'custom' && !profile.baseUrl.trim()) issues.push('Endpoint é obrigatório para provedor customizado.');
+  if (profile.baseUrl.trim()) {
+    const endpointIssue = validateSafeOutboundUrl(profile.baseUrl.trim());
+    if (endpointIssue) issues.push(`Endpoint do provedor: ${endpointIssue}`);
+  }
   if (!profile.apiKeyConfigured || !profile.secretRef) issues.push('Chave API ainda não foi configurada em cofre seguro.');
   return issues;
 }
