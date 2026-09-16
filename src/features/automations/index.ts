@@ -1,5 +1,5 @@
 export { Front05Workspace } from './Front05Workspace';
-export { salesBotCommandPort, aiAgentCommandPort } from './runtimePorts';
+export { salesBotCommandPort, aiAgentCommandPort, createSalesBotCommandPort } from './runtimePorts';
 export { processCrmAutomationEvent, unconfiguredAutomationEngineDependencies } from './engine';
 export type {
   AutomationActionReport,
