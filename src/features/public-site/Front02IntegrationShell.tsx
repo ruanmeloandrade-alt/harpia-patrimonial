@@ -51,9 +51,10 @@ function ComposedExperience(props: ComposedExperienceProps) {
       ? createFront04ConversionHandler({
           ingest: props.crmIngest,
           getCurrentClient: () => authBridge.currentClient,
+          getCurrentClientId: () => props.clientId,
         })
       : undefined,
-    [authBridge, props.crmIngest],
+    [authBridge, props.clientId, props.crmIngest],
   );
 
   const whatsapp = useMemo(
