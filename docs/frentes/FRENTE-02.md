@@ -221,12 +221,12 @@ Se uma dependência ainda não estiver integrada, usar contrato/interface clara 
 
 ## Handoff obrigatório ao terminar
 
-- Status:
-- Commit final:
-- O que foi entregue:
-- O que ficou pendente:
-- Dependências ainda não integradas:
-- Rotas/páginas adicionadas:
-- Contratos consumidos:
-- Riscos conhecidos:
-- Instruções para o chat de integração:
+- **Status:** BLOQUEADA PARA INTEGRAÇÃO / VALIDAÇÃO REAL. O código independente conhecido da Frente02 foi esgotado; ainda não é correto marcar `PRONTA PARA INTEGRAÇÃO` porque build, E2E e visual do produto conjunto não foram executados.
+- **Commit funcional final conhecido:** `5135c8aa2a33fb3da75036e0abaf46e850ccd170` (`[F02] catalogo: consumir tipologia real da frente03`). Depois dele existem apenas hardenings/documentação da própria frente.
+- **O que foi entregue:** home pública; busca rápida; páginas institucionais; catálogo e filtros; query compartilhável/sanitizada; detalhe de imóvel; tipologia real; relação unidade/empreendimento; serviços relacionados; retenção; vender/alugar; área do cliente; favoritos; interesses/histórico; loading/erro/retry; menu desktop/mobile; Minha conta; acessibilidade; metadados; adapters F01/F03/F04; bloqueio de conversão sem contato; pipeline CRM → WhatsApp; validação de telefone; `Front02IntegrationShell`; handoff detalhado em `FRENTE-02-INTEGRACAO.md`.
+- **O que ficou pendente:** build/typecheck/E2E integrado; validação visual desktop/mobile; persistência real compartilhada de favoritos; dados persistidos reais de interesses/histórico; montagem no roteador/bootstrap; configuração do telefone oficial e execução real do WhatsApp.
+- **Dependências ainda não integradas:** F01 para roteador/auth/bootstrap e persistência compartilhada; F03 para instância real do catálogo publicado; F04 para instância real do CRM e eventual fonte de histórico/interesses; configuração final para WhatsApp.
+- **Rotas/páginas adicionadas:** `/`, `/sobre`, `/investimentos`, `/leiloes`, `/assessoria-juridica`, `/arquitetura`, `/imoveis`, `/imoveis/:slug`, `/vender`, `/alugar`, `/cliente`.
+- **Contratos consumidos:** `Front01AuthContextPort`; `Front03PublicCatalogServicePort`; `Front04LeadConversionIngestPort`; `PublicFavoritesStorePort`; `ClientAreaDataSourcePort`; configuração de telefone para `createWhatsAppContinuation`.
+- **Riscos conhecidos:** nenhum item integrado foi executado ponta a ponta ainda; o projeto exige Node `>=24 <25`; favoritos ainda dependem de store/RLS real; rotas públicas ainda precisam ser montadas pelo owner global; o WhatsApp não deve ser configurado com número fictício; qualquer regressão visual só pode ser confirmada após execução real.
+- **Instruções para o chat de integração:** preferir `Front02IntegrationShell`; preservar rotas de Auth/Internal da F01; injetar serviços reais em vez de duplicar domínios; manter CRM antes de WhatsApp; não avançar sem contato válido; não criar `localStorage` definitivo para favoritos; executar build/typecheck/E2E e teste visual real antes de promover o status. Consultar `docs/frentes/FRENTE-02-INTEGRACAO.md` e `docs/frentes/FRENTE-02-STATUS.md`.
