@@ -1,3 +1,4 @@
+import { validateOutboundWebhookMethod, validateSafeOutboundUrl } from '../automations/outboundUrlValidation';
 import type { SalesBotBlock, SalesBotDefinition } from './types';
 
 const requiredByType: Partial<Record<SalesBotBlock['type'], string[]>> = {
@@ -22,10 +23,27 @@ const hasValue = (value: unknown) => {
   return true;
 };
 
+const CONDITION_PATH = '[\\p{L}\\p{N}_.-]+';
+const conditionExistsPrefix = new RegExp(`^exists\\s+${CONDITION_PATH}$`, 'iu');
+const conditionExistsSuffix = new RegExp(`^${CONDITION_PATH}\\s+exists$`, 'iu');
+const conditionComparison = new RegExp(`^${CONDITION_PATH}\\s*(contains|==|!=|>=|<=|=|>|<)\\s*.+$`, 'iu');
+
+export function validateSalesBotConditionExpression(expression: string): boolean {
+  const value = expression.trim();
+  return conditionExistsPrefix.test(value) || conditionExistsSuffix.test(value) || conditionComparison.test(value);
+}
+
 export function validateSalesBotBlock(block: SalesBotBlock): string[] {
   const issues: string[] = [];
   for (const key of requiredByType[block.type] ?? []) {
     if (!hasValue(block.config[key])) issues.push(`${block.label}: preencha ${key}.`);
+  }
+
+  if (block.type === 'condition') {
+    const expression = String(block.config.expression ?? '').trim();
+    if (expression && !validateSalesBotConditionExpression(expression)) {
+      issues.push(`${block.label}: condição inválida. Use campo = valor, !=, >, >=, <, <=, contains ou exists campo.`);
+    }
   }
 
   if (block.type === 'tag') {
@@ -38,13 +56,11 @@ export function validateSalesBotBlock(block: SalesBotBlock): string[] {
   if (block.type === 'webhook') {
     const url = String(block.config.url ?? '').trim();
     if (url) {
-      try {
-        const parsed = new URL(url);
-        if (!['http:', 'https:'].includes(parsed.protocol)) throw new Error('protocol');
-      } catch {
-        issues.push(`${block.label}: endpoint inválido.`);
-      }
+      const urlIssue = validateSafeOutboundUrl(url);
+      if (urlIssue) issues.push(`${block.label}: ${urlIssue}`);
     }
+    const methodIssue = validateOutboundWebhookMethod(block.config.method);
+    if (methodIssue) issues.push(`${block.label}: ${methodIssue}`);
   }
 
   return issues;

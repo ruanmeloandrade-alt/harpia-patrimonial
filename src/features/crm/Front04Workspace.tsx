@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { CSSProperties } from 'react';
 import type { CrmEventSink } from './domain';
 import { BrowserCrmRepository } from './repository';
@@ -6,8 +6,8 @@ import type { CrmRepository } from './repository';
 import { CrmService } from './service';
 import { CrmWorkspace } from './CrmWorkspace';
 import type { AssigneeOption } from './CrmWorkspace';
-import { UnassignedLeadsQueue } from './UnassignedLeadsQueue';
 import { InboxWorkspace } from '../inbox/InboxWorkspace';
+import type { AutomationOption } from '../inbox/InboxWorkspace';
 import { BrowserInboxRepository } from '../inbox/repository';
 import type { InboxRepository } from '../inbox/repository';
 import { InboxService } from '../inbox/service';
@@ -24,6 +24,8 @@ interface InboxCompositionProps extends CrmCompositionProps {
   automationPort?: InboxAutomationPort;
   inboxService?: InboxService;
   inboxRepository?: InboxRepository;
+  salesBots?: AutomationOption[];
+  aiAgents?: AutomationOption[];
 }
 
 export interface Front04WorkspaceProps extends InboxCompositionProps {
@@ -35,22 +37,20 @@ function useCrmService({
   crmRepository,
   crmEventSinks = [],
 }: CrmCompositionProps): CrmService {
-  const [crmService] = useState(
-    () => injectedCrmService
-      ?? new CrmService(crmRepository ?? new BrowserCrmRepository(), crmEventSinks),
+  const [fallbackService] = useState(
+    () => new CrmService(crmRepository ?? new BrowserCrmRepository(), crmEventSinks),
   );
-  return crmService;
+  return injectedCrmService ?? fallbackService;
 }
 
 function useInboxService({
   inboxService: injectedInboxService,
   inboxRepository,
 }: InboxCompositionProps): InboxService {
-  const [inboxService] = useState(
-    () => injectedInboxService
-      ?? new InboxService(inboxRepository ?? new BrowserInboxRepository()),
+  const [fallbackService] = useState(
+    () => new InboxService(inboxRepository ?? new BrowserInboxRepository()),
   );
-  return inboxService;
+  return injectedInboxService ?? fallbackService;
 }
 
 export function Front04CrmScreen({
@@ -64,26 +64,15 @@ export function Front04CrmScreen({
     crmRepository,
     crmEventSinks,
   });
-  const [crmRevision, setCrmRevision] = useState(0);
 
-  return (
-    <>
-      <UnassignedLeadsQueue
-        service={crmService}
-        onChanged={() => setCrmRevision((value) => value + 1)}
-      />
-      <CrmWorkspace
-        key={crmRevision}
-        service={crmService}
-        assignees={assignees}
-      />
-    </>
-  );
+  return <CrmWorkspace service={crmService} assignees={assignees} />;
 }
 
 export function Front04InboxScreen({
   assignees = [],
   automationPort,
+  salesBots = [],
+  aiAgents = [],
   crmService: injectedCrmService,
   crmRepository,
   crmEventSinks = [],
@@ -99,13 +88,25 @@ export function Front04InboxScreen({
     inboxService: injectedInboxService,
     inboxRepository,
   });
+  const previousRuntimeRef = useRef({ crmService, inboxService });
+  const [runtimeRevision, setRuntimeRevision] = useState(0);
+
+  useEffect(() => {
+    const previous = previousRuntimeRef.current;
+    if (previous.crmService === crmService && previous.inboxService === inboxService) return;
+    previousRuntimeRef.current = { crmService, inboxService };
+    setRuntimeRevision((value) => value + 1);
+  }, [crmService, inboxService]);
 
   return (
     <InboxWorkspace
+      key={`inbox-${runtimeRevision}`}
       crmService={crmService}
       inboxService={inboxService}
       automationPort={automationPort}
       assignees={assignees}
+      salesBots={salesBots}
+      aiAgents={aiAgents}
     />
   );
 }
@@ -113,6 +114,8 @@ export function Front04InboxScreen({
 export function Front04Workspace({
   assignees = [],
   automationPort,
+  salesBots = [],
+  aiAgents = [],
   crmService: injectedCrmService,
   inboxService: injectedInboxService,
   crmRepository,
@@ -172,6 +175,8 @@ export function Front04Workspace({
           inboxService={inboxService}
           automationPort={automationPort}
           assignees={assignees}
+          salesBots={salesBots}
+          aiAgents={aiAgents}
         />
       )}
     </div>

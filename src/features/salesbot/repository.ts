@@ -1,5 +1,6 @@
 import { listAIAgents } from '../ai-agents/repository';
 import { createF05Id, readStoredList, writeStoredList } from '../automations/f05Storage';
+import { findActiveSalesBotReferences, findSalesBotReferences, formatF05References } from '../automations/referenceIntegrity';
 import type { SalesBotBlock, SalesBotDefinition, SalesBotStatus } from './types';
 import { validateSalesBot } from './validation';
 
@@ -12,6 +13,35 @@ export function listSalesBots(): SalesBotDefinition[] {
 
 export function getSalesBot(id: string): SalesBotDefinition | undefined {
   return listSalesBots().find((bot) => bot.id === id);
+}
+
+const chainTargets = (bot: SalesBotDefinition) => bot.blocks
+  .filter((block) => block.type === 'chain_flow')
+  .map((block) => String(block.config.botId ?? '').trim())
+  .filter(Boolean);
+
+function hasReachableChainCycle(candidate: SalesBotDefinition, storedBots: SalesBotDefinition[]): boolean {
+  const graph = new Map(storedBots.map((bot) => [bot.id, bot]));
+  graph.set(candidate.id, candidate);
+  const visiting = new Set<string>();
+  const visited = new Set<string>();
+
+  const visit = (botId: string): boolean => {
+    if (visiting.has(botId)) return true;
+    if (visited.has(botId)) return false;
+    const bot = graph.get(botId);
+    if (!bot) return false;
+
+    visiting.add(botId);
+    for (const targetId of chainTargets(bot)) {
+      if (graph.has(targetId) && visit(targetId)) return true;
+    }
+    visiting.delete(botId);
+    visited.add(botId);
+    return false;
+  };
+
+  return visit(candidate.id);
 }
 
 function validateSalesBotReferences(bot: SalesBotDefinition): string[] {
@@ -38,6 +68,10 @@ function validateSalesBotReferences(bot: SalesBotDefinition): string[] {
       }
     }
   });
+
+  if (hasReachableChainCycle(bot, bots)) {
+    issues.push('Encadeamento de SalesBots contém um ciclo. Remova o caminho circular antes de ativar.');
+  }
 
   return issues;
 }
@@ -69,14 +103,29 @@ export function updateSalesBot(
   const current = items.find((item) => item.id === id);
   if (!current) throw new Error('SalesBot não encontrado.');
   let updated: SalesBotDefinition = { ...current, ...patch, updatedAt: now() };
+
   if (current.status === 'active' && patch.status === undefined && validateSalesBotForActivation(updated).length > 0) {
     updated = { ...updated, status: 'paused' };
   }
+
+  if (current.status === 'active' && updated.status !== 'active') {
+    const activeReferences = findActiveSalesBotReferences(id);
+    if (activeReferences.length > 0) {
+      throw new Error(`Pause primeiro os recursos ativos que dependem deste SalesBot: ${formatF05References(activeReferences)}.`);
+    }
+  }
+
   writeStoredList(STORAGE_KEY, items.map((item) => (item.id === id ? updated : item)));
   return updated;
 }
 
 export function deleteSalesBot(id: string): void {
+  const current = getSalesBot(id);
+  if (!current) throw new Error('SalesBot não encontrado.');
+  const references = findSalesBotReferences(id);
+  if (references.length > 0) {
+    throw new Error(`Este SalesBot ainda é referenciado por: ${formatF05References(references)}.`);
+  }
   writeStoredList(STORAGE_KEY, listSalesBots().filter((item) => item.id !== id));
 }
 

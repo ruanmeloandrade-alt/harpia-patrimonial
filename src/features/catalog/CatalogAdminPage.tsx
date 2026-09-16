@@ -1,5 +1,6 @@
-import { FormEvent, useEffect, useMemo, useState } from 'react';
+import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from 'react';
 import { CATALOG_CHANGED_EVENT, LocalCatalogRepository, type CatalogRepository } from './catalogRepository';
+import type { CatalogMediaStorage } from './catalogMediaStorage';
 import type { CatalogItem, CatalogItemDraft, CatalogItemKind, CatalogMedia } from './types';
 import './catalog.css';
 
@@ -12,6 +13,7 @@ export interface CatalogAccess {
 interface CatalogAdminPageProps {
   access: CatalogAccess;
   repository?: CatalogRepository;
+  mediaStorage?: CatalogMediaStorage;
 }
 
 interface FormState {
@@ -37,6 +39,13 @@ interface FormState {
   documentUrls: string;
 }
 
+type MediaUrlField = 'imageUrls' | 'videoUrls' | 'floorplanUrls' | 'documentUrls';
+
+type PendingUpload = {
+  url: string;
+  path: string;
+};
+
 const emptyForm = (): FormState => ({
   code: '', name: '', kind: 'standalone', parentId: '', typology: '', purpose: 'sale', description: '', city: '', neighborhood: '', condominium: '', address: '', price: '', isLaunch: false, features: '', lifestyleTags: '', developer: '', imageUrls: '', videoUrls: '', floorplanUrls: '', documentUrls: '',
 });
@@ -45,14 +54,20 @@ function splitList(value: string) {
   return value.split(/[\n,]/).map((item) => item.trim()).filter(Boolean);
 }
 
-function mediaFromForm(form: FormState, existing: CatalogMedia[] = []): CatalogMedia[] {
+function mediaFromForm(
+  form: FormState,
+  existing: CatalogMedia[] = [],
+  pendingStoragePaths: Map<string, string> = new Map(),
+): CatalogMedia[] {
   const create = (type: CatalogMedia['type'], urls: string[]) => urls.map((url, index) => {
     const previous = existing.find((media) => media.type === type && media.url === url);
+    const storagePath = previous?.storagePath ?? pendingStoragePaths.get(url);
     return {
       ...previous,
       id: previous?.id ?? `media_${type}_${Date.now()}_${index}_${Math.random().toString(36).slice(2, 7)}`,
       type,
       url,
+      ...(storagePath ? { storagePath } : {}),
       isCover: type === 'image' && index === 0,
     };
   });
@@ -93,7 +108,11 @@ function formFromItem(item: CatalogItem): FormState {
   };
 }
 
-function draftFromForm(form: FormState, existingMedia: CatalogMedia[] = []): CatalogItemDraft {
+function draftFromForm(
+  form: FormState,
+  existingMedia: CatalogMedia[] = [],
+  pendingStoragePaths: Map<string, string> = new Map(),
+): CatalogItemDraft {
   return {
     code: form.code,
     name: form.name,
@@ -113,7 +132,7 @@ function draftFromForm(form: FormState, existingMedia: CatalogMedia[] = []): Cat
     features: splitList(form.features),
     lifestyleTags: splitList(form.lifestyleTags),
     developer: form.developer.trim() || undefined,
-    media: mediaFromForm(form, existingMedia),
+    media: mediaFromForm(form, existingMedia, pendingStoragePaths),
   };
 }
 
@@ -125,7 +144,7 @@ function money(value: number | null) {
 const kindLabel: Record<CatalogItemKind, string> = { development: 'Empreendimento', unit: 'Unidade', standalone: 'Imóvel avulso' };
 const statusLabel = { draft: 'Rascunho', published: 'Publicado', paused: 'Pausado', sold: 'Vendido' } as const;
 
-export function CatalogAdminPage({ access, repository }: CatalogAdminPageProps) {
+export function CatalogAdminPage({ access, repository, mediaStorage }: CatalogAdminPageProps) {
   const catalog = useMemo(() => repository ?? new LocalCatalogRepository(), [repository]);
   const canRead = access.canView || access.canManage || access.canPublish;
   const [items, setItems] = useState<CatalogItem[]>([]);
@@ -136,6 +155,8 @@ export function CatalogAdminPage({ access, repository }: CatalogAdminPageProps) 
   const [kindFilter, setKindFilter] = useState('all');
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
+  const [uploadingType, setUploadingType] = useState<CatalogMedia['type'] | null>(null);
+  const [pendingUploads, setPendingUploads] = useState<PendingUpload[]>([]);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
 
@@ -143,7 +164,7 @@ export function CatalogAdminPage({ access, repository }: CatalogAdminPageProps) 
     try {
       setLoading(true);
       setError('');
-      setItems(await catalog.list({ search }));
+      setItems(await catalog.list());
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : 'Não foi possível carregar o catálogo.');
     } finally {
@@ -151,26 +172,61 @@ export function CatalogAdminPage({ access, repository }: CatalogAdminPageProps) 
     }
   };
 
-  useEffect(() => { if (canRead) void reload(); }, [canRead, catalog, search]);
+  useEffect(() => { if (canRead) void reload(); }, [canRead, catalog]);
   useEffect(() => {
     if (!canRead) return undefined;
     const listener = () => void reload();
     window.addEventListener(CATALOG_CHANGED_EVENT, listener);
     return () => window.removeEventListener(CATALOG_CHANGED_EVENT, listener);
-  }, [canRead, catalog, search]);
+  }, [canRead, catalog]);
 
-  const developments = items.filter((item) => item.kind === 'development');
+  const editingItem = editingId ? items.find((item) => item.id === editingId) : undefined;
+  const developments = items.filter(
+    (item) => item.kind === 'development'
+      && (item.status !== 'sold' || (editingItem?.kind === 'unit' && editingItem.parentId === item.id)),
+  );
+  const normalizedSearch = search.trim().toLocaleLowerCase('pt-BR');
   const visibleItems = items.filter((item) => {
     if (statusFilter !== 'all' && item.status !== statusFilter) return false;
     if (kindFilter !== 'all' && item.kind !== kindFilter) return false;
-    return true;
+    if (!normalizedSearch) return true;
+    return [
+      item.code,
+      item.name,
+      item.typology,
+      item.location.city,
+      item.location.neighborhood,
+      item.location.condominium,
+      item.developer,
+    ]
+      .filter(Boolean)
+      .join(' ')
+      .toLocaleLowerCase('pt-BR')
+      .includes(normalizedSearch);
   });
 
   if (!canRead) {
     return <section className="f03-shell f03-access-denied"><p className="f03-kicker">Catálogo interno</p><h1>Acesso restrito</h1><p>É necessária uma permissão de catálogo para consultar este módulo.</p></section>;
   }
 
-  const resetForm = () => { setEditingId(null); setForm(emptyForm()); setError(''); };
+  const clearForm = () => {
+    setEditingId(null);
+    setForm(emptyForm());
+    setPendingUploads([]);
+    setError('');
+  };
+
+  const cleanupUploads = async (uploads: PendingUpload[]) => {
+    if (!mediaStorage || uploads.length === 0) return;
+    await Promise.allSettled(uploads.map((upload) => mediaStorage.remove(upload.path)));
+  };
+
+  const cancelForm = async () => {
+    await cleanupUploads(pendingUploads);
+    clearForm();
+    setNotice('Alterações descartadas.');
+  };
+
   const runAction = async (action: () => Promise<unknown>, success: string) => {
     try {
       setBusy(true); setError(''); setNotice(''); await action(); setNotice(success); await reload();
@@ -179,19 +235,68 @@ export function CatalogAdminPage({ access, repository }: CatalogAdminPageProps) 
     } finally { setBusy(false); }
   };
 
+  const appendMediaUrls = (field: MediaUrlField, urls: string[]) => {
+    setForm((current) => ({
+      ...current,
+      [field]: [...splitList(current[field]), ...urls].join('\n'),
+    }));
+  };
+
+  const uploadFiles = async (
+    event: ChangeEvent<HTMLInputElement>,
+    type: CatalogMedia['type'],
+    field: MediaUrlField,
+  ) => {
+    const input = event.currentTarget;
+    const files = Array.from(input.files ?? []);
+    input.value = '';
+    if (!files.length) return;
+    if (!access.canManage) { setError('Permissão catalog.manage necessária para enviar mídia.'); return; }
+    if (!mediaStorage) { setError('Storage de mídia ainda não foi conectado a esta tela.'); return; }
+
+    const uploadedThisBatch: PendingUpload[] = [];
+    try {
+      setUploadingType(type);
+      setError('');
+      setNotice('');
+      for (const file of files) {
+        const uploaded = await mediaStorage.upload(file, type);
+        uploadedThisBatch.push({ url: uploaded.url, path: uploaded.path });
+      }
+      appendMediaUrls(field, uploadedThisBatch.map((uploaded) => uploaded.url));
+      setPendingUploads((current) => [...current, ...uploadedThisBatch]);
+      setNotice(`${uploadedThisBatch.length} arquivo(s) enviado(s). Salve o cadastro para vincular a mídia ao item.`);
+    } catch (uploadError) {
+      await cleanupUploads(uploadedThisBatch);
+      setError(uploadError instanceof Error ? uploadError.message : 'Não foi possível enviar a mídia.');
+    } finally {
+      setUploadingType(null);
+    }
+  };
+
   const submit = async (event: FormEvent) => {
     event.preventDefault();
     if (!access.canManage) { setError('Permissão catalog.manage necessária.'); return; }
     const current = editingId ? items.find((item) => item.id === editingId) : undefined;
-    const draft = draftFromForm(form, current?.media ?? []);
+    const pendingStoragePaths = new Map(pendingUploads.map((upload) => [upload.url, upload.path]));
+    const draft = draftFromForm(form, current?.media ?? [], pendingStoragePaths);
+    const draftUrls = new Set(draft.media.map((media) => media.url));
+    const unusedPendingUploads = pendingUploads.filter((upload) => !draftUrls.has(upload.url));
+    const removedStoredMedia = (current?.media ?? [])
+      .filter((media) => media.storagePath && !draftUrls.has(media.url))
+      .map((media) => ({ url: media.url, path: media.storagePath as string }));
+
     await runAction(async () => {
       if (editingId) await catalog.update(editingId, draft); else await catalog.create(draft);
-      resetForm();
+      await cleanupUploads([...unusedPendingUploads, ...removedStoredMedia]);
+      clearForm();
     }, editingId ? 'Cadastro atualizado.' : 'Cadastro criado como rascunho.');
   };
 
-  const startEdit = (item: CatalogItem) => {
+  const startEdit = async (item: CatalogItem) => {
     if (!access.canManage) { setError('Permissão catalog.manage necessária.'); return; }
+    await cleanupUploads(pendingUploads);
+    setPendingUploads([]);
     setEditingId(item.id); setForm(formFromItem(item)); setError(''); setNotice(''); window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -206,6 +311,13 @@ export function CatalogAdminPage({ access, repository }: CatalogAdminPageProps) 
     await runAction(() => catalog.setStatus(item.id, status), message);
   };
 
+  const developmentHasUnsoldUnits = (developmentId: string) => items.some(
+    (item) => item.kind === 'unit'
+      && item.parentId === developmentId
+      && !item.deletedAt
+      && item.status !== 'sold',
+  );
+
   return (
     <section className="f03-shell">
       <header className="f03-header">
@@ -216,7 +328,7 @@ export function CatalogAdminPage({ access, repository }: CatalogAdminPageProps) 
       <div className="f03-layout">
         {access.canManage ? (
           <form className="f03-card f03-form" onSubmit={submit}>
-            <div className="f03-card-heading"><div><p className="f03-kicker">{editingId ? 'Edição' : 'Novo cadastro'}</p><h2>{editingId ? 'Editar item' : 'Adicionar ao catálogo'}</h2></div>{editingId && <button className="f03-button f03-button-ghost" type="button" onClick={resetForm}>Cancelar</button>}</div>
+            <div className="f03-card-heading"><div><p className="f03-kicker">{editingId ? 'Edição' : 'Novo cadastro'}</p><h2>{editingId ? 'Editar item' : 'Adicionar ao catálogo'}</h2></div>{editingId && <button className="f03-button f03-button-ghost" type="button" onClick={() => void cancelForm()}>Cancelar</button>}</div>
             {error && <div className="f03-alert f03-alert-error">{error}</div>}
             {notice && <div className="f03-alert f03-alert-success">{notice}</div>}
 
@@ -224,7 +336,7 @@ export function CatalogAdminPage({ access, repository }: CatalogAdminPageProps) 
               <label>Tipo<select value={form.kind} onChange={(event) => setForm({ ...form, kind: event.target.value as CatalogItemKind })}><option value="standalone">Imóvel avulso</option><option value="development">Empreendimento</option><option value="unit">Unidade</option></select></label>
               <label>Finalidade<select value={form.purpose} onChange={(event) => setForm({ ...form, purpose: event.target.value as 'sale' | 'rent' })}><option value="sale">Venda</option><option value="rent">Locação</option></select></label>
             </div>
-            {form.kind === 'unit' && <div className="f03-grid-2"><label>Empreendimento<select value={form.parentId} onChange={(event) => setForm({ ...form, parentId: event.target.value })} required><option value="">Selecione</option>{developments.map((item) => <option key={item.id} value={item.id}>{item.name} — {item.code}</option>)}</select></label><label>Tipologia<input value={form.typology} onChange={(event) => setForm({ ...form, typology: event.target.value })} placeholder="Ex.: 2 quartos, 68 m²" required /></label></div>}
+            {form.kind === 'unit' && <div className="f03-grid-2"><label>Empreendimento<select value={form.parentId} onChange={(event) => setForm({ ...form, parentId: event.target.value })} required><option value="">Selecione</option>{developments.map((item) => <option key={item.id} value={item.id}>{item.name} — {item.code}{item.status === 'sold' ? ' (vendido — histórico)' : ''}</option>)}</select></label><label>Tipologia<input value={form.typology} onChange={(event) => setForm({ ...form, typology: event.target.value })} placeholder="Ex.: 2 quartos, 68 m²" required /></label></div>}
 
             <div className="f03-grid-2">
               <label>Código<input value={form.code} onChange={(event) => setForm({ ...form, code: event.target.value })} required /></label>
@@ -247,13 +359,18 @@ export function CatalogAdminPage({ access, repository }: CatalogAdminPageProps) 
               <label>Estilo de vida<textarea rows={3} value={form.lifestyleTags} onChange={(event) => setForm({ ...form, lifestyleTags: event.target.value })} placeholder="praia, família, investimento" /></label>
             </div>
             <div className="f03-media-box">
-              <div><strong>Mídia</strong><p>Use URLs permanentes do storage. A primeira foto da lista é tratada como capa. Upload binário será conectado pela infraestrutura.</p></div>
+              <div><strong>Mídia</strong><p>{mediaStorage ? 'Envie arquivos diretamente para o Storage ou informe URLs permanentes. A primeira foto da lista é tratada como capa.' : 'Informe URLs permanentes. O adapter de Storage pode ser injetado para habilitar upload direto. A primeira foto da lista é tratada como capa.'}</p></div>
+              {mediaStorage && <label>Enviar fotos<input type="file" accept="image/jpeg,image/png,image/webp,image/gif" multiple disabled={uploadingType !== null} onChange={(event) => void uploadFiles(event, 'image', 'imageUrls')} /></label>}
               <label>Fotos — uma URL por linha<textarea rows={3} value={form.imageUrls} onChange={(event) => setForm({ ...form, imageUrls: event.target.value })} /></label>
+              {mediaStorage && <label>Enviar vídeos<input type="file" accept="video/mp4,video/webm" multiple disabled={uploadingType !== null} onChange={(event) => void uploadFiles(event, 'video', 'videoUrls')} /></label>}
               <label>Vídeos — uma URL por linha<textarea rows={3} value={form.videoUrls} onChange={(event) => setForm({ ...form, videoUrls: event.target.value })} /></label>
+              {mediaStorage && <label>Enviar plantas<input type="file" accept="application/pdf,image/jpeg,image/png,image/webp" multiple disabled={uploadingType !== null} onChange={(event) => void uploadFiles(event, 'floorplan', 'floorplanUrls')} /></label>}
               <label>Plantas — uma URL por linha<textarea rows={3} value={form.floorplanUrls} onChange={(event) => setForm({ ...form, floorplanUrls: event.target.value })} /></label>
+              {mediaStorage && <label>Enviar documentos<input type="file" accept="application/pdf,image/jpeg,image/png,image/webp" multiple disabled={uploadingType !== null} onChange={(event) => void uploadFiles(event, 'document', 'documentUrls')} /></label>}
               <label>Documentos — uma URL por linha<textarea rows={3} value={form.documentUrls} onChange={(event) => setForm({ ...form, documentUrls: event.target.value })} /></label>
+              {uploadingType && <p>Enviando mídia…</p>}
             </div>
-            <button className="f03-button f03-button-primary" type="submit" disabled={busy}>{busy ? 'Salvando…' : editingId ? 'Salvar alterações' : 'Criar rascunho'}</button>
+            <button className="f03-button f03-button-primary" type="submit" disabled={busy || uploadingType !== null}>{busy ? 'Salvando…' : editingId ? 'Salvar alterações' : 'Criar rascunho'}</button>
           </form>
         ) : (
           <aside className="f03-card f03-form">
@@ -274,20 +391,23 @@ export function CatalogAdminPage({ access, repository }: CatalogAdminPageProps) 
           </div>
 
           {loading ? <div className="f03-card f03-empty"><h2>Carregando catálogo…</h2><p>Buscando os dados reais do repositório.</p></div> : visibleItems.length === 0 ? <div className="f03-card f03-empty"><div className="f03-empty-icon">0</div><h2>Nenhum item encontrado</h2><p>O catálogo começa vazio e só exibe dados realmente cadastrados.</p></div> : (
-            <div className="f03-item-list">{visibleItems.map((item) => (
+            <div className="f03-item-list">{visibleItems.map((item) => {
+              const soldBlockedByUnits = item.kind === 'development' && developmentHasUnsoldUnits(item.id);
+              return (
               <article className="f03-card f03-item" key={item.id}>
                 <div className="f03-item-top"><div><div className="f03-badges"><span className={`f03-badge status-${item.status}`}>{statusLabel[item.status]}</span><span className="f03-badge f03-badge-muted">{kindLabel[item.kind]}</span>{item.typology && <span className="f03-badge f03-badge-muted">{item.typology}</span>}</div><h3>{item.name}</h3><p>{item.code} · {item.location.city}{item.location.neighborhood ? ` / ${item.location.neighborhood}` : ''}</p></div><strong>{money(item.price)}</strong></div>
                 <div className="f03-item-meta"><span>{item.purpose === 'sale' ? 'Venda' : 'Locação'}</span><span>{item.isLaunch ? 'Lançamento' : 'Estoque'}</span><span>{item.media.filter((media) => media.type === 'image').length} fotos</span><span>{item.media.filter((media) => media.type === 'video').length} vídeos</span><span>{item.media.filter((media) => media.type === 'document' || media.type === 'floorplan').length} arquivos</span></div>
                 {(access.canManage || access.canPublish) && <div className="f03-actions">
-                  {access.canManage && <button className="f03-button f03-button-ghost" onClick={() => startEdit(item)}>Editar</button>}
+                  {access.canManage && <button className="f03-button f03-button-ghost" onClick={() => void startEdit(item)}>Editar</button>}
                   {access.canPublish && item.status !== 'published' && item.status !== 'sold' && <button className="f03-button f03-button-primary" onClick={() => void setStatus(item, 'published', 'Item publicado.')}>Publicar</button>}
                   {access.canPublish && item.status === 'published' && <button className="f03-button f03-button-ghost" onClick={() => void setStatus(item, 'paused', 'Item pausado.')}>Pausar</button>}
-                  {access.canPublish && item.status !== 'sold' && <button className="f03-button f03-button-ghost" onClick={() => void setStatus(item, 'sold', 'Item marcado como vendido.')}>Vendido</button>}
+                  {access.canPublish && item.status !== 'sold' && <button className="f03-button f03-button-ghost" disabled={soldBlockedByUnits} title={soldBlockedByUnits ? 'Venda as unidades ativas antes de vender o empreendimento.' : undefined} onClick={() => void setStatus(item, 'sold', 'Item marcado como vendido.')}>Vendido</button>}
                   {access.canManage && <button className="f03-button f03-button-ghost" onClick={() => void runAction(() => catalog.duplicate(item.id), 'Cópia criada como rascunho.')}>Duplicar</button>}
                   {access.canManage && <button className="f03-button f03-button-danger" onClick={() => void remove(item)}>Excluir</button>}
                 </div>}
               </article>
-            ))}</div>
+              );
+            })}</div>
           )}
         </div>
       </div>

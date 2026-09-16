@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { PublicCatalogItem, PublicCatalogReader } from '../public-catalog/contracts';
 import type { PublicFavoritesBridge } from './PublicSiteApp';
 
@@ -17,8 +17,11 @@ export interface PublicFavoritesBridgeState {
   bridge: PublicFavoritesBridge;
   loading: boolean;
   error: string;
+  clearError: () => void;
   reload: () => Promise<void>;
 }
+
+const emptyItems: PublicCatalogItem[] = [];
 
 /**
  * Liga a experiência de favoritos da Frente02 a uma persistência real fornecida
@@ -36,28 +39,54 @@ export function usePublicFavoritesBridge(options: {
   const [items, setItems] = useState<PublicCatalogItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const requestVersionRef = useRef(0);
+  const activeClientRef = useRef(clientId);
+  const itemsClientRef = useRef<string | null>(null);
+  const pendingOperationsRef = useRef(new Set<string>());
+  activeClientRef.current = clientId;
+
+  const clearError = useCallback(() => setError(''), []);
 
   const reload = useCallback(async () => {
-    if (!clientId) {
+    const requestVersion = ++requestVersionRef.current;
+    const requestClientId = clientId;
+
+    if (!requestClientId) {
+      itemsClientRef.current = null;
       setItems([]);
       setError('');
       setLoading(false);
       return;
     }
 
+    const changedClient = itemsClientRef.current !== requestClientId;
+    itemsClientRef.current = requestClientId;
+    if (changedClient) setItems([]);
     setLoading(true);
     setError('');
+
     try {
-      const references = await store.list(clientId);
+      const references = await store.list(requestClientId);
       const resolved = await Promise.all(
-        references.map((reference) => catalog.getPublishedBySlug(reference.itemSlug)),
+        references.map(async (reference) => {
+          const byId = await catalog.getPublishedBySlug(reference.itemId);
+          if (byId) return byId;
+          if (!reference.itemSlug || reference.itemSlug === reference.itemId) return null;
+          return catalog.getPublishedBySlug(reference.itemSlug);
+        }),
       );
+      if (requestVersion !== requestVersionRef.current || activeClientRef.current !== requestClientId) return;
+      itemsClientRef.current = requestClientId;
       setItems(resolved.filter((item): item is PublicCatalogItem => Boolean(item)));
     } catch (cause) {
+      if (requestVersion !== requestVersionRef.current || activeClientRef.current !== requestClientId) return;
+      itemsClientRef.current = requestClientId;
       setItems([]);
       setError(cause instanceof Error ? cause.message : 'Não foi possível carregar os favoritos.');
     } finally {
-      setLoading(false);
+      if (requestVersion === requestVersionRef.current && activeClientRef.current === requestClientId) {
+        setLoading(false);
+      }
     }
   }, [catalog, clientId, store]);
 
@@ -65,10 +94,14 @@ export function usePublicFavoritesBridge(options: {
     void reload();
   }, [reload]);
 
-  const favoriteIds = useMemo(() => new Set(items.map((item) => item.id)), [items]);
+  const belongsToCurrentClient = itemsClientRef.current === clientId;
+  const visibleItems = belongsToCurrentClient ? items : emptyItems;
+  const visibleError = belongsToCurrentClient ? error : '';
+  const visibleLoading = belongsToCurrentClient ? loading : Boolean(clientId);
+  const favoriteIds = useMemo(() => new Set(visibleItems.map((item) => item.id)), [visibleItems]);
 
   const bridge = useMemo<PublicFavoritesBridge>(() => ({
-    items,
+    items: visibleItems,
     isFavorite(itemId) {
       return favoriteIds.has(itemId);
     },
@@ -78,23 +111,44 @@ export function usePublicFavoritesBridge(options: {
         return;
       }
 
+      const operationClientId = clientId;
+      const operationKey = `${operationClientId}:${item.id}`;
+      if (pendingOperationsRef.current.has(operationKey)) return;
+
+      pendingOperationsRef.current.add(operationKey);
+      ++requestVersionRef.current;
+      setLoading(false);
       setError('');
       const exists = favoriteIds.has(item.id);
+      const operationOwnsCurrentItems = itemsClientRef.current === operationClientId;
 
       try {
         if (exists) {
-          await store.remove(clientId, item.id);
-          setItems((current) => current.filter((candidate) => candidate.id !== item.id));
+          await store.remove(operationClientId, item.id);
+          if (activeClientRef.current !== operationClientId) return;
+          itemsClientRef.current = operationClientId;
+          setItems((current) => {
+            const base = operationOwnsCurrentItems ? current : emptyItems;
+            return base.filter((candidate) => candidate.id !== item.id);
+          });
           return;
         }
 
-        await store.add(clientId, { itemId: item.id, itemSlug: item.slug });
-        setItems((current) => current.some((candidate) => candidate.id === item.id) ? current : [...current, item]);
+        await store.add(operationClientId, { itemId: item.id, itemSlug: item.slug });
+        if (activeClientRef.current !== operationClientId) return;
+        itemsClientRef.current = operationClientId;
+        setItems((current) => {
+          const base = operationOwnsCurrentItems ? current : emptyItems;
+          return base.some((candidate) => candidate.id === item.id) ? base : [...base, item];
+        });
       } catch (cause) {
+        if (activeClientRef.current !== operationClientId) return;
         setError(cause instanceof Error ? cause.message : 'Não foi possível atualizar este favorito.');
+      } finally {
+        pendingOperationsRef.current.delete(operationKey);
       }
     },
-  }), [clientId, favoriteIds, items, store]);
+  }), [clientId, favoriteIds, store, visibleItems]);
 
-  return { bridge, loading, error, reload };
+  return { bridge, loading: visibleLoading, error: visibleError, clearError, reload };
 }

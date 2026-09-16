@@ -42,6 +42,12 @@ export interface SalesBotExecutionLog {
   botId: string;
   leadId?: string;
   conversationId?: string;
+  /**
+   * Contexto operacional necessário para retomar uma execução pausada.
+   * É removido ao concluir/falhar e nunca deve conter chave de provedor,
+   * prompt persistido ou resposta de IA.
+   */
+  runtimeContext?: Record<string, unknown>;
   startedAt: string;
   finishedAt?: string;
   status: SalesBotExecutionStatus;

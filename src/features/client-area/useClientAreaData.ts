@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ClientAreaDataState, ClientAreaDataView } from './ClientArea';
 
 export interface ClientAreaDataSourcePort {
@@ -18,18 +18,49 @@ export function useClientAreaData(options: {
 }): ClientAreaDataState & { reload: () => Promise<void> } {
   const { clientId, source } = options;
   const [state, setState] = useState<ClientAreaDataState>({ data: emptyData });
+  const requestVersionRef = useRef(0);
+  const stateClientRef = useRef<string | null>(null);
+  const stateSourceRef = useRef<ClientAreaDataSourcePort | undefined>(undefined);
 
   const reload = useCallback(async () => {
-    if (!clientId || !source) {
+    const requestVersion = ++requestVersionRef.current;
+    const requestClientId = clientId;
+    const requestSource = source;
+
+    if (!requestClientId || !requestSource) {
+      stateClientRef.current = null;
+      stateSourceRef.current = requestSource;
       setState({ data: emptyData });
       return;
     }
 
-    setState((current) => ({ ...current, loading: true, error: '' }));
+    const changedContext = stateClientRef.current !== requestClientId || stateSourceRef.current !== requestSource;
+    stateClientRef.current = requestClientId;
+    stateSourceRef.current = requestSource;
+    setState((current) => ({
+      data: changedContext ? emptyData : current.data,
+      loading: true,
+      error: '',
+    }));
+
     try {
-      const data = await source.load(clientId);
+      const data = await requestSource.load(requestClientId);
+      if (
+        requestVersion !== requestVersionRef.current
+        || clientId !== requestClientId
+        || source !== requestSource
+      ) return;
+      stateClientRef.current = requestClientId;
+      stateSourceRef.current = requestSource;
       setState({ data, loading: false, error: '' });
     } catch (cause) {
+      if (
+        requestVersion !== requestVersionRef.current
+        || clientId !== requestClientId
+        || source !== requestSource
+      ) return;
+      stateClientRef.current = requestClientId;
+      stateSourceRef.current = requestSource;
       setState({
         data: emptyData,
         loading: false,
@@ -42,5 +73,14 @@ export function useClientAreaData(options: {
     void reload();
   }, [reload]);
 
-  return { ...state, reload };
+  const belongsToCurrentContext = stateClientRef.current === clientId && stateSourceRef.current === source;
+  const visibleState: ClientAreaDataState = belongsToCurrentContext
+    ? state
+    : {
+        data: emptyData,
+        loading: Boolean(clientId && source),
+        error: '',
+      };
+
+  return { ...visibleState, reload };
 }

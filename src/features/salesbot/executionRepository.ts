@@ -11,12 +11,14 @@ export function startExecution(input: {
   botId: string;
   leadId?: string;
   conversationId?: string;
+  runtimeContext?: Record<string, unknown>;
 }): SalesBotExecutionLog {
   const log: SalesBotExecutionLog = {
     id: createF05Id('execution'),
     botId: input.botId,
     leadId: input.leadId,
     conversationId: input.conversationId,
+    runtimeContext: input.runtimeContext,
     startedAt: new Date().toISOString(),
     status: 'running',
   };
@@ -26,7 +28,7 @@ export function startExecution(input: {
 
 export function updateExecution(
   id: string,
-  patch: Partial<Pick<SalesBotExecutionLog, 'status' | 'currentBlockId' | 'resumeMode' | 'error' | 'action' | 'aiAgentId' | 'finishedAt'>>,
+  patch: Partial<Pick<SalesBotExecutionLog, 'status' | 'currentBlockId' | 'resumeMode' | 'runtimeContext' | 'error' | 'action' | 'aiAgentId' | 'finishedAt'>>,
 ): SalesBotExecutionLog {
   const items = listSalesBotExecutions();
   const current = items.find((item) => item.id === id);
@@ -37,7 +39,13 @@ export function updateExecution(
 }
 
 export function finishExecution(id: string, status: Exclude<SalesBotExecutionStatus, 'running' | 'paused'>, error?: string) {
-  return updateExecution(id, { status, error, resumeMode: undefined, finishedAt: new Date().toISOString() });
+  return updateExecution(id, {
+    status,
+    error,
+    resumeMode: undefined,
+    runtimeContext: undefined,
+    finishedAt: new Date().toISOString(),
+  });
 }
 
 export function clearExecutionLogs(): void {

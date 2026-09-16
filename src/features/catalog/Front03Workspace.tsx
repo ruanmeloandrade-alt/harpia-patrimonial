@@ -2,12 +2,14 @@ import { useMemo, useState } from 'react';
 import { DashboardPage } from '../dashboard/DashboardPage';
 import type { CommercialMetricsProvider } from '../dashboard/dashboardService';
 import { LocalCatalogRepository, type CatalogRepository } from './catalogRepository';
+import type { CatalogMediaStorage } from './catalogMediaStorage';
 import { CatalogAdminPage, type CatalogAccess } from './CatalogAdminPage';
 import './workspace.css';
 
 interface Front03WorkspaceProps {
   catalogAccess: CatalogAccess;
   catalogRepository?: CatalogRepository;
+  mediaStorage?: CatalogMediaStorage;
   commercialProvider?: CommercialMetricsProvider;
   initialView?: 'dashboard' | 'catalog';
 }
@@ -15,6 +17,7 @@ interface Front03WorkspaceProps {
 export function Front03Workspace({
   catalogAccess,
   catalogRepository,
+  mediaStorage,
   commercialProvider,
   initialView = 'dashboard',
 }: Front03WorkspaceProps) {
@@ -30,7 +33,7 @@ export function Front03Workspace({
       {view === 'dashboard' ? (
         <DashboardPage catalogRepository={repository} commercialProvider={commercialProvider} />
       ) : (
-        <CatalogAdminPage access={catalogAccess} repository={repository} />
+        <CatalogAdminPage access={catalogAccess} repository={repository} mediaStorage={mediaStorage} />
       )}
     </div>
   );

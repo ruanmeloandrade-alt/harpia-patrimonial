@@ -1,4 +1,10 @@
-import { CATALOG_CHANGED_EVENT, type CatalogRepository } from './catalogRepository';
+import {
+  CATALOG_CHANGED_EVENT,
+  assertCatalogMedia,
+  assertCatalogStatusTransition,
+  isCatalogMediaUrlAllowed,
+  type CatalogRepository,
+} from './catalogRepository';
 import type { CatalogItem, CatalogItemDraft, CatalogMedia, CatalogQuery, CatalogStatus } from './types';
 
 interface SupabaseErrorLike {
@@ -13,9 +19,11 @@ interface SupabaseResultLike<T> {
 /**
  * A tipagem estrutural evita que a Frente03 importe/crie outro cliente Supabase.
  * Na integração, injete o cliente oficial exportado pela Frente01.
+ * `any` na relação é intencional na borda: o Database global pode ter sido gerado
+ * antes de uma migration da Frente03 e não deve bloquear a composição do adapter.
  */
 export interface CatalogSupabaseClient {
-  from(table: string): any;
+  from(table: any): any;
 }
 
 interface CatalogRow {
@@ -65,7 +73,9 @@ function sanitizeMedia(value: unknown): CatalogMedia[] {
     if (!item || typeof item !== 'object') return false;
     const media = item as Partial<CatalogMedia>;
     return typeof media.id === 'string'
+      && Boolean(media.id.trim())
       && typeof media.url === 'string'
+      && isCatalogMediaUrlAllowed(media.url)
       && ['image', 'video', 'document', 'floorplan'].includes(String(media.type));
   });
 }
@@ -130,6 +140,7 @@ function validateDraft(input: CatalogItemDraft) {
   if (input.price !== null && input.price < 0) throw new Error('O preço não pode ser negativo.');
   if (input.kind === 'unit' && !input.parentId) throw new Error('Selecione o empreendimento desta unidade.');
   if (input.kind === 'unit' && !input.typology?.trim()) throw new Error('Informe a tipologia desta unidade.');
+  assertCatalogMedia(input.media);
 }
 
 function applyLocalQuery(items: CatalogItem[], query: CatalogQuery) {
@@ -160,10 +171,23 @@ function applyLocalQuery(items: CatalogItem[], query: CatalogQuery) {
 export class SupabaseCatalogRepository implements CatalogRepository {
   constructor(private readonly client: CatalogSupabaseClient) {}
 
+  private async validateUnitParent(input: CatalogItemDraft, currentParentId?: string) {
+    if (input.kind !== 'unit' || !input.parentId) return;
+    const parent = await this.getById(input.parentId);
+    if (!parent || parent.kind !== 'development') {
+      throw new Error('O empreendimento selecionado não está disponível.');
+    }
+    if (parent.status === 'sold' && currentParentId !== input.parentId) {
+      throw new Error('Não é possível vincular unidade a um empreendimento vendido.');
+    }
+  }
+
   async list(query: CatalogQuery = {}): Promise<CatalogItem[]> {
-    const result = await this.client
-      .from('catalog_items')
-      .select('*') as SupabaseResultLike<CatalogRow[]>;
+    let builder = this.client.from('catalog_items').select('*');
+    if (!query.includeDeleted) builder = builder.is('deleted_at', null);
+    if (query.status) builder = builder.eq('status', query.status);
+    if (query.kind) builder = builder.eq('kind', query.kind);
+    const result = await builder as SupabaseResultLike<CatalogRow[]>;
 
     if (result.error) fail(result.error, 'Não foi possível carregar o catálogo.');
     return applyLocalQuery((result.data ?? []).map(fromRow), query);
@@ -183,6 +207,7 @@ export class SupabaseCatalogRepository implements CatalogRepository {
 
   async create(input: CatalogItemDraft): Promise<CatalogItem> {
     validateDraft(input);
+    await this.validateUnitParent(input);
     const result = await this.client
       .from('catalog_items')
       .insert({ ...draftPayload(input), status: 'draft' })
@@ -219,6 +244,10 @@ export class SupabaseCatalogRepository implements CatalogRepository {
       merged.typology = undefined;
     }
     validateDraft(merged);
+    await this.validateUnitParent(
+      merged,
+      current.kind === 'unit' ? current.parentId : undefined,
+    );
 
     const result = await this.client
       .from('catalog_items')
@@ -234,6 +263,16 @@ export class SupabaseCatalogRepository implements CatalogRepository {
   }
 
   async setStatus(id: string, status: CatalogStatus): Promise<CatalogItem> {
+    const current = await this.getById(id);
+    if (!current) throw new Error('Item não encontrado.');
+    if (current.kind === 'development' && status === 'sold') {
+      const units = await this.list({ kind: 'unit' });
+      if (units.some((unit) => unit.parentId === id && unit.status !== 'sold')) {
+        throw new Error('Marque todas as unidades ativas como vendidas antes de vender o empreendimento.');
+      }
+    }
+    assertCatalogStatusTransition(current.status, status);
+
     const result = await this.client
       .from('catalog_items')
       .update({ status })
@@ -283,9 +322,12 @@ export class SupabaseCatalogRepository implements CatalogRepository {
       .from('catalog_items')
       .update({ deleted_at: new Date().toISOString() })
       .eq('id', id)
-      .is('deleted_at', null) as SupabaseResultLike<unknown>;
+      .is('deleted_at', null)
+      .select('id')
+      .maybeSingle() as SupabaseResultLike<{ id: string }>;
 
     if (result.error) fail(result.error, 'Não foi possível excluir o item.');
+    if (!result.data) throw new Error('Item não encontrado ou sem permissão para exclusão.');
     notifyCatalogChanged();
   }
 }

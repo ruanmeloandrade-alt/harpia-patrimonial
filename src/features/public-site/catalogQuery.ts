@@ -6,9 +6,25 @@ function parseNumber(value: string | null) {
   return Number.isFinite(parsed) && parsed >= 0 ? parsed : undefined;
 }
 
-function parseText(value: string | null) {
-  const normalized = value?.trim();
+function parseText(value: string | null, maxLength = 120) {
+  const normalized = value
+    ?.replace(/[\u0000-\u001f\u007f]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, maxLength);
   return normalized ? normalized : undefined;
+}
+
+function parsePurpose(value: string | null) {
+  const normalized = value
+    ?.trim()
+    .toLocaleLowerCase('pt-BR')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+
+  if (normalized === 'venda' || normalized === 'sale') return 'Venda';
+  if (normalized === 'locacao' || normalized === 'rent') return 'Locação';
+  return undefined;
 }
 
 function parseLaunch(value: string | null) {
@@ -22,11 +38,15 @@ function safeNumber(value?: number) {
 }
 
 export function normalizeCatalogFilters(filters: PublicCatalogFilters): PublicCatalogFilters {
-  const minPrice = safeNumber(filters.minPrice);
-  const maxPrice = safeNumber(filters.maxPrice);
+  let minPrice = safeNumber(filters.minPrice);
+  let maxPrice = safeNumber(filters.maxPrice);
+
+  if (minPrice !== undefined && maxPrice !== undefined && minPrice > maxPrice) {
+    [minPrice, maxPrice] = [maxPrice, minPrice];
+  }
 
   return {
-    purpose: parseText(filters.purpose ?? null),
+    purpose: parsePurpose(filters.purpose ?? null),
     city: parseText(filters.city ?? null),
     location: parseText(filters.location ?? null),
     launch: typeof filters.launch === 'boolean' ? filters.launch : undefined,

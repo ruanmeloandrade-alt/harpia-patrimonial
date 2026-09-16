@@ -3,6 +3,7 @@ import type { ClientAreaDataState } from '../client-area/ClientArea';
 import { useClientAreaData, type ClientAreaDataSourcePort } from '../client-area/useClientAreaData';
 import { createFront03PublicCatalogReader, type Front03PublicCatalogServicePort } from '../public-catalog/front03Adapter';
 import PublicExperience from './PublicExperience';
+import { PublicExperienceBoundary } from './PublicExperienceBoundary';
 import { createFront01PublicAuthBridge, type Front01AuthContextPort } from './front01AuthAdapter';
 import {
   createFront04ConversionHandler,
@@ -56,12 +57,17 @@ function ComposedExperience(props: ComposedExperienceProps) {
     [authBridge, props.crmIngest],
   );
 
-  const whatsapp = useMemo(
-    () => props.whatsappPhone
-      ? createWhatsAppContinuation({ phone: props.whatsappPhone })
-      : undefined,
-    [props.whatsappPhone],
-  );
+  const whatsapp = useMemo(() => {
+    if (!props.whatsappPhone) return undefined;
+
+    try {
+      return createWhatsAppContinuation({ phone: props.whatsappPhone });
+    } catch {
+      // Número ausente/inválido não pode derrubar o site nem impedir o lead.
+      // O pipeline continua registrando no CRM e apenas omite a continuação.
+      return undefined;
+    }
+  }, [props.whatsappPhone]);
 
   const onConversion = useMemo(
     () => capture
@@ -75,13 +81,15 @@ function ComposedExperience(props: ComposedExperienceProps) {
 
   if (!props.favoritesStore) {
     return (
-      <PublicExperience
-        catalog={catalog}
-        auth={authBridge}
-        clientAreaData={clientAreaData}
-        onConversion={onConversion}
-        internalAreaHref={props.internalAreaHref}
-      />
+      <PublicExperienceBoundary>
+        <PublicExperience
+          catalog={catalog}
+          auth={authBridge}
+          clientAreaData={clientAreaData}
+          onConversion={onConversion}
+          internalAreaHref={props.internalAreaHref}
+        />
+      </PublicExperienceBoundary>
     );
   }
 
@@ -127,14 +135,24 @@ function ExperienceWithFavorites({
   };
 
   return (
-    <PublicExperience
-      catalog={catalog}
-      auth={authBridge}
-      favorites={favorites.bridge}
-      clientAreaData={accountData}
-      onConversion={onConversion}
-      internalAreaHref={internalAreaHref}
-    />
+    <PublicExperienceBoundary>
+      <>
+        {favorites.error ? (
+          <div className="integration-notice" role="alert" aria-live="assertive">
+            <span>{favorites.error}</span>
+            <button type="button" onClick={favorites.clearError} aria-label="Fechar aviso de favoritos">×</button>
+          </div>
+        ) : null}
+        <PublicExperience
+          catalog={catalog}
+          auth={authBridge}
+          favorites={favorites.bridge}
+          clientAreaData={accountData}
+          onConversion={onConversion}
+          internalAreaHref={internalAreaHref}
+        />
+      </>
+    </PublicExperienceBoundary>
   );
 }
 
@@ -145,7 +163,10 @@ function ExperienceWithFavorites({
  * apenas monta adapters/hooks da experiência pública.
  */
 export function Front02IntegrationShell(props: Front02IntegrationShellProps) {
-  const clientId = props.auth.isAuthenticated && props.auth.user
+  const clientId = props.auth.isAuthenticated
+    && props.auth.user
+    && props.auth.profile?.account_type === 'client'
+    && props.auth.profile.is_active
     ? props.auth.user.id
     : null;
 

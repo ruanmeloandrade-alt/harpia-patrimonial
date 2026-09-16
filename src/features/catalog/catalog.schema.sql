@@ -68,6 +68,7 @@ set search_path = ''
 as $$
 declare
   parent_kind public.catalog_item_kind;
+  parent_status public.catalog_status;
   is_service_role boolean;
   can_manage boolean;
   can_publish boolean;
@@ -97,12 +98,17 @@ begin
   end if;
 
   if new.kind = 'unit' then
-    select ci.kind into parent_kind
+    select ci.kind, ci.status into parent_kind, parent_status
     from public.catalog_items ci
     where ci.id = new.parent_id and ci.deleted_at is null;
 
     if parent_kind is distinct from 'development'::public.catalog_item_kind then
       raise exception 'catalog unit requires an active development parent';
+    end if;
+
+    if parent_status = 'sold'::public.catalog_status
+       and not (old.kind = 'unit'::public.catalog_item_kind and old.parent_id = new.parent_id) then
+      raise exception 'catalog unit cannot be linked to a sold development';
     end if;
 
     if nullif(btrim(new.typology), '') is null then
@@ -126,8 +132,35 @@ begin
     raise exception 'development has active units';
   end if;
 
-  if new.status is distinct from old.status and not can_publish then
-    raise exception 'catalog.publish permission required';
+  if new.kind = 'development'::public.catalog_item_kind
+     and new.status = 'sold'::public.catalog_status
+     and old.status is distinct from new.status
+     and exists (
+       select 1 from public.catalog_items child
+       where child.parent_id = new.id
+         and child.deleted_at is null
+         and child.status <> 'sold'::public.catalog_status
+     ) then
+    raise exception 'development has active unsold units';
+  end if;
+
+  if new.status is distinct from old.status then
+    if not can_publish then
+      raise exception 'catalog.publish permission required';
+    end if;
+
+    if old.status = 'sold'::public.catalog_status then
+      raise exception 'sold catalog item is final and cannot change status';
+    elsif old.status = 'draft'::public.catalog_status
+          and new.status not in ('published'::public.catalog_status, 'sold'::public.catalog_status) then
+      raise exception 'invalid catalog status transition: draft -> %', new.status;
+    elsif old.status = 'published'::public.catalog_status
+          and new.status not in ('paused'::public.catalog_status, 'sold'::public.catalog_status) then
+      raise exception 'invalid catalog status transition: published -> %', new.status;
+    elsif old.status = 'paused'::public.catalog_status
+          and new.status not in ('published'::public.catalog_status, 'sold'::public.catalog_status) then
+      raise exception 'invalid catalog status transition: paused -> %', new.status;
+    end if;
   end if;
 
   if new.status = 'published'::public.catalog_status and old.status is distinct from new.status then
@@ -155,14 +188,19 @@ set search_path = ''
 as $$
 declare
   parent_kind public.catalog_item_kind;
+  parent_status public.catalog_status;
 begin
   if new.kind = 'unit' then
-    select ci.kind into parent_kind
+    select ci.kind, ci.status into parent_kind, parent_status
     from public.catalog_items ci
     where ci.id = new.parent_id and ci.deleted_at is null;
 
     if parent_kind is distinct from 'development'::public.catalog_item_kind then
       raise exception 'catalog unit requires an active development parent';
+    end if;
+
+    if parent_status = 'sold'::public.catalog_status then
+      raise exception 'catalog unit cannot be linked to a sold development';
     end if;
 
     if nullif(btrim(new.typology), '') is null then
@@ -189,21 +227,102 @@ create trigger validate_catalog_insert
 before insert on public.catalog_items
 for each row execute function private.validate_catalog_insert();
 
+create or replace function private.validate_catalog_media_payload()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  item jsonb;
+  media_type text;
+  media_id text;
+  media_url text;
+begin
+  if jsonb_typeof(new.media) is distinct from 'array' then
+    raise exception 'catalog media must be an array';
+  end if;
+
+  for item in select value from jsonb_array_elements(new.media)
+  loop
+    if jsonb_typeof(item) is distinct from 'object' then
+      raise exception 'catalog media item must be an object';
+    end if;
+
+    media_id := nullif(btrim(item ->> 'id'), '');
+    media_type := item ->> 'type';
+    media_url := nullif(btrim(item ->> 'url'), '');
+
+    if media_id is null then
+      raise exception 'catalog media item requires id';
+    end if;
+
+    if media_type not in ('image', 'video', 'document', 'floorplan') then
+      raise exception 'catalog media type is invalid';
+    end if;
+
+    if media_url is null or media_url !~* '^https?://[^[:space:]]+$' then
+      raise exception 'catalog media url must use http or https';
+    end if;
+  end loop;
+
+  return new;
+end;
+$$;
+
+revoke all on function private.validate_catalog_media_payload() from public;
+create trigger validate_catalog_media_payload
+before insert or update of media on public.catalog_items
+for each row execute function private.validate_catalog_media_payload();
+
+create or replace function private.catalog_parent_is_published(p_parent_id uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select exists (
+    select 1
+    from public.catalog_items parent
+    where parent.id = p_parent_id
+      and parent.kind = 'development'::public.catalog_item_kind
+      and parent.status = 'published'::public.catalog_status
+      and parent.deleted_at is null
+  );
+$$;
+
+revoke all on function private.catalog_parent_is_published(uuid) from public;
+grant usage on schema private to anon;
+grant execute on function private.catalog_parent_is_published(uuid) to anon, authenticated;
+
 alter table public.catalog_items enable row level security;
 
 create policy "catalog_public_read_published"
 on public.catalog_items for select
-to anon, authenticated
+to anon
 using (
   deleted_at is null
   and status = 'published'::public.catalog_status
+  and (
+    kind <> 'unit'::public.catalog_item_kind
+    or private.catalog_parent_is_published(parent_id)
+  )
 );
 
-create policy "catalog_internal_read"
+create policy "catalog_authenticated_read"
 on public.catalog_items for select
 to authenticated
 using (
-  private.user_has_permission((select auth.uid()), 'catalog.view')
+  (
+    deleted_at is null
+    and status = 'published'::public.catalog_status
+    and (
+      kind <> 'unit'::public.catalog_item_kind
+      or private.catalog_parent_is_published(parent_id)
+    )
+  )
+  or private.user_has_permission((select auth.uid()), 'catalog.view')
   or private.user_has_permission((select auth.uid()), 'catalog.manage')
   or private.user_has_permission((select auth.uid()), 'catalog.publish')
 );
@@ -225,6 +344,14 @@ with check (
   or private.user_has_permission((select auth.uid()), 'catalog.publish')
 );
 
-grant select on public.catalog_items to anon;
-grant select, insert, update on public.catalog_items to authenticated;
-grant select, insert, update, delete on public.catalog_items to service_role;
+-- Novos projetos Supabase podem preservar privilégios padrão do Data API mesmo
+-- quando os GRANTs desejados são mais restritos. Revogamos primeiro para garantir
+-- que grants e RLS expressem a mesma superfície de acesso.
+revoke all on table public.catalog_items from anon;
+grant select on table public.catalog_items to anon;
+
+revoke all on table public.catalog_items from authenticated;
+grant select, insert, update on table public.catalog_items to authenticated;
+
+revoke all on table public.catalog_items from service_role;
+grant select, insert, update, delete on table public.catalog_items to service_role;

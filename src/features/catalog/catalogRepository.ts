@@ -11,6 +11,46 @@ export interface CatalogRepository {
   setStatus(id: string, status: CatalogStatus): Promise<CatalogItem>;
   duplicate(id: string): Promise<CatalogItem>;
   remove(id: string): Promise<void>;
+  subscribe?(listener: () => void): () => void;
+}
+
+const allowedStatusTransitions: Record<CatalogStatus, CatalogStatus[]> = {
+  draft: ['published', 'sold'],
+  published: ['paused', 'sold'],
+  paused: ['published', 'sold'],
+  sold: [],
+};
+
+const allowedMediaTypes = new Set(['image', 'video', 'document', 'floorplan']);
+
+export function isCatalogMediaUrlAllowed(value: string) {
+  try {
+    const parsed = new URL(value);
+    return parsed.protocol === 'http:' || parsed.protocol === 'https:';
+  } catch {
+    return false;
+  }
+}
+
+export function assertCatalogMedia(media: CatalogItemDraft['media']) {
+  if (!Array.isArray(media)) throw new Error('A mídia do catálogo precisa ser uma lista.');
+
+  for (const item of media) {
+    if (!item || typeof item !== 'object') throw new Error('Mídia do catálogo inválida.');
+    if (!item.id?.trim()) throw new Error('Cada mídia precisa de um identificador.');
+    if (!allowedMediaTypes.has(String(item.type))) throw new Error('Tipo de mídia não permitido.');
+    if (!item.url?.trim() || !isCatalogMediaUrlAllowed(item.url.trim())) {
+      throw new Error('URLs de mídia devem usar http ou https.');
+    }
+  }
+}
+
+export function assertCatalogStatusTransition(current: CatalogStatus, next: CatalogStatus) {
+  if (current === next) return;
+  if (!allowedStatusTransitions[current].includes(next)) {
+    if (current === 'sold') throw new Error('Item vendido é estado final e não pode voltar para outro status.');
+    throw new Error(`Transição de status inválida: ${current} → ${next}.`);
+  }
 }
 
 function nowIso() {
@@ -38,6 +78,15 @@ function hasActiveUnits(items: CatalogItem[], developmentId: string) {
   );
 }
 
+function hasUnsoldActiveUnits(items: CatalogItem[], developmentId: string) {
+  return items.some(
+    (item) => item.kind === 'unit'
+      && item.parentId === developmentId
+      && !item.deletedAt
+      && item.status !== 'sold',
+  );
+}
+
 export class LocalCatalogRepository implements CatalogRepository {
   private readAll(): CatalogItem[] {
     if (typeof window === 'undefined') return [];
@@ -57,7 +106,19 @@ export class LocalCatalogRepository implements CatalogRepository {
     window.dispatchEvent(new CustomEvent(CATALOG_CHANGED_EVENT));
   }
 
-  private validateDraft(input: CatalogItemDraft, items: CatalogItem[], ignoreId?: string) {
+  subscribe(listener: () => void): () => void {
+    if (typeof window === 'undefined') return () => undefined;
+    const handler = () => listener();
+    window.addEventListener(CATALOG_CHANGED_EVENT, handler);
+    return () => window.removeEventListener(CATALOG_CHANGED_EVENT, handler);
+  }
+
+  private validateDraft(
+    input: CatalogItemDraft,
+    items: CatalogItem[],
+    ignoreId?: string,
+    currentParentId?: string,
+  ) {
     const code = normalizeText(input.code);
     const name = normalizeText(input.name);
     const city = normalizeText(input.location.city);
@@ -66,6 +127,7 @@ export class LocalCatalogRepository implements CatalogRepository {
     if (!name) throw new Error('Informe um nome para o item.');
     if (!city) throw new Error('Informe a cidade do item.');
     if (input.price !== null && input.price < 0) throw new Error('O preço não pode ser negativo.');
+    assertCatalogMedia(input.media);
 
     const codeExists = items.some(
       (item) => !item.deletedAt && item.id !== ignoreId && item.code.toLowerCase() === code.toLowerCase(),
@@ -79,6 +141,9 @@ export class LocalCatalogRepository implements CatalogRepository {
         (item) => item.id === input.parentId && item.kind === 'development' && !item.deletedAt,
       );
       if (!parent) throw new Error('O empreendimento selecionado não está disponível.');
+      if (parent.status === 'sold' && currentParentId !== input.parentId) {
+        throw new Error('Não é possível vincular unidade a um empreendimento vendido.');
+      }
     }
   }
 
@@ -168,7 +233,12 @@ export class LocalCatalogRepository implements CatalogRepository {
     } else {
       merged.typology = normalizeText(merged.typology) || undefined;
     }
-    this.validateDraft(merged, items, id);
+    this.validateDraft(
+      merged,
+      items,
+      id,
+      current.kind === 'unit' ? current.parentId : undefined,
+    );
 
     const updated: CatalogItem = {
       ...current,
@@ -190,6 +260,10 @@ export class LocalCatalogRepository implements CatalogRepository {
     if (index < 0) throw new Error('Item não encontrado.');
 
     const current = items[index];
+    if (current.kind === 'development' && status === 'sold' && hasUnsoldActiveUnits(items, id)) {
+      throw new Error('Marque todas as unidades ativas como vendidas antes de vender o empreendimento.');
+    }
+    assertCatalogStatusTransition(current.status, status);
     const timestamp = nowIso();
     const updated: CatalogItem = {
       ...current,
@@ -207,6 +281,15 @@ export class LocalCatalogRepository implements CatalogRepository {
     const items = this.readAll();
     const source = items.find((item) => item.id === id && !item.deletedAt);
     if (!source) throw new Error('Item não encontrado.');
+
+    if (source.kind === 'unit' && source.parentId) {
+      const parent = items.find(
+        (item) => item.id === source.parentId && item.kind === 'development' && !item.deletedAt,
+      );
+      if (!parent || parent.status === 'sold') {
+        throw new Error('Não é possível duplicar unidade vinculada a um empreendimento vendido ou indisponível.');
+      }
+    }
 
     const baseCode = `${source.code}-COPIA`;
     let code = baseCode;

@@ -17,6 +17,8 @@ interface DashboardPageProps {
 const initialSnapshot: DashboardSnapshot = {
   catalog: {
     active: 0,
+    hiddenPublished: 0,
+    inventoryCount: 0,
     drafts: 0,
     paused: 0,
     sold: 0,
@@ -145,6 +147,8 @@ export function DashboardPage({ catalogRepository, commercialProvider }: Dashboa
 
       <div className="f03-metric-grid">
         <MetricCard label="Publicados" value={snapshot.catalog.active} helper="Elegíveis para o site público" />
+        <MetricCard label="Publicados ocultos" value={snapshot.catalog.hiddenPublished} helper="Unidades publicadas cujo empreendimento pai não está publicado" />
+        <MetricCard label="Estoque ativo" value={snapshot.catalog.inventoryCount} helper="Unidades, imóveis avulsos e empreendimentos sem unidades que ainda não foram vendidos" />
         <MetricCard label="Rascunhos" value={snapshot.catalog.drafts} helper="Ainda não publicados" />
         <MetricCard label="Pausados" value={snapshot.catalog.paused} helper="Fora da exposição pública" />
         <MetricCard label="Vendidos" value={snapshot.catalog.sold} helper="Histórico preservado" />

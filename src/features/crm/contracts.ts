@@ -1,4 +1,4 @@
-import { CrmEvent, CrmEventSink, LeadInterest } from './domain';
+import type { CrmEvent, CrmEventSink, LeadInterest } from './domain';
 import { CrmService } from './service';
 
 export interface LeadConversionContact {

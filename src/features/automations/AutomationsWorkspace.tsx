@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { listAIAgents } from '../ai-agents/repository';
 import { listSalesBots } from '../salesbot/repository';
+import { useF05StorageListener } from './useF05StorageListener';
 import {
   addAutomationAction,
   createAutomation,
@@ -45,7 +46,7 @@ function ActionConfig({ automationId, action, onChange }: { automationId: string
   return <div className="f05-block-config">{(fields[action.type] ?? []).map(([key, label, placeholder]) => <label className="f05-inline-field" key={key}>{label}<input value={get(key)} onChange={(e) => set(key, e.target.value)} placeholder={placeholder}/></label>)}</div>;
 }
 
-export function AutomationsWorkspace() {
+export function AutomationsWorkspace({ canManage = false }: { canManage?: boolean }) {
   const [items, setItems] = useState(() => listAutomations());
   const [selectedId, setSelectedId] = useState<string | null>(() => items[0]?.id ?? null);
   const [newName, setNewName] = useState('');
@@ -53,16 +54,24 @@ export function AutomationsWorkspace() {
   const [error, setError] = useState('');
   const selected = useMemo(() => items.find((item) => item.id === selectedId) ?? null, [items, selectedId]);
   const validationIssues = useMemo(() => selected ? validateAutomationForActivation(selected) : [], [selected, items]);
-  const refresh = (focusId?: string) => { const next = listAutomations(); setItems(next); if (focusId) setSelectedId(focusId); else if (selectedId && !next.some((item) => item.id === selectedId)) setSelectedId(next[0]?.id ?? null); };
-  const patch = (value: Partial<Omit<AutomationDefinition, 'id' | 'createdAt'>>) => { if (!selected) return; updateAutomation(selected.id, value); refresh(selected.id); };
+  const refresh = (focusId?: string) => {
+    const next = listAutomations();
+    setItems(next);
+    if (focusId) setSelectedId(focusId);
+    else setSelectedId((current) => current && next.some((item) => item.id === current) ? current : next[0]?.id ?? null);
+  };
+  useF05StorageListener(() => refresh());
+
+  const patch = (value: Partial<Omit<AutomationDefinition, 'id' | 'createdAt'>>) => { if (!selected || !canManage) return; updateAutomation(selected.id, value); refresh(selected.id); };
 
   return <section className="f05-module">
     <header className="f05-module__header"><div><span className="f05-kicker">Automatize</span><h2>Gatilhos e ações do CRM</h2><p>Configure eventos, condições e ações sem acoplar regra de negócio ao CRM.</p></div><span className="f05-count">{items.length}</span></header>
-    <div className="f05-create-row"><input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="Nome da automação"/><button disabled={!newName.trim()} onClick={() => { const item = createAutomation(newName); setNewName(''); refresh(item.id); }}>Criar automação</button></div>
+    {!canManage ? <div className="f05-readonly-note">Modo leitura: sua permissão permite visualizar automações, mas não alterá-las.</div> : null}
+    <fieldset className="f05-readonly-fieldset" disabled={!canManage}><div className="f05-create-row"><input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="Nome da automação"/><button disabled={!newName.trim()} onClick={() => { const item = createAutomation(newName); setNewName(''); refresh(item.id); }}>Criar automação</button></div></fieldset>
     {error && <div className="f05-alert">{error}</div>}
     <div className="f05-split">
       <aside className="f05-list">{items.length === 0 ? <div className="f05-empty">Nenhuma automação criada.</div> : items.map((item) => <button key={item.id} className={`f05-list-item ${item.id === selectedId ? 'is-active' : ''}`} onClick={() => setSelectedId(item.id)}><strong>{item.name}</strong><span>{item.status} · {item.actions.length} ações</span></button>)}</aside>
-      <div className="f05-editor">{!selected ? <div className="f05-empty f05-empty--large">Crie ou selecione uma automação.</div> : <>
+      <fieldset className="f05-editor f05-readonly-fieldset" disabled={!canManage}>{!selected ? <div className="f05-empty f05-empty--large">Crie ou selecione uma automação.</div> : <>
         <div className="f05-form-grid"><label>Nome<input value={selected.name} onChange={(e) => patch({ name: e.target.value })}/></label><label>Descrição<input value={selected.description} onChange={(e) => patch({ description: e.target.value })}/></label></div>
         <div className={`f05-validation ${validationIssues.length === 0 ? 'f05-validation--ok' : ''}`}><strong>{validationIssues.length === 0 ? 'Configuração válida para ativação' : `${validationIssues.length} pendência(s) de configuração`}</strong>{validationIssues.length > 0 && <span>{validationIssues[0]}</span>}</div>
         <label className="f05-field">Gatilho<select value={selected.trigger.event} onChange={(e) => patch({ trigger: { ...selected.trigger, event: e.target.value as CrmAutomationEventType } })}>{EVENTS.map((event) => <option key={event.value} value={event.value}>{event.label}</option>)}</select></label>
@@ -70,7 +79,7 @@ export function AutomationsWorkspace() {
         <div className="f05-actions"><button onClick={() => { try { setAutomationStatus(selected.id, selected.status === 'active' ? 'paused' : 'active'); setError(''); refresh(selected.id); } catch (e) { setError(e instanceof Error ? e.message : 'Não foi possível alterar o status.'); } }}>{selected.status === 'active' ? 'Pausar' : 'Ativar'}</button><button className="secondary" onClick={() => { const copy = duplicateAutomation(selected.id); setError(''); refresh(copy.id); }}>Duplicar</button><button className="danger" onClick={() => { if (window.confirm('Excluir esta automação?')) { deleteAutomation(selected.id); refresh(); } }}>Excluir</button></div>
         <div className="f05-palette"><h3>Ações</h3><div className="f05-create-row"><select value={actionType} onChange={(e) => setActionType(e.target.value as AutomationActionType)}>{ACTIONS.map((action) => <option key={action.value} value={action.value}>{action.label}</option>)}</select><button onClick={() => { addAutomationAction(selected.id, { type: actionType, config: {} }); refresh(selected.id); }}>Adicionar ação</button></div></div>
         <div className="f05-flow">{selected.actions.length === 0 ? <div className="f05-empty">Nenhuma ação configurada.</div> : selected.actions.map((action, index) => <div key={action.id} className="f05-block f05-block--stacked"><div className="f05-block__row"><div className="f05-block__index">{index + 1}</div><div className="f05-block__body"><strong>{ACTIONS.find((item) => item.value === action.type)?.label ?? action.type}</strong><span>Ação executada pelo contrato do módulo correspondente.</span></div><div className="f05-block__actions"><button className="icon" disabled={index === 0} onClick={() => { moveAutomationAction(selected.id, action.id, -1); refresh(selected.id); }}>↑</button><button className="icon" disabled={index === selected.actions.length - 1} onClick={() => { moveAutomationAction(selected.id, action.id, 1); refresh(selected.id); }}>↓</button><button className="icon danger" onClick={() => { removeAutomationAction(selected.id, action.id); refresh(selected.id); }}>×</button></div></div><ActionConfig automationId={selected.id} action={action} onChange={() => refresh(selected.id)}/></div>)}</div>
-      </>}</div>
+      </>}</fieldset>
     </div>
   </section>;
 }

@@ -1,4 +1,4 @@
-import {
+import type {
   InboxConversation,
   InboxMessage,
   InboxState,
@@ -6,10 +6,11 @@ import {
   IncomingTransportMessage,
   MessageType,
   OutgoingTransportMessage,
-  createConversationRecord,
 } from './domain';
-import { InboxRepository } from './repository';
-import { CrmId, createCrmId, nowIso } from '../crm/domain';
+import { createConversationRecord } from './domain';
+import type { InboxRepository } from './repository';
+import type { CrmId } from '../crm/domain';
+import { createCrmId, nowIso } from '../crm/domain';
 
 export class InboxIntegrityError extends Error {
   constructor(message: string) {
@@ -44,8 +45,12 @@ export class InboxService {
 
   setTransportConnected(conversationId: CrmId, connected: boolean, externalThreadId?: string): InboxConversation {
     const conversation = this.requireConversation(conversationId);
+    if (connected && !this.transport) {
+      throw new InboxIntegrityError('Não é possível marcar o canal como conectado sem transporte real configurado.');
+    }
+
     conversation.transportStatus = connected ? 'connected' : 'not_connected';
-    conversation.externalThreadId = externalThreadId;
+    conversation.externalThreadId = connected ? externalThreadId : undefined;
     conversation.updatedAt = nowIso();
     this.persist();
     return conversation;
@@ -60,11 +65,12 @@ export class InboxService {
 
   ingestIncomingMessage(input: IncomingTransportMessage): InboxMessage {
     const conversation = this.requireConversation(input.conversationId);
-    if (
-      input.externalMessageId &&
-      this.state.messages.some((message) => message.externalMessageId === input.externalMessageId)
-    ) {
-      return this.state.messages.find((message) => message.externalMessageId === input.externalMessageId) as InboxMessage;
+    if (input.externalMessageId) {
+      const duplicate = this.state.messages.find(
+        (message) => message.conversationId === conversation.id
+          && message.externalMessageId === input.externalMessageId,
+      );
+      if (duplicate) return duplicate;
     }
 
     const createdAt = input.receivedAt ?? nowIso();
