@@ -7,6 +7,10 @@ create table if not exists public.f05_shared_storage (
   constraint f05_shared_storage_value_array check (jsonb_typeof(value) = 'array')
 );
 
+create index if not exists f05_shared_storage_updated_by_idx
+on public.f05_shared_storage(updated_by)
+where updated_by is not null;
+
 alter table public.f05_shared_storage enable row level security;
 
 create or replace function private.can_read_f05_storage(p_storage_key text)
