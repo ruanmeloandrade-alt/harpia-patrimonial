@@ -5,6 +5,12 @@ import type { AIAgentDefinition, AIAgentStatus } from './types';
 const STORAGE_KEY = 'harpia:f05:ai-agents';
 const now = () => new Date().toISOString();
 
+const isProviderReady = (agent: AIAgentDefinition) => {
+  if (!agent.providerProfileId) return false;
+  const profile = listAIProviderProfiles().find((item) => item.id === agent.providerProfileId);
+  return Boolean(profile && profile.status === 'ready' && profile.apiKeyConfigured && profile.secretRef);
+};
+
 export function listAIAgents(): AIAgentDefinition[] {
   return readStoredList<AIAgentDefinition>(STORAGE_KEY)
     .map((agent) => ({ ...agent, providerProfileId: agent.providerProfileId ?? '' }))
@@ -35,7 +41,10 @@ export function updateAIAgent(id: string, patch: Partial<Omit<AIAgentDefinition,
   const items = listAIAgents();
   const current = items.find((item) => item.id === id);
   if (!current) throw new Error('Agente IA não encontrado.');
-  const updated = { ...current, ...patch, updatedAt: now() };
+  let updated: AIAgentDefinition = { ...current, ...patch, updatedAt: now() };
+  if (current.status === 'active' && patch.status === undefined && !isProviderReady(updated)) {
+    updated = { ...updated, status: 'paused' };
+  }
   writeStoredList(STORAGE_KEY, items.map((item) => (item.id === id ? updated : item)));
   return updated;
 }
@@ -45,14 +54,10 @@ export function deleteAIAgent(id: string): void {
 }
 
 export function setAIAgentStatus(id: string, status: AIAgentStatus): AIAgentDefinition {
-  if (status === 'active') {
-    const agent = listAIAgents().find((item) => item.id === id);
-    if (!agent) throw new Error('Agente IA não encontrado.');
-    if (!agent.providerProfileId) throw new Error('Selecione um perfil de provedor IA antes de ativar o agente.');
-    const profile = listAIProviderProfiles().find((item) => item.id === agent.providerProfileId);
-    if (!profile || profile.status !== 'ready' || !profile.apiKeyConfigured) {
-      throw new Error('O perfil de provedor IA precisa estar pronto e com chave API configurada.');
-    }
+  const agent = listAIAgents().find((item) => item.id === id);
+  if (!agent) throw new Error('Agente IA não encontrado.');
+  if (status === 'active' && !isProviderReady(agent)) {
+    throw new Error('O perfil de provedor IA precisa estar pronto e com chave API segura configurada.');
   }
   return updateAIAgent(id, { status });
 }
