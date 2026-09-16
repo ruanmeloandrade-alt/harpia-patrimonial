@@ -1,8 +1,8 @@
-import { listAIAgents } from '../ai-agents/repository';
-import { listAIProviderProfiles } from '../integrations/aiProviderRepository';
+import { createAIAgentCommandPort } from '../ai-agents/runtime';
+import { unconfiguredAIModelRuntime } from '../integrations/aiRuntimePort';
 import { getSalesBot } from '../salesbot/repository';
 import { listSalesBotExecutions, startExecution, updateExecution } from '../salesbot/executionRepository';
-import type { AIAgentCommandPort, AutomationCommandResult, SalesBotCommandPort } from './contracts';
+import type { AutomationCommandResult, SalesBotCommandPort } from './contracts';
 
 export const salesBotCommandPort: SalesBotCommandPort = {
   async start(input): Promise<AutomationCommandResult> {
@@ -29,28 +29,4 @@ export const salesBotCommandPort: SalesBotCommandPort = {
   },
 };
 
-export const aiAgentCommandPort: AIAgentCommandPort = {
-  async invoke(input): Promise<AutomationCommandResult> {
-    const agent = listAIAgents().find((item) => item.id === input.agentId);
-    if (!agent) return { status: 'rejected', reason: 'Agente IA não encontrado.' };
-    if (agent.status !== 'active') return { status: 'rejected', reason: 'Agente IA precisa estar ativo.' };
-    if (!agent.providerProfileId) return { status: 'rejected', reason: 'Agente IA não possui perfil de provedor selecionado.' };
-
-    const provider = listAIProviderProfiles().find((item) => item.id === agent.providerProfileId);
-    if (!provider) return { status: 'rejected', reason: 'Perfil de provedor IA não encontrado.' };
-    if (provider.status !== 'ready' || !provider.apiKeyConfigured) {
-      return { status: 'not_configured', reason: 'Perfil de provedor/modelo ainda não está pronto ou não possui chave API segura.' };
-    }
-
-    return {
-      status: 'not_configured',
-      reason: 'Perfil de IA está configurado, mas o adaptador de execução do provedor ainda precisa ser conectado ao backend seguro.',
-    };
-  },
-  async pause(): Promise<AutomationCommandResult> {
-    return { status: 'not_configured', reason: 'Não existe execução de IA real sem adaptador de provedor conectado.' };
-  },
-  async getStatus() {
-    return 'not_found';
-  },
-};
+export const aiAgentCommandPort = createAIAgentCommandPort(unconfiguredAIModelRuntime);
