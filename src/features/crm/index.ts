@@ -4,5 +4,6 @@ export * from './service';
 export * from './contracts';
 export * from './front01Adapter';
 export * from './front05Adapter';
+export * from './sharedStatePersistence';
 export * from './CrmWorkspace';
 export * from './Front04Workspace';
