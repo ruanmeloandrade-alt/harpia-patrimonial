@@ -99,6 +99,8 @@ export function usePublicFavoritesBridge(options: {
       if (pendingOperationsRef.current.has(operationKey)) return;
 
       pendingOperationsRef.current.add(operationKey);
+      ++requestVersionRef.current;
+      setLoading(false);
       setError('');
       const exists = favoriteIds.has(item.id);
 
