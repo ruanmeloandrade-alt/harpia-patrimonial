@@ -34,6 +34,8 @@ export const ingestLeadConversion = (
     source: event.origin,
     sourceAction: event.action,
     sourcePage: event.page,
+    sourceOccurredAt: event.occurredAt,
+    sourceMetadata: event.metadata,
     interest: event.interest,
   });
 
