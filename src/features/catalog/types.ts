@@ -19,6 +19,8 @@ export interface CatalogMedia {
   isCover?: boolean;
 }
 
+export type PublicCatalogMedia = Omit<CatalogMedia, 'storagePath'>;
+
 export interface CatalogItem {
   id: string;
   code: string;
@@ -80,7 +82,7 @@ export interface PublicCatalogItem {
   features: string[];
   lifestyleTags: string[];
   developer?: string;
-  media: CatalogMedia[];
+  media: PublicCatalogMedia[];
   status: 'published';
 }
 
