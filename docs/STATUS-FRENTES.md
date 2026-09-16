@@ -27,26 +27,31 @@ Atualizar este arquivo ao iniciar e ao concluir blocos relevantes.
 ## Frente03 — Catálogo interno/Dashboard
 
 - Branch: `frente-03`
-- Status geral: 🟠 PARCIAL / EM ANDAMENTO
+- Status geral: 🟠 PARCIAL / AGUARDANDO INTEGRAÇÕES E VALIDAÇÃO FINAL
 - Responsável: ChatGPT — Frente03
-- Último commit funcional relevante: `ed0957e283a6533e1f297502d912725a303d9803`
+- Último commit funcional relevante: `2ca4606754d538e72d8baa931ad10fa3201cde57`
 - Regra visual: 🟢 completo e testável | 🟠 parcial/em andamento | 🔴 não iniciado.
-- 🟢 Modelo de domínio do catálogo: empreendimento, unidade, imóvel avulso, estados e mídia.
-- 🟢 Repositório local/contrato do catálogo: CRUD, publicação explícita, pausa, vendido, duplicação segura, exclusão lógica e proteção contra unidades órfãs.
-- 🟢 Contrato público: somente publicados, detalhe, filtros e opções de cidade/localização derivados dos dados reais.
-- 🟢 Serviço de métricas do catálogo/dashboard: sem mocks e com disponibilidade explícita por métrica comercial.
-- 🟢 Adapter de métricas CRM: quantidade de leads, origem e próximas tarefas derivadas da `snapshot()` real; typecheck e teste de execução passaram.
-- 🟢 Adapter `SupabaseCatalogRepository`: contrato de produção injetável; typecheck e teste de execução com cliente Supabase simulado passaram.
-- 🟠 Schema Supabase/RLS do catálogo: implementado com `catalog.view`, `catalog.manage` e `catalog.publish`, integridade pai/unidade e proteção de alteração; ainda precisa ser aplicado e testado no Supabase dedicado real.
-- 🟠 `CatalogAdminPage`: CRUD/UI implementados e RBAC granular separado em leitura, edição e publicação; build React/Vite completo e teste visual integrado ainda não foram concluídos depois do ajuste final de RBAC.
-- 🟠 `DashboardPage`: implementado e atualizado para não apresentar métricas CRM não suportadas como se fossem dados reais; build React/Vite completo e teste visual integrado ainda não foram concluídos.
-- 🟠 `Front03Workspace`: implementado para integração, mas depende do shell/roteamento da Frente01 para funcionar no produto conjunto.
-- 🟠 Persistência multiusuário real: adapter e schema prontos; depende da Frente01 aplicar o schema no projeto Supabase dedicado e injetar o cliente oficial.
-- 🟠 Mídia: associação por URL permanente implementada; storage/upload binário real ainda depende da infraestrutura comum.
-- 🟠 Métricas comerciais avançadas: visitas, propostas, negociações, vendas, VGV/pipeline, ticket, conversão e demanda por região dependem de configuração/contrato explícito; não são inferidas pelo nome das etapas.
-- Validação executada: typecheck estrito e testes de execução do domínio/repositório público/dashboard; adapter CRM testado; adapter Supabase testado com cliente simulado.
-- NÃO VERIFICADO: aplicação real do SQL/RLS no Supabase; build Vite completo da branch; lint global; teste visual em navegador integrado ao shell; storage real.
-- Próximo passo: validar integração real com Supabase/RBAC/roteamento e fechar build/teste visual sem invadir arquivos globais pertencentes à Frente01.
+- 🟢 Modelo de domínio do catálogo: empreendimento, unidade, imóvel avulso, tipologia de unidade, finalidade, localização, preço, estilos de vida e mídia.
+- 🟢 Repositório local/contrato do catálogo: CRUD, busca, publicação explícita, pausa, vendido, duplicação segura, exclusão lógica, código único e proteção contra unidades órfãs.
+- 🟢 Contrato público: somente publicados; listagem, detalhe, unidades do empreendimento, faixa de preço derivada, filtros e opções derivadas de dados reais.
+- 🟢 Filtro de preço: empreendimentos com unidades publicadas são filtrados pelos preços reais das unidades; o preço do pai não cria teto/faixa artificial.
+- 🟢 Valor de estoque: evita dupla contagem de empreendimento + unidades e exclui vendidos.
+- 🟢 Métricas seguras do CRM: leads, origem e próximas tarefas; com `referenceId` real + catálogo também deriva demanda por região e interesse por produto baseado em leads.
+- 🟢 Adapter `SupabaseCatalogRepository`: contrato de produção injetável, validações locais, normalização de tipologia e evento comum de atualização; a camada estrutural já foi testada com cliente Supabase simulado em bloco anterior.
+- 🟢 Modelo de mídia no catálogo: foto de capa (primeira foto), galeria, vídeos, plantas e documentos; IDs existentes são preservados ao editar URLs já cadastradas.
+- 🟠 Schema Supabase/RLS do catálogo: implementação concluída com `catalog.view`, `catalog.manage`, `catalog.publish`, integridade pai/unidade, campos obrigatórios e timestamps de publicação/venda protegidos; ainda precisa ser aplicado e testado no Supabase dedicado real.
+- 🟠 `CatalogAdminPage`: fluxo implementado com loading, erro, empty state, CRUD, filtros, mídia e RBAC granular; precisa de build Vite/browser integrado depois das últimas alterações para receber 🟢 como tela final.
+- 🟠 `DashboardPage`: fluxo implementado, inclusive disponibilidade explícita de métricas e interesse por produto; precisa de build Vite/browser integrado para receber 🟢 como tela final.
+- 🟠 `Front03Workspace`: implementação concluída e desacoplada; depende do shell/roteamento da Frente01 para ser testável no produto conjunto.
+- 🟠 Persistência multiusuário real: adapter e schema estão prontos; depende da Frente01 aplicar o schema no projeto Supabase dedicado e injetar o cliente oficial.
+- 🟠 Upload/storage binário: associação de mídia por URL permanente está pronta; infraestrutura real de upload/storage ainda depende da camada compartilhada.
+- 🟠 Métricas comerciais avançadas: visitas, propostas, negociações, vendas, VGV/pipeline, ticket e conversão dependem de semântica/configuração explícita do CRM; não são inferidas pelo nome de etapas.
+- Validação executada neste bloco: typecheck estrito e testes de execução da camada central; tipologia obrigatória; relação empreendimento/unidades; faixa de preço; filtro de preço por unidades; limites globais de preço; proteção contra órfãos; valor de estoque sem dupla contagem; CRM→catálogo para região/produto; métricas disponíveis; zero mocks.
+- Resultado dos testes centrais mais recentes: faixa `500000–700000`, filtro `650000–750000` retornando unidade compatível + empreendimento, limites globais `300000–700000`, demanda regional e interesse por produto derivados corretamente.
+- 🟠 Build Vite completo: **NÃO VERIFICADO**. O executor disponível nesta sessão usa Node 22 enquanto o repositório exige Node 24, não possui as dependências Vite/React instaladas e o clone/instalação direta ficou bloqueado por resolução de rede. Nenhum build foi declarado como aprovado.
+- 🟠 Lint global: **NÃO VERIFICADO** porque esta branch não possui script/configuração de lint no `package.json`.
+- 🟠 Teste visual em navegador integrado ao shell: **NÃO VERIFICADO**.
+- Próximo passo da Frente03: não há novo bloco funcional independente essencial identificado neste momento; aguardar as integrações abaixo e então executar validação real de Supabase/RBAC/shell/CRM/site público.
 
 ## Frente04 — CRM/Inbox
 
@@ -110,7 +115,7 @@ Formato obrigatório:
 - Destino: Frente01
 - Necessidade: mapear `useAuth().hasPermission()` para `catalog.view`, `catalog.manage` e `catalog.publish` ao montar a Frente03.
 - Arquivo/contrato afetado: composição do shell/RBAC.
-- Motivo: a UI da Frente03 já separa leitura, gestão e publicação; falta ligar às permissões reais.
+- Motivo: a UI da Frente03 já separa leitura, gestão e publicação; `catalog.manage`/`catalog.publish` também implicam leitura, coerente com RLS.
 - Urgência: alta.
 - Status: PENDENTE
 
@@ -119,7 +124,7 @@ Formato obrigatório:
 - Destino: Frente04 / Integrador
 - Necessidade: permitir composição compartilhada do `CrmService` ou fonte de persistência comum para que `CrmSnapshotMetricsProvider` leia exatamente o mesmo estado usado pela Frente04.
 - Arquivo/contrato afetado: `Front04Workspace` / criação da instância `CrmService`.
-- Motivo: o `Front04Workspace` atual instancia o serviço internamente; o dashboard precisa consumir a mesma fonte sem duplicar CRM.
+- Motivo: o dashboard consegue derivar leads/origens/tarefas e, com `interest.referenceId`, região e interesse por produto; precisa consumir a mesma fonte real do CRM sem duplicação.
 - Urgência: média/alta.
 - Status: PENDENTE
 
@@ -128,7 +133,7 @@ Formato obrigatório:
 - Destino: Frente02 / Integrador
 - Necessidade: consumir `PublicCatalogService`/contrato publicado em vez de criar outra fonte de catálogo.
 - Arquivo/contrato afetado: busca e detalhe públicos.
-- Motivo: manter uma única fonte de verdade e expor apenas itens publicados.
+- Motivo: manter uma única fonte de verdade e expor apenas itens publicados, incluindo empreendimento/unidades e faixa de preço derivada.
 - Urgência: alta.
 - Status: PENDENTE
 
