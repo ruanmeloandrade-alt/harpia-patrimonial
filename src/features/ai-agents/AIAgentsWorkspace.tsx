@@ -7,7 +7,7 @@ import type { AIAgentDefinition } from './types';
 
 const splitCsv = (value: string) => value.split(',').map((item) => item.trim()).filter(Boolean);
 
-export function AIAgentsWorkspace({ canManage = true }: { canManage?: boolean }) {
+export function AIAgentsWorkspace({ canManage = false }: { canManage?: boolean }) {
   const [agents, setAgents] = useState(() => listAIAgents());
   const [selectedId, setSelectedId] = useState<string | null>(() => agents[0]?.id ?? null);
   const [newName, setNewName] = useState('');
