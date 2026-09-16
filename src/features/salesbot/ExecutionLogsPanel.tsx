@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { clearAIAgentExecutionLogs, listAIAgentExecutions } from '../ai-agents/executionRepository';
 import { listAIAgents } from '../ai-agents/repository';
+import { useF05StorageListener } from '../automations/useF05StorageListener';
 import { clearExecutionLogs, listSalesBotExecutions } from './executionRepository';
 import { listSalesBots } from './repository';
 
@@ -10,6 +11,12 @@ export function ExecutionLogsPanel({ canManage = true }: { canManage?: boolean }
   const botsById = useMemo(() => new Map(listSalesBots().map((item) => [item.id, item.name])), [salesbotLogs.length]);
   const agentsById = useMemo(() => new Map(listAIAgents().map((item) => [item.id, item.name])), [aiLogs.length]);
   const total = salesbotLogs.length + aiLogs.length;
+
+  const refresh = () => {
+    setSalesbotLogs(listSalesBotExecutions());
+    setAiLogs(listAIAgentExecutions());
+  };
+  useF05StorageListener(refresh);
 
   const clearAll = () => {
     if (!canManage) return;
@@ -22,7 +29,7 @@ export function ExecutionLogsPanel({ canManage = true }: { canManage?: boolean }
   return <section className="f05-module">
     <header className="f05-module__header">
       <div><span className="f05-kicker">Execuções</span><h2>Logs de automação e IA</h2><p>Somente execuções realmente iniciadas pelos motores aparecem aqui. Prompts e respostas de IA não são persistidos nesta tela.</p></div>
-      <button className="secondary" disabled={total === 0 || !canManage} onClick={() => { if (window.confirm('Limpar os logs locais da Frente 5?')) clearAll(); }}>Limpar logs</button>
+      <button className="secondary" disabled={total === 0 || !canManage} onClick={() => { if (window.confirm('Limpar os logs compartilhados da Frente 5?')) clearAll(); }}>Limpar logs</button>
     </header>
 
     <div className="f05-subheader"><div><span className="f05-kicker">SalesBot</span><h3>Execuções de fluxos</h3></div><span className="f05-count">{salesbotLogs.length}</span></div>
