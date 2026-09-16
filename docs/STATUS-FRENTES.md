@@ -2,98 +2,95 @@
 
 Atualizar este arquivo ao iniciar e ao concluir blocos relevantes.
 
-## Frente01 — Núcleo/Auth/Usuários/Permissões
+## Frente01 — Núcleo/Auth/Usuários/Permissões + integração global
 
 - Branch: `frente-01`
-- Status: EM ANDAMENTO — BACKEND ATIVO / TESTES E2E E INTEGRAÇÃO PENDENTES
-- Responsável: este chat
-- Último commit relevante de implementação antes deste status: `63c1e3b299a8279f8505d6bac30e0459d05f21e1`
-- Backend dedicado: projeto Supabase `Harpia Patrimonial`, ref `desxomqvtjaymwwxivwq`, organização `Marketing11`, região `sa-east-1`, status `ACTIVE_HEALTHY`.
-- Entregue estruturalmente: cliente Supabase tipado; sessão persistente; cadastro/login/logout/recuperação; validação da sessão de recuperação; rotas protegidas; `dashboard.view` aplicado na rota; área base do cliente; shell interno; Error Boundary global; criação/edição/ativação de usuários; criação/edição/ativação de grupos; permissões por grupo; exceções individuais; bloqueio de autoelevação/autodesativação; configurações estruturais e preferências compartilhadas; métricas reais do núcleo; contrato público `src/core/auth/index.ts`; constantes compartilhadas de permissão; tipos TypeScript gerados do schema real; versões de dependências fixadas no `package.json`.
-- Banco aplicado: migrations `core_auth`, `core_auth_hardening` e `core_auth_performance` executadas com sucesso.
-- Edge Function: `admin-user` publicada, `ACTIVE`, com `verify_jwt = true`.
-- Segurança verificada: Supabase Security Advisor com 0 lints; RLS habilitado; teste como role `authenticated` sem identidade retornou 0 linhas para permissões, grupos, configurações e perfis.
-- Performance verificada: avisos úteis do advisor corrigidos; restam apenas informações de índices ainda não utilizados, esperadas em banco novo sem tráfego.
-- Seed estrutural verificado: 22 permissões, 1 grupo de sistema `Administrador`, 22 permissões allow no grupo administrador e 0 perfis reais/fictícios.
-- Independências concluídas: não há outro bloco de implementação do núcleo que dependa apenas da Frente01 e precise ser construído antes dos testes reais/deploy para cumprir o escopo atual.
-- Pendências próprias: configurar `VITE_SUPABASE_URL` e `VITE_SUPABASE_PUBLISHABLE_KEY` no ambiente de hospedagem; configurar URLs de redirect do Auth quando o deploy final estiver definido; criar/promover o primeiro administrador real quando os dados forem fornecidos; validar cadastro/login/logout/refresh/recovery e gestão de usuários/permissões ponta a ponta; gerar `package-lock.json` e rodar build/typecheck quando houver ambiente com registry npm acessível.
-- Dependências entre frentes aguardando: integrar identidade/autorização da Frente01 com a área do cliente da Frente02 e com os módulos internos das demais frentes durante o pente fino. A Frente01 não vai invadir esses módulos antes dos handoffs correspondentes.
-- Próximo passo: aguardar dados reais do primeiro administrador e a consolidação do ambiente de deploy/integração; assim que disponíveis, executar QA real de autenticação/RLS e fechar a frente para integração.
+- Status: **INTEGRADA ESTRUTURALMENTE — F02/F03/F04/F05 LIBERADAS PARA CONTINUAR**
+- Último commit funcional antes deste status: `7b7462a0d0466a4e04cfa40260c90e97c603ddbd`.
+- Backend dedicado Hárpia ativo.
+- Núcleo entregue: autenticação cliente/equipe, sessão, cadastro/login/logout/recuperação, guards, usuários, grupos, permissões, overrides individuais, configurações, shell e roteador global.
+- Integração F02: experiência pública ligada ao Auth, catálogo, favoritos, área do cliente e ingestão de leads reais; `/conta` protegido antes do caminho legado `/cliente`.
+- Integração F03: `createCatalogRuntime` adotado; repository, Realtime e Storage usam o cliente Supabase global; mídia do catálogo injetada na tela interna.
+- Integração F04: CRM/Inbox usam estado compartilhado; fila de leads sem etapa está visível; Inbox recebe SalesBots e agentes IA ativos explicitamente.
+- Integração F05: estado compartilhado, RBAC `view/manage`, `canManage`, engine de automação, runtime IA e integrações server-side compostos no integrador.
+- Conversão F02 → F04 ligada; criação de lead não envia mensagem automaticamente.
+- Métricas F04 → F03 ligadas sem inventar métricas indisponíveis.
+- Eventos/comandos F04 ↔ F05 ligados.
+
+### Liberação
+
+As Frentes02, 03, 04 e 05 **não precisam mais aguardar a Frente01 para continuar o trabalho estrutural**. Os encaixes globais que dependiam da F01 estão disponíveis na `frente-01`.
+
+### Pendências finais da Frente01
+
+Estas pendências permanecem para QA/fase final e **não bloqueiam o avanço das outras frentes**:
+
+- sincronizar `src/core/supabase/database.types.ts` com o schema mais recente;
+- executar build/typecheck quando houver ambiente Node/npm disponível;
+- criar os dois usuários temporários de QA já autorizados quando houver caminho seguro pelo Auth;
+- executar E2E autenticado, persistência e concorrência entre sessões;
+- validar e-mail/recovery e redirects finais na etapa posterior já definida;
+- conectar WhatsApp e Meta na fase final;
+- ajustes visuais/UX ficam depois da funcionalidade.
 
 ## Frente02 — Site público/Área do cliente
 
 - Branch: `frente-02`
-- Status inicial: NÃO INICIADA
-- Responsável: chat/agente designado pelo usuário
-- Último commit relevante: —
-- Entregue: —
-- Em andamento: —
-- Bloqueios: —
-- Próximo passo: iniciar pela leitura da documentação obrigatória.
+- Dependência estrutural da Frente01: **LIBERADA**.
+- Próximo passo: continuar implementação/QA local usando a composição integrada.
 
 ## Frente03 — Catálogo interno/Dashboard
 
 - Branch: `frente-03`
-- Status inicial: NÃO INICIADA
-- Responsável: chat/agente designado pelo usuário
-- Último commit relevante: —
-- Entregue: —
-- Em andamento: —
-- Bloqueios: —
-- Próximo passo: iniciar pela leitura da documentação obrigatória.
+- Dependência estrutural da Frente01: **LIBERADA**.
+- Próximo passo: continuar QA funcional de catálogo/dashboard; runtime global de catálogo já está encaixado.
 
 ## Frente04 — CRM/Inbox
 
 - Branch: `frente-04`
-- Status inicial: NÃO INICIADA
-- Responsável: chat/agente designado pelo usuário
-- Último commit relevante: —
-- Entregue: —
-- Em andamento: —
-- Bloqueios: —
-- Próximo passo: iniciar pela leitura da documentação obrigatória.
+- Dependência estrutural da Frente01: **LIBERADA**.
+- Próximo passo: continuar QA funcional de CRM/Inbox. Rotas CRM/Inbox seguem `*.manage` enquanto não existir modo somente leitura seguro.
 
 ## Frente05 — SalesBot/Automatize/IA/Integrações
 
 - Branch: `frente-05`
-- Status inicial: NÃO INICIADA
-- Responsável: chat/agente designado pelo usuário
-- Último commit relevante: —
-- Entregue: —
-- Em andamento: —
-- Bloqueios: —
-- Próximo passo: iniciar pela leitura da documentação obrigatória.
+- Dependência estrutural da Frente01: **LIBERADA**.
+- Próximo passo: continuar QA dos módulos; RBAC e composição global já estão encaixados.
 
 ---
 
 # Pedidos entre frentes
 
-Use esta seção quando uma frente precisar que outra altere um arquivo ou contrato que não pertence ao seu escopo.
-
-Formato obrigatório:
-
-- Data/hora:
-- Origem:
-- Destino:
-- Necessidade:
-- Arquivo/contrato afetado:
-- Motivo:
-- Urgência:
-- Status: PENDENTE / EM ANDAMENTO / RESOLVIDO
-
-Nenhuma solicitação registrada ainda.
+- Data: 16/09/2026
+- Origem: Frentes02–05
+- Destino: Frente01
+- Necessidade: fechar encaixes estruturais no shell/runtime global.
+- Status: **RESOLVIDO**.
 
 ---
 
-# Pendências de integração global
+# Integração global
 
-- Integrar autenticação da Frente01 com área do cliente da Frente02.
-- Integrar catálogo publicado da Frente03 com busca pública da Frente02.
-- Integrar eventos de conversão da Frente02 com criação de lead da Frente04.
-- Integrar métricas CRM da Frente04 no dashboard da Frente03.
-- Integrar comandos Inbox da Frente04 com SalesBot/IA da Frente05.
-- Integrar eventos CRM da Frente04 com Automatize da Frente05.
-- Conectar WhatsApp e Meta somente na fase final.
+## Resolvido estruturalmente
+
+- [x] Auth F01 ↔ F02.
+- [x] Catálogo F03 ↔ F02.
+- [x] Conversão F02 ↔ lead F04.
+- [x] Métricas F04 ↔ dashboard F03.
+- [x] Inbox F04 ↔ SalesBot/IA F05.
+- [x] Eventos CRM F04 ↔ Automatize F05.
+- [x] RBAC F05 ↔ shell F01.
+- [x] Realtime/Storage do catálogo F03 ↔ runtime F01.
+
+## QA/fase final
+
+- [ ] build/typecheck conjunto.
+- [ ] E2E autenticado.
+- [ ] multi-sessão/conflito real.
+- [ ] e-mail/recovery/redirects finais.
+- [ ] WhatsApp real.
+- [ ] Meta real.
+- [ ] refinamento visual/UX.
 
 ---
 
@@ -102,5 +99,6 @@ Nenhuma solicitação registrada ainda.
 - NÃO INICIADA: nenhuma implementação relevante começou.
 - EM ANDAMENTO: há trabalho ativo na branch.
 - BLOQUEADA: depende de decisão ou contrato externo.
-- PRONTA PARA INTEGRAÇÃO: escopo da frente concluído e testado isoladamente.
-- INTEGRADA: merge validado no produto conjunto.
+- PRONTA PARA INTEGRAÇÃO: escopo local pronto para composição.
+- INTEGRADA ESTRUTURALMENTE: módulos encaixados sem afirmar build/E2E ainda não executados.
+- INTEGRADA/VERDE: merge + build + testes reais exigidos concluídos.
