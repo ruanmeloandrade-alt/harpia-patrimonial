@@ -57,7 +57,20 @@ set search_path = ''
 as $$
 declare
   parent_kind public.catalog_item_kind;
+  can_manage boolean;
+  can_publish boolean;
 begin
+  can_manage := private.user_has_permission((select auth.uid()), 'catalog.manage');
+  can_publish := private.user_has_permission((select auth.uid()), 'catalog.publish');
+
+  if not can_manage and can_publish then
+    if (to_jsonb(new) - array['status', 'published_at', 'sold_at', 'updated_at'])
+       is distinct from
+       (to_jsonb(old) - array['status', 'published_at', 'sold_at', 'updated_at']) then
+      raise exception 'catalog.manage permission required for catalog data changes';
+    end if;
+  end if;
+
   if new.kind = 'unit' then
     select ci.kind into parent_kind
     from public.catalog_items ci
@@ -81,8 +94,7 @@ begin
     raise exception 'development has active units';
   end if;
 
-  if new.status is distinct from old.status
-     and not private.user_has_permission((select auth.uid()), 'catalog.publish') then
+  if new.status is distinct from old.status and not can_publish then
     raise exception 'catalog.publish permission required';
   end if;
 
@@ -162,8 +174,14 @@ with check (private.user_has_permission((select auth.uid()), 'catalog.manage'));
 create policy "catalog_internal_update"
 on public.catalog_items for update
 to authenticated
-using (private.user_has_permission((select auth.uid()), 'catalog.manage'))
-with check (private.user_has_permission((select auth.uid()), 'catalog.manage'));
+using (
+  private.user_has_permission((select auth.uid()), 'catalog.manage')
+  or private.user_has_permission((select auth.uid()), 'catalog.publish')
+)
+with check (
+  private.user_has_permission((select auth.uid()), 'catalog.manage')
+  or private.user_has_permission((select auth.uid()), 'catalog.publish')
+);
 
 grant select on public.catalog_items to anon;
 grant select, insert, update on public.catalog_items to authenticated;
