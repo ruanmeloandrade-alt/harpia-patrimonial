@@ -25,6 +25,8 @@ export interface CatalogRuntime {
  *
  * O serviço público usa o repositório Supabase base. O repositório interno é
  * decorado com Realtime e só abre canal quando realmente utilizado pela área interna.
+ * O Storage recebe o repositório base para evitar apagar objetos ainda referenciados
+ * por itens ativos ou históricos do catálogo.
  */
 export function createCatalogRuntime(client: CatalogRuntimeSupabaseClient): CatalogRuntime {
   const baseRepository = new SupabaseCatalogRepository(client);
@@ -33,7 +35,7 @@ export function createCatalogRuntime(client: CatalogRuntimeSupabaseClient): Cata
   return {
     repository,
     publicCatalogService: new PublicCatalogService(baseRepository),
-    mediaStorage: new SupabaseCatalogMediaStorage(client),
+    mediaStorage: new SupabaseCatalogMediaStorage(client, baseRepository),
     dispose: () => repository.dispose(),
   };
 }
