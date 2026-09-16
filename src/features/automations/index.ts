@@ -1,5 +1,12 @@
 export { Front05Workspace } from './Front05Workspace';
 export { salesBotCommandPort, aiAgentCommandPort } from './runtimePorts';
+export { processCrmAutomationEvent, unconfiguredAutomationEngineDependencies } from './engine';
+export type {
+  AutomationActionReport,
+  AutomationEngineDependencies,
+  AutomationExecutionReport,
+  AutomationWebhookPort,
+} from './engine';
 export type {
   AIAgentCommandPort,
   AutomationCommandResult,
@@ -8,6 +15,17 @@ export type {
   CrmAutomationEventType,
   SalesBotCommandPort,
 } from './contracts';
+export { runSalesBotExecution, unconfiguredSalesBotRuntimeDependencies } from '../salesbot/runtime';
+export type {
+  SalesBotConditionPort,
+  SalesBotConditionResult,
+  SalesBotDelayPort,
+  SalesBotMessagePort,
+  SalesBotRunResult,
+  SalesBotRuntimeContext,
+  SalesBotRuntimeDependencies,
+  SalesBotWebhookPort,
+} from '../salesbot/runtime';
 export type { AICredentialVaultPort, AICredentialSaveResult } from '../integrations/aiCredentialPort';
 export type {
   AIProviderCatalogItem,
