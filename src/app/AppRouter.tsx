@@ -69,20 +69,31 @@ export function AppRouter() {
       permission = PERMISSIONS.INBOX_MANAGE;
     } else if (pathname === '/interno/salesbot') {
       page = <IntegratedSalesBot />;
-      permission = PERMISSIONS.SALESBOT_MANAGE;
+      permission = undefined;
+      permissions = [PERMISSIONS.SALESBOT_VIEW, PERMISSIONS.SALESBOT_MANAGE];
     } else if (pathname === '/interno/automatize') {
       page = <IntegratedAutomations />;
-      permission = PERMISSIONS.AUTOMATIONS_MANAGE;
+      permission = undefined;
+      permissions = [PERMISSIONS.AUTOMATIONS_VIEW, PERMISSIONS.AUTOMATIONS_MANAGE];
     } else if (pathname === '/interno/agentes-ia') {
       page = <IntegratedAIAgents />;
-      permission = PERMISSIONS.AI_MANAGE;
+      permission = undefined;
+      permissions = [PERMISSIONS.AI_VIEW, PERMISSIONS.AI_MANAGE];
     } else if (pathname === '/interno/execucoes') {
       page = <IntegratedExecutionLogs />;
       permission = undefined;
-      permissions = [PERMISSIONS.SALESBOT_VIEW, PERMISSIONS.AUTOMATIONS_VIEW, PERMISSIONS.AI_VIEW];
+      permissions = [
+        PERMISSIONS.SALESBOT_VIEW,
+        PERMISSIONS.SALESBOT_MANAGE,
+        PERMISSIONS.AUTOMATIONS_VIEW,
+        PERMISSIONS.AUTOMATIONS_MANAGE,
+        PERMISSIONS.AI_VIEW,
+        PERMISSIONS.AI_MANAGE,
+      ];
     } else if (pathname === '/interno/integracoes') {
       page = <IntegratedIntegrations />;
-      permission = PERMISSIONS.INTEGRATIONS_MANAGE;
+      permission = undefined;
+      permissions = [PERMISSIONS.INTEGRATIONS_VIEW, PERMISSIONS.INTEGRATIONS_MANAGE];
     } else if (pathname === '/interno/usuarios') {
       page = <UsersPage />;
       permission = PERMISSIONS.USERS_VIEW;
