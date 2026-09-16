@@ -20,6 +20,17 @@ alter table public.automation_event_outbox enable row level security;
 revoke all on public.automation_event_outbox from public, anon, authenticated;
 grant select, insert, update, delete on public.automation_event_outbox to service_role;
 
+-- Tabela exclusivamente server-side. A policy explícita mantém o default-deny
+-- documentado para clientes e evita que futuras concessões de GRANT abram dados
+-- sem uma decisão consciente de RBAC. service_role continua operando com bypass RLS.
+drop policy if exists automation_event_outbox_client_deny on public.automation_event_outbox;
+create policy automation_event_outbox_client_deny
+on public.automation_event_outbox
+for all
+to anon, authenticated
+using (false)
+with check (false);
+
 create or replace function public.admin_claim_automation_events(p_limit integer default 10)
 returns setof public.automation_event_outbox
 language plpgsql
@@ -59,7 +70,7 @@ returns void
 language plpgsql
 security definer
 set search_path = ''
-as $$
+as $$;
 begin
   if coalesce(current_setting('request.jwt.claim.role', true), '') <> 'service_role' then
     raise exception 'service_role required';
