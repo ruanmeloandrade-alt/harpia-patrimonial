@@ -31,6 +31,7 @@ export interface ClientAreaDataState {
   data: ClientAreaDataView;
   loading?: boolean;
   error?: string;
+  reload?: () => Promise<void>;
 }
 
 const emptyClientData: ClientAreaDataView = { interests: [], history: [] };
@@ -53,6 +54,7 @@ interface ClientAreaProps {
   data?: ClientAreaDataView;
   dataLoading?: boolean;
   dataError?: string;
+  onReloadData?: () => Promise<void>;
   onRequestLogin: () => void;
   onOpenProperty: (slug: string) => void;
   onGoToCatalog: () => void;
@@ -76,6 +78,7 @@ export function ClientArea({
   data,
   dataLoading,
   dataError,
+  onReloadData,
   onRequestLogin,
   onOpenProperty,
   onGoToCatalog,
@@ -85,6 +88,7 @@ export function ClientArea({
   const resolvedData = data ?? contextual.data;
   const resolvedLoading = dataLoading ?? contextual.loading ?? false;
   const resolvedError = dataError ?? contextual.error ?? '';
+  const resolvedReload = onReloadData ?? contextual.reload;
 
   if (!profile) {
     return (
@@ -116,7 +120,17 @@ export function ClientArea({
         </div>
       </header>
 
-      {resolvedError ? <div className="error-state client-data-error" role="alert">{resolvedError}</div> : null}
+      {resolvedError ? (
+        <div className="error-state client-data-error" role="alert">
+          <strong>Não foi possível carregar todos os dados da sua conta.</strong>
+          <span>{resolvedError}</span>
+          {resolvedReload ? (
+            <button className="secondary-button" type="button" onClick={() => void resolvedReload()} disabled={resolvedLoading}>
+              {resolvedLoading ? 'Tentando novamente…' : 'Tentar novamente'}
+            </button>
+          ) : null}
+        </div>
+      ) : null}
 
       <div className="client-grid" aria-busy={resolvedLoading}>
         <article className="client-panel client-panel--wide">
@@ -130,7 +144,11 @@ export function ClientArea({
             </button>
           </div>
 
-          {favorites.length === 0 ? (
+          {resolvedLoading ? (
+            <div className="loading-state">
+              <strong>Carregando imóveis salvos…</strong>
+            </div>
+          ) : favorites.length === 0 ? (
             <div className="empty-state">
               <strong>Nenhum imóvel salvo ainda.</strong>
               <p>Explore o catálogo e salve oportunidades que façam sentido para seus objetivos.</p>
@@ -194,11 +212,12 @@ export function ClientArea({
           ) : (
             <div className="client-record-list">
               {resolvedData.history.map((entry) => {
+                const dateLabel = formatHistoryDate(entry.occurredAt);
                 const content = (
                   <>
                     <strong>{entry.title}</strong>
                     {entry.detail ? <span>{entry.detail}</span> : null}
-                    {formatHistoryDate(entry.occurredAt) ? <small>{formatHistoryDate(entry.occurredAt)}</small> : null}
+                    {dateLabel ? <small>{dateLabel}</small> : null}
                   </>
                 );
 
