@@ -113,33 +113,60 @@ export function readStoredList<T>(key: string): T[] {
   return readLocal<T>(key);
 }
 
+function beginSharedWrite<T>(key: string, value: T[]) {
+  const safe = clone(value);
+  const previous = clone((memory.get(key) ?? []) as unknown[]);
+  const generation = (writeGeneration.get(key) ?? 0) + 1;
+  writeGeneration.set(key, generation);
+  memory.set(key, safe as unknown[]);
+  return { safe: safe as unknown[], previous, generation };
+}
+
+async function persistSharedWrite(
+  key: string,
+  safe: unknown[],
+  previous: unknown[],
+  generation: number,
+): Promise<void> {
+  if (!backend) return;
+  try {
+    await backend.save(key, safe);
+    if (writeGeneration.get(key) === generation) emitStorageUpdated(key);
+  } catch (error) {
+    // Só desfaz esta alteração se nenhuma escrita/recarga mais nova tiver ocorrido.
+    // Um replaceStoredListFromRemote incrementa a geração e preserva o snapshot
+    // autoritativo recebido do backend em caso de conflito de revisão.
+    if (writeGeneration.get(key) === generation) {
+      memory.set(key, previous);
+      emitStorageUpdated(key);
+    }
+    persistenceError(key, error);
+    throw error;
+  }
+}
+
 export function writeStoredList<T>(key: string, value: T[]): void {
   if (!sharedReady) {
     writeLocal(key, value);
     return;
   }
 
-  const safe = clone(value);
-  const previous = clone((memory.get(key) ?? []) as unknown[]);
-  const generation = (writeGeneration.get(key) ?? 0) + 1;
-  writeGeneration.set(key, generation);
-  memory.set(key, safe as unknown[]);
-  if (!backend) return;
+  const pending = beginSharedWrite(key, value);
+  void persistSharedWrite(key, pending.safe, pending.previous, pending.generation).catch(() => undefined);
+}
 
-  void backend.save(key, safe as unknown[])
-    .then(() => {
-      if (writeGeneration.get(key) === generation) emitStorageUpdated(key);
-    })
-    .catch((error) => {
-      // Só desfaz esta alteração se nenhuma escrita/recarga mais nova tiver ocorrido.
-      // Um replaceStoredListFromRemote incrementa a geração e preserva o snapshot
-      // autoritativo recebido do backend em caso de conflito de revisão.
-      if (writeGeneration.get(key) === generation) {
-        memory.set(key, previous);
-        emitStorageUpdated(key);
-      }
-      persistenceError(key, error);
-    });
+/**
+ * Variante para operações críticas que precisam aguardar confirmação do backend
+ * (por exemplo, sincronizar metadados de perfil com uma credencial no Vault).
+ */
+export async function writeStoredListConfirmed<T>(key: string, value: T[]): Promise<void> {
+  if (!sharedReady) {
+    writeLocal(key, value);
+    return;
+  }
+
+  const pending = beginSharedWrite(key, value);
+  await persistSharedWrite(key, pending.safe, pending.previous, pending.generation);
 }
 
 export function createF05Id(prefix: string): string {
