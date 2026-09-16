@@ -7,6 +7,15 @@ export function listSalesBotExecutions(): SalesBotExecutionLog[] {
   return readStoredList<SalesBotExecutionLog>(STORAGE_KEY).sort((a, b) => b.startedAt.localeCompare(a.startedAt));
 }
 
+export function listDueSalesBotExecutions(now = new Date()): SalesBotExecutionLog[] {
+  const nowMs = now.getTime();
+  return listSalesBotExecutions().filter((item) => {
+    if (item.status !== 'paused' || item.resumeMode !== 'next_block' || !item.resumeAt) return false;
+    const resumeAtMs = Date.parse(item.resumeAt);
+    return Number.isFinite(resumeAtMs) && resumeAtMs <= nowMs;
+  });
+}
+
 export function startExecution(input: {
   botId: string;
   leadId?: string;
@@ -28,7 +37,7 @@ export function startExecution(input: {
 
 export function updateExecution(
   id: string,
-  patch: Partial<Pick<SalesBotExecutionLog, 'status' | 'currentBlockId' | 'resumeMode' | 'runtimeContext' | 'error' | 'action' | 'aiAgentId' | 'finishedAt'>>,
+  patch: Partial<Pick<SalesBotExecutionLog, 'status' | 'currentBlockId' | 'resumeMode' | 'resumeAt' | 'runtimeContext' | 'error' | 'action' | 'aiAgentId' | 'finishedAt'>>,
 ): SalesBotExecutionLog {
   const items = listSalesBotExecutions();
   const current = items.find((item) => item.id === id);
@@ -43,6 +52,7 @@ export function finishExecution(id: string, status: Exclude<SalesBotExecutionSta
     status,
     error,
     resumeMode: undefined,
+    resumeAt: undefined,
     runtimeContext: undefined,
     finishedAt: new Date().toISOString(),
   });
