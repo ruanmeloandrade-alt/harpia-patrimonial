@@ -1,3 +1,4 @@
+import { validateOutboundWebhookMethod, validateSafeOutboundUrl } from '../automations/outboundUrlValidation';
 import type { SalesBotBlock, SalesBotDefinition } from './types';
 
 const requiredByType: Partial<Record<SalesBotBlock['type'], string[]>> = {
@@ -38,13 +39,11 @@ export function validateSalesBotBlock(block: SalesBotBlock): string[] {
   if (block.type === 'webhook') {
     const url = String(block.config.url ?? '').trim();
     if (url) {
-      try {
-        const parsed = new URL(url);
-        if (!['http:', 'https:'].includes(parsed.protocol)) throw new Error('protocol');
-      } catch {
-        issues.push(`${block.label}: endpoint inválido.`);
-      }
+      const urlIssue = validateSafeOutboundUrl(url);
+      if (urlIssue) issues.push(`${block.label}: ${urlIssue}`);
     }
+    const methodIssue = validateOutboundWebhookMethod(block.config.method);
+    if (methodIssue) issues.push(`${block.label}: ${methodIssue}`);
   }
 
   return issues;
