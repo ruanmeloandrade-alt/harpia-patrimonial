@@ -1,4 +1,5 @@
 import { createF05Id, readStoredList, writeStoredList } from '../automations/f05Storage';
+import { findActiveAIAgentReferences, findAIAgentReferences, formatF05References } from '../automations/referenceIntegrity';
 import { listAIProviderProfiles } from '../integrations/aiProviderRepository';
 import type { AIAgentDefinition, AIAgentStatus } from './types';
 
@@ -43,6 +44,10 @@ export function updateAIAgent(id: string, patch: Partial<Omit<AIAgentDefinition,
   if (!current) throw new Error('Agente IA não encontrado.');
   let updated: AIAgentDefinition = { ...current, ...patch, updatedAt: now() };
   if (current.status === 'active' && patch.status === undefined && !isProviderReady(updated)) {
+    const activeReferences = findActiveAIAgentReferences(id);
+    if (activeReferences.length > 0) {
+      throw new Error(`Pause primeiro os recursos ativos que dependem deste agente IA: ${formatF05References(activeReferences)}.`);
+    }
     updated = { ...updated, status: 'paused' };
   }
   writeStoredList(STORAGE_KEY, items.map((item) => (item.id === id ? updated : item)));
@@ -50,6 +55,12 @@ export function updateAIAgent(id: string, patch: Partial<Omit<AIAgentDefinition,
 }
 
 export function deleteAIAgent(id: string): void {
+  const current = listAIAgents().find((item) => item.id === id);
+  if (!current) throw new Error('Agente IA não encontrado.');
+  const references = findAIAgentReferences(id);
+  if (references.length > 0) {
+    throw new Error(`Este agente IA ainda é referenciado por: ${formatF05References(references)}.`);
+  }
   writeStoredList(STORAGE_KEY, listAIAgents().filter((item) => item.id !== id));
 }
 
@@ -58,6 +69,12 @@ export function setAIAgentStatus(id: string, status: AIAgentStatus): AIAgentDefi
   if (!agent) throw new Error('Agente IA não encontrado.');
   if (status === 'active' && !isProviderReady(agent)) {
     throw new Error('O perfil de provedor IA precisa estar pronto e com chave API segura configurada.');
+  }
+  if (status !== 'active' && agent.status === 'active') {
+    const activeReferences = findActiveAIAgentReferences(id);
+    if (activeReferences.length > 0) {
+      throw new Error(`Pause primeiro os recursos ativos que dependem deste agente IA: ${formatF05References(activeReferences)}.`);
+    }
   }
   return updateAIAgent(id, { status });
 }
