@@ -30,6 +30,7 @@ import {
 import { resetF05SharedStorage } from '../features/automations/f05Storage';
 import { SupabaseAICredentialVault } from './integrations/supabaseAICredentialVault';
 import { SupabaseAIModelRuntime } from './integrations/supabaseAIModelRuntime';
+import { SupabaseAutomationWebhook } from './integrations/supabaseAutomationWebhook';
 import { SupabaseFavoritesStore } from './integrations/supabaseFavoritesStore';
 import { loadInternalAssignees } from './integrations/internalAssignees';
 import { salesBotConditionEvaluator } from './integrations/salesBotConditionEvaluator';
@@ -69,6 +70,7 @@ export function PlatformRuntimeProvider({ children }: PropsWithChildren) {
   const favoritesStore = useMemo(() => new SupabaseFavoritesStore(), []);
   const credentialVault = useMemo(() => new SupabaseAICredentialVault(), []);
   const aiModelRuntime = useMemo(() => new SupabaseAIModelRuntime(), []);
+  const automationWebhook = useMemo(() => new SupabaseAutomationWebhook(), []);
 
   const [crmService, setCrmService] = useState<CrmService | null>(null);
   const [inboxService, setInboxService] = useState<InboxService | null>(null);
@@ -168,12 +170,14 @@ export function PlatformRuntimeProvider({ children }: PropsWithChildren) {
           crm: crmActions,
           ai: aiCommandPort,
           condition: salesBotConditionEvaluator,
+          webhook: automationWebhook,
         });
         const automationDependencies = {
           ...unconfiguredAutomationEngineDependencies,
           salesbot: salesBotCommandPort,
           ai: aiCommandPort,
           crm: crmActions,
+          webhook: automationWebhook,
         };
         const sink = new Front05CrmEventSink((event) => processCrmAutomationEvent(event, automationDependencies));
         unsubscribeEvents = crm.subscribeEvents(sink);
@@ -210,7 +214,7 @@ export function PlatformRuntimeProvider({ children }: PropsWithChildren) {
       active = false;
       unsubscribeEvents?.();
     };
-  }, [aiModelRuntime, canUseCrm, catalogRepository]);
+  }, [aiModelRuntime, automationWebhook, canUseCrm, catalogRepository]);
 
   const value = useMemo<PlatformRuntimeValue>(() => ({
     catalogRepository,
