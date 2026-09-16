@@ -112,6 +112,10 @@ export function DashboardPage({ catalogRepository, commercialProvider }: Dashboa
     window.addEventListener(CATALOG_CHANGED_EVENT, listener);
     return () => window.removeEventListener(CATALOG_CHANGED_EVENT, listener);
   }, [catalog, commercialProvider]);
+  useEffect(() => {
+    if (!commercialProvider?.subscribe) return undefined;
+    return commercialProvider.subscribe(() => void reload());
+  }, [catalog, commercialProvider]);
 
   if (loading) {
     return <section className="f03-dashboard"><div className="f03-dashboard-message">Carregando métricas reais…</div></section>;
