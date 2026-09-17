@@ -30,14 +30,11 @@ Validado anteriormente:
 - recriação do command port não perde contexto;
 - `resume()` preserva `leadId` e `conversationId` canônicos;
 - conclusão remove `runtimeContext`;
-- SalesBot A → B preserva contexto.
-
-Resultados anteriores:
-
+- SalesBot A → B preserva contexto;
 - `F05_CONTEXT_RESUME_TEST_OK`;
 - `F05_CHAIN_CONTEXT_TEST_OK`.
 
-Hardening posterior implementado em 17/09/2026:
+Hardening de 17/09/2026:
 
 - `resumeClaimToken`;
 - `resumeClaimedUntil`;
@@ -179,36 +176,67 @@ Edge Function implantada em 17/09/2026:
 
 - `f05-runtime-worker` — ACTIVE, versão 1.
 
-Fonte versionada na branch F05:
+Fonte versionada:
 
 - `supabase/functions/f05-runtime-worker/index.ts`;
 - `supabase/functions/f05-runtime-worker/config.toml`.
 
-Capacidades implementadas:
+Capacidades:
 
 - `start_salesbot`;
 - `invoke_ai`;
 - leitura de estado compartilhado F05;
-- persistência de execução com revisão otimista;
+- persistência com revisão otimista;
 - condições;
 - delays;
 - ações CRM;
 - webhook;
-- encadeamento de bot;
+- encadeamento;
 - agente IA;
-- execução dos quatro perfis de provedor suportados;
+- quatro perfis de provedor;
 - credencial resolvida somente server-side;
 - SSRF hardening;
-- `not_configured` correto para mensagem enquanto canal real não estiver conectado.
+- `not_configured` para mensagem enquanto canal real não estiver conectado.
 
-Validação executada nesta rodada:
+Validação:
 
-- deploy aceito pelo Supabase e função retornada como `ACTIVE`;
-- Security Advisor após deploy: 0 lints.
+- deploy aceito pelo Supabase e função `ACTIVE`;
+- Security Advisor: 0 lints.
 
-Não foi afirmado teste funcional com bot/agente real porque as coleções operacionais continuam vazias e não devem ser populadas com mock permanente.
+## 13. Scheduler server-side durável de delays
 
-## 13. Worker server-side de automações da F01
+Status: 🟢 IMPLEMENTADO E TESTADO NO BACKEND REAL.
+
+Componentes ativos:
+
+- Edge Function `f05-delay-worker` — ACTIVE;
+- `pg_cron` ativo;
+- `pg_net` ativo;
+- cron `f05-delay-resume-30s` ativo, frequência de 30 segundos;
+- token do scheduler armazenado no Supabase Vault;
+- RPC `admin_validate_f05_scheduler_token` para autenticação do worker;
+- schema versionado em `supabase/schema/f05_durable_delay_scheduler.sql`;
+- código versionado em `supabase/functions/f05-delay-worker/**`.
+
+Teste funcional executado em 17/09/2026:
+
+1. coleções reais estavam vazias antes do teste;
+2. foi criado um fixture temporário isolado com SalesBot `trigger → delay → finish` e uma execução `paused/next_block` já vencida;
+3. o `f05-delay-worker` foi disparado pelo mesmo caminho HTTP usado pelo cron;
+4. a execução avançou de `paused` para `completed`;
+5. `currentBlockId` terminou em `qa_finish`;
+6. `action` terminou em `Execução concluída após delay.`;
+7. o fixture foi removido imediatamente;
+8. após limpeza, `salesbots=0` e `salesbot-executions=0` novamente.
+
+Também conferido:
+
+- execuções recentes do job em `cron.job_run_details` com status `succeeded`;
+- lease/claim impede retomada concorrente enquanto ativo;
+- o worker continua a partir do bloco posterior ao `delay`, sem reiniciar o SalesBot;
+- novo `delay` encontrado após retomada agenda novo `resumeAt` e pausa novamente.
+
+## 14. Worker server-side de automações da F01
 
 Status: 🟠 integração pendente na frente proprietária.
 
@@ -216,12 +244,12 @@ O `automation-event-worker` atual da F01 ainda executa:
 
 - CRM: conectado;
 - webhook: conectado;
-- `start_salesbot`: ainda `not_configured`;
-- `invoke_ai`: ainda `not_configured`.
+- `start_salesbot`: `not_configured`;
+- `invoke_ai`: `not_configured`.
 
-A diferença agora é que existe runtime F05 pronto para receber essas duas ações. Falta somente o encaminhamento no worker proprietário da F01.
+A F05 já possui runtime server-side pronto para receber essas duas ações. Falta somente o encaminhamento no worker proprietário da F01.
 
-## 14. Usuários temporários de QA
+## 15. Usuários temporários de QA
 
 Status: 🟠 autorizados, ainda inexistentes.
 
@@ -233,13 +261,13 @@ Conferência real em 17/09/2026:
 
 A F05 não fará insert direto em `auth.users` nem criará bypass de autenticação.
 
-## 15. Build/typecheck
+## 16. Build/typecheck
 
 Status: 🟠 NÃO VERIFICADO no produto consolidado.
 
-Tentativa local nesta sessão não foi considerada validação porque o ambiente de execução não possui acesso de rede direto ao GitHub/npm para clonar/instalar a branch. Não marcar como verde até execução em ambiente apropriado.
+Não marcar como verde até execução em ambiente apropriado da branch integrada.
 
-## 16. Ainda não verificado
+## 17. Ainda não verificado
 
 Não marcar como verde final:
 
@@ -250,6 +278,5 @@ Não marcar como verde final:
 - cofre pela UI autenticada;
 - chamada real a provedor IA com chave real;
 - `automation-event-worker` F01 → `f05-runtime-worker`;
-- scheduler server-side durável para retomar delays sem depender de sessão/processo cliente;
 - WhatsApp real;
 - Meta real.
