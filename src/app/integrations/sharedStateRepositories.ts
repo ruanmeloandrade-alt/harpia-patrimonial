@@ -2,6 +2,7 @@ import { requireSupabase } from '../../core/supabase/client';
 import type { CrmState } from '../../features/crm/domain';
 import { createEmptyCrmState } from '../../features/crm/domain';
 import type { CrmRepository } from '../../features/crm/repository';
+import { setCrmPersistenceBarrier } from '../../features/crm/repository';
 import type { InboxState } from '../../features/inbox/domain';
 import { createEmptyInboxState } from '../../features/inbox/domain';
 import type { InboxRepository } from '../../features/inbox/repository';
@@ -108,9 +109,10 @@ export class SupabaseCrmRepository implements CrmRepository {
   save(state: CrmState): void {
     const pending = normalizeCrm(state);
     this.memory = clone(pending);
-    this.queue = this.queue
-      .then(() => this.persist(pending))
-      .catch((error) => persistenceError('crm', error));
+
+    const operation = this.queue.then(() => this.persist(pending));
+    setCrmPersistenceBarrier(operation);
+    this.queue = operation.catch((error) => persistenceError('crm', error));
   }
 
   clear(): void { this.save(createEmptyCrmState()); }
