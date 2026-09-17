@@ -48,6 +48,9 @@ export type SalesBotRunResult =
   | { status: 'failed'; blockId?: string; reason: string };
 
 const stringConfig = (block: SalesBotBlock, key: string) => String(block.config[key] ?? '').trim();
+const asRecord = (value: unknown): Record<string, unknown> => (
+  value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {}
+);
 
 const unconfiguredCrmActionPort: CrmActionPort = {
   moveStage: async () => notConfiguredResult('CRM ainda não conectado ao runtime do SalesBot.'),
@@ -101,6 +104,7 @@ async function executeBlock(
   deps: SalesBotRuntimeDependencies,
 ): Promise<SalesBotRunResult | null> {
   const data = context.data ?? {};
+  context.data = data;
   const leadId = context.leadId;
   const conversationId = context.conversationId;
 
@@ -113,7 +117,7 @@ async function executeBlock(
   if (block.type === 'condition') {
     const result = await deps.condition.evaluate({ expression: stringConfig(block, 'expression'), context: data });
     if (result.status === 'not_configured') {
-      updateExecution(executionId, { status: 'paused', currentBlockId: block.id, resumeMode: 'retry_current', resumeAt: undefined, resumeClaimToken: undefined, resumeClaimedUntil: undefined, action: result.reason });
+      updateExecution(executionId, { status: 'paused', currentBlockId: block.id, resumeMode: 'retry_current', resumeAt: undefined, resumeClaimToken: undefined, resumeClaimedUntil: undefined, runtimeContext: data, action: result.reason });
       return { status: 'paused', blockId: block.id, reason: result.reason };
     }
     if (result.status === 'failed') {
@@ -147,6 +151,7 @@ async function executeBlock(
       resumeAt,
       resumeClaimToken: undefined,
       resumeClaimedUntil: undefined,
+      runtimeContext: data,
       action: reason,
     });
     return { status: 'paused', blockId: block.id, reason };
@@ -157,10 +162,21 @@ async function executeBlock(
     case 'message':
       result = await deps.message.send({ leadId, conversationId, message: stringConfig(block, 'message'), context: data });
       break;
-    case 'ai_agent':
-      updateExecution(executionId, { aiAgentId: stringConfig(block, 'agentId') });
-      result = await deps.ai.invoke({ agentId: stringConfig(block, 'agentId'), leadId, conversationId, context: data });
+    case 'ai_agent': {
+      const agentId = stringConfig(block, 'agentId');
+      updateExecution(executionId, { aiAgentId: agentId });
+      result = await deps.ai.invoke({ agentId, leadId, conversationId, context: data });
+      if (result.status === 'accepted' && result.data) {
+        data.ai = {
+          ...asRecord(data.ai),
+          lastAgentId: agentId,
+          lastOutput: result.data.output,
+          lastResult: result.data,
+        };
+        updateExecution(executionId, { runtimeContext: data });
+      }
       break;
+    }
     case 'move_stage':
       if (!leadId) result = { status: 'rejected', reason: 'Lead obrigatório para mover etapa.' };
       else result = await deps.crm.moveStage({ leadId, stageId: stringConfig(block, 'stageId') });
@@ -196,7 +212,9 @@ async function executeBlock(
       result = { status: 'rejected', reason: `Bloco ${block.type} não suportado pelo runtime.` };
   }
 
-  return haltOnCommand(executionId, block, result);
+  const halted = haltOnCommand(executionId, block, result);
+  if (!halted && result.status === 'accepted') updateExecution(executionId, { runtimeContext: data });
+  return halted;
 }
 
 export async function runSalesBotExecution(
@@ -218,9 +236,11 @@ export async function runSalesBotExecution(
     if (currentIndex >= 0) startIndex = currentIndex + (execution.resumeMode === 'next_block' ? 1 : 0);
   }
 
+  const runtimeData = context.data ?? execution.runtimeContext ?? {};
+  context.data = runtimeData;
   updateExecution(executionId, {
     status: 'running',
-    runtimeContext: context.data ?? execution.runtimeContext,
+    runtimeContext: runtimeData,
     resumeMode: undefined,
     resumeAt: undefined,
     resumeClaimToken: undefined,
