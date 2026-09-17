@@ -5,8 +5,8 @@ Branch: `frente-04`
 
 ## Status
 
-- 🟠 CRM/Kanban/Lead 360 — implementação e integração estrutural concluídas; backend RBAC já validado; falta somente execução de build/typecheck e E2E visual em ambiente executável.
-- 🟠 Inbox — implementação e integração estrutural concluídas; seleção explícita de SalesBot/agente agora é preservada por conversa e também durante remount causado por realtime; falta build/typecheck e E2E visual.
+- 🟠 CRM/Kanban/Lead 360 — implementação, integração estrutural, RBAC, optimistic locking e atomicidade CRM↔Automatize concluídos; falta build/typecheck e E2E visual em ambiente executável.
+- 🟠 Inbox — implementação e integração estrutural concluídas; seleção explícita de SalesBot/agente é preservada por conversa e durante remount realtime; falta build/typecheck e E2E visual.
 - 🟢 RBAC backend CRM/Inbox — `view/manage`, leitura RLS, bloqueio de escrita e diretório de responsáveis validados com identidades temporárias autenticadas e removidas após o QA.
 - 🟠 Persistência multiusuário — usa infraestrutura oficial da Frente01 com Supabase, optimistic locking e realtime; falha de persistência é exibida na UI; conflito visual entre duas sessões continua NÃO VERIFICADO.
 - 🟠 Site→CRM / Dashboard / F05 — contratos e composição integrados; E2E visual/autenticado continua NÃO VERIFICADO.
@@ -15,19 +15,18 @@ Nenhum item foi marcado como 🟢 apenas porque o código existe.
 
 ## Sincronização com a Frente01
 
-A Frente04 foi reposicionada sobre o head final informado da Frente01:
+A Frente04 foi reposicionada diretamente sobre o head final informado da Frente01:
 
 - base Frente01: `bd6dbbc50dfe35841d6ca4ba6c930e6bc5d16cf5`;
-- commit funcional de sync F04: `030116fb7ac6a864e28f8330889c009a6b009b77`;
+- commit de sincronização F04: `030116fb7ac6a864e28f8330889c009a6b009b77`;
 - a branch `frente-04` está 0 commits atrás da Frente01;
-- o delta funcional de código da Frente04 sobre essa base é somente `src/features/inbox/InboxWorkspaceCore.tsx`;
-- CRM e os demais arquivos da Inbox estão alinhados com a árvore final da Frente01.
+- o histórico divergente antigo não é mais usado como base de trabalho.
 
-O histórico divergente antigo não é mais usado como base de trabalho.
+Os deltas funcionais atuais da F04 sobre essa base são restritos a Inbox/CRM e integração de persistência da própria frente.
 
-## Delta funcional novo da Inbox
+## Inbox — delta funcional
 
-A Inbox passou a preservar a seleção de automação por conversa:
+A Inbox preserva a seleção de automação por conversa:
 
 - SalesBot selecionado é memorizado por `conversationId`;
 - agente IA selecionado é memorizado por `conversationId`;
@@ -36,18 +35,38 @@ A Inbox passou a preservar a seleção de automação por conversa:
 - a seleção continua explícita; nenhum bot/agente é escolhido automaticamente;
 - o estado não é persistido como dado operacional no backend e não cria mock.
 
+## CRM ↔ Automatize — atomicidade
+
+A pendência de atomicidade foi fechada nesta rodada.
+
+- cada `save()` do CRM Supabase registra uma barreira ligada à operação real de persistência;
+- eventos CRM→Automatize aguardam essa confirmação antes de serem processados;
+- se o save falhar ou houver conflito, o evento não aciona automação sobre estado não confirmado;
+- ações Automatize→CRM também só retornam `accepted` após confirmação da persistência compartilhada;
+- o repository local/síncrono mantém comportamento imediato.
+
+Arquivos principais:
+
+- `src/features/crm/repository.ts`;
+- `src/app/integrations/sharedStateRepositories.ts`;
+- `src/features/crm/front05Adapter.ts`.
+
+Commit funcional final desta correção: `6d54272e6b23d5271c7d675c9af399066ba99b8b`.
+
 ## CRM entregue
 
 - funis configuráveis;
 - etapas configuráveis, reordenação e exclusão protegida;
+- ativação/desativação e renomeação de funil;
 - Kanban e movimentação manual;
 - Lead 360;
+- nome, e-mail, WhatsApp, origem e contexto de interesse;
 - responsável;
 - tags;
 - campos personalizados tipados;
 - tarefas/próximas ações;
-- histórico;
-- eventos CRM;
+- observações e histórico;
+- eventos CRM extensíveis;
 - fila de leads sem etapa;
 - conversões sem etapa permanecem visíveis;
 - nenhuma etapa/default fictícia;
@@ -97,7 +116,7 @@ Resultado preservado:
 
 ## Integração Frente05
 
-O adapter F04↔F05 continua responsável por:
+O adapter F04↔F05 é responsável por:
 
 - `botId`/`agentId` explícitos;
 - preservar `executionId` durante recriações de runtime na mesma sessão;
@@ -106,7 +125,8 @@ O adapter F04↔F05 continua responsável por:
 - não pausar execução encerrada;
 - limpar ponteiros concluídos/falhos/not_found;
 - expor ações CRM para Automatize;
-- converter eventos CRM para o contrato F05.
+- converter eventos CRM para o contrato F05;
+- bloquear evento/aceite quando a mutação CRM ainda não foi confirmada remotamente.
 
 ## Persistência oficial
 
@@ -136,15 +156,17 @@ Não restaurar persistência paralela/local como fonte de verdade multiusuário.
 - WhatsApp real;
 - validação final pelo usuário.
 
+O ambiente disponível nesta rodada possui Node 22, enquanto o projeto declara Node 24; por isso build/typecheck completos não foram marcados como executados.
+
 ## Handoff obrigatório
 
 - Status: 🟠 funcionalmente implementado e sincronizado; validação executável final ainda pendente.
-- Commit funcional: `030116fb7ac6a864e28f8330889c009a6b009b77`.
-- O que foi entregue: CRM configurável, Lead 360, Inbox operacional, RBAC fino, persistência integrada, contratos F02/F03/F05 e preservação de seleção de automação por conversa.
-- O que ficou pendente: build/typecheck e E2E visual/autenticado em ambiente executável.
+- Commit final funcional: `6d54272e6b23d5271c7d675c9af399066ba99b8b`.
+- O que foi entregue: CRM configurável, Lead 360, Inbox operacional, RBAC fino, persistência integrada, contratos F02/F03/F05, preservação de seleção de automação por conversa e atomicidade CRM↔Automatize.
+- O que ficou pendente: build/typecheck com Node 24 e E2E visual/autenticado em navegador.
 - Modelo de dados CRM: funil, etapa, lead, tags, campos personalizados, tarefas, histórico e origem/contexto de conversão.
-- Eventos emitidos: criação de lead, mudança de etapa, campo, tag e demais eventos extensíveis do contrato CRM.
+- Eventos emitidos: criação de lead, mudança de etapa, campo, tag e demais eventos extensíveis do contrato CRM, agora entregues ao Automatize somente após persistência confirmada.
 - Contratos esperados da Frente05: comandos/status de SalesBot e IA e eventos para Automatize.
 - Integrações esperadas com catálogo/site: contexto de imóvel/produto e ingestão de conversão sem mensagem automática.
 - Riscos conhecidos: somente os itens marcados como NÃO VERIFICADO acima; não há dependência estrutural pendente da Frente01.
-- Instruções para integração: usar `frente-04` atual; não recuperar o histórico divergente anterior; preservar o delta de `InboxWorkspaceCore.tsx` ao integrar.
+- Instruções para integração: usar `frente-04` atual; não recuperar o histórico divergente anterior; preservar os deltas atuais de `InboxWorkspaceCore.tsx`, `repository.ts`, `sharedStateRepositories.ts` e `front05Adapter.ts`.
