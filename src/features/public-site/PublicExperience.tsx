@@ -9,6 +9,7 @@ import {
   ClientAreaDataProvider,
   type ClientAreaDataState,
 } from '../client-area/ClientArea';
+import { matchesFront02PublicRoute, normalizeFront02PublicPath } from './routes';
 import './public-experience.css';
 import './public-polish.css';
 
@@ -31,8 +32,6 @@ const navigation = [
   { label: 'Arquitetura', path: '/arquitetura' },
   { label: 'Área do cliente', path: '/cliente' },
 ];
-
-const auxiliaryPublicPaths = ['/vender', '/alugar'];
 
 const routeMetadata: Record<string, { title: string; description: string }> = {
   '/': {
@@ -77,20 +76,6 @@ const routeMetadata: Record<string, { title: string; description: string }> = {
   },
 };
 
-function normalizePath(path: string) {
-  if (path === '/') return path;
-  return path.replace(/\/+$/, '') || '/';
-}
-
-function isKnownPublicPath(path: string) {
-  const normalized = normalizePath(path);
-  return (
-    navigation.some((item) => item.path === normalized) ||
-    auxiliaryPublicPaths.includes(normalized) ||
-    /^\/imoveis\/[^/]+$/.test(normalized)
-  );
-}
-
 function metadataForPath(path: string) {
   if (routeMetadata[path]) return routeMetadata[path];
   if (path.startsWith('/imoveis/')) {
@@ -112,7 +97,7 @@ function navigatePublic(path: string) {
 
 export default function PublicExperience(props: PublicExperienceProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [path, setPath] = useState(() => normalizePath(window.location.pathname));
+  const [path, setPath] = useState(() => normalizeFront02PublicPath(window.location.pathname));
   const [pendingConversion, setPendingConversion] = useState<PublicSiteConversion | null>(null);
   const [contactBusy, setContactBusy] = useState(false);
   const [contactError, setContactError] = useState('');
@@ -143,11 +128,11 @@ export default function PublicExperience(props: PublicExperienceProps) {
 
   useEffect(() => {
     const onPopState = () => {
-      const nextPath = normalizePath(window.location.pathname);
+      const nextPath = normalizeFront02PublicPath(window.location.pathname);
       setPath(nextPath);
       setMobileOpen(false);
 
-      if (nextPath !== window.location.pathname && isKnownPublicPath(nextPath)) {
+      if (nextPath !== window.location.pathname && matchesFront02PublicRoute(nextPath)) {
         window.history.replaceState({}, '', `${nextPath}${window.location.search}`);
       }
     };
@@ -266,7 +251,7 @@ export default function PublicExperience(props: PublicExperienceProps) {
     }
   };
 
-  if (!isKnownPublicPath(path)) {
+  if (!matchesFront02PublicRoute(path)) {
     return (
       <main className="public-not-found">
         <div className="public-not-found__card">
