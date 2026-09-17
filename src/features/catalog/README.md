@@ -106,6 +106,15 @@ Consequências:
 - RLS, `PublicCatalogService` e Dashboard usam o mesmo critério;
 - Dashboard separa `active` de `hiddenPublished`.
 
+QA real adicional executado em 17/09/2026 confirmou no backend real:
+
+- unidade `published` com pai `draft` invisível para `anon`;
+- mesma unidade visível após publicação do pai;
+- mesma unidade invisível novamente após pausa do pai;
+- 0 resíduos `QA-%` / `QA-F03-%` ao final.
+
+A publicação interna antecipada da unidade é permitida, mas a exposição pública continua protegida pela elegibilidade hierárquica.
+
 ## Realtime
 
 `catalog_items` pertence à publication `supabase_realtime`.
@@ -122,6 +131,8 @@ Testes isolados executados:
 
 - `REALTIME_CATALOG_RUNTIME_OK`;
 - `REALTIME_CATALOG_LAZY_OK`.
+
+QA backend de 17/09/2026 confirmou que `catalog_items` continua registrado em `supabase_realtime`.
 
 ## Mídia / Storage
 
@@ -162,6 +173,11 @@ Testes isolados:
 
 QA SQL real confirmou URL insegura/tipo inválido bloqueados e HTTPS válido aceito.
 
+QA backend de 17/09/2026 confirmou:
+
+- bucket `catalog-media` presente e público;
+- policies SELECT/INSERT/UPDATE/DELETE do bucket vinculadas a `catalog.manage` para usuário autenticado.
+
 ## Catálogo público
 
 `PublicCatalogService`:
@@ -201,6 +217,8 @@ CRM objetivo:
 
 Não inferir por nome configurável de etapa: visitas, propostas, negociações, vendas, VGV, ticket e conversão.
 
+A integração atual da Frente01 já compõe o provider comercial da Frente04 com o `catalogRepository`; não há pendência estrutural adicional da Frente03 nesse encaixe.
+
 ## Estado de integração
 
 Já resolvido:
@@ -214,17 +232,23 @@ Já resolvido:
 - bucket/Storage;
 - Realtime do catálogo habilitado;
 - validação server-side de mídia;
+- `createCatalogRuntime` adotado no runtime integrado da Frente01;
+- `mediaStorage` exposto no runtime global;
+- `catalogRuntime.dispose()` chamado no cleanup global;
+- `src/core/supabase/database.types.ts` conferido com o schema integrado;
 - rota/menu internos da Frente01;
 - catálogo público compartilhado com Frente02;
-- CRM compartilhado com Dashboard.
+- CRM compartilhado com Dashboard;
+- dependência estrutural da Frente01 declarada liberada.
 
-Ainda requer integração/QA:
+Ainda requer somente validação de ambiente/QA final:
 
-- sincronizar os arquivos atuais da Frente03 na branch integradora;
-- adotar `createCatalogRuntime(requireSupabase())`;
-- expor `mediaStorage` no runtime global;
-- chamar `catalogRuntime.dispose()` no ciclo de vida global;
-- regenerar/conferir `src/core/supabase/database.types.ts`;
-- rodar typecheck/build integrado;
-- validar upload real e Realtime entre dois navegadores;
-- executar QA visual/E2E final.
+- rodar typecheck/build integrado em Node/npm compatível;
+- validar upload real pela UI;
+- validar Realtime entre dois navegadores autenticados;
+- executar fluxo E2E completo do catálogo;
+- validar visualmente Dashboard e site público;
+- validar no site publicado da Frente02 o trecho `publicar interno → aparecer público`;
+- teste final pelo usuário.
+
+A Frente05 não bloqueia a Frente03.
