@@ -21,11 +21,30 @@ Regras absolutas:
 - Não sobrescrever trabalho de outra frente.
 - Não alterar escopo sem registrar a decisão no GitHub.
 
+---
+
 ## 2. Definition of Ready — antes de começar qualquer tarefa
 
-Antes de escrever código, o chat/agente deve confirmar: branch correta; leitura de `AGENTS.md`, `docs/REGRAS-DE-PRODUCAO.md`, briefing, escopo, arquivo da frente, contratos e status; versão mais recente dos arquivos; propriedade dos arquivos; e menor conjunto de mudanças necessário. Se isso não puder ser confirmado, a tarefa ainda não está pronta para começar.
+Antes de escrever código, o chat/agente deve confirmar:
+
+1. Está na branch correta da sua frente.
+2. Leu `AGENTS.md`.
+3. Leu `docs/REGRAS-DE-PRODUCAO.md`.
+4. Leu `docs/BRIEFING-CONSOLIDADO.md` e `docs/ESCOPO-DE-TRABALHO.md` nas partes relevantes.
+5. Leu `docs/FRENTES-DE-TRABALHO.md` e seu `docs/frentes/FRENTE-0X.md`.
+6. Consultou `docs/CONTRATOS-ENTRE-MODULOS.md` para não criar contrato incompatível com outra frente.
+7. Consultou `docs/STATUS-FRENTES.md` para saber bloqueios, dependências e mudanças recentes.
+8. Buscou a versão mais recente dos arquivos que pretende alterar.
+9. Identificou se os arquivos pertencem à sua frente ou são compartilhados.
+10. Definiu o menor conjunto de arquivos necessário para concluir a tarefa.
+
+Se um item acima não puder ser confirmado, a tarefa ainda não está pronta para começar.
+
+---
 
 ## 3. Isolamento das cinco frentes
+
+Cada frente trabalha somente na sua branch:
 
 - Frente01 → `frente-01`
 - Frente02 → `frente-02`
@@ -33,77 +52,310 @@ Antes de escrever código, o chat/agente deve confirmar: branch correta; leitura
 - Frente04 → `frente-04`
 - Frente05 → `frente-05`
 
-Não desenvolver diretamente na `main`, não fazer force push, não reescrever histórico de outra frente e não editar arquivo pertencente a outra frente por conveniência. Arquivos globais, roteador raiz, providers, configuração de build, dependências compartilhadas e tokens/estilos globais pertencem por padrão à Frente01. Necessidades globais devem ser registradas em `docs/STATUS-FRENTES.md`.
+Durante a produção paralela:
+
+- não desenvolver diretamente na `main`;
+- não fazer force push;
+- não reescrever histórico de outra frente;
+- não editar arquivo pertencente a outra frente apenas por conveniência;
+- não mover responsabilidades de uma frente para outra sem registrar a decisão.
+
+Arquivos globais, roteador raiz, providers, configuração de build, dependências compartilhadas e tokens/estilos globais pertencem por padrão à Frente01.
+
+Se outra frente precisar alterar um arquivo global, deve registrar a necessidade em `docs/STATUS-FRENTES.md` e, sempre que possível, criar seu módulo de forma desacoplada para a Frente01 ou o integrador apenas fazer a conexão final.
+
+---
 
 ## 4. Regra anti-conflito
 
-Antes de editar arquivo existente: buscar novamente no GitHub, verificar alterações concorrentes e comparar com a base usada. Se houver conflito, NÃO sobrescrever e NÃO resolver no chute; registrar no status e deixar a integração para a frente proprietária ou para o pente fino.
+Antes de editar qualquer arquivo existente:
+
+1. buscar novamente o arquivo no GitHub;
+2. verificar se outra frente o alterou;
+3. comparar com a versão que serviu de base para o trabalho;
+4. só então editar.
+
+Se houver alteração concorrente no mesmo arquivo:
+
+- NÃO sobrescrever;
+- NÃO tentar “resolver no chute”;
+- registrar o conflito no status;
+- preservar as duas intenções;
+- deixar a integração para a frente proprietária do arquivo ou para o pente fino.
+
+---
 
 ## 5. Contrato antes da implementação
 
-Módulos dependentes devem usar contratos explícitos. Não duplicar tipos centrais, fontes de verdade ou lógica de outro módulo. Mudança de contrato compartilhado exige atualização de `docs/CONTRATOS-ENTRE-MODULOS.md`.
+Quando um módulo depende de outro, usar contrato explícito antes de acoplar código.
+
+Exemplos:
+
+- Site público precisa consumir catálogo → definir formato de `Product/Property` no contrato.
+- CRM precisa receber cadastro do site → definir payload de criação de lead.
+- Inbox precisa mover etapa → usar serviço/contrato do CRM, não duplicar lógica.
+- SalesBot precisa chamar IA → usar interface de agente, não acessar estrutura interna diretamente.
+
+Regras:
+
+- Não duplicar tipos centrais com formatos diferentes.
+- Não criar uma segunda fonte de verdade para o mesmo dado.
+- Não acessar tabelas/estado de outro módulo de forma improvisada se existe serviço/contrato definido.
+- Alteração de contrato compartilhado exige atualização de `docs/CONTRATOS-ENTRE-MODULOS.md`.
+
+---
 
 ## 6. Banco de dados e persistência
 
-Não duplicar entidades, não reescrever migrations já utilizadas por outra frente, preservar integridade e histórico, confirmar ações destrutivas, não colocar segredos no repositório e aplicar autorização também na camada de dados/servidor quando houver.
+- Não criar duas tabelas para representar a mesma entidade.
+- Não alterar ou apagar migration já utilizada por outra frente; criar uma nova migration/alteração incremental quando aplicável.
+- Nomes de tabelas, campos e relacionamentos devem seguir um padrão único.
+- Toda exclusão relevante deve considerar histórico e integridade referencial.
+- Operações destrutivas precisam de confirmação na UI quando aplicável.
+- Não colocar segredo, token, senha ou chave no repositório.
+- Permissões não podem existir apenas no frontend; quando houver backend/banco, a proteção deve existir também na camada de dados/servidor.
+
+---
 
 ## 7. Regra zero mocks
 
-Mocks só podem ser temporários durante construção e devem ser removidos antes do handoff. Sem dados reais: métricas `0`, listas vazias, Inbox vazia, integração `não conectado`, sem cards/usuários/conversas fictícias. É proibido fingir funcionamento para a plataforma parecer cheia.
+Mocks podem ser usados somente de forma temporária durante construção local de componente e devem ser removidos antes do handoff.
+
+No estado entregue:
+
+- métrica sem dado = `0`;
+- lista sem dado = empty state;
+- imóvel inexistente = nenhum card fictício;
+- usuário inexistente = nenhum usuário fictício;
+- conversa inexistente = Inbox vazia;
+- integração não conectada = estado `não conectado`;
+- recurso ainda não operacional = indicar claramente que está aguardando integração, sem fingir sucesso.
+
+É proibido usar dados fictícios apenas para a plataforma “parecer cheia”.
+
+---
 
 ## 8. UI e UX
 
-Toda tela deve considerar loading, vazio, erro, sucesso, confirmação de ação destrutiva, responsividade básica, navegação sem botão morto, textos coerentes, acessibilidade básica e componentes compartilhados. Não duplicar componentes sem necessidade.
+Toda tela entregue deve prever, conforme aplicável:
+
+- estado carregando;
+- estado vazio;
+- estado de erro;
+- sucesso/feedback de ação;
+- confirmação para ações destrutivas;
+- responsividade mínima para desktop e mobile;
+- navegação sem botão morto;
+- labels e textos coerentes com Hárpia;
+- acessibilidade básica de formulário;
+- consistência visual com tokens/componentes compartilhados.
+
+Não criar cinco versões diferentes do mesmo botão, modal, campo ou card se um componente compartilhado resolve.
+
+---
 
 ## 9. Funcionalidade antes de enfeite
 
-Ordem: fluxo funcional → persistência → erros/empty state → permissões/segurança → responsividade → acabamento visual. Não priorizar animações enquanto o fluxo principal não funciona.
+A ordem de implementação de cada recurso é:
 
-## 10. Integrações ainda não conectadas
+1. fluxo funcional;
+2. persistência/dados reais;
+3. estados de erro e vazio;
+4. permissões/segurança;
+5. responsividade;
+6. acabamento visual.
 
-WhatsApp e Meta ficam para o final. Até lá usar interfaces preparatórias e estados `não conectado`, sem simular envio real, inventar tokens ou criar dependência que bloqueie a plataforma.
+Não gastar tempo em animação, microinteração ou detalhe cosmético enquanto o fluxo principal não funciona.
+
+---
+
+## 10. Regras para integrações ainda não conectadas
+
+WhatsApp e Meta serão conectados no final.
+
+Até lá:
+
+- construir interfaces, serviços e telas preparatórias;
+- usar estados `não conectado`/`aguardando configuração`;
+- não simular envio real de mensagem;
+- não inventar IDs/tokens;
+- não criar dependência que impeça o restante da plataforma de funcionar sem essas integrações.
+
+---
 
 ## 11. Autenticação e permissões
 
-Cliente final e usuário interno são contextos distintos. Sessão persistente conforme briefing. Permissões internas por grupo/função + exceção individual. Esconder botão não substitui autorização real. Rotas internas precisam ser protegidas.
+- Cliente final e usuário interno são contextos diferentes.
+- Cadastro do cliente final: nome, e-mail, WhatsApp e senha.
+- Sessão persistente conforme briefing.
+- Permissões internas: grupo/função + exceções individuais.
+- Esconder botão não é autorização suficiente; ações protegidas devem validar permissão na camada adequada.
+- Rotas internas não devem ficar acessíveis publicamente por simples URL.
+
+---
 
 ## 12. Commits
 
-Commits pequenos, descritivos e prefixados pela frente, por exemplo `[F01] auth: criar sessão persistente`. Evitar `update`, `fix`, `changes`, `final`.
+Commits devem ser pequenos, descritivos e vinculados à frente.
+
+Padrão recomendado:
+
+- `[F01] auth: criar sessão persistente`
+- `[F02] site: implementar filtros do catálogo`
+- `[F03] catalogo: criar fluxo de publicação`
+- `[F04] crm: adicionar edição de etapas`
+- `[F05] salesbot: adicionar bloco de condição`
+
+Evitar commits genéricos como `update`, `fix`, `changes` ou `final`.
+
+Uma tarefa grande deve ser dividida em commits lógicos sempre que possível.
+
+---
 
 ## 13. Não dizer “pronto” antes de validar
 
-Antes do handoff verificar, quando disponível: build, TypeScript, lint, imports, rotas, formulário principal, salvar/editar/excluir, estado vazio, refresh/persistência, funcionamento sem integração externa, responsividade e permissões. Se algo não puder ser testado, registrar `NÃO VERIFICADO`. Nunca afirmar teste não executado.
+Uma frente não pode declarar módulo concluído apenas porque a tela existe.
 
-## 14. Definition of Done
+Antes do handoff, verificar no mínimo:
 
-Só considerar concluído quando: atende briefing/escopo; sem mock permanente; sem quebrar contrato; branch correta; sem segredo; erros/empty states considerados; testes possíveis executados; sem botões principais mortos; status atualizado; handoff preenchido; mudanças de produto documentadas; pendências expostas claramente.
+- build do projeto;
+- erros de TypeScript quando configurado;
+- lint quando configurado;
+- imports quebrados;
+- rotas principais;
+- formulário principal;
+- salvar/editar/excluir quando aplicável;
+- estado vazio;
+- refresh da página quando houver persistência;
+- comportamento sem integração externa;
+- responsividade básica;
+- permissões relevantes.
 
-## 15. Handoff obrigatório
+Se o ambiente não permitir executar algum teste, registrar explicitamente `NÃO VERIFICADO` no handoff. Nunca escrever que passou em teste que não foi executado.
 
-Registrar data/hora, branch, commit relevante, implementação, arquivos/rotas, contratos alterados, testes executados, itens não testados, bugs conhecidos, dependências, pedidos de integração e próximo passo. Outro chat precisa conseguir continuar sem depender da conversa anterior.
+---
 
-## 16. Mudança de escopo
+## 14. Definition of Done — critérios obrigatórios
 
-Aplicar a decisão mais recente e atualizar conversa/decisões, briefing/escopo quando estrutural, contratos e status das frentes afetadas.
+Uma tarefa só é considerada concluída quando:
+
+1. atende ao briefing e ao escopo da frente;
+2. não introduz mock permanente;
+3. não quebra contrato compartilhado;
+4. código está na branch correta;
+5. não contém segredo no repositório;
+6. tratamento de erro/empty state foi considerado;
+7. build/testes possíveis foram executados;
+8. não existem botões principais sem ação sem que estejam explicitamente marcados como integração futura;
+9. status da frente foi atualizado;
+10. handoff informa arquivos alterados, funcionalidades prontas, testes feitos, pendências e dependências;
+11. qualquer mudança de produto foi documentada;
+12. o agente consegue apontar exatamente o que ainda falta — sem mascarar pendências.
+
+---
+
+## 15. Handoff obrigatório de cada frente
+
+Ao finalizar um bloco de trabalho, registrar no arquivo da frente e/ou em `docs/STATUS-FRENTES.md`:
+
+- data/hora;
+- branch;
+- último commit relevante;
+- o que foi implementado;
+- arquivos principais alterados;
+- rotas/telas criadas;
+- contratos criados/alterados;
+- testes realmente executados;
+- o que não foi testado;
+- bugs conhecidos;
+- dependências de outras frentes;
+- pedidos para integração;
+- próximo passo recomendado.
+
+Isso é obrigatório para outro chat conseguir continuar sem depender da conversa anterior.
+
+---
+
+## 16. Regra para mudança de escopo
+
+Se o usuário mudar uma decisão:
+
+1. aplicar a nova decisão;
+2. atualizar `docs/CONVERSA-E-DECISOES.md`;
+3. atualizar briefing/escopo se a mudança for estrutural;
+4. atualizar contrato entre módulos se necessário;
+5. avisar frentes afetadas via `docs/STATUS-FRENTES.md`.
+
+A decisão mais recente registrada prevalece sobre implementação antiga.
+
+---
 
 ## 17. Pente fino e integração final
 
-Nenhuma frente integra tudo sozinha. O integrador deve revisar handoffs, contratos, conflitos, duplicações, build/testes completos, navegação ponta a ponta, empty/error states, permissões, mocks e desacoplamento de WhatsApp/Meta, seguindo também `docs/PENTE-FINO-INTEGRACAO.md`.
+Nenhuma frente deve tentar “integrar tudo sozinha”.
 
-## 18. Prioridade
+O integrador/pente fino deve:
 
-Funcionamento → integridade dos dados → não quebrar outra frente → briefing → velocidade → estética extra. Escolher a solução mais simples, estável e extensível.
+- partir das cinco branches;
+- revisar os handoffs;
+- comparar contratos;
+- integrar sem apagar funcionalidades;
+- resolver conflitos conscientemente;
+- remover duplicações;
+- executar build/testes completos;
+- verificar navegação ponta a ponta;
+- conferir estados vazios e erros;
+- conferir permissões;
+- conferir que não restaram mocks;
+- validar que WhatsApp/Meta continuam desacoplados até a etapa de conexão real.
+
+Seguir também `docs/PENTE-FINO-INTEGRACAO.md`.
+
+---
+
+## 18. Regra de prioridade até a entrega
+
+Quando houver disputa entre opções:
+
+1. funcionamento;
+2. integridade dos dados;
+3. não quebrar outra frente;
+4. aderência ao briefing;
+5. velocidade;
+6. estética extra.
+
+Escolher a solução mais simples, estável e extensível que cumpra o requisito. Não criar complexidade apenas para parecer robusto.
+
+---
 
 ## 19. Proibições explícitas
 
-É proibido: branch errada; sobrescrever sem reler; inventar requisito; remover requisito por dificuldade; esconder falha com mock; duplicar entidade central; acoplar módulo improvisadamente; expor segredo; afirmar teste inexistente; marcar concluído com fluxo quebrado; alterar código de outra frente sem registro; usar GitHub Actions.
+É proibido:
+
+- trabalhar na branch errada;
+- sobrescrever arquivo sem reler a versão atual;
+- inventar requisito para preencher lacuna não essencial;
+- remover requisito porque dá mais trabalho;
+- esconder falha com mock;
+- duplicar entidade central;
+- acoplar módulo diretamente a implementação interna de outra frente quando existe contrato;
+- expor segredo no GitHub;
+- afirmar que algo foi testado quando não foi;
+- marcar frente como concluída com fluxo principal quebrado;
+- alterar código de outra frente sem registrar motivo;
+- usar GitHub Actions.
+
+---
 
 ## 20. Resumo operacional
 
-Antes: **ler → conferir branch → status → contratos → arquivos atuais**.
-Durante: **escopo próprio → commits pequenos → sem mock permanente → sem sobrescrever outra frente**.
-Depois: **build/testes → revisar requisito → atualizar status → handoff → declarar exatamente o que está pronto e o que falta**.
+Antes: **ler → conferir branch → conferir status → conferir contratos → buscar arquivos atuais**.
+
+Durante: **trabalhar só no escopo → commits pequenos → sem mock permanente → sem sobrescrever outra frente**.
+
+Depois: **build/testes → revisar requisito → atualizar status → preencher handoff → declarar exatamente o que está pronto e o que falta**.
+
+---
 
 ## 21. Status visual obrigatório nos relatórios ao usuário
 
