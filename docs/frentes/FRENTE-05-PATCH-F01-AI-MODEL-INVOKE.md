@@ -1,48 +1,87 @@
-# F05 → F01 — hardening do `ai-model-invoke`
+# Frente05 → Frente01 — patch de runtime IA/server-side
 
-Data original: 16/09/2026
-Atualização: 17/09/2026
-Origem: Frente05
-Destino: Frente01
+Data: 17/09/2026
 
-## Status atual
+Este handoff substitui o patch antigo limitado ao `ai-model-invoke`.
 
-O hardening que motivou este patch já aparece implantado na versão atual da Edge Function `ai-model-invoke` do projeto Supabase.
+## Estado atual
 
-Confirmado em 17/09/2026:
+A F05 já possui:
 
-- bloqueio de CGNAT `100.64.0.0/10`;
-- bloqueio de redes privadas/reservadas IPv4 e IPv6;
-- resolução DNS e rejeição de destino privado;
-- `redirect: 'manual'`;
-- timeout explícito de 30 segundos;
-- rejeição de respostas 300–399;
-- credencial resolvida apenas no backend;
-- autorização por usuário interno/permissões no runtime interativo.
+- `f05-runtime-worker` ACTIVE;
+- `f05-delay-worker` ACTIVE;
+- scheduler durável `f05-delay-resume-30s` ativo;
+- provider adapters com SSRF hardening;
+- Vault para credenciais IA;
+- `start_salesbot` e `invoke_ai` server-side.
 
-Portanto, a lacuna original deste documento está **RESOLVIDA no backend implantado**.
+O `automation-event-worker` da F01 ainda precisa encaminhar essas duas ações ao runtime F05.
 
-## Observação de sincronização
+## Contrato
 
-A branch `frente-01` ainda deve absorver o snapshot/hardening atual da Frente05 conforme o PR #1 para manter código versionado e backend implantado coerentes.
+Endpoint interno:
 
-Não é necessário reimplementar este patch do zero. O trabalho de integração deve preservar a versão endurecida já implantada e sincronizar o código correspondente.
+`POST /functions/v1/f05-runtime-worker`
 
-## Referência histórica
+Header obrigatório:
 
-O adapter F05 em `src/features/integrations/providerAdapters.ts` permanece com o mesmo contrato de segurança:
+`Authorization: Bearer <SUPABASE_SERVICE_ROLE_KEY>`
 
-- HTTPS obrigatório;
-- localhost/`.local` bloqueados;
-- IPv4 privadas/link-local bloqueadas;
-- CGNAT bloqueado;
-- IPv6 local/privado literal bloqueado;
+A chamada com bearer inválido foi testada e retorna `401`.
+
+### `invoke_ai`
+
+```json
+{
+  "action": "invoke_ai",
+  "agentId": "<agent-id>",
+  "context": {}
+}
+```
+
+### `start_salesbot`
+
+```json
+{
+  "action": "start_salesbot",
+  "botId": "<bot-id>",
+  "leadId": "<lead-id opcional>",
+  "conversationId": "<conversation-id opcional>",
+  "context": {}
+}
+```
+
+## Segurança já implementada
+
+- service role nunca vai ao browser;
+- HTTPS obrigatório para endpoints externos;
+- credenciais embutidas na URL bloqueadas;
+- localhost e `.local` bloqueados;
+- IPv4 privadas/link-local/documentation/reserved bloqueadas;
+- CGNAT `100.64.0.0/10` bloqueado;
+- IPv6 local/privado/documentation bloqueado;
+- DNS é resolvido no backend e endereços privados são rejeitados;
 - redirect manual;
-- timeout de 30 segundos;
-- respostas 300–399 rejeitadas.
+- timeout explícito;
+- credencial IA sai do Vault somente no backend.
 
-Status final deste item:
+## Regra para a F01
 
-- F05 adapter: 🟢
-- `ai-model-invoke` implantado: 🟢
-- sincronização de branches F05 → F01: 🟠
+Ao integrar `automation-event-worker`:
+
+- não duplicar runtime de SalesBot/IA na F01;
+- usar `f05-runtime-worker` como executor dessas ações;
+- preservar idempotência de `automation_action_runs`;
+- parar a sequência em `rejected` ou `not_configured`;
+- manter metadados canônicos (`eventId`, `eventType`, `leadId`, `conversationId`) protegidos de sobrescrita pelo payload;
+- não transformar falha em sucesso.
+
+## Validação disponível
+
+Além dos testes isolados, a F05 validou em backend real:
+
+- scheduler retomando delay vencido até `completed`;
+- `f05-delay-worker → f05-runtime-worker → SalesBot filho` com pai e filho `completed`;
+- token inválido do scheduler retornando `401`;
+- bearer inválido do runtime retornando `401`;
+- fixtures temporários removidos após testes.
