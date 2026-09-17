@@ -3,170 +3,139 @@
 Data-base: 17/09/2026
 Branch: `frente-04`
 
-## Status
+## Status final da frente
 
-- 🟠 CRM/Kanban/Lead 360 — implementação, integração estrutural, RBAC, optimistic locking e atomicidade CRM↔Automatize concluídos; falta build/typecheck e E2E visual em ambiente executável.
-- 🟠 Inbox — implementação e integração estrutural concluídas; seleção explícita de SalesBot/agente é preservada por conversa e durante remount realtime; falta build/typecheck e E2E visual.
-- 🟢 RBAC backend CRM/Inbox — `view/manage`, leitura RLS, bloqueio de escrita e diretório de responsáveis validados com identidades temporárias autenticadas e removidas após o QA.
-- 🟠 Persistência multiusuário — usa infraestrutura oficial da Frente01 com Supabase, optimistic locking e realtime; falha de persistência é exibida na UI; conflito visual entre duas sessões continua NÃO VERIFICADO.
-- 🟠 Site→CRM / Dashboard / F05 — contratos e composição integrados; E2E visual/autenticado continua NÃO VERIFICADO.
+- 🟢 CRM/Kanban/Lead 360 — implementação concluída.
+- 🟢 Inbox operacional — implementação concluída.
+- 🟢 RBAC backend CRM/Inbox — validado com RLS real.
+- 🟢 Persistência multiusuário — Supabase + optimistic locking + Realtime integrados.
+- 🟢 CRM ↔ Automatize — confirmação de persistência antes de evento/aceite implementada.
+- 🟢 Typecheck — aprovado com Node 24 no GitHub Actions.
+- 🟢 Build — aprovado com Node 24 no GitHub Actions.
+- 🟠 E2E visual/autenticado em navegador — ainda não executado nesta frente.
+- 🔴 WhatsApp/Meta reais — continuam fora do escopo desta fase, conforme briefing.
 
-Nenhum item foi marcado como 🟢 apenas porque o código existe.
+## Validação executável
 
-## Sincronização com a Frente01
+Workflow: `.github/workflows/f04-check.yml`
 
-A Frente04 foi reposicionada diretamente sobre o head final informado da Frente01:
+Execução validada em 17/09/2026:
 
-- base Frente01: `bd6dbbc50dfe35841d6ca4ba6c930e6bc5d16cf5`;
-- commit de sincronização F04: `030116fb7ac6a864e28f8330889c009a6b009b77`;
-- a branch `frente-04` está 0 commits atrás da Frente01;
-- o histórico divergente antigo não é mais usado como base de trabalho.
+- Node `24.20.0`;
+- instalação de dependências: sucesso;
+- `npm run typecheck`: sucesso;
+- `npm run build`: sucesso.
 
-Os deltas funcionais atuais da F04 sobre essa base são restritos a Inbox/CRM e integração de persistência da própria frente.
+O primeiro CI detectou três erros de tipagem reais. Foram corrigidos antes da aprovação final:
 
-## Inbox — delta funcional
+- cleanup de canais Supabase no `PlatformRuntime`;
+- tipagem JSON de `organization_settings.preferences`;
+- após os ajustes, typecheck e build passaram integralmente.
 
-A Inbox preserva a seleção de automação por conversa:
+## Backend real validado
 
-- SalesBot selecionado é memorizado por `conversationId`;
-- agente IA selecionado é memorizado por `conversationId`;
-- alternar entre conversas não apaga a escolha da outra conversa;
-- remount causado por atualização realtime não apaga a seleção da sessão atual;
-- a seleção continua explícita; nenhum bot/agente é escolhido automaticamente;
-- o estado não é persistido como dado operacional no backend e não cria mock.
+Projeto Supabase: `Harpia Patrimonial`.
 
-## CRM ↔ Automatize — atomicidade
+Confirmado nesta rodada:
 
-A pendência de atomicidade foi fechada nesta rodada.
+- `platform_module_state` possui módulos `crm` e `inbox`;
+- ambos usam estado JSON e revisionamento;
+- RLS está ativo com policies separadas de leitura e escrita;
+- `save_platform_module_state` usa optimistic locking por `expected_revision`;
+- RPC não é executável por `anon`;
+- tabela não é legível por `anon`;
+- `platform_module_state` participa do `supabase_realtime`;
+- security advisors: sem lints;
+- nenhum dado operacional fictício foi criado nesta rodada.
 
-- cada `save()` do CRM Supabase registra uma barreira ligada à operação real de persistência;
-- eventos CRM→Automatize aguardam essa confirmação antes de serem processados;
-- se o save falhar ou houver conflito, o evento não aciona automação sobre estado não confirmado;
-- ações Automatize→CRM também só retornam `accepted` após confirmação da persistência compartilhada;
-- o repository local/síncrono mantém comportamento imediato.
+O QA transacional anterior continua documentado em `docs/frentes/FRENTE-04-RBAC-QA.md` e validou:
 
-Arquivos principais:
-
-- `src/features/crm/repository.ts`;
-- `src/app/integrations/sharedStateRepositories.ts`;
-- `src/features/crm/front05Adapter.ts`.
-
-Commit funcional final desta correção: `6d54272e6b23d5271c7d675c9af399066ba99b8b`.
+- `crm.view/manage`;
+- `inbox.view/manage`;
+- bloqueio de escrita para viewer;
+- optimistic locking CRM/Inbox;
+- diretório de responsáveis;
+- conversão pública → CRM → outbox;
+- leitura F05 por domínio;
+- limpeza completa dos dados temporários.
 
 ## CRM entregue
 
-- funis configuráveis;
-- etapas configuráveis, reordenação e exclusão protegida;
-- ativação/desativação e renomeação de funil;
+- criação, edição, ativação e desativação de funis;
+- etapas configuráveis;
+- reordenação e exclusão protegida;
 - Kanban e movimentação manual;
 - Lead 360;
 - nome, e-mail, WhatsApp, origem e contexto de interesse;
 - responsável;
 - tags;
 - campos personalizados tipados;
-- tarefas/próximas ações;
-- observações e histórico;
-- eventos CRM extensíveis;
+- observações;
+- tarefas e próximas ações;
+- histórico;
 - fila de leads sem etapa;
-- conversões sem etapa permanecem visíveis;
-- nenhuma etapa/default fictícia;
-- realtime sem reset visual por eco do próprio save;
-- falha de persistência compartilhada visível na UI;
-- modo somente leitura por capacidade de gestão.
+- eventos CRM extensíveis;
+- modo somente leitura por permissão;
+- persistência compartilhada e Realtime.
 
 ## Inbox entregue
 
 - layout em três colunas;
-- conversa + contexto CRM;
-- sessão interna sem simular WhatsApp;
-- envio bloqueado sem transporte real;
-- recursos preparados para texto, áudio, imagem, vídeo, documento e formulário;
-- alteração de responsável, etapa, tags, campos e tarefas pelo contexto da conversa;
-- seleção explícita de SalesBot e agente IA;
-- seleção preservada por conversa durante navegação/remount realtime;
-- canal não pode ficar `connected` sem transporte real;
+- lista de conversas;
+- chat central;
+- contexto CRM lateral;
+- alteração de etapa, responsável, tags, campos e tarefas pelo contexto da conversa;
+- suporte estrutural a texto, áudio, imagem, vídeo, documento e formulário;
+- envio real bloqueado enquanto não houver transporte conectado;
+- canal não pode ser marcado como conectado sem transporte real;
 - dedupe de mensagem externa por conversa + ID externo;
-- falhas de persistência CRM/Inbox visíveis na UI.
+- comandos de SalesBot/IA com permissões independentes;
+- seleção explícita de SalesBot e agente IA;
+- seleção preservada por conversa durante navegação/remount realtime.
 
-## RBAC fino da Inbox
+## CRM ↔ Automatize
 
-`InboxWorkspace` mantém capacidades independentes:
+A atomicidade foi fechada por instância do repositório CRM:
 
-- `canManageInbox`;
-- `canManageCrm`;
-- `canManageSalesBot`;
-- `canManageAiAgent`;
-- `canManage` apenas como atalho legado.
+- o repositório expõe `waitForLastSave()`;
+- o runtime injeta essa barreira no adapter da Frente05;
+- eventos CRM→Automatize aguardam a persistência remota;
+- ações Automatize→CRM só retornam `accepted` após save confirmado;
+- conflito/falha de persistência impede avanço falso da automação;
+- repository local/síncrono continua resolvendo imediatamente.
 
-Status pode continuar legível sem liberar comando de gestão.
+Arquivos principais:
 
-## QA backend já executado
+- `src/features/crm/repository.ts`;
+- `src/app/integrations/sharedStateRepositories.ts`;
+- `src/features/crm/front05Adapter.ts`;
+- `src/app/PlatformRuntime.tsx`;
+- `src/features/inbox/InboxWorkspaceCore.tsx`.
 
-Documento: `docs/frentes/FRENTE-04-RBAC-QA.md`.
+## Dependências
 
-Resultado preservado:
+A Frente01 necessária à F04 está integrada. Não há bloqueio estrutural pendente da Frente01 para o CRM/Inbox.
 
-- administrador temporário recebeu permissões de leitura/gestão esperadas;
-- usuário temporário somente leitura recebeu `*.view` e não recebeu `*.manage`;
-- leitura de estado CRM/Inbox funcionou;
-- tentativa de escrita sem permissão foi recusada;
-- diretório de responsáveis funcionou;
-- identidades/grupos temporários foram removidos;
-- nenhum lead, conversa ou dado operacional fictício foi deixado.
+Os contratos atuais com a Frente05 continuam compatíveis com `SalesBotCommandPort`, `AIAgentCommandPort` e `CrmActionPort`.
 
-## Integração Frente05
+## Ainda não verificado
 
-O adapter F04↔F05 é responsável por:
-
-- `botId`/`agentId` explícitos;
-- preservar `executionId` durante recriações de runtime na mesma sessão;
-- não retomar recurso diferente;
-- evitar invocação duplicada de agente já em execução;
-- não pausar execução encerrada;
-- limpar ponteiros concluídos/falhos/not_found;
-- expor ações CRM para Automatize;
-- converter eventos CRM para o contrato F05;
-- bloquear evento/aceite quando a mutação CRM ainda não foi confirmada remotamente.
-
-## Persistência oficial
-
-A fonte de verdade multiusuário permanece na infraestrutura da Frente01:
-
-- `platform_module_state`;
-- RLS;
-- RPC de save;
-- optimistic locking;
-- merge de leads públicos;
-- Supabase Realtime.
-
-Não restaurar persistência paralela/local como fonte de verdade multiusuário.
-
-## NÃO VERIFICADO neste ambiente
-
-- `npm run build` com Node 24;
-- `npm run typecheck` completo;
 - login real pelo navegador;
-- comportamento visual de `crm.view` e `inbox.view` em sessão real;
+- comportamento visual completo de perfil viewer/admin;
 - CRUD + refresh pela UI autenticada;
-- conflito real entre duas sessões;
-- conversão pública → fila sem etapa → classificação pela UI;
-- dashboard refletindo alteração CRM real;
-- Inbox ↔ SalesBot/IA/Automatize ponta a ponta no navegador;
-- continuidade de execução após reload completo;
-- WhatsApp real;
-- validação final pelo usuário.
+- conflito visual entre duas sessões simultâneas;
+- fluxo Inbox ↔ SalesBot/IA/Automatize ponta a ponta no navegador;
+- continuidade visual após reload completo;
+- validação visual final pelo usuário.
 
-O ambiente disponível nesta rodada possui Node 22, enquanto o projeto declara Node 24; por isso build/typecheck completos não foram marcados como executados.
+Esses itens são QA de integração/navegador; não existe mais pendência de implementação ou compilação própria da Frente04.
 
 ## Handoff obrigatório
 
-- Status: 🟠 funcionalmente implementado e sincronizado; validação executável final ainda pendente.
-- Commit final funcional: `6d54272e6b23d5271c7d675c9af399066ba99b8b`.
-- O que foi entregue: CRM configurável, Lead 360, Inbox operacional, RBAC fino, persistência integrada, contratos F02/F03/F05, preservação de seleção de automação por conversa e atomicidade CRM↔Automatize.
-- O que ficou pendente: build/typecheck com Node 24 e E2E visual/autenticado em navegador.
-- Modelo de dados CRM: funil, etapa, lead, tags, campos personalizados, tarefas, histórico e origem/contexto de conversão.
-- Eventos emitidos: criação de lead, mudança de etapa, campo, tag e demais eventos extensíveis do contrato CRM, agora entregues ao Automatize somente após persistência confirmada.
-- Contratos esperados da Frente05: comandos/status de SalesBot e IA e eventos para Automatize.
-- Integrações esperadas com catálogo/site: contexto de imóvel/produto e ingestão de conversão sem mensagem automática.
-- Riscos conhecidos: somente os itens marcados como NÃO VERIFICADO acima; não há dependência estrutural pendente da Frente01.
-- Instruções para integração: usar `frente-04` atual; não recuperar o histórico divergente anterior; preservar os deltas atuais de `InboxWorkspaceCore.tsx`, `repository.ts`, `sharedStateRepositories.ts` e `front05Adapter.ts`.
+- Status: 🟢 implementação da Frente04 concluída; 🟠 E2E visual final pendente.
+- Código validado no CI: `b3224bb4d9f2a8e5bd8c50e4472d18156fe0168c`.
+- O que foi entregue: CRM configurável, Lead 360, Inbox operacional, RBAC fino, persistência multiusuário, Realtime, integração F02/F03/F05, preservação de seleção de automação por conversa e atomicidade CRM↔Automatize.
+- O que ficou pendente: somente QA visual/autenticado de integração e canais externos reservados para fase posterior.
+- Modelo CRM: funil, etapa, lead, tags, campos personalizados, tarefas, histórico e contexto de origem/interesse.
+- Eventos: criação de lead, mudança de etapa, campo, tag e eventos extensíveis, entregues à automação após persistência confirmada.
+- Instrução de integração: usar a branch `frente-04` atual e preservar os deltas listados acima.
