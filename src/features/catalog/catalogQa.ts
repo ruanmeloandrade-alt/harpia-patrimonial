@@ -1,4 +1,4 @@
-import type { CatalogItem, CatalogItemStatus } from './types';
+import type { CatalogItem, CatalogStatus } from './types';
 
 export interface CatalogQaFinding {
   code: string;
@@ -7,7 +7,7 @@ export interface CatalogQaFinding {
   message: string;
 }
 
-const allowedTransitions: Record<CatalogItemStatus, CatalogItemStatus[]> = {
+const allowedTransitions: Record<CatalogStatus, CatalogStatus[]> = {
   draft: ['published', 'sold'],
   published: ['paused', 'sold'],
   paused: ['published', 'sold'],
@@ -83,6 +83,6 @@ export function validateCatalogSnapshot(items: CatalogItem[]): CatalogQaFinding[
   return findings;
 }
 
-export function isCatalogStatusTransitionAllowed(from: CatalogItemStatus, to: CatalogItemStatus): boolean {
+export function isCatalogStatusTransitionAllowed(from: CatalogStatus, to: CatalogStatus): boolean {
   return allowedTransitions[from].includes(to);
 }
