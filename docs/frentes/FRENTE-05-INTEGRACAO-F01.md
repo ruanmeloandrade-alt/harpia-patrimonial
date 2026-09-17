@@ -1,166 +1,207 @@
-# Frente05 ↔ Frente01 — estado atual da integração
+# Frente05 → Frente01 — handoff de integração
 
 Data: 17/09/2026
-Origem: Frente05
-Destino: Frente01
+Origem: `frente-05`
+Destino: `frente-01`
 
 ## Estado atual
 
-A Frente01 já incorporou uma versão anterior da Frente05 e mantém a integração estrutural liberada. Desde então, a F05 avançou novamente e a comparação atual `frente-01...frente-05` mostra **26 commits da F05 fora da F01**.
+A integração estrutural F01↔F05 já existia, mas a branch F05 avançou novamente e agora contém componentes que ainda não estão absorvidos pela F01.
 
-O PR #1 continua aberto como canal de sincronização e não deve ser forçado se houver conflito com o trabalho paralelo da Frente01.
+Comparação atual:
 
-## Núcleo F05 disponível
+- F05 à frente da F01: **34 commits**;
+- F05 atrás da F01: **544 commits**;
+- branches: divergidas;
+- PR #1: aberto e não mergeável automaticamente.
 
-- SalesBot CRUD + blocos + validação + runtime;
+Não fazer merge forçado nem substituir arquivos globais da F01 sem reconciliação.
+
+## O que a F05 entrega pronto
+
+### Front/runtime
+
+- SalesBot CRUD + blocos + validações;
 - pausa/retomada com contexto persistido;
-- encadeamento entre bots com proteção contra ciclos;
-- delays com `resumeAt`;
-- lease temporário de retomada para evitar duas sessões retomando a mesma execução;
-- Automatize com gatilhos, condições e ações sequenciais;
-- agentes IA e perfis de provedores;
-- cofre de credenciais via Supabase Vault;
-- storage F05 compartilhado com optimistic locking e rollback;
-- RBAC `view/manage` com default-deny;
-- hardening de URL/webhook/provedores;
-- API pública consolidada em `src/features/automations/index.ts`.
+- lease de retomada concorrente;
+- Automatize;
+- agentes IA;
+- provedores IA;
+- storage compartilhado;
+- integridade de referências;
+- SSRF hardening;
+- API consolidada em `src/features/automations/index.ts`.
 
-## Novo runtime server-side F05
+### Runtime server-side
 
-Em 17/09/2026 foi criado na branch F05 e implantado no projeto Supabase o Edge Function interno:
+Edge Function:
 
-`f05-runtime-worker`
+- `f05-runtime-worker` — ACTIVE.
 
-Fonte:
-
-- `supabase/functions/f05-runtime-worker/index.ts`
-- `supabase/functions/f05-runtime-worker/config.toml`
-
-O runtime implementa do lado F05:
-
-- `start_salesbot` server-side;
-- `invoke_ai` server-side;
-- leitura do estado compartilhado real de bots, agentes e perfis;
-- persistência de logs de execução com controle de `revision`;
-- ações CRM via `admin_apply_crm_automation_action`;
-- condição;
-- delay;
-- webhook/API;
-- encadeamento de fluxo;
-- agente IA;
-- OpenAI/Codex;
-- Anthropic/Claude;
-- Google Gemini;
-- provedor customizado;
-- resolução da credencial somente no backend;
-- proteção SSRF, redirect manual e timeout.
-
-A função é interna: `verify_jwt=false` no gateway, mas o corpo exige `Authorization: Bearer <service/server key>`. Ela não aceita chamada anônima como autorização operacional.
-
-Security Advisor após o deploy: 0 lints.
-
-## Integração necessária na F01
-
-O `automation-event-worker` atual da F01 ainda executa diretamente:
-
-- ações CRM;
-- webhook.
-
-E ainda retorna `not_configured` para:
+Ações aceitas:
 
 - `start_salesbot`;
 - `invoke_ai`.
 
-A lacuna do lado F05 deixou de ser ausência de runtime. Agora a mudança necessária é exclusivamente o encaminhamento dessas duas ações pelo worker da F01 para o `f05-runtime-worker`.
+Contrato HTTP interno:
 
-Contrato sugerido para a chamada interna:
+- método: `POST`;
+- endpoint: `/functions/v1/f05-runtime-worker`;
+- autenticação: `Authorization: Bearer <SUPABASE_SERVICE_ROLE_KEY>`;
+- acesso externo sem service role é rejeitado com `401`.
 
-### Iniciar SalesBot
+Payload `start_salesbot`:
 
 ```json
 {
   "action": "start_salesbot",
-  "botId": "<id do bot>",
-  "leadId": "<id opcional>",
-  "conversationId": "<id opcional>",
+  "botId": "<id>",
+  "leadId": "<opcional>",
+  "conversationId": "<opcional>",
   "context": {}
 }
 ```
 
-### Chamar agente IA
+Payload `invoke_ai`:
 
 ```json
 {
   "action": "invoke_ai",
-  "agentId": "<id do agente>",
-  "leadId": "<id opcional>",
-  "conversationId": "<id opcional>",
+  "agentId": "<id>",
   "context": {}
 }
 ```
 
-O retorno segue:
+Resposta usa o contrato:
+
+- `accepted`;
+- `rejected`;
+- `not_configured`.
+
+### Delay durável
+
+Edge Function:
+
+- `f05-delay-worker` — ACTIVE.
+
+Infra:
+
+- `pg_cron`;
+- `pg_net`;
+- Supabase Vault;
+- job `f05-delay-resume-30s` a cada 30 segundos;
+- lease/claim para evitar retomada concorrente.
+
+Foi testado no backend real com fixture temporário e limpeza completa ao final.
+
+Também foi validado o caminho:
+
+`f05-delay-worker → f05-runtime-worker → SalesBot filho`
+
+Pai e filho terminaram `completed`.
+
+## Mudança mínima necessária no `automation-event-worker` da F01
+
+O worker atual ainda retorna `not_configured` para `start_salesbot` e `invoke_ai`.
+
+Na F01, essas duas ações devem ser encaminhadas para `f05-runtime-worker` usando a service role já disponível server-side.
+
+Pseudocódigo de integração:
 
 ```ts
-{
-  status: 'accepted' | 'rejected' | 'not_configured';
-  executionId?: string;
-  reason?: string;
-  data?: Record<string, unknown>;
+async function callF05Runtime(action: 'start_salesbot' | 'invoke_ai', payload: Record<string, unknown>) {
+  const response = await fetch(`${supabaseUrl}/functions/v1/f05-runtime-worker`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${serverKey}`,
+    },
+    body: JSON.stringify({ action, ...payload }),
+    redirect: 'manual',
+    signal: AbortSignal.timeout(45000),
+  });
+
+  const result = await response.json();
+  return result;
 }
 ```
 
-A Frente05 não altera diretamente `automation-event-worker`, porque essa Edge Function permanece propriedade da F01.
+No branch de ação:
 
-## RBAC
+```ts
+if (action.type === 'start_salesbot') {
+  result = await callF05Runtime('start_salesbot', {
+    botId: action.config?.botId,
+    leadId: event.lead_id,
+    conversationId: event.conversation_id,
+    context: event.payload ?? {},
+  });
+} else if (action.type === 'invoke_ai') {
+  result = await callF05Runtime('invoke_ai', {
+    agentId: action.config?.agentId,
+    context: {
+      ...(event.payload ?? {}),
+      eventId: event.id,
+      eventType: event.event_type,
+      leadId: event.lead_id,
+      conversationId: event.conversation_id,
+    },
+  });
+}
+```
 
-O desvio anterior continua resolvido estruturalmente na F01:
+Regras obrigatórias ao absorver:
 
-- SalesBot: `view OR manage`;
-- Automatize: `view OR manage`;
-- Agentes IA: `view OR manage`;
-- Integrações: `view OR manage`;
-- edição recebe `canManage` explicitamente;
-- F05 continua default-deny.
+- manter idempotência de `automation_action_runs`;
+- não marcar ação como `accepted` se o runtime retornar `rejected` ou `not_configured`;
+- não expor service role ao browser;
+- manter `redirect: 'manual'` e timeout;
+- preservar IDs canônicos do evento acima de qualquer payload arbitrário;
+- não ligar WhatsApp/Meta falsamente.
 
-## Segurança
+## Arquivos F05 que precisam ser considerados na sincronização
 
-Confirmado anteriormente no backend real e preservado nesta rodada:
+- `src/features/automations/engine.ts`;
+- `src/features/automations/index.ts`;
+- `src/features/automations/outboundUrlValidation.ts`;
+- `src/features/automations/runtimePorts.ts`;
+- `src/features/integrations/providerAdapters.ts`;
+- `src/features/salesbot/delayScheduler.ts`;
+- `src/features/salesbot/executionRepository.ts`;
+- `src/features/salesbot/runtime.ts`;
+- `src/features/salesbot/types.ts`;
+- `src/features/salesbot/validation.ts`;
+- `supabase/functions/f05-runtime-worker/**`;
+- `supabase/functions/f05-delay-worker/**`;
+- `supabase/schema/f05_durable_delay_scheduler.sql`.
 
-- estado F05 sem dados operacionais fictícios;
-- RLS/default-deny no storage compartilhado;
-- Vault sem chave bruta no browser;
-- URLs externas validadas;
-- CGNAT/localhost/redes privadas bloqueados;
-- redirect externo não seguido automaticamente;
-- timeout explícito em chamadas externas;
-- Security Advisor atual: 0 lints.
+## O que já foi realmente testado pela F05
 
-## Usuários temporários de QA
+- runtime SalesBot isolado;
+- contexto após pausa;
+- chain flow;
+- referência/ciclos;
+- storage/optimistic locking;
+- cofre/Vault;
+- provider adapters;
+- SSRF hardening;
+- runtime server-side implantado;
+- endpoint runtime bloqueia bearer inválido com `401`;
+- scheduler durável real;
+- token inválido do scheduler retorna `401`;
+- cron ativo e com execuções `succeeded`;
+- delay vencido retomado e concluído;
+- delay-worker chamando runtime-worker e executando bot encadeado;
+- fixtures removidos após testes;
+- Security Advisor sem lints na última conferência.
 
-Autorização do responsável já existe para:
+## Dependências que continuam fora da F05
 
-1. admin interno temporário;
-2. viewer interno temporário com permissões `*.view` da F05 e sem `*.manage`.
+- criar primeiro admin QA pelo fluxo oficial da F01/Auth;
+- E2E autenticado admin/viewer;
+- build/typecheck consolidado;
+- chamada IA com chave real;
+- WhatsApp real;
+- Meta real.
 
-Conferência em 17/09/2026:
-
-- `auth.users = 0`;
-- `user_profiles` ativos = 0;
-- a Edge Function temporária `f01-bootstrap-qa` está encerrada e retorna 410.
-
-Portanto, a F05 continua sem caminho oficial próprio para criar usuários Auth sem invadir a responsabilidade da F01.
-
-## Pendências reais agora
-
-1. F01 absorver/sincronizar os commits atuais da F05.
-2. F01 conectar `automation-event-worker` ao `f05-runtime-worker` para `start_salesbot` e `invoke_ai`.
-3. F01/Auth disponibilizar admin QA + viewer QA por caminho oficial.
-4. Executar E2E autenticado de `view/manage`, RLS, storage, Realtime e cofre.
-5. Executar build/typecheck consolidado quando o ambiente integrado estiver disponível.
-6. Chamada real a provedor IA exige credencial real cadastrada.
-7. WhatsApp e Meta reais continuam fase final.
-
-## Situação da Frente05
-
-O runtime server-side necessário para SalesBot/IA agora existe do lado F05. A pendência server-side principal passou a ser integração no worker proprietário da F01, e não falta de implementação no escopo F05.
+A F05 não deve criar bypass de Auth nem inserir diretamente em `auth.users`.
