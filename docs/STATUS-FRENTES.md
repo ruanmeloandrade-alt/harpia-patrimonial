@@ -29,7 +29,7 @@ Atualizar este arquivo ao iniciar e ao concluir blocos relevantes.
 ## Frente05 — SalesBot/Automatize/IA/Integrações
 
 - Branch: `frente-05`
-- Status: **NÚCLEO 🟢 / RUNTIME SERVER-SIDE 🟢 / DELAY DURÁVEL 🟢 / PATCH WORKER F01 PRONTO 🟢 / INTEGRAÇÃO F01 🟠 / QA AUTENTICADO 🟠**.
+- Status: **NÚCLEO 🟢 / RUNTIME SERVER-SIDE 🟢 / DELAY DURÁVEL 🟢 / SEGURANÇA BACKEND 🟢 / PATCH WORKER F01 PRONTO 🟢 / INTEGRAÇÃO F01 🟠 / QA AUTENTICADO 🟠**.
 - Testes: `docs/frentes/FRENTE-05-TESTES.md`.
 - Handoff: `docs/frentes/FRENTE-05-INTEGRACAO-F01.md`.
 
@@ -47,18 +47,27 @@ Atualizar este arquivo ao iniciar e ao concluir blocos relevantes.
 - `f05-runtime-worker` ACTIVE;
 - `f05-delay-worker` ACTIVE;
 - cron durável de 30 s;
-- `start_salesbot` e `invoke_ai` server-side.
+- `start_salesbot` e `invoke_ai` server-side;
+- integrações com estados explícitos `not_connected`, `pending`, `future` e `connected`;
+- logs de SalesBot exibem bot, status, lead, conversa, bloco, agente IA, ação e erro.
 
 ### 🟢 Testes backend reais
 
 - delay vencido retomado até `completed`;
+- dois delays consecutivos retomados corretamente até `completed`;
+- corrida com dois workers simultâneos: um processou e o outro foi bloqueado pelo lease, sem duplicação;
 - caminho `delay-worker → runtime-worker → SalesBot filho` concluído com pai e filho `completed`;
+- bloco `message` sem canal real pausou em `retry_current`, preservando contexto e sem simular envio;
 - token inválido do scheduler retorna `401`;
 - bearer inválido do runtime retorna `401`;
 - cron com execuções `succeeded`;
-- Security Advisor sem lints;
+- `pg_net` movido de `public` para `extensions` e cron revalidado depois da migração;
+- Security Advisor voltou a 0 lints após o hardening;
+- RLS sem sessão: usuário `authenticated` vê 0 linhas e atualiza 0 linhas no storage F05;
+- segredo/token do scheduler acessível apenas a `service_role`/postgres;
+- endpoints legados `ai-provider-runtime` e `ai-credentials` neutralizados; caminhos canônicos permanecem `ai-model-invoke` e `ai-credential-vault`;
 - fixtures temporários removidos;
-- `salesbots`, `salesbot-executions` e `automations` permanecem sem dados operacionais fictícios.
+- `salesbots`, `salesbot-executions`, `automations`, agentes e perfis permanecem sem dados operacionais fictícios.
 
 ### 🟢 Patch mínimo do worker F01 pronto
 
@@ -88,7 +97,9 @@ O patch:
 
 - 8 permissões F05 existem no backend;
 - grupo de sistema `Administrador` está ativo e possui as 8 permissões F05;
-- default-deny permanece na F05.
+- default-deny permanece na F05;
+- policies de storage exigem `view`/`manage` por módulo;
+- sem sessão autenticada, leitura e update retornam zero linhas.
 
 ### 🟠 Integração F05 → F01
 
