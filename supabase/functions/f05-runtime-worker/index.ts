@@ -128,6 +128,70 @@ function extractText(provider: Provider['provider'], raw: any): string {
   return typeof custom === 'string' ? custom : '';
 }
 
+const SUPPORTED_BLOCK_TYPES = new Set([
+  'trigger', 'condition', 'delay', 'message', 'ai_agent', 'move_stage', 'assign_owner',
+  'create_task', 'update_field', 'tag', 'webhook', 'finish', 'chain_flow',
+]);
+
+const REQUIRED_CONFIG: Record<string, string[]> = {
+  trigger: ['event'],
+  condition: ['expression'],
+  delay: ['duration'],
+  message: ['message'],
+  ai_agent: ['agentId'],
+  move_stage: ['stageId'],
+  assign_owner: ['userId'],
+  create_task: ['title'],
+  update_field: ['fieldId', 'fieldValue'],
+  tag: ['operation', 'tagId'],
+  webhook: ['url'],
+  chain_flow: ['botId'],
+};
+
+function hasConfigValue(value: unknown): boolean {
+  if (value === null || value === undefined) return false;
+  if (typeof value === 'string') return value.trim().length > 0;
+  return true;
+}
+
+function validateRuntimeBot(bot: Bot): string[] {
+  const issues: string[] = [];
+  const blocks = Array.isArray(bot.blocks) ? bot.blocks : [];
+  if (!blocks.length) issues.push('SalesBot ativo não possui blocos.');
+
+  for (const block of blocks) {
+    const blockType = text(block?.type);
+    if (!text(block?.id)) issues.push('Existe bloco sem ID.');
+    if (!blockType || !SUPPORTED_BLOCK_TYPES.has(blockType)) {
+      issues.push(`Bloco não suportado: ${blockType || 'tipo vazio'}.`);
+      continue;
+    }
+    const config = block.config ?? {};
+    for (const key of REQUIRED_CONFIG[blockType] ?? []) {
+      if (!hasConfigValue(config[key])) issues.push(`${block.label ?? blockType}: configuração ${key} obrigatória.`);
+    }
+    if (blockType === 'condition' && text(config.expression) && evaluateCondition(text(config.expression), {}) === null) {
+      issues.push(`${block.label ?? blockType}: condição inválida.`);
+    }
+    if (blockType === 'delay' && text(config.duration) && delayMs(text(config.duration)) === null) {
+      issues.push(`${block.label ?? blockType}: duração inválida.`);
+    }
+    if (blockType === 'tag') {
+      const operation = text(config.operation).toLowerCase();
+      if (operation && operation !== 'add' && operation !== 'remove') issues.push(`${block.label ?? blockType}: operação de tag inválida.`);
+    }
+    if (blockType === 'webhook') {
+      const method = (text(config.method) || 'POST').toUpperCase();
+      if (!['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) issues.push(`${block.label ?? blockType}: método de webhook inválido.`);
+    }
+    if (blockType === 'chain_flow' && text(config.botId) === bot.id) {
+      issues.push(`${block.label ?? blockType}: o SalesBot não pode encadear a si mesmo.`);
+    }
+  }
+
+  return issues;
+}
+
 Deno.serve(async (req) => {
   if (req.method !== 'POST') return respond({ status: 'rejected', reason: 'Método não permitido.' }, 405);
   const supabaseUrl = Deno.env.get('SUPABASE_URL');
@@ -184,6 +248,9 @@ Deno.serve(async (req) => {
     const bot = bots.find((item) => item.id === botId);
     if (!bot) return { status: 'rejected', reason: 'SalesBot não encontrado.' };
     if (bot.status !== 'active') return { status: 'rejected', reason: 'SalesBot precisa estar ativo.' };
+    const validationIssues = validateRuntimeBot(bot);
+    if (validationIssues.length > 0) return { status: 'rejected', reason: `SalesBot inválido: ${validationIssues.join(' ')}` };
+
     let executions = await loadList<Execution>(EXEC_KEY);
     const execution: Execution = { id: id('execution'), botId, leadId, conversationId, runtimeContext: inputContext, startedAt: nowIso(), status: 'running' };
     executions = [execution, ...executions];
