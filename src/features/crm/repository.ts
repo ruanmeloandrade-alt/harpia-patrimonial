@@ -3,12 +3,11 @@ import { CrmState, createEmptyCrmState } from './domain';
 export const CRM_STORAGE_KEY = 'harpia.crm.v1';
 export const CRM_UPDATED_EVENT = 'harpia:crm-updated';
 
-let crmPersistenceBarrier: Promise<void> = Promise.resolve();
-
 export interface CrmRepository {
   load(): CrmState;
   save(state: CrmState): void;
   clear(): void;
+  waitForLastSave?(): Promise<void>;
 }
 
 export const cloneCrmState = (state: CrmState): CrmState => JSON.parse(JSON.stringify(state)) as CrmState;
@@ -29,14 +28,6 @@ export const normalizeCrmState = (value: unknown): CrmState => {
     tasks: Array.isArray(candidate.tasks) ? candidate.tasks : [],
     history: Array.isArray(candidate.history) ? candidate.history : [],
   };
-};
-
-export const setCrmPersistenceBarrier = (barrier: Promise<void>): void => {
-  crmPersistenceBarrier = barrier;
-};
-
-export const waitForCrmPersistence = async (): Promise<void> => {
-  await crmPersistenceBarrier;
 };
 
 export const notifyCrmUpdated = (): void => {
@@ -82,7 +73,6 @@ export class BrowserCrmRepository implements CrmRepository {
       }
     }
 
-    setCrmPersistenceBarrier(Promise.resolve());
     notifyCrmUpdated();
   }
 
@@ -95,7 +85,10 @@ export class BrowserCrmRepository implements CrmRepository {
         // Nada a fazer: o estado em memória já foi limpo.
       }
     }
-    setCrmPersistenceBarrier(Promise.resolve());
     notifyCrmUpdated();
+  }
+
+  async waitForLastSave(): Promise<void> {
+    // Persistência local é síncrona; a Promise mantém o mesmo contrato do repository remoto.
   }
 }
