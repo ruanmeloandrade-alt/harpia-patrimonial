@@ -52,11 +52,24 @@ QA integrado: [`docs/QA-FINAL-2026-09-17.md`](./docs/QA-FINAL-2026-09-17.md) e [
 - Cinco frentes funcionais reconciliadas na `main` via PR #5.
 - Núcleo/Auth/RBAC, site público, área do cliente, catálogo, dashboard, CRM, Inbox, SalesBot, Automatize, IA e integrações preparatórias presentes na base consolidada.
 - Backend/Supabase e fluxos server-side críticos validados conforme documentos de QA.
-- Build/typecheck em Node 24 e E2E visual em navegador permanecem explicitamente `NÃO VERIFICADOS` no ambiente atual.
-- Não existe `package-lock.json` versionado; a instalação limpa/reprodutível ainda precisa ser confirmada em ambiente com registry npm acessível.
+- QA estrutural/integração encerrada e projeto liberado para a fase funcional/visual e integrações reais.
+- Runtime suportado: `Node >=22.12 <25`; Node 24 não é requisito exclusivo.
+- Build/typecheck no checkout completo e verificações de navegador permanecem `NÃO VERIFICADOS` até serem executados junto das correções funcionais/visuais.
+- Não existe `package-lock.json` versionado; a instalação limpa/reprodutível será confirmada quando houver registry npm acessível.
 - Dados reais de imóveis, funcionários, bots e agentes serão inseridos conforme instrução posterior.
 - Integrações reais de WhatsApp e Meta continuam reservadas para a fase final.
 - Hospedagem/deploy final: Hostinger, conforme documentação do projeto.
+
+## Próxima fase
+
+Prioridade agora:
+
+1. ajustes reais de front-end e botões;
+2. fluxos reais de uso;
+3. dados reais;
+4. integrações reais;
+5. validação visual/E2E durante as próprias correções;
+6. preparação e publicação final.
 
 ## Referências de produto
 
