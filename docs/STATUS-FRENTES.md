@@ -18,7 +18,7 @@ Atualizar este arquivo ao iniciar e ao concluir blocos relevantes.
 ## Frente02 — Site público/Área do cliente
 
 - Branch: `frente-02`.
-- Status: AGUARDANDO DADOS/PUBLICAÇÃO/QA EXECUTÁVEL — CÓDIGO FUNCIONAL SINCRONIZADO NA F1.
+- Status: **BLOQUEADA EM PUBLICAÇÃO/QA FINAL — CÓDIGO FUNCIONAL SINCRONIZADO NA F1**.
 - Responsável: chat/agente Frente02.
 - **Delta funcional F02 → F01: 0 arquivos.**
 - O blob de `src/features/public-site/Front02IntegrationShell.tsx` é idêntico nas duas branches (`703700c468b93766be1a0736dc8296d92f66714c`).
@@ -34,9 +34,11 @@ Atualizar este arquivo ao iniciar e ao concluir blocos relevantes.
   - EXECUTE limitado a `postgres` e `service_role`;
   - `public-lead-ingest` ativo v3;
   - `client-area-data` ativo v2 com JWT obrigatório.
-- Backend consultado em 16/09/2026: 0 perfis, 0 itens, 0 publicados, 0 favoritos, 0 leads, 0 histórico e telefone da organização nulo.
-- A `gh-pages` atual representa a landing HTML antiga e não a aplicação React integrada.
-- Ambiente desta sessão: Node 22; projeto exige Node `>=24 <25`. Build/typecheck integrado continua NÃO VERIFICADO.
+- Backend reconferido em 17/09/2026: 0 usuários Auth, 0 perfis, 0 itens, 0 publicados, 0 favoritos, CRM revision 0 com 0 leads/0 histórico, outbox 0 e telefone da organização nulo.
+- **Bloqueio de publicação:** a branch `gh-pages` continua servindo a landing HTML antiga, com imóveis/bairros/valores fictícios. Ela viola a regra de zero mocks e não representa o React integrado atual da F02.
+- O React atual da F02 usa catálogo real/empty state e não contém esse inventário fictício publicado na landing antiga.
+- Build/typecheck integrado continua NÃO VERIFICADO no Node exigido `>=24 <25`.
+- QA visual/E2E browser continua NÃO VERIFICADO.
 - Semáforo detalhado: `docs/frentes/FRENTE-02-STATUS.md`.
 
 ## Frente03 — Catálogo interno/Dashboard
@@ -69,20 +71,20 @@ Atualizar este arquivo ao iniciar e ao concluir blocos relevantes.
 
 - Não há sync funcional pendente da F2.
 - Usar `organization_settings.phone` como fonte do telefone oficial quando a operação preencher o número.
-- Publicar/servir a aplicação React integrada atual; não usar a landing estática antiga da `gh-pages` como validação.
+- **Remover/substituir a publicação antiga da `gh-pages`, que contém dados fictícios, e servir a aplicação React integrada atual.**
 - Executar build/typecheck no Node suportado.
 
-Status: AGUARDANDO PUBLICAÇÃO / DADOS / QA EXECUTÁVEL.
+Status: **BLOQUEIO DE PUBLICAÇÃO ABERTO / AGUARDANDO DADOS / QA EXECUTÁVEL**.
 
 ---
 
 # Pendências globais relevantes à Frente02
 
+- substituir a landing antiga publicada pela aplicação React integrada;
 - obter telefone oficial;
 - criar/usar conta operacional de QA;
 - ter ao menos um item real publicado;
 - ter ao menos um atendimento/lead real;
-- publicar a aplicação React integrada atual;
 - executar build/typecheck no Node suportado;
 - executar QA browser desktop/mobile;
 - executar E2E Auth → catálogo → favorito → lead → área do cliente → WhatsApp.
