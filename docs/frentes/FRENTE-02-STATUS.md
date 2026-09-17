@@ -2,7 +2,7 @@
 
 Data-base: 16/09/2026
 Branch: `frente-02`
-Estado executivo: AGUARDANDO DADOS/PUBLICAÇÃO/QA EXECUTÁVEL — CÓDIGO FUNCIONAL F02 SINCRONIZADO NA FRENTE01
+Estado executivo: AGUARDANDO DADOS/PUBLICAÇÃO/QA VISUAL — QA LÓGICO/BACKEND EXECUTADO E CÓDIGO FUNCIONAL F02 SINCRONIZADO NA FRENTE01
 
 ## Legenda
 
@@ -26,8 +26,8 @@ A Frente01 também já contém o código funcional atual da Frente03 necessário
 | 🟢 | Páginas institucionais | Sobre, Investimentos, Leilões, Jurídico e Arquitetura. |
 | 🟢 | Busca rápida | Finalidade, cidade, localização e estilo de vida. |
 | 🟢 | Cidade → localização | Opções reais agrupadas por cidade e autocorreção de opções obsoletas. |
-| 🟢 | Filtros URL | Sanitização, valores inválidos, faixa invertida e limites tratados. |
-| 🟢 | Catálogo público | F3 funcional integrado; unidade órfã, preço público, lookup, mídia e integridade alinhados. |
+| 🟢 | Filtros URL | Sanitização, valores inválidos, faixa invertida e limites tratados; QA lógico executado. |
+| 🟢 | Catálogo público | F3 funcional integrado; unidade órfã, preço público, lookup, mídia e integridade alinhados; adapter exercitado em QA descartável. |
 | 🟢 | Detalhe do imóvel | Galeria, vídeo, características, empreendimento/unidade, serviços, CTA e favorito. |
 | 🟢 | Vender/alugar | Só mostra sucesso após conversão aceita. |
 | 🟢 | Retenção | Exit-intent e captura implementados. |
@@ -39,25 +39,35 @@ A Frente01 também já contém o código funcional atual da Frente03 necessário
 | 🟢 | Favoritos — segurança | Security Advisor Supabase: 0 lints. |
 | 🟢 | Favoritos — UX/concorrência | ID estável, fallback slug, proteção entre sessões, clique duplo, reload obsoleto e erro visível tratados. |
 | 🟢 | Área do cliente | Perfil, favoritos, interesses, histórico, loading, erro, retry e isolamento entre contas/fontes. |
-| 🟢 | Conversão F2 → F4 | Nome + WhatsApp obrigatórios; contrato compatível. |
+| 🟢 | Conversão F2 → F4 | Nome + WhatsApp obrigatórios; contrato compatível; pipeline exercitado em QA. |
 | 🟢 | Identidade do lead | Frontend remove identidade; backend deriva `clientId` do JWT de cliente ativo. |
-| 🟢 | RPC privilegiada | `admin_ingest_public_lead` é `SECURITY DEFINER`; EXECUTE limitado a `postgres` e `service_role`. |
+| 🟢 | RPC privilegiada | `admin_ingest_public_lead` é `SECURITY DEFINER`; EXECUTE limitado a `postgres` e `service_role`; teste transacional descartável passou. |
 | 🟢 | `public-lead-ingest` | Edge Function ativa v3 com hardening de identidade. |
 | 🟢 | `client-area-data` | Edge Function ativa v2 com JWT obrigatório e filtro pelo usuário autenticado. |
-| 🟢 | CRM → WhatsApp | CRM executa primeiro; falha externa não reverte lead aceito. |
+| 🟢 | CRM → WhatsApp | CRM executa primeiro; falha externa não reverte lead aceito; ordem exercitada em QA. |
 | 🟢 | Confirmação sem WhatsApp | Integrada também na F1; lead aceito gera confirmação visual quando não há continuação externa. |
-| 🟢 | WhatsApp inválido | Não derruba o site nem impede lead. |
+| 🟢 | WhatsApp inválido | Não derruba o site nem impede lead; normalização/rejeição exercitadas em QA. |
 | 🟢 | Rota malformada | Error Boundary evita tela branca. |
 | 🟢 | Runtime catálogo | Supabase real + produtor F3 funcional atual. |
-| 🟢 | Zero mocks permanentes | Nenhum dado fictício foi criado para pintar QA de verde. |
+| 🟢 | Zero mocks permanentes | QA usou dados descartáveis/in-memory e rollback transacional; nenhum dado fictício permaneceu no backend. |
 | 🟠 | WhatsApp final | `organization_settings.phone` continua sem número operacional; F5 mantém WhatsApp real para fase final. |
 | 🟠 | Catálogo real para QA | Backend consultado continua sem item publicado operacional. |
 | 🟠 | Conta/favoritos E2E | Backend consultado continua sem perfil/favorito operacional. |
-| 🟠 | CRM/histórico E2E | Backend consultado continua sem lead/histórico operacional. |
+| 🟠 | CRM/histórico E2E | Backend consultado continua sem lead/histórico operacional persistente. |
 | 🟠 | Publicação visual | `gh-pages` observada ainda é a landing HTML antiga e não representa o React integrado atual. |
 | 🟠 | Responsividade visual | CSS existe; aplicação integrada ainda precisa ser validada em navegador. |
-| 🔴 | Typecheck/build integrado | NÃO VERIFICADO. Projeto exige Node `>=24 <25`; ambiente desta sessão tem Node 22 e não possui checkout local. |
+| 🔴 | Typecheck/build integrado | NÃO VERIFICADO. Projeto exige Node `>=24 <25`; ambiente desta sessão tem Node 22 e o checkout integral não ficou disponível. |
 | 🔴 | E2E/browser real | NÃO VERIFICADO. |
+
+## QA executável realizado nesta rodada
+
+Documento detalhado: `docs/frentes/FRENTE-02-QA-EXECUTAVEL.md`.
+
+- 25 asserções passaram sobre filtros, catálogo público, unidade órfã, empreendimento/unidade, pipeline CRM → WhatsApp, sanitização de identidade e contato obrigatório.
+- RPC `admin_ingest_public_lead` foi exercitada em subtransação descartável: lead, revisão CRM e `lead.created` foram confirmados e depois revertidos integralmente.
+- Pós-rollback confirmado: CRM revision `0`, leads `0` e nenhum evento de QA persistente no outbox.
+- `anon` e `authenticated` sem `EXECUTE` na RPC privilegiada; `service_role` com `EXECUTE`.
+- Supabase Security Advisor: 0 lints.
 
 ## QA de segurança confirmado
 
