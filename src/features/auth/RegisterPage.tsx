@@ -3,7 +3,17 @@ import { useAuth } from '../../core/auth/AuthProvider';
 import { useAppRouter } from '../../core/router/router';
 import { AuthCard } from './AuthCard';
 
-export function RegisterPage() {
+export interface ClientRegistrationEvent {
+  fullName: string;
+  email: string;
+  whatsapp: string;
+}
+
+export interface RegisterPageProps {
+  onClientRegistered?: (event: ClientRegistrationEvent) => void | Promise<void>;
+}
+
+export function RegisterPage({ onClientRegistered }: RegisterPageProps = {}) {
   const auth = useAuth();
   const { navigate } = useAppRouter();
   const [fullName, setFullName] = useState('');
@@ -20,10 +30,40 @@ export function RegisterPage() {
     setMessage(null);
     if (password.length < 8) return setError('A senha precisa ter pelo menos 8 caracteres.');
     setBusy(true);
-    const result = await auth.signUpClient({ fullName, email, whatsapp, password });
+
+    const normalizedRegistration = {
+      fullName: fullName.trim(),
+      email: email.trim().toLowerCase(),
+      whatsapp: whatsapp.trim(),
+    };
+    const result = await auth.signUpClient({ ...normalizedRegistration, password });
+
+    if (!result.ok) {
+      setBusy(false);
+      return setError(result.message || 'Não foi possível criar sua conta.');
+    }
+
+    let crmSyncFailed = false;
+    if (onClientRegistered) {
+      try {
+        await onClientRegistered(normalizedRegistration);
+      } catch (syncError) {
+        crmSyncFailed = true;
+        console.error('[auth] client CRM sync failed', syncError);
+      }
+    }
+
     setBusy(false);
-    if (!result.ok) return setError(result.message || 'Não foi possível criar sua conta.');
-    if (result.needsEmailConfirmation) return setMessage(result.message || 'Confirme seu e-mail para continuar.');
+
+    if (result.needsEmailConfirmation) {
+      const confirmationMessage = result.message || 'Confirme seu e-mail para continuar.';
+      return setMessage(
+        crmSyncFailed
+          ? `${confirmationMessage} O cadastro foi criado, mas o atendimento ainda não foi sincronizado com o CRM.`
+          : confirmationMessage,
+      );
+    }
+
     navigate('/cliente', { replace: true });
   }
 
