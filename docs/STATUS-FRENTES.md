@@ -1,93 +1,91 @@
 # Hárpia Patrimonial — Status das 5 Frentes
 
-Atualizar este arquivo ao iniciar e ao concluir blocos relevantes.
+Atualização: 17/09/2026
 
 ## Frente01 — Núcleo/Auth/Usuários/Permissões + integração global
 
 - Branch: `frente-01`
-- Status: **FINALIZADA NO ESCOPO DA FRENTE01 — F02/F03/F04/F05 LIBERADAS PARA TRABALHAR**
-- Backend dedicado Hárpia ativo.
-- Núcleo entregue: autenticação cliente/equipe, sessão, cadastro/login/logout/recuperação, guards, usuários, grupos, permissões, overrides individuais, configurações, shell e roteador global.
-- QA real executado com usuários temporários: admin `22` permissões; viewer `11` permissões de leitura e `0` gestão; sessões confirmadas por `auth.getUser()`.
-- Dados temporários removidos após o teste: `auth.users=0`, `user_profiles=0`, grupos QA=0, memberships=0, overrides=0.
-- Bug de detecção de `service_role` no hardening encontrado e corrigido; fix versionado no commit `af09b2faa7e072125ccb2fc1c91ab74c0d9ab39c`.
-- Security Advisor final: `0` lints.
-- Função temporária `f01-bootstrap-qa` encerrada: responde `410` e voltou a exigir JWT.
-- Integração F02: experiência pública ligada ao Auth, catálogo, favoritos, área do cliente e ingestão de leads reais.
-- Integração F03: runtime de catálogo, Realtime e Storage ligados ao Supabase global.
-- Integração F04: CRM/Inbox em estado compartilhado; rotas aceitam `view OR manage`; mutações recebem capacidades `manage` separadas.
-- Integração F05: RBAC `view/manage`, estado compartilhado, engine de automação, runtime IA e integrações compostos no integrador.
-
-### Liberação
-
-As Frentes02, 03, 04 e 05 **devem continuar o trabalho imediatamente e não devem aguardar a Frente01**. A dependência estrutural está encerrada.
-
-### QA final de ambiente/publicação
-
-Não bloqueia outras frentes e será feito quando houver ambiente executável/publicado:
-
-- build/typecheck conjunto;
-- persistência de sessão em navegador real após fechar/reabrir;
-- e-mail/recovery e redirects finais;
-- E2E visual no produto publicado.
+- Status individual: **FINALIZADA NO ESCOPO DA FRENTE01**.
+- Auth/RBAC, usuários, grupos, permissões, sessão, shell e runtime global entregues.
+- QA backend real executado anteriormente com usuários temporários e limpeza ao final.
+- Security Advisor sem lints na última verificação registrada.
 
 ## Frente02 — Site público/Área do cliente
 
 - Branch: `frente-02`
-- Dependência estrutural da Frente01: **LIBERADA**.
+- Status individual: **FINALIZADA NO ESCOPO DA FRENTE02**.
+- Site público, catálogo público, área do cliente, favoritos, captação e conversão entregues.
+- Não há desenvolvimento individual obrigatório aberto.
+- **Integração ainda pendente:** a branch atual da F02 possui deltas funcionais mais novos que a `frente-01`, principalmente na experiência pública/roteamento/conversão. Esses deltas devem ser reconciliados na passada final sem merge forçado da branch histórica divergida.
 
 ## Frente03 — Catálogo interno/Dashboard
 
 - Branch: `frente-03`
-- Dependência estrutural da Frente01: **LIBERADA**.
+- Status individual: **FINALIZADA NO ESCOPO DA FRENTE03**.
+- Catálogo, publicação, Dashboard, Storage, RLS/RBAC e Realtime entregues e validados no backend real.
+- O código funcional necessário ao produto integrado já está presente na `frente-01`.
+- Handoff final registrado em `docs/frentes/FRENTE-03-HANDOFF.md`.
+- Marcador `.f03-work-in-progress` removido no encerramento.
 
 ## Frente04 — CRM/Inbox
 
 - Branch: `frente-04`
-- Dependência estrutural da Frente01: **LIBERADA**.
+- Status individual: **FINALIZADA NO ESCOPO DA FRENTE04**.
+- CRM/Kanban/Lead 360, Inbox, RBAC, persistência multiusuário, Realtime e contratos F05 concluídos.
+- Não há implementação individual obrigatória aberta.
+- **Integração ainda pendente:** a branch atual da F04 possui deltas funcionais mais novos que a `frente-01`, incluindo atomicidade CRM↔Automatize, cleanup/runtime e preservação de seleção na Inbox. Esses deltas devem ser reconciliados na passada final.
 
 ## Frente05 — SalesBot/Automatize/IA/Integrações
 
 - Branch: `frente-05`
-- Dependência estrutural da Frente01: **LIBERADA**.
+- Status individual: **FINALIZADA NO ESCOPO DA FRENTE05 E INTEGRADA ESTRUTURALMENTE**.
+- PR #3 mergeado para conectar `automation-event-worker` ao runtime F05.
+- PR #4 mergeado para reconciliar os módulos finais da F05.
+- `automation-event-worker` v4 ACTIVE no Supabase.
+- `f05-runtime-worker` e `f05-delay-worker` ativos.
+- Scheduler durável ativo.
+- PR #1 amplo/divergido fechado como obsoleto.
 
 ---
 
-# Pedidos entre frentes
+# Situação antes da passada final
 
-- Origem: Frentes02–05
-- Destino: Frente01
-- Necessidade: encaixes estruturais no shell/runtime global.
-- Status: **RESOLVIDO**.
+## Desenvolvimento individual
 
----
+- [x] Frente01 concluída.
+- [x] Frente02 concluída.
+- [x] Frente03 concluída.
+- [x] Frente04 concluída.
+- [x] Frente05 concluída.
 
-# Integração global
+**Não há frente individual que precise continuar desenvolvimento genérico antes da integração final.**
 
-## Resolvido estruturalmente
+## Reconciliação ainda necessária na base integrada
 
-- [x] Auth F01 ↔ F02.
-- [x] Catálogo F03 ↔ F02.
-- [x] Conversão F02 ↔ lead F04.
-- [x] Métricas F04 ↔ dashboard F03.
-- [x] Inbox F04 ↔ SalesBot/IA F05.
-- [x] Eventos CRM F04 ↔ Automatize F05.
-- [x] RBAC F05 ↔ shell F01.
-- [x] Realtime/Storage do catálogo F03 ↔ runtime F01.
-- [x] Tipos Supabase sincronizados com o schema integrado.
-- [x] QA backend Auth/RBAC F01 com usuários temporários reais.
-- [x] Security Advisor F01 sem lints.
-- [x] Frente01 encerrada como dependência das demais frentes.
+- [ ] absorver de forma isolada os deltas finais da Frente02 na `frente-01`;
+- [ ] absorver de forma isolada os deltas finais da Frente04 na `frente-01`;
+- [x] Frente03 sem delta funcional de domínio pendente;
+- [x] Frente05 já reconciliada na `frente-01`.
 
-## QA/fase final de ambiente
+Não fazer merge forçado de branches historicamente divergidas. Reconciliar somente arquivos/deltas pertencentes a cada frente sobre a head atual da `frente-01`.
 
-- [ ] build/typecheck conjunto.
-- [ ] E2E visual/browser real.
-- [ ] multi-sessão/conflito real em navegador.
-- [ ] e-mail/recovery/redirects finais.
-- [ ] WhatsApp real.
-- [ ] Meta real.
-- [ ] refinamento visual/UX.
+## QA final integrado
+
+Depois da reconciliação F02/F04:
+
+- [ ] `npm run typecheck` com Node `>=24 <25`;
+- [ ] `npm run build` com Node `>=24 <25`;
+- [ ] E2E autenticado admin/viewer/cliente;
+- [ ] navegação visual desktop/mobile;
+- [ ] catálogo interno → publicação → site público;
+- [ ] upload real de mídia;
+- [ ] Realtime com duas sessões;
+- [ ] CRM/Inbox ↔ Automatize/SalesBot/IA ponta a ponta;
+- [ ] sessão/reload/concorrência;
+- [ ] e-mail/recovery/redirects finais;
+- [ ] validação visual final do usuário.
+
+WhatsApp e Meta reais continuam reservados para a fase final definida no briefing e não devem ser simulados como conectados.
 
 ---
 
@@ -99,4 +97,4 @@ Não bloqueia outras frentes e será feito quando houver ambiente executável/pu
 - PRONTA PARA INTEGRAÇÃO: escopo local pronto para composição.
 - INTEGRADA ESTRUTURALMENTE: módulos encaixados sem afirmar build/E2E ainda não executados.
 - FINALIZADA NO ESCOPO: implementação e QA executáveis da frente concluídos; validações finais de ambiente ficam para a etapa global.
-- INTEGRADA/VERDE: merge + build + testes reais exigidos concluídos.
+- INTEGRADA/VERDE: reconciliação + build + testes reais exigidos concluídos.
