@@ -4,17 +4,19 @@ import type {
 } from './contracts';
 import type { CrmEvent, CrmEventSink } from './domain';
 import { waitForCrmPersistence } from './repository';
-import { toFront05CrmAutomationEvent } from './front05AdapterCore';
+import { CrmService } from './service';
+import {
+  createFront05CrmActionPort as createCoreFront05CrmActionPort,
+  toFront05CrmAutomationEvent,
+} from './front05AdapterCore';
 import type {
   Front05AutomationSelectionContext,
   Front05CommandResult,
+  Front05CrmActionPort,
   Front05CrmAutomationEventProcessor,
   Front05InboxAutomationAdapterOptions,
 } from './front05AdapterCore';
 
-export {
-  createFront05CrmActionPort,
-} from './front05AdapterCore';
 export { toFront05CrmAutomationEvent };
 export type {
   Front05AiAgentCommandPort,
@@ -85,6 +87,41 @@ function clearFinishedAiAgent(
   if (status === 'completed' || status === 'failed' || status === 'not_found') {
     execution.aiAgentExecutionId = undefined;
   }
+}
+
+function persistenceFailure(error: unknown): Front05CommandResult {
+  return {
+    status: 'rejected',
+    reason: error instanceof Error
+      ? `A alteração no CRM não foi confirmada: ${error.message}`
+      : 'A alteração no CRM não foi confirmada pela persistência compartilhada.',
+  };
+}
+
+async function confirmCrmAction(
+  action: () => Promise<Front05CommandResult>,
+): Promise<Front05CommandResult> {
+  const result = await action();
+  if (result.status !== 'accepted') return result;
+
+  try {
+    await waitForCrmPersistence();
+    return result;
+  } catch (error) {
+    return persistenceFailure(error);
+  }
+}
+
+export function createFront05CrmActionPort(crm: CrmService): Front05CrmActionPort {
+  const core = createCoreFront05CrmActionPort(crm);
+  return {
+    moveStage: (input) => confirmCrmAction(() => core.moveStage(input)),
+    assignOwner: (input) => confirmCrmAction(() => core.assignOwner(input)),
+    createTask: (input) => confirmCrmAction(() => core.createTask(input)),
+    updateField: (input) => confirmCrmAction(() => core.updateField(input)),
+    addTag: (input) => confirmCrmAction(() => core.addTag(input)),
+    removeTag: (input) => confirmCrmAction(() => core.removeTag(input)),
+  };
 }
 
 export class Front05CrmEventSink implements CrmEventSink {
