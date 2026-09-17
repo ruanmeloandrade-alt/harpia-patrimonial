@@ -1,14 +1,14 @@
 # Frente02 — Semáforo de execução
 
-Data-base: 16/09/2026
+Data-base: 17/09/2026
 Branch: `frente-02`
-Estado executivo: AGUARDANDO DADOS/PUBLICAÇÃO/QA VISUAL — QA LÓGICO/BACKEND EXECUTADO E CÓDIGO FUNCIONAL F02 SINCRONIZADO NA FRENTE01
+Estado executivo: AGUARDANDO PUBLICAÇÃO CORRETA/DADOS/QA VISUAL — QA LÓGICO/BACKEND EXECUTADO E CÓDIGO FUNCIONAL F02 SINCRONIZADO NA FRENTE01
 
 ## Legenda
 
 - 🟢 CONCLUÍDO: implementado e confirmado no recorte descrito.
-- 🟠 PARCIAL / INTEGRAÇÃO: depende de dado real, configuração operacional, publicação ou validação executável.
-- 🔴 NÃO CONCLUÍDO: validação obrigatória ainda não executada.
+- 🟠 PARCIAL / INTEGRAÇÃO: depende de dado real, configuração operacional ou validação executável.
+- 🔴 NÃO CONCLUÍDO / BLOQUEIO: requisito obrigatório não validado ou estado publicado incompatível com a entrega.
 
 ## Estado integrado atual
 
@@ -17,6 +17,21 @@ A Frente01 incorporou o código funcional atual da Frente02, inclusive o último
 Portanto, **não há delta funcional F02 → F01 pendente neste momento**. As diferenças restantes entre branches são de histórico/documentação.
 
 A Frente01 também já contém o código funcional atual da Frente03 necessário à experiência pública.
+
+## Verificação retomada em 17/09/2026
+
+- branch F02 observada em `be0e2615d538079a00e08f501e6328b4adb7959c` antes desta atualização documental;
+- branch F01 observada em `d0b137241621d064fb5b80389a3cf3f73b7d7d21`;
+- `Front02IntegrationShell.tsx` confirmado novamente com o mesmo blob nas duas branches;
+- projeto Supabase `Harpia Patrimonial` está `ACTIVE_HEALTHY`;
+- estado operacional continua vazio: `auth.users=0`, `user_profiles=0`, `catalog_items=0`, publicados `0`, favoritos `0`, outbox `0` e telefone da organização `null`;
+- `public-lead-ingest` continua ACTIVE v3;
+- `client-area-data` continua ACTIVE v2;
+- Supabase Security Advisor continua com `0` lints;
+- a branch `gh-pages` continua em `5102c78ca11a2486b8e193f2fdbd8580e054b20f` e serve uma landing HTML antiga com imóveis, bairros e valores fictícios;
+- o React atual da F02 não usa esses imóveis fictícios: usa catálogo real/empty state (`emptyPublicCatalogReader`) e declara explicitamente ausência de ofertas fictícias.
+
+Conclusão: o principal bloqueio visível da Frente02 não é implementação própria. É **publicação incorreta**: o destino publicado ainda expõe uma landing antiga com mocks, enquanto o React integrado atual permanece sem QA visual/E2E publicado.
 
 ## Escopo e andamento
 
@@ -41,7 +56,7 @@ A Frente01 também já contém o código funcional atual da Frente03 necessário
 | 🟢 | Área do cliente | Perfil, favoritos, interesses, histórico, loading, erro, retry e isolamento entre contas/fontes. |
 | 🟢 | Conversão F2 → F4 | Nome + WhatsApp obrigatórios; contrato compatível; pipeline exercitado em QA. |
 | 🟢 | Identidade do lead | Frontend remove identidade; backend deriva `clientId` do JWT de cliente ativo. |
-| 🟢 | RPC privilegiada | `admin_ingest_public_lead` é `SECURITY DEFINER`; EXECUTE limitado a `postgres` e `service_role`; teste transacional descartável passou. |
+| 🟢 | RPC privilegiada | `admin_ingest_public_lead` é `SECURITY DEFINER`; EXECUTE limitado a `postgres` e `service_role`; teste transacional descartável documentado em 16/09 passou. |
 | 🟢 | `public-lead-ingest` | Edge Function ativa v3 com hardening de identidade. |
 | 🟢 | `client-area-data` | Edge Function ativa v2 com JWT obrigatório e filtro pelo usuário autenticado. |
 | 🟢 | CRM → WhatsApp | CRM executa primeiro; falha externa não reverte lead aceito; ordem exercitada em QA. |
@@ -49,17 +64,17 @@ A Frente01 também já contém o código funcional atual da Frente03 necessário
 | 🟢 | WhatsApp inválido | Não derruba o site nem impede lead; normalização/rejeição exercitadas em QA. |
 | 🟢 | Rota malformada | Error Boundary evita tela branca. |
 | 🟢 | Runtime catálogo | Supabase real + produtor F3 funcional atual. |
-| 🟢 | Zero mocks permanentes | QA usou dados descartáveis/in-memory e rollback transacional; nenhum dado fictício permaneceu no backend. |
+| 🟢 | Zero mocks no React atual | Código F02 usa catálogo real/empty state e não contém o inventário fictício observado na publicação antiga. |
 | 🟠 | WhatsApp final | `organization_settings.phone` continua sem número operacional; F5 mantém WhatsApp real para fase final. |
 | 🟠 | Catálogo real para QA | Backend consultado continua sem item publicado operacional. |
 | 🟠 | Conta/favoritos E2E | Backend consultado continua sem perfil/favorito operacional. |
-| 🟠 | CRM/histórico E2E | Backend consultado continua sem lead/histórico operacional persistente. |
-| 🟠 | Publicação visual | `gh-pages` observada ainda é a landing HTML antiga e não representa o React integrado atual. |
-| 🟠 | Responsividade visual | CSS existe; aplicação integrada ainda precisa ser validada em navegador. |
-| 🔴 | Typecheck/build integrado | NÃO VERIFICADO. Projeto exige Node `>=24 <25`; ambiente desta sessão tem Node 22 e o checkout integral não ficou disponível. |
+| 🟠 | CRM/histórico E2E | CRM integrado está vazio; não há atendimento operacional persistente para E2E. |
+| 🔴 | Publicação visual | `gh-pages` continua servindo landing HTML antiga com imóveis/valores fictícios e não representa o React integrado atual. Não aceitar como entrega/QA da F02. |
+| 🟠 | Responsividade visual | CSS existe; aplicação React integrada ainda precisa ser validada em navegador. |
+| 🔴 | Typecheck/build integrado | NÃO VERIFICADO. Projeto exige Node `>=24 <25`; checkout executável integral não está disponível nesta sessão. |
 | 🔴 | E2E/browser real | NÃO VERIFICADO. |
 
-## QA executável realizado nesta rodada
+## QA executável documentado em 16/09/2026
 
 Documento detalhado: `docs/frentes/FRENTE-02-QA-EXECUTAVEL.md`.
 
@@ -89,23 +104,24 @@ Documento detalhado: `docs/frentes/FRENTE-02-QA-EXECUTAVEL.md`.
 - RPC privilegiada não é executável por `anon`/`authenticated`;
 - `client-area-data` exige JWT e filtra histórico/interesses pelos leads do usuário autenticado.
 
-## Estado operacional observado no Supabase
+## Estado operacional observado no Supabase em 17/09/2026
 
-Consulta mais recente:
-
+- usuários Auth: 0;
 - perfis: 0;
 - itens de catálogo: 0;
 - itens publicados: 0;
 - favoritos: 0;
-- leads: 0;
-- histórico CRM: 0;
+- CRM: revision 0, leads 0, histórico 0;
+- outbox: 0;
 - telefone da organização: `null`.
+
+Observação: leads e histórico do CRM são persistidos dentro de `platform_module_state.state` no módulo `crm`, não em tabelas `public.leads`/`public.crm_history` separadas.
 
 ## Pendências externas reais
 
 ### Frente01 / integrador
 
-1. publicar/servir a aplicação React integrada atual; a `gh-pages` existente ainda representa a landing estática antiga;
+1. **substituir a publicação antiga** e servir a aplicação React integrada atual; a `gh-pages` existente contém dados fictícios e não pode ser considerada a entrega;
 2. ligar `organization_settings.phone` ao `whatsappPhone` da F2 quando houver número oficial;
 3. executar build/typecheck no Node suportado.
 
@@ -118,4 +134,4 @@ Consulta mais recente:
 
 ## Próximo passo da Frente02
 
-Não existe implementação funcional própria pendente conhecida neste momento. Assim que houver publicação da aplicação atual e dados operacionais mínimos, executar: navegação pública → login/cadastro → favorito → lead → área do cliente → WhatsApp → QA visual desktop/mobile → E2E.
+Não existe implementação funcional própria pendente conhecida neste momento. A F02 deve permanecer sem inventar dados ou invadir ownership da F01/F03/F04. Assim que a aplicação React integrada for publicada e houver dados operacionais mínimos, executar: navegação pública → login/cadastro → favorito → lead → área do cliente → WhatsApp → QA visual desktop/mobile → E2E.
