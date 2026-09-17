@@ -4,6 +4,10 @@ export {
   Front02IntegrationShell,
   type Front02IntegrationShellProps,
 } from './Front02IntegrationShell';
+export {
+  Front02ClientAccountShell,
+  type Front02ClientAccountShellProps,
+} from './Front02ClientAccountShell';
 
 export type {
   PublicAuthBridge,
