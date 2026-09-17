@@ -75,6 +75,8 @@ export {
   writeCatalogFilters,
 } from './catalogQuery';
 export {
+  emitFront02LocationChange,
+  FRONT02_LOCATION_EVENT,
   matchesFront02PublicRoute,
   normalizeFront02PublicPath,
   publicRouteManifest,
