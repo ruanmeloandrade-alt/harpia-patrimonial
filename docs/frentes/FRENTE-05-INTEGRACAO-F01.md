@@ -8,44 +8,41 @@ Destino: `frente-01`
 
 A integração estrutural F01↔F05 já existia, mas a branch F05 avançou novamente e contém componentes ainda não absorvidos pela F01.
 
-A comparação deve ser refeita pela F01 no momento da integração porque ambas as branches continuam avançando em paralelo.
+As branches continuam avançando em paralelo. A comparação exata deve ser refeita pela F01 no momento da integração.
 
 PR #1 permanece como handoff oficial. Não fazer merge forçado nem substituir arquivos globais da F01 sem reconciliação.
 
-## O que a F05 entrega pronto
-
-### Front/runtime
+## Entrega F05 pronta
 
 - SalesBot CRUD + blocos + validações;
 - pausa/retomada com contexto persistido;
 - lease de retomada concorrente;
 - Automatize;
-- agentes IA;
-- provedores IA;
+- agentes/provedores IA;
 - storage compartilhado;
 - integridade de referências;
 - SSRF hardening;
-- API consolidada em `src/features/automations/index.ts`.
+- `f05-runtime-worker` ACTIVE;
+- `f05-delay-worker` ACTIVE;
+- scheduler `f05-delay-resume-30s` ativo;
+- `start_salesbot` server-side;
+- `invoke_ai` server-side.
 
-### Runtime server-side
+## Contrato do runtime server-side
 
-Edge Function:
+Endpoint:
 
-- `f05-runtime-worker` — ACTIVE.
+`POST /functions/v1/f05-runtime-worker`
 
-Ações aceitas:
+Autenticação:
 
-- `start_salesbot`;
-- `invoke_ai`.
+`Authorization: Bearer <SUPABASE_SERVICE_ROLE_KEY>`
 
-Contrato HTTP interno:
+Resposta:
 
-- método: `POST`;
-- endpoint: `/functions/v1/f05-runtime-worker`;
-- autenticação: `Authorization: Bearer <SUPABASE_SERVICE_ROLE_KEY>`;
-- acesso externo sem service role é rejeitado com `401`.
+`accepted | rejected | not_configured`
 
-Payload `start_salesbot`:
+### start_salesbot
 
 ```json
 {
@@ -57,7 +54,7 @@ Payload `start_salesbot`:
 }
 ```
 
-Payload `invoke_ai`:
+### invoke_ai
 
 ```json
 {
@@ -67,35 +64,7 @@ Payload `invoke_ai`:
 }
 ```
 
-Resposta usa o contrato `accepted | rejected | not_configured`.
-
-### Delay durável
-
-Edge Function:
-
-- `f05-delay-worker` — ACTIVE.
-
-Infra:
-
-- `pg_cron`;
-- `pg_net`;
-- Supabase Vault;
-- job `f05-delay-resume-30s` a cada 30 segundos;
-- lease/claim para evitar retomada concorrente.
-
-Foi testado no backend real com fixture temporário e limpeza completa ao final.
-
-Também foi validado o caminho:
-
-`f05-delay-worker → f05-runtime-worker → SalesBot filho`
-
-Pai e filho terminaram `completed`.
-
-## Mudança mínima necessária no `automation-event-worker` da F01
-
-O worker atual ainda retorna `not_configured` para `start_salesbot` e `invoke_ai`.
-
-Na F01, essas duas ações devem ser encaminhadas para `f05-runtime-worker` usando a service role já disponível server-side.
+## Patch mínimo no automation-event-worker da F01
 
 ```ts
 async function callF05Runtime(action: 'start_salesbot' | 'invoke_ai', payload: Record<string, unknown>) {
@@ -109,12 +78,11 @@ async function callF05Runtime(action: 'start_salesbot' | 'invoke_ai', payload: R
     redirect: 'manual',
     signal: AbortSignal.timeout(45000),
   });
-
   return await response.json();
 }
 ```
 
-Para `start_salesbot`:
+`start_salesbot`:
 
 ```ts
 result = await callF05Runtime('start_salesbot', {
@@ -125,7 +93,7 @@ result = await callF05Runtime('start_salesbot', {
 });
 ```
 
-Para `invoke_ai`:
+`invoke_ai`:
 
 ```ts
 result = await callF05Runtime('invoke_ai', {
@@ -140,16 +108,27 @@ result = await callF05Runtime('invoke_ai', {
 });
 ```
 
-Regras obrigatórias ao absorver:
+Obrigatório:
 
 - manter idempotência de `automation_action_runs`;
-- não marcar como `accepted` se o runtime retornar `rejected` ou `not_configured`;
+- parar sequência em `rejected` ou `not_configured`;
 - não expor service role ao browser;
-- manter `redirect: 'manual'` e timeout;
-- preservar IDs canônicos do evento acima de payload arbitrário;
-- não ligar WhatsApp/Meta falsamente.
+- manter redirect manual + timeout;
+- preservar IDs canônicos acima do payload;
+- não mascarar falhas.
 
-## Arquivos F05 a considerar
+## Delay durável validado
+
+- `pg_cron` + `pg_net` ativos;
+- token dedicado no Vault;
+- RPC de validação restrito a service role/postgres;
+- token inválido retorna `401`;
+- cron com execuções `succeeded`;
+- delay vencido retomado até `completed`;
+- teste real `delay-worker → runtime-worker → SalesBot filho` concluído;
+- fixtures removidos e coleções operacionais voltaram a zero itens.
+
+## Arquivos F05 relevantes
 
 - `src/features/automations/engine.ts`;
 - `src/features/automations/index.ts`;
@@ -165,33 +144,13 @@ Regras obrigatórias ao absorver:
 - `supabase/functions/f05-delay-worker/**`;
 - `supabase/schema/f05_durable_delay_scheduler.sql`.
 
-## Validações já executadas
+## Dependências ainda externas à F05
 
-- runtime SalesBot isolado;
-- contexto após pausa;
-- chain flow;
-- referência/ciclos;
-- storage/optimistic locking;
-- cofre/Vault;
-- provider adapters;
-- SSRF hardening;
-- runtime server-side implantado;
-- runtime bloqueia bearer inválido com `401`;
-- scheduler durável real;
-- token inválido do scheduler retorna `401`;
-- cron ativo com execuções `succeeded`;
-- delay vencido retomado e concluído;
-- delay-worker chamando runtime-worker e executando bot encadeado;
-- fixtures removidos após testes;
-- Security Advisor sem lints na última conferência.
-
-## Dependências fora da F05
-
-- primeiro admin QA pelo fluxo oficial da F01/Auth;
+- ligar o `automation-event-worker` F01 ao runtime F05;
+- primeiro admin QA via fluxo oficial da F01/Auth;
 - E2E autenticado admin/viewer;
 - build/typecheck consolidado;
 - chamada IA com chave real;
-- WhatsApp real;
-- Meta real.
+- WhatsApp/Meta reais.
 
 A F05 não cria bypass de Auth nem insere diretamente em `auth.users`.
