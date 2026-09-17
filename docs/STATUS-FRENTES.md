@@ -5,13 +5,14 @@ Atualizar este arquivo ao iniciar e ao concluir blocos relevantes.
 ## Frente01 — Núcleo/Auth/Usuários/Permissões + integração global
 
 - Branch: `frente-01`
-- Status: **CONCLUÍDA ESTRUTURALMENTE + QA BACKEND AUTH/RBAC APROVADO — F02/F03/F04/F05 LIBERADAS**
+- Status: **FINALIZADA NO ESCOPO DA FRENTE01 — F02/F03/F04/F05 LIBERADAS PARA TRABALHAR**
 - Backend dedicado Hárpia ativo.
 - Núcleo entregue: autenticação cliente/equipe, sessão, cadastro/login/logout/recuperação, guards, usuários, grupos, permissões, overrides individuais, configurações, shell e roteador global.
 - QA real executado com usuários temporários: admin `22` permissões; viewer `11` permissões de leitura e `0` gestão; sessões confirmadas por `auth.getUser()`.
 - Dados temporários removidos após o teste: `auth.users=0`, `user_profiles=0`, grupos QA=0, memberships=0, overrides=0.
 - Bug de detecção de `service_role` no hardening encontrado e corrigido; fix versionado no commit `af09b2faa7e072125ccb2fc1c91ab74c0d9ab39c`.
 - Security Advisor final: `0` lints.
+- Função temporária `f01-bootstrap-qa` encerrada: responde `410` e voltou a exigir JWT.
 - Integração F02: experiência pública ligada ao Auth, catálogo, favoritos, área do cliente e ingestão de leads reais.
 - Integração F03: runtime de catálogo, Realtime e Storage ligados ao Supabase global.
 - Integração F04: CRM/Inbox em estado compartilhado; rotas aceitam `view OR manage`; mutações recebem capacidades `manage` separadas.
@@ -19,13 +20,13 @@ Atualizar este arquivo ao iniciar e ao concluir blocos relevantes.
 
 ### Liberação
 
-As Frentes02, 03, 04 e 05 **não devem aguardar a Frente01**. A dependência estrutural está encerrada.
+As Frentes02, 03, 04 e 05 **devem continuar o trabalho imediatamente e não devem aguardar a Frente01**. A dependência estrutural está encerrada.
 
-### Pendências finais de ambiente da Frente01
+### QA final de ambiente/publicação
 
-Não bloqueiam outras frentes:
+Não bloqueia outras frentes e será feito quando houver ambiente executável/publicado:
 
-- build/typecheck conjunto em ambiente Node/npm compatível;
+- build/typecheck conjunto;
 - persistência de sessão em navegador real após fechar/reabrir;
 - e-mail/recovery e redirects finais;
 - E2E visual no produto publicado.
@@ -76,6 +77,7 @@ Não bloqueiam outras frentes:
 - [x] Tipos Supabase sincronizados com o schema integrado.
 - [x] QA backend Auth/RBAC F01 com usuários temporários reais.
 - [x] Security Advisor F01 sem lints.
+- [x] Frente01 encerrada como dependência das demais frentes.
 
 ## QA/fase final de ambiente
 
@@ -96,4 +98,5 @@ Não bloqueiam outras frentes:
 - BLOQUEADA: depende de decisão ou contrato externo.
 - PRONTA PARA INTEGRAÇÃO: escopo local pronto para composição.
 - INTEGRADA ESTRUTURALMENTE: módulos encaixados sem afirmar build/E2E ainda não executados.
+- FINALIZADA NO ESCOPO: implementação e QA executáveis da frente concluídos; validações finais de ambiente ficam para a etapa global.
 - INTEGRADA/VERDE: merge + build + testes reais exigidos concluídos.
