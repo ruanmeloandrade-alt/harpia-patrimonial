@@ -2,17 +2,20 @@ import type {
   ConversationAutomationStatus,
   InboxAutomationPort,
 } from './contracts';
+import type { CrmEvent, CrmEventSink } from './domain';
+import { waitForCrmPersistence } from './repository';
+import { toFront05CrmAutomationEvent } from './front05AdapterCore';
 import type {
   Front05AutomationSelectionContext,
   Front05CommandResult,
+  Front05CrmAutomationEventProcessor,
   Front05InboxAutomationAdapterOptions,
 } from './front05AdapterCore';
 
 export {
   createFront05CrmActionPort,
-  Front05CrmEventSink,
-  toFront05CrmAutomationEvent,
 } from './front05AdapterCore';
+export { toFront05CrmAutomationEvent };
 export type {
   Front05AiAgentCommandPort,
   Front05AutomationEventType,
@@ -81,6 +84,22 @@ function clearFinishedAiAgent(
 ): void {
   if (status === 'completed' || status === 'failed' || status === 'not_found') {
     execution.aiAgentExecutionId = undefined;
+  }
+}
+
+export class Front05CrmEventSink implements CrmEventSink {
+  constructor(private readonly processEvent: Front05CrmAutomationEventProcessor) {}
+
+  async publish(event: CrmEvent): Promise<void> {
+    try {
+      await waitForCrmPersistence();
+    } catch {
+      // O repository já publica harpia:persistence-error. Sem commit confirmado,
+      // a automação não pode observar nem reagir ao estado otimista local.
+      return;
+    }
+
+    await this.processEvent(toFront05CrmAutomationEvent(event));
   }
 }
 
