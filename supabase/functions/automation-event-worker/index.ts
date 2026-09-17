@@ -1,7 +1,7 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.116.0';
 
 type Json = Record<string, unknown>;
-type ActionResult = { status: 'accepted' | 'rejected' | 'not_configured'; reason?: string; data?: Json };
+type ActionResult = { status: 'accepted' | 'rejected' | 'not_configured'; reason?: string; data?: Json; executionId?: string };
 type AutomationAction = { id: string; type: string; config?: Json };
 type AutomationDefinition = {
   id: string;
@@ -47,13 +47,13 @@ function matches(definition: AutomationDefinition, event: OutboxEvent): boolean 
   if (definition.status !== 'active' || definition.trigger?.event !== event.event_type) return false;
   const payload = event.payload && typeof event.payload === 'object' ? event.payload : {};
   const source: Json = {
+    ...payload,
     id: event.id,
     type: event.event_type,
     occurredAt: event.created_at,
     leadId: event.lead_id,
     conversationId: event.conversation_id,
     payload,
-    ...payload,
   };
   return (definition.trigger?.conditions ?? []).every((condition) => {
     const actual = getPath(source, String(condition.field ?? ''));
@@ -159,11 +159,11 @@ async function executeWebhook(action: AutomationAction, event: OutboxEvent): Pro
       method,
       headers: { 'Content-Type': 'application/json', 'User-Agent': 'Harpia-Automation-Worker/1.0' },
       body: JSON.stringify({
+        ...(event.payload ?? {}),
         eventId: event.id,
         eventType: event.event_type,
         leadId: event.lead_id,
         conversationId: event.conversation_id,
-        ...(event.payload ?? {}),
       }),
       signal: AbortSignal.timeout(15000),
       redirect: 'manual',
@@ -175,6 +175,41 @@ async function executeWebhook(action: AutomationAction, event: OutboxEvent): Pro
     return { status: 'accepted', data: { httpStatus: external.status } };
   } catch (error) {
     return { status: 'rejected', reason: error instanceof Error ? error.message : 'Falha ao executar webhook.' };
+  }
+}
+
+async function callF05Runtime(
+  supabaseUrl: string,
+  serverKey: string,
+  action: 'start_salesbot' | 'invoke_ai',
+  payload: Json,
+): Promise<ActionResult> {
+  try {
+    const runtimeResponse = await fetch(`${supabaseUrl}/functions/v1/f05-runtime-worker`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${serverKey}`,
+      },
+      body: JSON.stringify({ action, ...payload }),
+      redirect: 'manual',
+      signal: AbortSignal.timeout(45000),
+    });
+
+    if (runtimeResponse.status >= 300 && runtimeResponse.status < 400) {
+      return { status: 'rejected', reason: 'Redirecionamento interno do runtime F05 não é permitido.' };
+    }
+
+    const result = await runtimeResponse.json().catch(() => null) as ActionResult | null;
+    if (!result || !['accepted', 'rejected', 'not_configured'].includes(result.status)) {
+      return { status: 'rejected', reason: `Runtime F05 respondeu payload inválido (HTTP ${runtimeResponse.status}).` };
+    }
+    if (!runtimeResponse.ok && result.status === 'accepted') {
+      return { status: 'rejected', reason: `Runtime F05 respondeu HTTP ${runtimeResponse.status}.` };
+    }
+    return result;
+  } catch (error) {
+    return { status: 'rejected', reason: error instanceof Error ? error.message : 'Falha ao chamar runtime F05.' };
   }
 }
 
@@ -231,9 +266,29 @@ Deno.serve(async (req) => {
             } else if (action.type === 'webhook') {
               result = await executeWebhook(action, event);
             } else if (action.type === 'start_salesbot') {
-              result = { status: 'not_configured', reason: 'Execução server-side de SalesBot aguarda conexão do canal operacional.' };
+              const botId = String(action.config?.botId ?? '').trim();
+              result = !botId
+                ? { status: 'rejected', reason: 'SalesBot da automação não informado.' }
+                : await callF05Runtime(supabaseUrl, serverKey, 'start_salesbot', {
+                    botId,
+                    leadId: event.lead_id,
+                    conversationId: event.conversation_id,
+                    context: event.payload ?? {},
+                  });
             } else if (action.type === 'invoke_ai') {
-              result = { status: 'not_configured', reason: 'Execução server-side de agente IA ainda não está habilitada no worker.' };
+              const agentId = String(action.config?.agentId ?? '').trim();
+              result = !agentId
+                ? { status: 'rejected', reason: 'Agente IA da automação não informado.' }
+                : await callF05Runtime(supabaseUrl, serverKey, 'invoke_ai', {
+                    agentId,
+                    context: {
+                      ...(event.payload ?? {}),
+                      eventId: event.id,
+                      eventType: event.event_type,
+                      leadId: event.lead_id,
+                      conversationId: event.conversation_id,
+                    },
+                  });
             } else {
               result = { status: 'rejected', reason: `Ação ${action.type} não suportada pelo worker.` };
             }
