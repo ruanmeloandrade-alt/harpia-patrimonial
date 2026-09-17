@@ -82,7 +82,7 @@ Segunda passada funcional: `docs/QA-FINAL-PASSADA-2-2026-09-17.md`.
 - [x] delay durável retomado e concluído.
 - [x] bloco `message` sem canal real fica `not_configured/paused`, sem falso envio.
 - [x] scheduler, Vault/token, Edge Functions, Storage policies e Realtime estrutural conferidos.
-- [x] contato público real responde sem inventar telefone (`phone=null`).
+- [x] contato público ligado a `organization_settings` sem valor inventado durante a QA.
 - [x] limpeza final sem dados temporários de QA.
 - [x] base consolidada promovida para `main` via PR #5.
 - [x] requisito exclusivo de Node 24 removido; `package.json` aceita `Node >=22.12 <25`.
@@ -104,7 +104,19 @@ Segunda passada funcional: `docs/QA-FINAL-PASSADA-2-2026-09-17.md`.
 
 Esses itens migram para a fase funcional/visual, integração externa e publicação. Devem ser verificados junto das correções reais e não como uma auditoria isolada que paralise o projeto.
 
-WhatsApp e Meta reais continuam reservados para a fase de integração real definida no briefing e não devem ser simulados como conectados.
+---
+
+## Avanços da fase funcional / integração — 17/09/2026
+
+- [x] Dados públicos reais da empresa configurados no Supabase: WhatsApp/telefone, e-mail e Rio de Janeiro/RJ.
+- [x] Número público armazenado em formato internacional para compatibilidade com `wa.me`.
+- [x] `public-organization-contact` já lê o telefone real de `organization_settings`.
+- [x] Pipeline público mantém a ordem correta: captura o lead no CRM e depois continua para WhatsApp com contexto.
+- [x] CTA `Ser Atendido Agora!` incluído também no menu mobile usando o mesmo fluxo real de captura.
+- [x] Configurações internas deixam explícito qual telefone alimenta os CTAs públicos.
+- [x] Interface passou a distinguir `WhatsApp público` de `WhatsApp API`.
+
+**WhatsApp público/click-to-chat está configurado. WhatsApp API para Inbox/envios/automações e Meta continuam como integrações externas da fase final e não são tratados como conectados.**
 
 ---
 
