@@ -1,116 +1,166 @@
 # Frente05 ↔ Frente01 — estado atual da integração
 
-Data: 16/09/2026
+Data: 17/09/2026
 Origem: Frente05
 Destino: Frente01
 
 ## Estado atual
 
-A Frente01 já incorporou a Frente05 atual e declarou a integração estrutural liberada para continuidade das demais frentes.
+A Frente01 já incorporou uma versão anterior da Frente05 e mantém a integração estrutural liberada. Desde então, a F05 avançou novamente e a comparação atual `frente-01...frente-05` mostra **26 commits da F05 fora da F01**.
 
-Confirmado na branch `frente-01`:
+O PR #1 continua aberto como canal de sincronização e não deve ser forçado se houver conflito com o trabalho paralelo da Frente01.
 
-- rotas/sidebar de SalesBot, Automatize, Agentes IA, Execuções e Integrações;
-- RBAC corrigido: rotas aceitam `view OR manage`;
-- `canManage` é passado explicitamente aos workspaces F05;
-- hidratação e Realtime do estado compartilhado F05;
-- storage F05 em Supabase com revisão/optimistic locking;
-- CRM ↔ Automatize;
-- Inbox ↔ SalesBot/IA;
-- SalesBot composto com CRM, IA, condições e webhook;
-- cofre `ai-credential-vault` + Supabase Vault;
-- runtime IA `ai-model-invoke`;
-- tipos Supabase regenerados com o schema integrado;
-- worker server-side de automações com CRM/webhook e hardening de SSRF.
+## Núcleo F05 disponível
 
-A comparação entre as branches confirmou que a F01 contém os commits da F05 até o hardening de contexto de retomada do SalesBot.
+- SalesBot CRUD + blocos + validação + runtime;
+- pausa/retomada com contexto persistido;
+- encadeamento entre bots com proteção contra ciclos;
+- delays com `resumeAt`;
+- lease temporário de retomada para evitar duas sessões retomando a mesma execução;
+- Automatize com gatilhos, condições e ações sequenciais;
+- agentes IA e perfis de provedores;
+- cofre de credenciais via Supabase Vault;
+- storage F05 compartilhado com optimistic locking e rollback;
+- RBAC `view/manage` com default-deny;
+- hardening de URL/webhook/provedores;
+- API pública consolidada em `src/features/automations/index.ts`.
 
-## Núcleo F05 validado nesta rodada
+## Novo runtime server-side F05
 
-O runtime de SalesBot agora persiste somente o contexto operacional necessário enquanto a execução está aberta/pausada.
+Em 17/09/2026 foi criado na branch F05 e implantado no projeto Supabase o Edge Function interno:
 
-Verificações executadas em harness isolado com o código atual:
+`f05-runtime-worker`
 
-- `start()` persiste contexto inicial + `leadId` + `conversationId`;
-- pausa por `delay` mantém o contexto;
-- recriação do command port não perde o contexto da execução;
-- `resume()` mescla contexto anterior + contexto novo, preservando IDs canônicos;
-- conclusão remove `runtimeContext` do log;
-- encadeamento A → B mantém o mesmo contexto operacional;
-- resultados: `F05_CONTEXT_RESUME_TEST_OK` e `F05_CHAIN_CONTEXT_TEST_OK`.
+Fonte:
+
+- `supabase/functions/f05-runtime-worker/index.ts`
+- `supabase/functions/f05-runtime-worker/config.toml`
+
+O runtime implementa do lado F05:
+
+- `start_salesbot` server-side;
+- `invoke_ai` server-side;
+- leitura do estado compartilhado real de bots, agentes e perfis;
+- persistência de logs de execução com controle de `revision`;
+- ações CRM via `admin_apply_crm_automation_action`;
+- condição;
+- delay;
+- webhook/API;
+- encadeamento de fluxo;
+- agente IA;
+- OpenAI/Codex;
+- Anthropic/Claude;
+- Google Gemini;
+- provedor customizado;
+- resolução da credencial somente no backend;
+- proteção SSRF, redirect manual e timeout.
+
+A função é interna: `verify_jwt=false` no gateway, mas o corpo exige `Authorization: Bearer <service/server key>`. Ela não aceita chamada anônima como autorização operacional.
+
+Security Advisor após o deploy: 0 lints.
+
+## Integração necessária na F01
+
+O `automation-event-worker` atual da F01 ainda executa diretamente:
+
+- ações CRM;
+- webhook.
+
+E ainda retorna `not_configured` para:
+
+- `start_salesbot`;
+- `invoke_ai`.
+
+A lacuna do lado F05 deixou de ser ausência de runtime. Agora a mudança necessária é exclusivamente o encaminhamento dessas duas ações pelo worker da F01 para o `f05-runtime-worker`.
+
+Contrato sugerido para a chamada interna:
+
+### Iniciar SalesBot
+
+```json
+{
+  "action": "start_salesbot",
+  "botId": "<id do bot>",
+  "leadId": "<id opcional>",
+  "conversationId": "<id opcional>",
+  "context": {}
+}
+```
+
+### Chamar agente IA
+
+```json
+{
+  "action": "invoke_ai",
+  "agentId": "<id do agente>",
+  "leadId": "<id opcional>",
+  "conversationId": "<id opcional>",
+  "context": {}
+}
+```
+
+O retorno segue:
+
+```ts
+{
+  status: 'accepted' | 'rejected' | 'not_configured';
+  executionId?: string;
+  reason?: string;
+  data?: Record<string, unknown>;
+}
+```
+
+A Frente05 não altera diretamente `automation-event-worker`, porque essa Edge Function permanece propriedade da F01.
 
 ## RBAC
 
-O desvio anterior está RESOLVIDO na F01.
+O desvio anterior continua resolvido estruturalmente na F01:
 
-Hoje:
-
-- SalesBot aceita `salesbot.view` ou `salesbot.manage` na rota;
-- Automatize aceita `automations.view` ou `automations.manage`;
-- Agentes IA aceita `ai.view` ou `ai.manage`;
-- Integrações aceita `integrations.view` ou `integrations.manage`;
-- workspaces recebem `canManage={hasPermission(...manage)}` explicitamente;
-- F05 continua default-deny quando a prop/acesso não é informado.
-
-## Persistência compartilhada
-
-Também está sincronizada entre F01 e F05:
-
-- `configureF05SharedStorage(...)`;
-- `replaceStoredListFromRemote(...)`;
-- rollback por geração;
-- escrita confirmada para mutações críticas;
-- refresh remoto invalida rollback atrasado;
-- listeners de UI em SalesBot, Automatize, Agentes, Integrações e Execuções.
+- SalesBot: `view OR manage`;
+- Automatize: `view OR manage`;
+- Agentes IA: `view OR manage`;
+- Integrações: `view OR manage`;
+- edição recebe `canManage` explicitamente;
+- F05 continua default-deny.
 
 ## Segurança
 
-Confirmado no backend real durante o QA:
+Confirmado anteriormente no backend real e preservado nesta rodada:
 
 - estado F05 sem dados operacionais fictícios;
-- `anon` sem acesso à tabela compartilhada;
-- RLS aplicado;
-- escrita compartilhada por `SECURITY INVOKER` + RLS;
-- Vault não expõe chave bruta ao browser;
-- worker server-side bloqueia HTTPS inválido, redes privadas/localhost, CGNAT e redirects externos;
-- Security Advisor já havia sido validado com 0 lints após a convergência de hardening.
-
-## Lacuna funcional ainda observada no worker server-side
-
-O `automation-event-worker` executa atualmente:
-
-- ações CRM: conectado;
-- webhook: conectado;
-- `start_salesbot`: ainda retorna `not_configured`;
-- `invoke_ai`: ainda retorna `not_configured`.
-
-Isso afeta automações disparadas pelo outbox server-side (por exemplo, lead criado pela entrada pública) quando a definição tenta iniciar SalesBot ou IA. O caminho interno/browser continua com SalesBot/IA compostos no `PlatformRuntime`.
-
-Não tratar esse ponto como concluído até a integração server-side ser ligada ou até a primeira entrega declarar explicitamente que essas duas ações ficam fora do fluxo server-side inicial.
+- RLS/default-deny no storage compartilhado;
+- Vault sem chave bruta no browser;
+- URLs externas validadas;
+- CGNAT/localhost/redes privadas bloqueados;
+- redirect externo não seguido automaticamente;
+- timeout explícito em chamadas externas;
+- Security Advisor atual: 0 lints.
 
 ## Usuários temporários de QA
 
-Autorização do responsável já concedida para:
+Autorização do responsável já existe para:
 
 1. admin interno temporário;
 2. viewer interno temporário com permissões `*.view` da F05 e sem `*.manage`.
 
-Última conferência real no Supabase nesta rodada:
+Conferência em 17/09/2026:
 
 - `auth.users = 0`;
-- usuários internos ativos = 0.
+- `user_profiles` ativos = 0;
+- a Edge Function temporária `f01-bootstrap-qa` está encerrada e retorna 410.
 
-A sessão F05 não possui caminho seguro para criar Auth; não foi feito insert direto em `auth.users`.
+Portanto, a F05 continua sem caminho oficial próprio para criar usuários Auth sem invadir a responsabilidade da F01.
 
 ## Pendências reais agora
 
-1. Criar os dois usuários temporários de QA por um caminho oficial do Supabase Auth.
-2. Executar E2E autenticado de `view/manage`, RLS, storage compartilhado e cofre pela UI.
-3. Executar build/typecheck do produto consolidado quando houver ambiente Node/npm compatível.
-4. Decidir/ligar `start_salesbot` e `invoke_ai` no worker server-side se essas ações fizerem parte da primeira entrega do outbox.
-5. Chamada real a provedor de IA exige credencial real cadastrada pelo administrador.
-6. WhatsApp e Meta reais continuam para a fase final.
+1. F01 absorver/sincronizar os commits atuais da F05.
+2. F01 conectar `automation-event-worker` ao `f05-runtime-worker` para `start_salesbot` e `invoke_ai`.
+3. F01/Auth disponibilizar admin QA + viewer QA por caminho oficial.
+4. Executar E2E autenticado de `view/manage`, RLS, storage, Realtime e cofre.
+5. Executar build/typecheck consolidado quando o ambiente integrado estiver disponível.
+6. Chamada real a provedor IA exige credencial real cadastrada.
+7. WhatsApp e Meta reais continuam fase final.
 
 ## Situação da Frente05
 
-A F05 não está mais aguardando sincronização de branch nem correção de RBAC da F01. O núcleo pode continuar sendo testado e endurecido. O verde final integrado continua condicionado aos usuários de QA/build/E2E e à definição do runtime server-side das ações SalesBot/IA.
+O runtime server-side necessário para SalesBot/IA agora existe do lado F05. A pendência server-side principal passou a ser integração no worker proprietário da F01, e não falta de implementação no escopo F05.
