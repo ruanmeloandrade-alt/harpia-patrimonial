@@ -15,12 +15,13 @@ Este projeto usa GitHub como fonte de verdade e **não usa GitHub Actions**.
 Leia nesta ordem:
 
 1. [`AGENTS.md`](./AGENTS.md) — regras obrigatórias para qualquer chat/agente.
-2. [`docs/BRIEFING-CONSOLIDADO.md`](./docs/BRIEFING-CONSOLIDADO.md) — briefing completo do cliente e do produto.
-3. [`docs/ESCOPO-DE-TRABALHO.md`](./docs/ESCOPO-DE-TRABALHO.md) — escopo detalhado, entregas e critérios de aceite.
-4. [`docs/CONVERSA-E-DECISOES.md`](./docs/CONVERSA-E-DECISOES.md) — registro das decisões tomadas nas conversas.
-5. [`docs/FRENTES-DE-TRABALHO.md`](./docs/FRENTES-DE-TRABALHO.md) — divisão oficial do trabalho paralelo.
-6. [`docs/CONTRATOS-ENTRE-MODULOS.md`](./docs/CONTRATOS-ENTRE-MODULOS.md) — contratos entre as frentes.
-7. [`docs/STATUS-FRENTES.md`](./docs/STATUS-FRENTES.md) — status, bloqueios e handoffs.
+2. [`docs/REGRAS-DE-PRODUCAO.md`](./docs/REGRAS-DE-PRODUCAO.md) — protocolo obrigatório contra retrabalho, conflito e falso “pronto”.
+3. [`docs/BRIEFING-CONSOLIDADO.md`](./docs/BRIEFING-CONSOLIDADO.md) — briefing completo do cliente e do produto.
+4. [`docs/ESCOPO-DE-TRABALHO.md`](./docs/ESCOPO-DE-TRABALHO.md) — escopo detalhado, entregas e critérios de aceite.
+5. [`docs/CONVERSA-E-DECISOES.md`](./docs/CONVERSA-E-DECISOES.md) — registro das decisões tomadas nas conversas.
+6. [`docs/FRENTES-DE-TRABALHO.md`](./docs/FRENTES-DE-TRABALHO.md) — divisão oficial do trabalho paralelo.
+7. [`docs/CONTRATOS-ENTRE-MODULOS.md`](./docs/CONTRATOS-ENTRE-MODULOS.md) — contratos entre as frentes.
+8. [`docs/STATUS-FRENTES.md`](./docs/STATUS-FRENTES.md) — status, bloqueios e handoffs.
 
 ## Trabalho em 5 chats
 
@@ -42,6 +43,10 @@ Cada frente possui sua própria branch:
 
 O desenvolvimento paralelo deve acontecer nessas branches, não diretamente na `main`.
 
+## Regra de qualidade
+
+Nenhuma frente pode declarar `pronto` apenas porque a interface existe. Antes do handoff é obrigatório seguir a Definition of Done em `docs/REGRAS-DE-PRODUCAO.md`, registrar testes executados e marcar como `NÃO VERIFICADO` qualquer item que não pôde ser testado.
+
 ## Pente fino e integração
 
 Depois das cinco frentes, o chat/agente integrador deve seguir [`docs/PENTE-FINO-INTEGRACAO.md`](./docs/PENTE-FINO-INTEGRACAO.md).
@@ -52,6 +57,7 @@ Depois das cinco frentes, o chat/agente integrador deve seguir [`docs/PENTE-FINO
 - Base React/Vite/Node criada.
 - Documentação operacional consolidada.
 - Escopo dividido em cinco frentes independentes.
+- Regras de produção/qualidade definidas e obrigatórias.
 - Dados reais de imóveis, funcionários, bots e agentes serão inseridos depois.
 - Integrações reais de WhatsApp e Meta ficam para a fase final.
 
