@@ -15,25 +15,33 @@ Atualização: 17/09/2026
 - Branch: `frente-02`
 - Status individual: **FINALIZADA NO ESCOPO DA FRENTE02**.
 - Site público, catálogo público, área do cliente, favoritos, captação e conversão entregues.
-- Não há desenvolvimento individual obrigatório aberto.
-- **Integração ainda pendente:** a branch atual da F02 possui deltas funcionais mais novos que a `frente-01`, principalmente na experiência pública/roteamento/conversão. Esses deltas devem ser reconciliados na passada final sem merge forçado da branch histórica divergida.
+- **Sincronização funcional com a `frente-01`: CONCLUÍDA.**
+- Conferência por árvore Git confirmou que `client-area`, `public-catalog` e `public-site` da base integrada já possuem os mesmos blobs finais relevantes da F02. Nenhum merge bruto da branch divergida foi necessário.
 
 ## Frente03 — Catálogo interno/Dashboard
 
 - Branch: `frente-03`
 - Status individual: **FINALIZADA NO ESCOPO DA FRENTE03**.
 - Catálogo, publicação, Dashboard, Storage, RLS/RBAC e Realtime entregues e validados no backend real.
-- O código funcional necessário ao produto integrado já está presente na `frente-01`.
+- Código funcional necessário ao produto integrado já presente na `frente-01`.
 - Handoff final registrado em `docs/frentes/FRENTE-03-HANDOFF.md`.
-- Marcador `.f03-work-in-progress` removido no encerramento.
 
 ## Frente04 — CRM/Inbox
 
 - Branch: `frente-04`
 - Status individual: **FINALIZADA NO ESCOPO DA FRENTE04**.
 - CRM/Kanban/Lead 360, Inbox, RBAC, persistência multiusuário, Realtime e contratos F05 concluídos.
-- Não há implementação individual obrigatória aberta.
-- **Integração ainda pendente:** a branch atual da F04 possui deltas funcionais mais novos que a `frente-01`, incluindo atomicidade CRM↔Automatize, cleanup/runtime e preservação de seleção na Inbox. Esses deltas devem ser reconciliados na passada final.
+- **Sincronização funcional com a `frente-01`: CONCLUÍDA.**
+- Commit de integração: `b97e99d381e4e3fee1acfde5984127dc6055a4ed`.
+- Foram absorvidos isoladamente os seis deltas finais:
+  - `src/app/PlatformRuntime.tsx`;
+  - `src/app/integrations/sharedStateRepositories.ts`;
+  - `src/features/crm/front05Adapter.ts`;
+  - `src/features/crm/repository.ts`;
+  - `src/features/inbox/InboxWorkspaceCore.tsx`;
+  - `src/features/settings/core/settings-service.ts`.
+- A árvore foi reconferida depois do fast-forward e os seis blobs da F04 já são exatamente os da base integrada.
+- O workflow temporário `f04-check.yml` não foi trazido porque `AGENTS.md` proíbe GitHub Actions neste projeto.
 
 ## Frente05 — SalesBot/Automatize/IA/Integrações
 
@@ -48,7 +56,7 @@ Atualização: 17/09/2026
 
 ---
 
-# Situação antes da passada final
+# Base final antes da QA
 
 ## Desenvolvimento individual
 
@@ -58,20 +66,20 @@ Atualização: 17/09/2026
 - [x] Frente04 concluída.
 - [x] Frente05 concluída.
 
-**Não há frente individual que precise continuar desenvolvimento genérico antes da integração final.**
+## Sincronização da base integrada
 
-## Reconciliação ainda necessária na base integrada
+- [x] Frente02 reconciliada funcionalmente na `frente-01`.
+- [x] Frente03 sem delta funcional pendente.
+- [x] Frente04 reconciliada funcionalmente na `frente-01`.
+- [x] Frente05 reconciliada funcionalmente na `frente-01`.
 
-- [ ] absorver de forma isolada os deltas finais da Frente02 na `frente-01`;
-- [ ] absorver de forma isolada os deltas finais da Frente04 na `frente-01`;
-- [x] Frente03 sem delta funcional de domínio pendente;
-- [x] Frente05 já reconciliada na `frente-01`.
+**A base `frente-01` está liberada para a QA final integrada.**
 
-Não fazer merge forçado de branches historicamente divergidas. Reconciliar somente arquivos/deltas pertencentes a cada frente sobre a head atual da `frente-01`.
+Não fazer merge forçado das branches históricas divergidas. A `frente-01` atual é a fonte de verdade para a etapa final.
 
 ## QA final integrado
 
-Depois da reconciliação F02/F04:
+Próxima etapa:
 
 - [ ] `npm run typecheck` com Node `>=24 <25`;
 - [ ] `npm run build` com Node `>=24 <25`;
