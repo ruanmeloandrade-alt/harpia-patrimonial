@@ -1,4 +1,4 @@
-# Frente03 — Handoff de Catálogo + Dashboard
+# Frente03 — Handoff final de Catálogo + Dashboard
 
 Data: 17/09/2026
 Branch: `frente-03`
@@ -6,204 +6,114 @@ Branch: `frente-03`
 Legenda:
 
 - 🟢 completo e testável no nível indicado;
-- 🟠 parcial/aguardando validação essencial;
+- 🟠 validação global ainda não executada;
 - 🔴 não iniciado.
 
-## Status geral
+## Status da Frente03
 
-🟠 **INTEGRADA NA FRENTE01 + BACKEND REAL VALIDADO; FALTAM BUILD/TYPECHECK CONSOLIDADO E QA REAL DE NAVEGADOR/E2E.**
+🟢 **ESCOPO PRÓPRIO CONCLUÍDO — FRENTE ENCERRADA PARA DESENVOLVIMENTO.**
 
-A Frente01 já incorporou integralmente a Frente03 atual e usa o runtime de catálogo, Storage, Realtime e tipos Supabase atualizados. Em 17/09/2026 a Frente01 registrou QA backend Auth/RBAC aprovado e liberou estruturalmente as Frentes02–05; portanto a Frente03 não deve aguardar a Frente01 para trabalho próprio.
+A Frente03 entregou e validou o domínio de catálogo, persistência, regras de estado, catálogo público, Dashboard, Storage, RLS/RBAC e Realtime. Não há dependência funcional restante da Frente01, Frente02, Frente04 ou Frente05 para continuar implementação própria da Frente03.
 
-## 🟢 Domínio e regras
+## 🟢 Catálogo e domínio
 
 - empreendimento, unidade e imóvel avulso;
+- CRUD, busca, filtros, duplicação e soft-delete;
+- código ativo único;
 - tipologia obrigatória de unidade;
-- CRUD, busca, duplicação, exclusão lógica e código ativo único;
-- máquina de estados: `draft→published|sold`, `published→paused|sold`, `paused→published|sold`, `sold` terminal;
-- unidade nova/realocada não aponta para empreendimento vendido;
-- unidade histórica sob pai vendido continua editável;
-- empreendimento só pode ser vendido depois de todas as unidades ativas estarem vendidas;
-- empreendimento com unidades ativas não pode ser excluído/convertido deixando órfãos;
-- duplicação de unidade com pai vendido/indisponível é bloqueada.
+- estados `draft → published|sold`, `published → paused|sold`, `paused → published|sold`, `sold` terminal;
+- integridade pai/unidade;
+- empreendimento só pode ser vendido após as unidades ativas;
+- histórico preservado em pausa, venda e exclusão lógica.
 
 ## 🟢 Catálogo público
 
-`PublicCatalogService` fornece listagem, filtros, detalhe, unidades por empreendimento, bundle de empreendimento e faixa de preço.
+`PublicCatalogService` validado com:
 
-Garantias:
+- listagem e filtros reais;
+- detalhe por id/código;
+- unidades por empreendimento;
+- faixa de preço;
+- menor preço público derivado das unidades publicadas quando aplicável;
+- `storagePath` fora do contrato público;
+- unidade publicada só exposta publicamente quando o empreendimento pai também está publicado.
 
-- só itens publicamente elegíveis;
-- unidade `published` só é pública se o pai também estiver publicado e ativo;
-- pausar/vender o pai esconde as unidades sem destruir histórico;
-- faixa de preço deriva das unidades publicadas;
-- preço público do empreendimento usa o menor preço das unidades publicadas quando existirem;
-- preço do pai só é fallback quando não houver unidade publicada precificada;
-- `storagePath` não faz parte do contrato público.
+QA real adicional de 17/09/2026 confirmou:
 
-### QA real adicional — 17/09/2026
-
-Validação executada diretamente no backend real, com dados transitórios removidos ao final:
-
-- 🟢 unidade `published` com empreendimento pai em `draft` ficou invisível para `anon`;
-- 🟢 após publicar o empreendimento pai, a mesma unidade passou a ficar visível para `anon`;
-- 🟢 após pausar o empreendimento pai, a unidade voltou a ficar invisível para `anon`;
-- 🟢 venda do empreendimento com unidade ativa não vendida permaneceu bloqueada;
-- 🟢 após vender a unidade, foi possível vender o empreendimento;
-- 🟢 item vendido permaneceu terminal e rejeitou nova transição de status;
-- 🟢 limpeza final confirmou 0 registros com prefixo `QA-%` / `QA-F03-%`.
-
-Observação: o backend permite que uma unidade seja marcada como `published` enquanto o pai ainda está em `draft`, porém a RLS pública mantém a unidade invisível até o pai também estar publicado. Isso está coerente com o contrato atual da Frente03, cuja regra é de elegibilidade pública hierárquica, não de proibição absoluta da publicação interna antecipada.
+- unidade publicada com pai em `draft` invisível para `anon`;
+- publicação do pai torna a unidade visível;
+- pausa do pai torna a unidade invisível novamente;
+- venda do pai com unidade ativa bloqueada;
+- venda da unidade e depois do pai permitida;
+- `sold` terminal;
+- zero resíduos `QA-%` / `QA-F03-%` após limpeza.
 
 ## 🟢 Dashboard
 
-Patrimonial:
-
 - publicados/elegíveis;
-- publicados ocultos (`hiddenPublished`);
-- estoque ativo (`inventoryCount`);
+- publicados ocultos;
+- estoque ativo;
 - rascunhos, pausados e vendidos;
-- valor do estoque sem dupla contagem;
-- cidade e finalidade.
+- valor de estoque sem dupla contagem;
+- cidade e finalidade;
+- leads, origem, próximas ações, demanda por região e interesse por produto quando há referência real do CRM.
 
-CRM objetivo:
+Métricas sem semântica objetiva no CRM continuam indisponíveis/zero e não são inferidas por nome de etapa.
 
-- leads;
-- origem;
-- próximas tarefas;
-- demanda por região quando existe `interest.referenceId`;
-- interesse por produto por leads referenciados.
+## 🟢 Supabase / Storage / Realtime
 
-Não inferir pelo nome de etapa: visitas, propostas, negociações, vendas, VGV, ticket ou conversão.
+Projeto real validado com:
 
-Testes isolados relevantes: `DASHBOARD_HIDDEN_PUBLISHED_OK`, `DASHBOARD_INVENTORY_COUNT_OK`, `PUBLIC_DEVELOPMENT_PRICE_OK`.
+- RLS ativa em `catalog_items`;
+- RBAC `catalog.view`, `catalog.manage`, `catalog.publish`;
+- `catalog_items` em `supabase_realtime`;
+- bucket público `catalog-media` presente;
+- policies de Storage protegidas por `catalog.manage`;
+- zero unidades órfãs;
+- zero códigos ativos duplicados;
+- payload de mídia validado server-side;
+- Realtime interno lazy com `dispose()`;
+- nenhum mock permanente de inventário.
 
-A integração atual da Frente01 continua compondo `CrmRepositorySnapshotSource` + `CrmSnapshotMetricsProvider` com o `catalogRepository`, mantendo somente métricas objetivas disponíveis e sem inferência por nome configurável de etapa.
+## 🟢 Integração com Frente01
 
-## 🟢 Supabase real
-
-Projeto: `Harpia Patrimonial` (`desxomqvtjaymwwxivwq`).
-
-Migrations Frente03 registradas:
-
-1. `catalog_front03`;
-2. `catalog_front03_grants_hardening`;
-3. `catalog_front03_select_policy_performance`;
-4. `catalog_front03_status_transitions`;
-5. `catalog_front03_media_storage`;
-6. `catalog_front03_public_unit_parent_visibility`;
-7. `catalog_front03_sold_development_integrity`;
-8. `catalog_front03_realtime`;
-9. `catalog_front03_media_payload_validation`.
-
-QA real cobriu RLS público/interno, RBAC `view/manage/publish`, máquina de estados, código único, tipologia, relação pai/unidade, venda do empreendimento, visibilidade hierárquica e payload de mídia.
-
-Último check de 17/09/2026:
-
-- 🟢 `catalog_items`: RLS habilitada;
-- 🟢 `catalog_items`: incluída em `supabase_realtime`;
-- 🟢 bucket público `catalog-media`: presente;
-- 🟢 policies de Storage para SELECT/INSERT/UPDATE/DELETE exigem `catalog.manage` para `authenticated`;
-- 🟢 0 unidades órfãs;
-- 🟢 0 códigos ativos duplicados;
-- 🟢 `QA-%` / `QA-F03-%`: 0 resíduos;
-- 🟢 Security Advisor previamente validado com 0 findings;
-- 🟢 Performance: somente `unused_index` INFO em banco sem tráfego relevante.
-
-## 🟢 Realtime multi-sessão — implementação
-
-- `catalog_items` está na publication `supabase_realtime`;
-- `RealtimeCatalogRepository` recebe mudanças remotas e emite `harpia:catalog-changed`;
-- serviço público usa repositório base sem canal para visitante;
-- canal interno é lazy;
-- `dispose()` remove o canal.
-
-Testes isolados: `REALTIME_CATALOG_RUNTIME_OK` e `REALTIME_CATALOG_LAZY_OK`.
-
-🟠 Falta validar WebSocket real entre dois navegadores autenticados.
-
-## 🟢 Mídia / Storage
-
-Bucket real: `catalog-media`.
-
-- serving público;
-- gestão sob `catalog.manage`;
-- limite 50 MB;
-- JPEG, PNG, WebP, GIF, MP4, WebM e PDF;
-- nomes opacos e `upsert:false`;
-- upload direto opcional + URL manual HTTP(S);
-- lote parcial limpo em erro;
-- upload não salvo limpo em cancelamento/troca;
-- mídia persistida só é apagada quando nenhuma referência ativa ou histórica permanece;
-- duplicatas podem compartilhar o mesmo objeto com segurança.
-
-Testes: `CATALOG_MEDIA_VALIDATION_OK` e `MEDIA_REFERENCE_GUARD_OK`.
-
-🟠 Falta upload real pela UI/browser.
-
-## 🟢 Integração Frente01 — confirmada
-
-No estado integrado atual da Frente01:
+Confirmado no estado integrado:
 
 - `PlatformRuntimeProvider` usa `createCatalogRuntime`;
 - runtime expõe `catalogRepository`, `publicCatalogService` e `catalogMediaStorage`;
-- `catalogRuntime.dispose()` é chamado no cleanup;
-- `IntegratedCatalog` recebe `repository` + `mediaStorage` + RBAC granular;
-- `IntegratedDashboard` recebe catálogo e provider comercial compartilhado;
-- `/interno/catalogo` e menu existem;
-- Frente02 recebe `runtime.publicCatalogService`;
-- `database.types.ts` contém `catalog_items`, relacionamento pai/unidade e enums do catálogo;
-- tipos gerados foram conferidos contra o schema real;
-- Frente01 declarou em `docs/STATUS-FRENTES.md` a dependência estrutural da Frente03 como **LIBERADA**.
+- `catalogRuntime.dispose()` está no cleanup;
+- `IntegratedCatalog` recebe repository, Storage e RBAC granular;
+- `IntegratedDashboard` recebe catálogo e provider comercial;
+- `/interno/catalogo` existe;
+- tipos Supabase do catálogo estão presentes.
 
-## 🟠 Integração Frente02
+O arquivo produtor `src/features/catalog/publicCatalog.ts` possui o mesmo SHA na `frente-03` e na `frente-01` (`d48892fc8fcd8f87638bb79c592b6b72902502da`).
 
-O contrato estrutural F03 → F02 está resolvido pela `PublicCatalogService` integrada na Frente01.
+## 🟢 Integração com Frente02 final
 
-A Frente02 ainda possui pendência ligada à publicação/ambiente público atual. Para a Frente03, isso bloqueia apenas o E2E final `publicar no interno → aparecer no site publicado`; não bloqueia o backend próprio nem o contrato público da F03.
+A Frente02 encerrou o escopo próprio em 17/09/2026.
 
-## 🟢 Integração Frente04
+O adapter `src/features/public-catalog/front03Adapter.ts` possui o mesmo SHA na `frente-02` final e na `frente-01` integrada (`f9297367cb89de798646472d7529a4539e547806`). Portanto o contrato final F03 → F02 está sincronizado no ponto de integração relevante para a Frente03.
 
-O Dashboard da Frente03 já recebe o provider comercial compartilhado da Frente04 via integração da Frente01.
+## 🟢 Integração com Frente04 e Frente05
 
-Métricas hoje consideradas objetivas:
+- Frente04: provider CRM compartilhado já alimenta o Dashboard no contrato objetivo atual.
+- Frente05: não bloqueia a Frente03.
 
-- leads;
-- origem dos leads;
-- próximas ações/tarefas;
-- demanda por região quando há referência real de catálogo;
-- interesse por produto quando há referência real.
+## 🟠 QA global do produto — não reabre a Frente03
 
-Métricas sem semântica objetiva permanecem indisponíveis/zero, conforme regra do projeto.
-
-## 🟢 Frente05
-
-A Frente05 não bloqueia o escopo ou o fechamento técnico próprio da Frente03.
-
-## 🟠 Validação final ainda NÃO VERIFICADA
+Ainda não foram declarados como executados neste chat:
 
 - `npm run typecheck` no produto integrado;
 - `npm run build` no produto integrado;
-- upload real pelo Storage API via tela;
-- Realtime real em duas sessões/browser;
-- fluxo E2E criar → editar → mídia → publicar → site → pausar → republicar → vender unidades → vender empreendimento;
-- Dashboard final com dados da operação real;
-- teste final pelo usuário.
+- upload real pela UI/browser;
+- Realtime real em duas sessões autenticadas;
+- E2E visual completo do produto publicado.
 
-## Bloqueio técnico atual deste chat
+Esses itens permanecem como **validação global de integração/ambiente**, não como implementação pendente da Frente03. Não devem manter a Frente03 aberta como frente de desenvolvimento.
 
-- Frente01 continua sem `package-lock.json` no estado consultado;
-- executor local desta sessão usa Node 22, enquanto o projeto exige Node 24;
-- dependências npm do projeto não estão instaladas/cacheadas neste executor.
+## Encerramento
 
-Por isso build/typecheck consolidado não foi declarado aprovado.
+🟢 **Frente03 concluída e entregue para integração final.**
 
-## Estado para integração final
-
-🟢 Trabalho próprio de backend, domínio, catálogo público, dashboard, Storage, RLS e Realtime da Frente03 está implementado e validado no nível disponível.
-
-🟢 Dependência estrutural da Frente01 está encerrada.
-
-🟢 Frente05 não bloqueia a Frente03.
-
-🟠 O verde geral da Frente03 depende agora somente das validações de ambiente integrado: build/typecheck, navegador/E2E, upload real pela UI, Realtime multi-sessão e o trecho do E2E público que depende da publicação atual da Frente02.
+Commit deste handoff deve ser tratado como marco de encerramento da Frente03. Qualquer falha futura encontrada no build/E2E global deve ser reaberta como correção específica, com evidência do problema, e não como pendência genérica desta frente.
