@@ -23,7 +23,7 @@ Atualização: 17/09/2026
 - Branch: `frente-03`
 - Status individual: **FINALIZADA NO ESCOPO DA FRENTE03**.
 - Catálogo, publicação, Dashboard, Storage, RLS/RBAC e Realtime entregues e validados no backend real.
-- Código funcional necessário ao produto integrado já presente na `frente-01`.
+- Código funcional necessário ao produto integrado já presente na base consolidada.
 - Handoff final registrado em `docs/frentes/FRENTE-03-HANDOFF.md`.
 
 ## Frente04 — CRM/Inbox
@@ -72,8 +72,12 @@ Atualização: 17/09/2026
 - [x] Frente03 sem delta funcional pendente.
 - [x] Frente04 reconciliada funcionalmente na `frente-01`.
 - [x] Frente05 reconciliada funcionalmente na `frente-01`.
+- [x] Regras exclusivas/mais novas da `main` preservadas na base integrada antes da promoção final.
+- [x] PR #5 `frente-01 → main` mergeada em 17/09/2026.
+- [x] Commit de integração na `main`: `a5b522aac5b1514e396c2d5ca69a49589df08463`.
+- [x] Comparativo pós-merge: `main` contém integralmente `frente-01`, com `behind_by = 0` e nenhum arquivo divergente.
 
-Não fazer merge forçado das branches históricas divergidas. A `frente-01` atual é a fonte de verdade para a etapa final.
+A partir deste ponto, **`main` é a fonte de verdade da base consolidada**. As branches `frente-01` a `frente-05` permanecem como histórico das frentes; não fazer merge forçado das branches históricas divergidas.
 
 ## QA final integrado — 17/09/2026
 
@@ -100,6 +104,7 @@ Segunda passada funcional: `docs/QA-FINAL-PASSADA-2-2026-09-17.md`.
 - [x] scheduler, Vault/token, Edge Functions, Storage policies e Realtime estrutural conferidos.
 - [x] contato público real responde sem inventar telefone (`phone=null`).
 - [x] limpeza final: nenhum usuário, lead, imóvel, bot, automação ou execução QA permaneceu.
+- [x] base consolidada promovida para `main` via PR #5 sem conflito e sem apagar o histórico anterior da `main`.
 
 ### Ainda NÃO VERIFICADO
 
@@ -117,7 +122,7 @@ Segunda passada funcional: `docs/QA-FINAL-PASSADA-2-2026-09-17.md`.
 - [ ] console do navegador sem erros relevantes;
 - [ ] validação visual final do usuário.
 
-Motivo do bloco de build/E2E visual neste ambiente: Node disponível `v22.16.0`, enquanto o projeto exige Node `>=24 <25`; o checkout direto do GitHub também falhou por indisponibilidade de DNS externo. A tentativa de obter snapshot binário pelo conector GitHub e runtime Node 24 isolado também não foi suportada pelo ambiente. Nenhum desses itens foi marcado artificialmente como aprovado.
+Motivo do bloco de build/E2E visual neste ambiente: Node disponível `v22.16.0`, enquanto o projeto exige Node `>=24 <25`; o checkout direto do GitHub também falhou por indisponibilidade de DNS externo. A tentativa de obter snapshot binário pelo conector GitHub e runtime Node 24 isolado também não foi suportada pelo ambiente. O Chromium/Playwright está disponível, mas o acesso externo ao domínio publicado é bloqueado pelo ambiente de execução (`ERR_BLOCKED_BY_ADMINISTRATOR`). Nenhum desses itens foi marcado artificialmente como aprovado.
 
 WhatsApp e Meta reais continuam reservados para a fase final definida no briefing e não devem ser simulados como conectados.
 
