@@ -8,9 +8,12 @@ Destino: `frente-01`
 
 A integração estrutural F01↔F05 já existia, mas a branch F05 avançou novamente e contém componentes ainda não absorvidos pela F01.
 
-As branches continuam avançando em paralelo. A comparação exata deve ser refeita pela F01 no momento da integração.
+Há dois caminhos de integração:
 
-PR #1 permanece como handoff oficial. Não fazer merge forçado nem substituir arquivos globais da F01 sem reconciliação.
+- **PR #1** — handoff amplo da branch `frente-05`; branches divergidas, exige reconciliação cuidadosa;
+- **PR #3** — patch mínimo do `automation-event-worker`, criado diretamente sobre a F01 atual. Última conferência: 1 commit à frente, 0 atrás, 1 arquivo, `mergeable=true`.
+
+Para remover imediatamente os `not_configured` de `start_salesbot` e `invoke_ai`, o **PR #3 é o caminho preferencial**. Não fazer merge forçado do PR #1.
 
 ## Entrega F05 pronta
 
@@ -64,58 +67,33 @@ Resposta:
 }
 ```
 
-## Patch mínimo no automation-event-worker da F01
+## PR #3 — patch isolado já preparado
 
-```ts
-async function callF05Runtime(action: 'start_salesbot' | 'invoke_ai', payload: Record<string, unknown>) {
-  const response = await fetch(`${supabaseUrl}/functions/v1/f05-runtime-worker`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${serverKey}`,
-    },
-    body: JSON.stringify({ action, ...payload }),
-    redirect: 'manual',
-    signal: AbortSignal.timeout(45000),
-  });
-  return await response.json();
-}
-```
+Branch: `f05-f01-worker-integration`.
 
-`start_salesbot`:
+Commit: `[F05→F01] worker: encaminhar SalesBot e IA ao runtime F05`.
 
-```ts
-result = await callF05Runtime('start_salesbot', {
-  botId: action.config?.botId,
-  leadId: event.lead_id,
-  conversationId: event.conversation_id,
-  context: event.payload ?? {},
-});
-```
+Arquivo único alterado:
 
-`invoke_ai`:
+- `supabase/functions/automation-event-worker/index.ts`.
 
-```ts
-result = await callF05Runtime('invoke_ai', {
-  agentId: action.config?.agentId,
-  context: {
-    ...(event.payload ?? {}),
-    eventId: event.id,
-    eventType: event.event_type,
-    leadId: event.lead_id,
-    conversationId: event.conversation_id,
-  },
-});
-```
+O patch:
 
-Obrigatório:
+- adiciona helper interno `callF05Runtime`;
+- encaminha `start_salesbot` ao runtime F05;
+- encaminha `invoke_ai` ao runtime F05;
+- valida `botId` e `agentId` antes da chamada;
+- usa a service role somente server-side;
+- mantém timeout de 45 s;
+- mantém `redirect: manual`;
+- preserva `accepted | rejected | not_configured`;
+- rejeita payload inesperado do runtime;
+- preserva idempotência de `automation_action_runs`;
+- mantém sequência interrompida em qualquer resultado diferente de `accepted`;
+- corrige precedência dos metadados canônicos no matcher;
+- corrige precedência dos metadados canônicos no payload de webhook.
 
-- manter idempotência de `automation_action_runs`;
-- parar sequência em `rejected` ou `not_configured`;
-- não expor service role ao browser;
-- manter redirect manual + timeout;
-- preservar IDs canônicos acima do payload;
-- não mascarar falhas.
+O diff completo do PR #3 foi revisado após a criação e não carrega mudanças de outras frentes.
 
 ## Delay durável validado
 
@@ -128,7 +106,7 @@ Obrigatório:
 - teste real `delay-worker → runtime-worker → SalesBot filho` concluído;
 - fixtures removidos e coleções operacionais voltaram a zero itens.
 
-## Arquivos F05 relevantes
+## Arquivos F05 relevantes para a integração ampla
 
 - `src/features/automations/engine.ts`;
 - `src/features/automations/index.ts`;
@@ -146,7 +124,7 @@ Obrigatório:
 
 ## Dependências ainda externas à F05
 
-- ligar o `automation-event-worker` F01 ao runtime F05;
+- F01 absorver PR #3 e implantar o worker oficial atualizado;
 - primeiro admin QA via fluxo oficial da F01/Auth;
 - E2E autenticado admin/viewer;
 - build/typecheck consolidado;
