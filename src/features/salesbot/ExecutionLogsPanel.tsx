@@ -8,8 +8,8 @@ import { listSalesBots } from './repository';
 export function ExecutionLogsPanel({ canManage = false }: { canManage?: boolean }) {
   const [salesbotLogs, setSalesbotLogs] = useState(() => listSalesBotExecutions());
   const [aiLogs, setAiLogs] = useState(() => listAIAgentExecutions());
-  const botsById = useMemo(() => new Map(listSalesBots().map((item) => [item.id, item.name])), [salesbotLogs.length]);
-  const agentsById = useMemo(() => new Map(listAIAgents().map((item) => [item.id, item.name])), [aiLogs.length]);
+  const botsById = useMemo(() => new Map(listSalesBots().map((item) => [item.id, item.name])), [salesbotLogs]);
+  const agentsById = useMemo(() => new Map(listAIAgents().map((item) => [item.id, item.name])), [aiLogs, salesbotLogs]);
   const total = salesbotLogs.length + aiLogs.length;
 
   const refresh = () => {
@@ -33,7 +33,7 @@ export function ExecutionLogsPanel({ canManage = false }: { canManage?: boolean 
     </header>
 
     <div className="f05-subheader"><div><span className="f05-kicker">SalesBot</span><h3>Execuções de fluxos</h3></div><span className="f05-count">{salesbotLogs.length}</span></div>
-    {salesbotLogs.length === 0 ? <div className="f05-empty">Nenhuma execução de SalesBot registrada.</div> : <div className="f05-table-wrap"><table className="f05-table"><thead><tr><th>Execução</th><th>Bot</th><th>Status</th><th>Lead/conversa</th><th>Início</th><th>Fim</th><th>Bloco</th><th>Última ação</th><th>Erro</th></tr></thead><tbody>{salesbotLogs.map((log) => <tr key={log.id}><td>{log.id}</td><td>{botsById.get(log.botId) ?? log.botId}</td><td>{log.status}</td><td>{log.leadId ?? log.conversationId ?? '—'}</td><td>{new Date(log.startedAt).toLocaleString('pt-BR')}</td><td>{log.finishedAt ? new Date(log.finishedAt).toLocaleString('pt-BR') : '—'}</td><td>{log.currentBlockId ?? '—'}</td><td>{log.action ?? '—'}</td><td>{log.error ?? '—'}</td></tr>)}</tbody></table></div>}
+    {salesbotLogs.length === 0 ? <div className="f05-empty">Nenhuma execução de SalesBot registrada.</div> : <div className="f05-table-wrap"><table className="f05-table"><thead><tr><th>Execução</th><th>Bot</th><th>Status</th><th>Lead/conversa</th><th>Início</th><th>Fim</th><th>Bloco</th><th>Agente IA</th><th>Última ação</th><th>Erro</th></tr></thead><tbody>{salesbotLogs.map((log) => <tr key={log.id}><td>{log.id}</td><td>{botsById.get(log.botId) ?? log.botId}</td><td>{log.status}</td><td>{log.leadId ?? log.conversationId ?? '—'}</td><td>{new Date(log.startedAt).toLocaleString('pt-BR')}</td><td>{log.finishedAt ? new Date(log.finishedAt).toLocaleString('pt-BR') : '—'}</td><td>{log.currentBlockId ?? '—'}</td><td>{log.aiAgentId ? (agentsById.get(log.aiAgentId) ?? log.aiAgentId) : '—'}</td><td>{log.action ?? '—'}</td><td>{log.error ?? '—'}</td></tr>)}</tbody></table></div>}
 
     <div className="f05-divider" />
     <div className="f05-subheader"><div><span className="f05-kicker">Agentes IA</span><h3>Execuções de agentes</h3></div><span className="f05-count">{aiLogs.length}</span></div>
