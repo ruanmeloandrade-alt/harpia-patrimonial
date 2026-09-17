@@ -41,7 +41,7 @@ interface PublicSiteAppProps {
   catalog?: PublicCatalogReader;
   auth?: PublicAuthBridge;
   favorites?: PublicFavoritesBridge;
-  onConversion?: (event: PublicSiteConversion) => void | Promise<void>;
+  onConversion?: (event: PublicSiteConversion) => boolean | void | Promise<boolean | void>;
   internalAreaHref?: string;
 }
 
@@ -259,7 +259,11 @@ export default function PublicSiteApp({ catalog = emptyPublicCatalogReader, auth
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const intercept = (path: string) => (event: MouseEvent<HTMLAnchorElement>) => { event.preventDefault(); navigate(path); };
+  const intercept = (path: string) => (event: MouseEvent<HTMLAnchorElement>) => {
+    if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+    event.preventDefault();
+    navigate(path);
+  };
 
   const requestLogin = (reason: string) => {
     if (auth) return auth.requestLogin(reason);
@@ -272,8 +276,8 @@ export default function PublicSiteApp({ catalog = emptyPublicCatalogReader, auth
       return false;
     }
     try {
-      await onConversion(event);
-      return true;
+      const accepted = await onConversion(event);
+      return accepted !== false;
     } catch (error) {
       setNotice(error instanceof Error ? error.message : 'Não foi possível registrar o atendimento agora.');
       return false;
