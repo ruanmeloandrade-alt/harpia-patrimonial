@@ -6,16 +6,11 @@ Destino: `frente-01`
 
 ## Estado atual
 
-A integração estrutural F01↔F05 já existia, mas a branch F05 avançou novamente e agora contém componentes que ainda não estão absorvidos pela F01.
+A integração estrutural F01↔F05 já existia, mas a branch F05 avançou novamente e contém componentes ainda não absorvidos pela F01.
 
-Comparação atual:
+A comparação deve ser refeita pela F01 no momento da integração porque ambas as branches continuam avançando em paralelo.
 
-- F05 à frente da F01: **34 commits**;
-- F05 atrás da F01: **544 commits**;
-- branches: divergidas;
-- PR #1: aberto e não mergeável automaticamente.
-
-Não fazer merge forçado nem substituir arquivos globais da F01 sem reconciliação.
+PR #1 permanece como handoff oficial. Não fazer merge forçado nem substituir arquivos globais da F01 sem reconciliação.
 
 ## O que a F05 entrega pronto
 
@@ -72,11 +67,7 @@ Payload `invoke_ai`:
 }
 ```
 
-Resposta usa o contrato:
-
-- `accepted`;
-- `rejected`;
-- `not_configured`.
+Resposta usa o contrato `accepted | rejected | not_configured`.
 
 ### Delay durável
 
@@ -106,8 +97,6 @@ O worker atual ainda retorna `not_configured` para `start_salesbot` e `invoke_ai
 
 Na F01, essas duas ações devem ser encaminhadas para `f05-runtime-worker` usando a service role já disponível server-side.
 
-Pseudocódigo de integração:
-
 ```ts
 async function callF05Runtime(action: 'start_salesbot' | 'invoke_ai', payload: Record<string, unknown>) {
   const response = await fetch(`${supabaseUrl}/functions/v1/f05-runtime-worker`, {
@@ -121,45 +110,46 @@ async function callF05Runtime(action: 'start_salesbot' | 'invoke_ai', payload: R
     signal: AbortSignal.timeout(45000),
   });
 
-  const result = await response.json();
-  return result;
+  return await response.json();
 }
 ```
 
-No branch de ação:
+Para `start_salesbot`:
 
 ```ts
-if (action.type === 'start_salesbot') {
-  result = await callF05Runtime('start_salesbot', {
-    botId: action.config?.botId,
+result = await callF05Runtime('start_salesbot', {
+  botId: action.config?.botId,
+  leadId: event.lead_id,
+  conversationId: event.conversation_id,
+  context: event.payload ?? {},
+});
+```
+
+Para `invoke_ai`:
+
+```ts
+result = await callF05Runtime('invoke_ai', {
+  agentId: action.config?.agentId,
+  context: {
+    ...(event.payload ?? {}),
+    eventId: event.id,
+    eventType: event.event_type,
     leadId: event.lead_id,
     conversationId: event.conversation_id,
-    context: event.payload ?? {},
-  });
-} else if (action.type === 'invoke_ai') {
-  result = await callF05Runtime('invoke_ai', {
-    agentId: action.config?.agentId,
-    context: {
-      ...(event.payload ?? {}),
-      eventId: event.id,
-      eventType: event.event_type,
-      leadId: event.lead_id,
-      conversationId: event.conversation_id,
-    },
-  });
-}
+  },
+});
 ```
 
 Regras obrigatórias ao absorver:
 
 - manter idempotência de `automation_action_runs`;
-- não marcar ação como `accepted` se o runtime retornar `rejected` ou `not_configured`;
+- não marcar como `accepted` se o runtime retornar `rejected` ou `not_configured`;
 - não expor service role ao browser;
 - manter `redirect: 'manual'` e timeout;
-- preservar IDs canônicos do evento acima de qualquer payload arbitrário;
+- preservar IDs canônicos do evento acima de payload arbitrário;
 - não ligar WhatsApp/Meta falsamente.
 
-## Arquivos F05 que precisam ser considerados na sincronização
+## Arquivos F05 a considerar
 
 - `src/features/automations/engine.ts`;
 - `src/features/automations/index.ts`;
@@ -175,7 +165,7 @@ Regras obrigatórias ao absorver:
 - `supabase/functions/f05-delay-worker/**`;
 - `supabase/schema/f05_durable_delay_scheduler.sql`.
 
-## O que já foi realmente testado pela F05
+## Validações já executadas
 
 - runtime SalesBot isolado;
 - contexto após pausa;
@@ -186,22 +176,22 @@ Regras obrigatórias ao absorver:
 - provider adapters;
 - SSRF hardening;
 - runtime server-side implantado;
-- endpoint runtime bloqueia bearer inválido com `401`;
+- runtime bloqueia bearer inválido com `401`;
 - scheduler durável real;
 - token inválido do scheduler retorna `401`;
-- cron ativo e com execuções `succeeded`;
+- cron ativo com execuções `succeeded`;
 - delay vencido retomado e concluído;
 - delay-worker chamando runtime-worker e executando bot encadeado;
 - fixtures removidos após testes;
 - Security Advisor sem lints na última conferência.
 
-## Dependências que continuam fora da F05
+## Dependências fora da F05
 
-- criar primeiro admin QA pelo fluxo oficial da F01/Auth;
+- primeiro admin QA pelo fluxo oficial da F01/Auth;
 - E2E autenticado admin/viewer;
 - build/typecheck consolidado;
 - chamada IA com chave real;
 - WhatsApp real;
 - Meta real.
 
-A F05 não deve criar bypass de Auth nem inserir diretamente em `auth.users`.
+A F05 não cria bypass de Auth nem insere diretamente em `auth.users`.
