@@ -71,7 +71,11 @@ export function updateAutomation(id: string, patch: Partial<Omit<AutomationDefin
 }
 
 export function deleteAutomation(id: string): void {
-  writeStoredList(STORAGE_KEY, listAutomations().filter((item) => item.id !== id));
+  const items = listAutomations();
+  const current = items.find((item) => item.id === id);
+  if (!current) throw new Error('Automação não encontrada.');
+  if (typeof window !== 'undefined' && !window.confirm(`Excluir a automação “${current.name}”? Esta ação não pode ser desfeita.`)) return;
+  writeStoredList(STORAGE_KEY, items.filter((item) => item.id !== id));
 }
 
 export function duplicateAutomation(id: string): AutomationDefinition {

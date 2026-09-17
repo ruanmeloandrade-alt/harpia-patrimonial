@@ -1,7 +1,13 @@
 import { createAIAgentCommandPort } from '../ai-agents/runtime';
 import { unconfiguredAIModelRuntime } from '../integrations/aiRuntimePort';
 import { getSalesBot, validateSalesBotForActivation } from '../salesbot/repository';
-import { listSalesBotExecutions, startExecution, updateExecution } from '../salesbot/executionRepository';
+import {
+  claimPausedExecutionForResume,
+  listDueSalesBotExecutions,
+  listSalesBotExecutions,
+  startExecution,
+  updateExecution,
+} from '../salesbot/executionRepository';
 import { runSalesBotExecution, unconfiguredSalesBotRuntimeDependencies, type SalesBotRuntimeDependencies } from '../salesbot/runtime';
 import type { AutomationCommandResult, SalesBotCommandPort } from './contracts';
 
@@ -76,6 +82,9 @@ export function createSalesBotCommandPort(
       updateExecution(input.executionId, {
         status: 'paused',
         resumeMode: 'retry_current',
+        resumeAt: undefined,
+        resumeClaimToken: undefined,
+        resumeClaimedUntil: undefined,
         action: input.reason ?? 'Pausado por comando externo.',
       });
       return { status: 'accepted', executionId: input.executionId };
@@ -94,13 +103,41 @@ export function createSalesBotCommandPort(
         previous: execution.runtimeContext,
         incoming: input.context,
       });
-      updateExecution(execution.id, { runtimeContext });
+
+      let claimed;
+      try {
+        claimed = await claimPausedExecutionForResume(execution.id, { runtimeContext });
+      } catch {
+        return {
+          status: 'rejected',
+          executionId: execution.id,
+          reason: 'A execução foi alterada por outra sessão durante a retomada. O estado mais recente foi restaurado.',
+        };
+      }
+
+      if (!claimed) {
+        const latest = listSalesBotExecutions().find((item) => item.id === execution.id);
+        if (!latest) return { status: 'rejected', reason: 'Execução não encontrada após atualizar o estado.' };
+        if (latest.status !== 'paused') {
+          return {
+            status: 'rejected',
+            executionId: latest.id,
+            reason: `A execução já foi retomada por outra sessão; status atual: ${latest.status}.`,
+          };
+        }
+        return {
+          status: 'rejected',
+          executionId: latest.id,
+          reason: 'A retomada desta execução já está reservada por outra sessão.',
+        };
+      }
+
       const result = await runSalesBotExecution(
-        execution.id,
-        { leadId: execution.leadId, conversationId: execution.conversationId, data: runtimeContext },
+        claimed.id,
+        { leadId: claimed.leadId, conversationId: claimed.conversationId, data: claimed.runtimeContext ?? runtimeContext },
         resolvedDependencies(),
       );
-      return mapSalesBotRunResult(execution.id, result);
+      return mapSalesBotRunResult(claimed.id, result);
     },
 
     async getStatus(executionId) {
@@ -109,6 +146,18 @@ export function createSalesBotCommandPort(
   };
 
   return commandPort;
+}
+
+export async function resumeDueSalesBotExecutions(
+  commandPort: SalesBotCommandPort,
+  now = new Date(),
+): Promise<Array<{ executionId: string; result: AutomationCommandResult }>> {
+  const results: Array<{ executionId: string; result: AutomationCommandResult }> = [];
+  for (const execution of listDueSalesBotExecutions(now)) {
+    const result = await commandPort.resume({ executionId: execution.id });
+    results.push({ executionId: execution.id, result });
+  }
+  return results;
 }
 
 export const salesBotCommandPort = createSalesBotCommandPort(unconfiguredSalesBotRuntimeDependencies);

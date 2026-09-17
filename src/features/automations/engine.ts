@@ -59,17 +59,21 @@ function getPath(source: Record<string, unknown>, path: string): unknown {
   }, source);
 }
 
-function matchesDefinition(definition: AutomationDefinition, event: CrmAutomationEvent): boolean {
-  if (definition.status !== 'active' || definition.trigger.event !== event.type) return false;
-  const source: Record<string, unknown> = {
+function canonicalEventSource(event: CrmAutomationEvent): Record<string, unknown> {
+  return {
+    ...event.payload,
     id: event.id,
     type: event.type,
     occurredAt: event.occurredAt,
     leadId: event.leadId,
     conversationId: event.conversationId,
     payload: event.payload,
-    ...event.payload,
   };
+}
+
+function matchesDefinition(definition: AutomationDefinition, event: CrmAutomationEvent): boolean {
+  if (definition.status !== 'active' || definition.trigger.event !== event.type) return false;
+  const source = canonicalEventSource(event);
 
   return definition.trigger.conditions.every((condition) => {
     const actual = getPath(source, condition.field);
@@ -86,6 +90,7 @@ function matchesDefinition(definition: AutomationDefinition, event: CrmAutomatio
 }
 
 const configString = (action: AutomationAction, key: string) => String(action.config[key] ?? '').trim();
+const webhookMethod = (action: AutomationAction) => (configString(action, 'method') || 'POST').toUpperCase();
 
 async function executeAction(
   action: AutomationAction,
@@ -119,8 +124,14 @@ async function executeAction(
     case 'webhook':
       return deps.webhook.invoke({
         url: configString(action, 'url'),
-        method: configString(action, 'method') || 'POST',
-        payload: { eventId: event.id, eventType: event.type, leadId, conversationId: event.conversationId, ...event.payload },
+        method: webhookMethod(action),
+        payload: {
+          ...event.payload,
+          eventId: event.id,
+          eventType: event.type,
+          leadId,
+          conversationId: event.conversationId,
+        },
       });
     default:
       return { status: 'rejected', reason: `Ação ${action.type} não suportada.` };

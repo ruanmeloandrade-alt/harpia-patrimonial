@@ -53,6 +53,15 @@ export interface SalesBotExecutionLog {
   status: SalesBotExecutionStatus;
   currentBlockId?: string;
   resumeMode?: SalesBotResumeMode;
+  /** Horário absoluto em que uma pausa por delay fica elegível para retomada durável. */
+  resumeAt?: string;
+  /**
+   * Lease curto usado para impedir que duas sessões retomem a mesma execução
+   * simultaneamente. Se a sessão que obteve o lease morrer antes de executar,
+   * o lease expira e a execução volta a ficar elegível.
+   */
+  resumeClaimToken?: string;
+  resumeClaimedUntil?: string;
   error?: string;
   action?: string;
   aiAgentId?: string;
