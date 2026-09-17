@@ -1,66 +1,48 @@
 # F05 → F01 — hardening do `ai-model-invoke`
 
-Data: 16/09/2026
+Data original: 16/09/2026
+Atualização: 17/09/2026
 Origem: Frente05
 Destino: Frente01
-Prioridade: antes do verde final de integração IA
 
-## Motivo
+## Status atual
 
-O adapter server-side da F05 foi endurecido para rejeitar endpoints inseguros e redirects automáticos. O `supabase/functions/ai-model-invoke/index.ts` canônico da F01 ainda está um passo atrás desse contrato.
+O hardening que motivou este patch já aparece implantado na versão atual da Edge Function `ai-model-invoke` do projeto Supabase.
 
-## Divergências observadas na F01
+Confirmado em 17/09/2026:
 
-No estado observado em 16/09/2026:
+- bloqueio de CGNAT `100.64.0.0/10`;
+- bloqueio de redes privadas/reservadas IPv4 e IPv6;
+- resolução DNS e rejeição de destino privado;
+- `redirect: 'manual'`;
+- timeout explícito de 30 segundos;
+- rejeição de respostas 300–399;
+- credencial resolvida apenas no backend;
+- autorização por usuário interno/permissões no runtime interativo.
 
-1. `isPrivateIpv4(...)` não bloqueia CGNAT `100.64.0.0/10`.
-2. `fetch(request.url, request.init)` usa comportamento padrão de redirect.
-3. Uma URL pública pode responder 30x para destino interno; o executor pode seguir esse redirect automaticamente.
-4. Não há timeout explícito no fetch do provedor.
+Portanto, a lacuna original deste documento está **RESOLVIDA no backend implantado**.
 
-## Contrato já aplicado na F05
+## Observação de sincronização
 
-`src/features/integrations/providerAdapters.ts` agora:
+A branch `frente-01` ainda deve absorver o snapshot/hardening atual da Frente05 conforme o PR #1 para manter código versionado e backend implantado coerentes.
 
-- exige HTTPS;
-- bloqueia localhost/`.local`;
-- bloqueia IPv4 privadas/link-local;
-- bloqueia CGNAT `100.64.0.0/10`;
-- bloqueia IPv6 local/privado literal;
-- usa `redirect: 'manual'`;
-- usa timeout de 30 segundos;
-- rejeita respostas 300–399 antes de interpretar o corpo.
+Não é necessário reimplementar este patch do zero. O trabalho de integração deve preservar a versão endurecida já implantada e sincronizar o código correspondente.
 
-Teste executado: `F05_PROVIDER_ENDPOINT_SECURITY_TEST_OK`.
+## Referência histórica
 
-## Patch esperado na F01
+O adapter F05 em `src/features/integrations/providerAdapters.ts` permanece com o mesmo contrato de segurança:
 
-No helper IPv4 do `ai-model-invoke`, adicionar:
+- HTTPS obrigatório;
+- localhost/`.local` bloqueados;
+- IPv4 privadas/link-local bloqueadas;
+- CGNAT bloqueado;
+- IPv6 local/privado literal bloqueado;
+- redirect manual;
+- timeout de 30 segundos;
+- respostas 300–399 rejeitadas.
 
-```ts
-if (parts[0] === 100 && parts[1] >= 64 && parts[1] <= 127) return true;
-```
+Status final deste item:
 
-No `fetch` do provedor, usar pelo menos:
-
-```ts
-const providerResponse = await fetch(request.url, {
-  ...request.init,
-  redirect: 'manual',
-  signal: AbortSignal.timeout(30000),
-});
-
-if (providerResponse.status >= 300 && providerResponse.status < 400) {
-  return response({
-    status: 'failed',
-    reason: 'Redirecionamentos do provedor IA não são permitidos.',
-  }, 502);
-}
-```
-
-Manter a validação server-side mesmo que a UI já valide o endpoint. A UI não é fronteira de segurança.
-
-## Status
-
-- F05 adapter: 🟢 corrigido e testado.
-- F01 `ai-model-invoke`: 🟠 aguardando absorção do hardening.
+- F05 adapter: 🟢
+- `ai-model-invoke` implantado: 🟢
+- sincronização de branches F05 → F01: 🟠
