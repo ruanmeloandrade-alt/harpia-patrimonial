@@ -115,6 +115,10 @@ Esses itens migram para a fase funcional/visual, integração externa e publica�
 - [x] CTA `Ser Atendido Agora!` incluído também no menu mobile usando o mesmo fluxo real de captura.
 - [x] Configurações internas deixam explícito qual telefone alimenta os CTAs públicos.
 - [x] Interface passou a distinguir `WhatsApp público` de `WhatsApp API`.
+- [x] Navegação da área interna passou a ser recolhível em tablet/mobile, evitando empurrar os módulos para baixo da sidebar completa.
+- [x] Busca principal da home agora contempla finalidade, cidade, localização, lançamento, faixa de preço e estilo de vida com opções derivadas do catálogo real.
+- [x] Login/cadastro público preservam a rota de origem; usuário que autentica a partir de um imóvel volta ao contexto original em vez de cair obrigatoriamente em `/cliente`.
+- [x] Retorno pós-auth é restrito a caminhos internos do próprio site e bloqueia destino externo/área interna indevida.
 
 **WhatsApp público/click-to-chat está configurado. WhatsApp API para Inbox/envios/automações e Meta continuam como integrações externas da fase final e não são tratados como conectados.**
 
