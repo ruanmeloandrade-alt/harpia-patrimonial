@@ -68,20 +68,23 @@ Site público completo, catálogo, CRM, Inbox, SalesBot, Automatize, agentes IA,
 - `hasPermission`
 - dados básicos do usuário atual
 
-## Handoff da Frente01 — 16/09/2026
+## Handoff final da Frente01 — 17/09/2026
 
-- **Status:** CONCLUÍDA ESTRUTURALMENTE + QA BACKEND AUTH/RBAC APROVADO.
+- **Status:** FINALIZADA NO ESCOPO DA FRENTE01 — NÃO BLOQUEIA NENHUMA OUTRA FRENTE.
 - **Branch:** `frente-01`.
 - **Núcleo entregue:** shell/roteamento; `AuthProvider`; sessão; cadastro/login/logout/recovery; separação cliente/equipe; guards; usuários; grupos; RBAC; overrides individuais; configurações; Error Boundary; persistência compartilhada; Supabase tipado; `admin-user`; RLS/hardening.
-- **QA real:** admin temporário autenticou com `22` permissões; viewer temporário autenticou com `11` permissões de leitura e `0` de gestão; `auth.getUser()` validou ambas as sessões; todos os dados temporários foram removidos.
+- **QA backend real:** admin temporário autenticou com `22` permissões; viewer temporário autenticou com `11` permissões de leitura e `0` de gestão; `auth.getUser()` validou ambas as sessões; todos os dados temporários foram removidos.
 - **Bug corrigido no QA:** o hardening lia apenas `request.jwt.claim.role`, incompatível com o formato atual do service key do Supabase. A detecção agora reconhece `request.jwt.claims.role` e `current_setting('role')`, mantendo compatibilidade com o claim legado.
 - **Commit do fix:** `af09b2faa7e072125ccb2fc1c91ab74c0d9ab39c`.
 - **Security Advisor final:** `0` lints.
 - **Backend limpo após QA:** `auth.users=0`, `user_profiles=0`, grupos QA=0, memberships QA=0, overrides QA=0.
+- **Função temporária de QA:** encerrada e responde `410`, com JWT obrigatório novamente.
 - **Contratos públicos:** consumir `src/core/auth/index.ts`, `useAuth()`, guards e `PERMISSIONS`; não criar auth paralelo.
-- **Frentes02–05:** totalmente liberadas da dependência estrutural da Frente01.
+- **Frentes02–05:** liberadas para trabalhar imediatamente e não devem aguardar a Frente01.
 
-## Pendências que NÃO bloqueiam as demais frentes
+## QA final de ambiente/publicação
+
+Ainda não executável neste ambiente por indisponibilidade de rede externa/checkout/npm:
 
 - build/typecheck completo em Node/npm compatível;
 - persistência de sessão em navegador real após fechar/reabrir;
@@ -89,4 +92,4 @@ Site público completo, catálogo, CRM, Inbox, SalesBot, Automatize, agentes IA,
 - redirects finais do Auth no domínio publicado;
 - E2E visual no navegador do produto consolidado.
 
-Esses itens são QA final de ambiente/publicação; não representam trabalho estrutural pendente da Frente01.
+Esses itens pertencem ao QA final de ambiente/publicação e **não são dependência estrutural da Frente01 nem motivo para bloquear F02–F05**.
