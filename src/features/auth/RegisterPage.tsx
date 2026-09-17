@@ -1,4 +1,4 @@
-import { FormEvent, useState } from 'react';
+import { FormEvent, useMemo, useState } from 'react';
 import { useAuth } from '../../core/auth/AuthProvider';
 import { useAppRouter } from '../../core/router/router';
 import { AuthCard } from './AuthCard';
@@ -13,9 +13,17 @@ export interface RegisterPageProps {
   onClientRegistered?: (event: ClientRegistrationEvent) => void | Promise<void>;
 }
 
+function safePublicReturn(search: string) {
+  const candidate = new URLSearchParams(search).get('retorno')?.trim();
+  if (!candidate || !candidate.startsWith('/') || candidate.startsWith('//') || candidate.startsWith('/interno')) {
+    return '/cliente';
+  }
+  return candidate;
+}
+
 export function RegisterPage({ onClientRegistered }: RegisterPageProps = {}) {
   const auth = useAuth();
-  const { navigate } = useAppRouter();
+  const { navigate, search } = useAppRouter();
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [whatsapp, setWhatsapp] = useState('');
@@ -23,6 +31,11 @@ export function RegisterPage({ onClientRegistered }: RegisterPageProps = {}) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const returnTo = useMemo(() => safePublicReturn(search), [search]);
+  const loginHref = useMemo(
+    () => returnTo === '/cliente' ? '/entrar' : `/entrar?retorno=${encodeURIComponent(returnTo)}`,
+    [returnTo],
+  );
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -60,15 +73,27 @@ export function RegisterPage({ onClientRegistered }: RegisterPageProps = {}) {
       return setMessage(
         crmSyncFailed
           ? `${confirmationMessage} O cadastro foi criado, mas o atendimento ainda não foi sincronizado com o CRM.`
-          : confirmationMessage,
+          : `${confirmationMessage} Depois da confirmação, entre por esta mesma tela para voltar ao ponto em que estava.`,
       );
     }
 
-    navigate('/cliente', { replace: true });
+    navigate(returnTo, { replace: true });
   }
 
   return (
-    <AuthCard eyebrow="CADASTRO RÁPIDO" title="Crie sua conta" description="Leva menos de um minuto. Usaremos seus dados para salvar seus interesses e agilizar o atendimento." onSubmit={submit} submitLabel="Criar minha conta" busy={busy} error={!auth.configurationReady ? 'O backend dedicado da Hárpia ainda não foi conectado.' : error} message={message} footerText="Já possui conta?" footerHref="/entrar" footerLabel="Entrar">
+    <AuthCard
+      eyebrow="CADASTRO RÁPIDO"
+      title="Crie sua conta"
+      description="Leva menos de um minuto. Usaremos seus dados para salvar seus interesses e agilizar o atendimento."
+      onSubmit={submit}
+      submitLabel="Criar minha conta"
+      busy={busy}
+      error={!auth.configurationReady ? 'O backend dedicado da Hárpia ainda não foi conectado.' : error}
+      message={message}
+      footerText="Já possui conta?"
+      footerHref={loginHref}
+      footerLabel="Entrar"
+    >
       <label className="field"><span>Nome completo</span><input autoComplete="name" value={fullName} onChange={(event) => setFullName(event.target.value)} required /></label>
       <label className="field"><span>E-mail</span><input type="email" autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} required /></label>
       <label className="field"><span>WhatsApp</span><input type="tel" autoComplete="tel" placeholder="(21) 99999-9999" value={whatsapp} onChange={(event) => setWhatsapp(event.target.value)} required /></label>
