@@ -12,6 +12,7 @@ import { UsersPage } from '../features/users/UsersPage';
 import { FullPageState } from '../shared/components/FullPageState';
 import { InternalShell } from '../shared/components/InternalShell';
 import { IntegratedPublicExperience } from './IntegratedPublicExperience';
+import { ingestPublicLead } from './integrations/publicLeadIngest';
 import {
   IntegratedAIAgents,
   IntegratedAutomations,
@@ -28,7 +29,22 @@ export function AppRouter() {
   const { pathname } = useAppRouter();
 
   if (pathname === '/entrar') return <LoginPage />;
-  if (pathname === '/cadastro') return <RegisterPage />;
+  if (pathname === '/cadastro') {
+    return (
+      <RegisterPage
+        onClientRegistered={async ({ fullName, email, whatsapp }) => {
+          await ingestPublicLead({
+            contact: { name: fullName, email, whatsapp },
+            origin: 'site',
+            action: 'account_created',
+            page: '/cadastro',
+            occurredAt: new Date().toISOString(),
+            metadata: { source: 'client-signup' },
+          });
+        }}
+      />
+    );
+  }
   if (pathname === '/recuperar-senha') return <RecoverPasswordPage />;
   if (pathname === '/nova-senha') return <ResetPasswordPage />;
   if (pathname === '/conta') {
