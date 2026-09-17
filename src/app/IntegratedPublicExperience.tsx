@@ -33,6 +33,11 @@ export function IntegratedPublicExperience() {
     };
   }, []);
 
+  const requestLogin = () => {
+    const returnTo = `${window.location.pathname}${window.location.search}`;
+    navigate(`/entrar?retorno=${encodeURIComponent(returnTo)}`);
+  };
+
   return (
     <Front02IntegrationShell
       auth={{
@@ -46,7 +51,7 @@ export function IntegratedPublicExperience() {
         isAuthenticated: auth.isAuthenticated,
         isInternalUser: auth.isInternalUser,
       }}
-      requestLogin={() => navigate('/entrar')}
+      requestLogin={requestLogin}
       catalogService={runtime.publicCatalogService}
       crmIngest={crmIngest}
       favoritesStore={runtime.favoritesStore}
