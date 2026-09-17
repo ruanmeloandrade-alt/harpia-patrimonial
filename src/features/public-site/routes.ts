@@ -1,3 +1,5 @@
+export const FRONT02_LOCATION_EVENT = 'harpia:locationchange';
+
 export const publicRouteManifest = [
   '/',
   '/sobre',
@@ -24,4 +26,8 @@ export function normalizeFront02PublicPath(pathname: string) {
 export function matchesFront02PublicRoute(pathname: string) {
   const normalized = normalizeFront02PublicPath(pathname);
   return exactPublicRoutes.has(normalized) || /^\/imoveis\/[^/]+$/.test(normalized);
+}
+
+export function emitFront02LocationChange() {
+  window.dispatchEvent(new CustomEvent(FRONT02_LOCATION_EVENT));
 }
