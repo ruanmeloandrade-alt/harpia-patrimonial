@@ -158,38 +158,52 @@ function validateRuntimeBot(bot: Bot): string[] {
   const issues: string[] = [];
   const blocks = Array.isArray(bot.blocks) ? bot.blocks : [];
   if (!blocks.length) issues.push('SalesBot ativo não possui blocos.');
-
   for (const block of blocks) {
     const blockType = text(block?.type);
     if (!text(block?.id)) issues.push('Existe bloco sem ID.');
-    if (!blockType || !SUPPORTED_BLOCK_TYPES.has(blockType)) {
-      issues.push(`Bloco não suportado: ${blockType || 'tipo vazio'}.`);
-      continue;
-    }
+    if (!blockType || !SUPPORTED_BLOCK_TYPES.has(blockType)) { issues.push(`Bloco não suportado: ${blockType || 'tipo vazio'}.`); continue; }
     const config = block.config ?? {};
-    for (const key of REQUIRED_CONFIG[blockType] ?? []) {
-      if (!hasConfigValue(config[key])) issues.push(`${block.label ?? blockType}: configuração ${key} obrigatória.`);
-    }
-    if (blockType === 'condition' && text(config.expression) && evaluateCondition(text(config.expression), {}) === null) {
-      issues.push(`${block.label ?? blockType}: condição inválida.`);
-    }
-    if (blockType === 'delay' && text(config.duration) && delayMs(text(config.duration)) === null) {
-      issues.push(`${block.label ?? blockType}: duração inválida.`);
-    }
-    if (blockType === 'tag') {
-      const operation = text(config.operation).toLowerCase();
-      if (operation && operation !== 'add' && operation !== 'remove') issues.push(`${block.label ?? blockType}: operação de tag inválida.`);
-    }
-    if (blockType === 'webhook') {
-      const method = (text(config.method) || 'POST').toUpperCase();
-      if (!['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) issues.push(`${block.label ?? blockType}: método de webhook inválido.`);
-    }
-    if (blockType === 'chain_flow' && text(config.botId) === bot.id) {
-      issues.push(`${block.label ?? blockType}: o SalesBot não pode encadear a si mesmo.`);
-    }
+    for (const key of REQUIRED_CONFIG[blockType] ?? []) if (!hasConfigValue(config[key])) issues.push(`${block.label ?? blockType}: configuração ${key} obrigatória.`);
+    if (blockType === 'condition' && text(config.expression) && evaluateCondition(text(config.expression), {}) === null) issues.push(`${block.label ?? blockType}: condição inválida.`);
+    if (blockType === 'delay' && text(config.duration) && delayMs(text(config.duration)) === null) issues.push(`${block.label ?? blockType}: duração inválida.`);
+    if (blockType === 'tag') { const operation = text(config.operation).toLowerCase(); if (operation && operation !== 'add' && operation !== 'remove') issues.push(`${block.label ?? blockType}: operação de tag inválida.`); }
+    if (blockType === 'webhook') { const method = (text(config.method) || 'POST').toUpperCase(); if (!['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) issues.push(`${block.label ?? blockType}: método de webhook inválido.`); }
+    if (blockType === 'chain_flow' && text(config.botId) === bot.id) issues.push(`${block.label ?? blockType}: o SalesBot não pode encadear a si mesmo.`);
   }
-
   return issues;
+}
+
+function findRuntimeChainCycle(startBotId: string, bots: Bot[]): string[] | null {
+  const byId = new Map(bots.map((bot) => [bot.id, bot]));
+  const visiting = new Set<string>();
+  const visited = new Set<string>();
+  const path: string[] = [];
+
+  const visit = (botId: string): string[] | null => {
+    if (visiting.has(botId)) {
+      const start = Math.max(0, path.indexOf(botId));
+      return [...path.slice(start), botId];
+    }
+    if (visited.has(botId)) return null;
+    const bot = byId.get(botId);
+    if (!bot || bot.status !== 'active') return null;
+
+    visiting.add(botId);
+    path.push(botId);
+    for (const block of bot.blocks ?? []) {
+      if (block.type !== 'chain_flow') continue;
+      const targetId = text(block.config?.botId);
+      if (!targetId) continue;
+      const cycle = visit(targetId);
+      if (cycle) return cycle;
+    }
+    path.pop();
+    visiting.delete(botId);
+    visited.add(botId);
+    return null;
+  };
+
+  return visit(startBotId);
 }
 
 Deno.serve(async (req) => {
@@ -199,25 +213,14 @@ Deno.serve(async (req) => {
   if (!supabaseUrl || !serviceKey) return respond({ status: 'rejected', reason: 'Configuração interna incompleta.' }, 503);
   if (req.headers.get('Authorization') !== `Bearer ${serviceKey}`) return respond({ status: 'rejected', reason: 'Não autorizado.' }, 401);
   const db = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false, autoRefreshToken: false } });
-
   const body = await req.json().catch(() => ({}));
   const action = text(body.action);
   const leadId = text(body.leadId) || undefined;
   const conversationId = text(body.conversationId) || undefined;
   const context = body.context && typeof body.context === 'object' && !Array.isArray(body.context) ? body.context as Json : {};
 
-  async function loadList<T>(key: string): Promise<T[]> {
-    const { data, error } = await db.from('f05_shared_storage').select('value').eq('storage_key', key).maybeSingle();
-    if (error) throw error;
-    return Array.isArray(data?.value) ? data.value as T[] : [];
-  }
-  async function saveList<T>(key: string, value: T[]) {
-    const { data: row, error: readError } = await db.from('f05_shared_storage').select('revision').eq('storage_key', key).single();
-    if (readError) throw readError;
-    const { data, error } = await db.from('f05_shared_storage').update({ value, revision: Number(row.revision) + 1, updated_at: nowIso(), updated_by: null }).eq('storage_key', key).eq('revision', row.revision).select('revision').maybeSingle();
-    if (error) throw error;
-    if (!data) throw new Error('Conflito de concorrência ao persistir runtime F05.');
-  }
+  async function loadList<T>(key: string): Promise<T[]> { const { data, error } = await db.from('f05_shared_storage').select('value').eq('storage_key', key).maybeSingle(); if (error) throw error; return Array.isArray(data?.value) ? data.value as T[] : []; }
+  async function saveList<T>(key: string, value: T[]) { const { data: row, error: readError } = await db.from('f05_shared_storage').select('revision').eq('storage_key', key).single(); if (readError) throw readError; const { data, error } = await db.from('f05_shared_storage').update({ value, revision: Number(row.revision) + 1, updated_at: nowIso(), updated_by: null }).eq('storage_key', key).eq('revision', row.revision).select('revision').maybeSingle(); if (error) throw error; if (!data) throw new Error('Conflito de concorrência ao persistir runtime F05.'); }
 
   async function invokeAgent(agentId: string, inputContext: Json): Promise<Result> {
     const [agents, providers] = await Promise.all([loadList<Agent>(AGENT_KEY), loadList<Provider>(PROVIDER_KEY)]);
@@ -230,16 +233,7 @@ Deno.serve(async (req) => {
     if (error || !apiKey) return { status: 'not_configured', reason: 'Credencial segura do provedor IA não encontrada.' };
     const instructions = [agent.role ? `Função: ${agent.role}` : '', agent.instructions ?? '', agent.rules ? `Regras:\n${agent.rules}` : '', agent.context ? `Contexto-base:\n${agent.context}` : ''].filter(Boolean).join('\n\n');
     const request = providerRequest(profile, String(apiKey), instructions, JSON.stringify(inputContext));
-    try {
-      const url = await safeUrl(request.url);
-      const response = await fetch(url, request.init);
-      if (response.status >= 300 && response.status < 400) return { status: 'rejected', reason: 'Redirecionamento do provedor IA não permitido.' };
-      const raw = await response.json().catch(() => null);
-      if (!response.ok) return { status: 'rejected', reason: `Provedor IA respondeu HTTP ${response.status}.` };
-      const output = extractText(profile.provider, raw).trim();
-      if (!output) return { status: 'rejected', reason: 'Provedor IA respondeu sem texto utilizável.' };
-      return { status: 'accepted', data: { output, provider: profile.provider, model: profile.model } };
-    } catch (error) { return { status: 'rejected', reason: error instanceof Error ? error.message : 'Falha no provedor IA.' }; }
+    try { const url = await safeUrl(request.url); const response = await fetch(url, request.init); if (response.status >= 300 && response.status < 400) return { status: 'rejected', reason: 'Redirecionamento do provedor IA não permitido.' }; const raw = await response.json().catch(() => null); if (!response.ok) return { status: 'rejected', reason: `Provedor IA respondeu HTTP ${response.status}.` }; const output = extractText(profile.provider, raw).trim(); if (!output) return { status: 'rejected', reason: 'Provedor IA respondeu sem texto utilizável.' }; return { status: 'accepted', data: { output, provider: profile.provider, model: profile.model } }; } catch (error) { return { status: 'rejected', reason: error instanceof Error ? error.message : 'Falha no provedor IA.' }; }
   }
 
   async function runBot(botId: string, inputContext: Json, depth = 0): Promise<Result> {
@@ -250,86 +244,40 @@ Deno.serve(async (req) => {
     if (bot.status !== 'active') return { status: 'rejected', reason: 'SalesBot precisa estar ativo.' };
     const validationIssues = validateRuntimeBot(bot);
     if (validationIssues.length > 0) return { status: 'rejected', reason: `SalesBot inválido: ${validationIssues.join(' ')}` };
+    const cycle = findRuntimeChainCycle(botId, bots);
+    if (cycle) return { status: 'rejected', reason: `Ciclo de encadeamento detectado: ${cycle.join(' -> ')}.` };
 
     let executions = await loadList<Execution>(EXEC_KEY);
     const execution: Execution = { id: id('execution'), botId, leadId, conversationId, runtimeContext: inputContext, startedAt: nowIso(), status: 'running' };
-    executions = [execution, ...executions];
-    await saveList(EXEC_KEY, executions);
-
-    const persist = async (patch: Partial<Execution>) => {
-      executions = await loadList<Execution>(EXEC_KEY);
-      const current = executions.find((item) => item.id === execution.id);
-      if (!current) throw new Error('Execução desapareceu durante o processamento.');
-      Object.assign(execution, current, patch);
-      await saveList(EXEC_KEY, executions.map((item) => item.id === execution.id ? { ...current, ...patch } : item));
-    };
-
+    executions = [execution, ...executions]; await saveList(EXEC_KEY, executions);
+    const persist = async (patch: Partial<Execution>) => { executions = await loadList<Execution>(EXEC_KEY); const current = executions.find((item) => item.id === execution.id); if (!current) throw new Error('Execução desapareceu durante o processamento.'); Object.assign(execution, current, patch); await saveList(EXEC_KEY, executions.map((item) => item.id === execution.id ? { ...current, ...patch } : item)); };
     try {
       for (const block of bot.blocks ?? []) {
-        await persist({ currentBlockId: block.id, action: `Executando: ${block.label ?? block.type}` });
-        const config = block.config ?? {};
+        await persist({ currentBlockId: block.id, action: `Executando: ${block.label ?? block.type}` }); const config = block.config ?? {};
         if (block.type === 'trigger') continue;
         if (block.type === 'finish') { await persist({ status: 'completed', finishedAt: nowIso(), runtimeContext: undefined, resumeAt: undefined, resumeMode: undefined, action: 'Execução concluída.' }); return { status: 'accepted', executionId: execution.id, data: { runtimeStatus: 'completed' } }; }
-        if (block.type === 'condition') {
-          const matched = evaluateCondition(text(config.expression), inputContext);
-          if (matched === null) { await persist({ status: 'failed', finishedAt: nowIso(), error: 'Condição inválida.', runtimeContext: undefined }); return { status: 'rejected', executionId: execution.id, reason: 'Condição inválida.' }; }
-          if (!matched) { await persist({ status: 'completed', finishedAt: nowIso(), runtimeContext: undefined, action: 'Condição não atendida; fluxo encerrado.' }); return { status: 'accepted', executionId: execution.id, data: { runtimeStatus: 'completed' } }; }
-          continue;
-        }
-        if (block.type === 'delay') {
-          const duration = delayMs(text(config.duration));
-          if (!duration) { await persist({ status: 'failed', finishedAt: nowIso(), error: 'Duração de espera inválida.', runtimeContext: undefined }); return { status: 'rejected', executionId: execution.id, reason: 'Duração de espera inválida.' }; }
-          const resumeAt = new Date(Date.now() + duration).toISOString();
-          await persist({ status: 'paused', resumeMode: 'next_block', resumeAt, runtimeContext: inputContext, action: `Aguardando ${text(config.duration)}.` });
-          return { status: 'accepted', executionId: execution.id, data: { runtimeStatus: 'paused', resumeAt } };
-        }
+        if (block.type === 'condition') { const matched = evaluateCondition(text(config.expression), inputContext); if (matched === null) { await persist({ status: 'failed', finishedAt: nowIso(), error: 'Condição inválida.', runtimeContext: undefined }); return { status: 'rejected', executionId: execution.id, reason: 'Condição inválida.' }; } if (!matched) { await persist({ status: 'completed', finishedAt: nowIso(), runtimeContext: undefined, action: 'Condição não atendida; fluxo encerrado.' }); return { status: 'accepted', executionId: execution.id, data: { runtimeStatus: 'completed' } }; } continue; }
+        if (block.type === 'delay') { const duration = delayMs(text(config.duration)); if (!duration) { await persist({ status: 'failed', finishedAt: nowIso(), error: 'Duração de espera inválida.', runtimeContext: undefined }); return { status: 'rejected', executionId: execution.id, reason: 'Duração de espera inválida.' }; } const resumeAt = new Date(Date.now() + duration).toISOString(); await persist({ status: 'paused', resumeMode: 'next_block', resumeAt, runtimeContext: inputContext, action: `Aguardando ${text(config.duration)}.` }); return { status: 'accepted', executionId: execution.id, data: { runtimeStatus: 'paused', resumeAt } }; }
         let result: Result;
         if (block.type === 'message') result = { status: 'not_configured', reason: 'Canal de mensagem real ainda não conectado.' };
-        else if (block.type === 'ai_agent') { await persist({ aiAgentId: text(config.agentId) }); result = await invokeAgent(text(config.agentId), inputContext); }
-        else if (block.type === 'chain_flow') result = await runBot(text(config.botId), inputContext, depth + 1);
-        else if (block.type === 'webhook') {
-          try {
-            const method = (text(config.method) || 'POST').toUpperCase();
-            if (!['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) result = { status: 'rejected', reason: 'Método de webhook não permitido.' };
-            else {
-              const url = await safeUrl(text(config.url));
-              const response = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(inputContext), redirect: 'manual', signal: AbortSignal.timeout(15000) });
-              result = response.ok && !(response.status >= 300 && response.status < 400) ? { status: 'accepted', data: { httpStatus: response.status } } : { status: 'rejected', reason: `Webhook respondeu HTTP ${response.status}.` };
-            }
-          } catch (error) { result = { status: 'rejected', reason: error instanceof Error ? error.message : 'Falha no webhook.' }; }
-        } else {
-          if (!leadId) result = { status: 'rejected', reason: 'Lead obrigatório para ação CRM.' };
-          else {
-            const map: Record<string, string> = { move_stage: 'move_stage', assign_owner: 'assign_owner', create_task: 'create_task', update_field: 'update_field', tag: text(config.operation).toLowerCase() === 'remove' ? 'remove_tag' : 'add_tag' };
-            const actionType = map[block.type];
-            if (!actionType) result = { status: 'rejected', reason: `Bloco ${block.type} não suportado no runtime server-side.` };
-            else {
-              const crmConfig: Json = block.type === 'move_stage' ? { stageId: config.stageId } : block.type === 'assign_owner' ? { userId: config.userId } : block.type === 'create_task' ? { title: config.title } : block.type === 'update_field' ? { fieldId: config.fieldId, value: config.fieldValue } : { tagId: config.tagId };
-              const { data, error } = await db.rpc('admin_apply_crm_automation_action', { p_lead_id: leadId, p_action_type: actionType, p_config: crmConfig });
-              result = error ? { status: 'rejected', reason: error.message } : { status: 'accepted', data: data && typeof data === 'object' ? data as Json : {} };
-            }
+        else if (block.type === 'ai_agent') {
+          const agentId = text(config.agentId);
+          await persist({ aiAgentId: agentId });
+          result = await invokeAgent(agentId, inputContext);
+          if (result.status === 'accepted' && result.data) {
+            const previousAi = inputContext.ai && typeof inputContext.ai === 'object' && !Array.isArray(inputContext.ai) ? inputContext.ai as Json : {};
+            inputContext.ai = { ...previousAi, lastAgentId: agentId, lastOutput: result.data.output, lastResult: result.data };
+            await persist({ runtimeContext: inputContext });
           }
         }
-        if (result.status !== 'accepted') {
-          const paused = result.status === 'not_configured';
-          await persist({ status: paused ? 'paused' : 'failed', resumeMode: paused ? 'retry_current' : undefined, finishedAt: paused ? undefined : nowIso(), runtimeContext: paused ? inputContext : undefined, error: paused ? undefined : result.reason, action: result.reason });
-          return { ...result, executionId: execution.id };
-        }
+        else if (block.type === 'chain_flow') result = await runBot(text(config.botId), inputContext, depth + 1);
+        else if (block.type === 'webhook') { try { const method = (text(config.method) || 'POST').toUpperCase(); if (!['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) result = { status: 'rejected', reason: 'Método de webhook não permitido.' }; else { const url = await safeUrl(text(config.url)); const response = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(inputContext), redirect: 'manual', signal: AbortSignal.timeout(15000) }); result = response.ok && !(response.status >= 300 && response.status < 400) ? { status: 'accepted', data: { httpStatus: response.status } } : { status: 'rejected', reason: `Webhook respondeu HTTP ${response.status}.` }; } } catch (error) { result = { status: 'rejected', reason: error instanceof Error ? error.message : 'Falha no webhook.' }; } }
+        else { if (!leadId) result = { status: 'rejected', reason: 'Lead obrigatório para ação CRM.' }; else { const map: Record<string, string> = { move_stage: 'move_stage', assign_owner: 'assign_owner', create_task: 'create_task', update_field: 'update_field', tag: text(config.operation).toLowerCase() === 'remove' ? 'remove_tag' : 'add_tag' }; const actionType = map[block.type]; if (!actionType) result = { status: 'rejected', reason: `Bloco ${block.type} não suportado no runtime server-side.` }; else { const crmConfig: Json = block.type === 'move_stage' ? { stageId: config.stageId } : block.type === 'assign_owner' ? { userId: config.userId } : block.type === 'create_task' ? { title: config.title } : block.type === 'update_field' ? { fieldId: config.fieldId, value: config.fieldValue } : { tagId: config.tagId }; const { data, error } = await db.rpc('admin_apply_crm_automation_action', { p_lead_id: leadId, p_action_type: actionType, p_config: crmConfig }); result = error ? { status: 'rejected', reason: error.message } : { status: 'accepted', data: data && typeof data === 'object' ? data as Json : {} }; } } }
+        if (result.status !== 'accepted') { const paused = result.status === 'not_configured'; await persist({ status: paused ? 'paused' : 'failed', resumeMode: paused ? 'retry_current' : undefined, finishedAt: paused ? undefined : nowIso(), runtimeContext: paused ? inputContext : undefined, error: paused ? undefined : result.reason, action: result.reason }); return { ...result, executionId: execution.id }; }
       }
-      await persist({ status: 'completed', finishedAt: nowIso(), runtimeContext: undefined, action: 'Execução concluída.' });
-      return { status: 'accepted', executionId: execution.id, data: { runtimeStatus: 'completed' } };
-    } catch (error) {
-      const reason = error instanceof Error ? error.message : 'Falha inesperada no runtime server-side.';
-      try { await persist({ status: 'failed', finishedAt: nowIso(), runtimeContext: undefined, error: reason, action: reason }); } catch { /* preserve original failure */ }
-      return { status: 'rejected', executionId: execution.id, reason };
-    }
+      await persist({ status: 'completed', finishedAt: nowIso(), runtimeContext: undefined, action: 'Execução concluída.' }); return { status: 'accepted', executionId: execution.id, data: { runtimeStatus: 'completed' } };
+    } catch (error) { const reason = error instanceof Error ? error.message : 'Falha inesperada no runtime server-side.'; try { await persist({ status: 'failed', finishedAt: nowIso(), runtimeContext: undefined, error: reason, action: reason }); } catch {} return { status: 'rejected', executionId: execution.id, reason }; }
   }
 
-  try {
-    if (action === 'invoke_ai') return respond(await invokeAgent(text(body.agentId), context));
-    if (action === 'start_salesbot') return respond(await runBot(text(body.botId), { ...context, ...(leadId ? { leadId } : {}), ...(conversationId ? { conversationId } : {}) }));
-    return respond({ status: 'rejected', reason: 'Ação server-side F05 não suportada.' }, 400);
-  } catch (error) {
-    return respond({ status: 'rejected', reason: error instanceof Error ? error.message : 'Falha inesperada no runtime F05.' }, 500);
-  }
+  try { if (action === 'invoke_ai') return respond(await invokeAgent(text(body.agentId), context)); if (action === 'start_salesbot') return respond(await runBot(text(body.botId), { ...context, ...(leadId ? { leadId } : {}), ...(conversationId ? { conversationId } : {}) })); return respond({ status: 'rejected', reason: 'Ação server-side F05 não suportada.' }, 400); } catch (error) { return respond({ status: 'rejected', reason: error instanceof Error ? error.message : 'Falha inesperada no runtime F05.' }, 500); }
 });
