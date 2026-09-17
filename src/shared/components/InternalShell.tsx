@@ -1,7 +1,8 @@
-import { PropsWithChildren } from 'react';
+import { PropsWithChildren, useEffect, useState } from 'react';
 import { useAuth } from '../../core/auth/AuthProvider';
 import { PERMISSIONS } from '../../core/auth/permissions';
 import { AppLink, useAppRouter } from '../../core/router/router';
+import './internal-shell.css';
 
 type NavItem = {
   href: string;
@@ -39,6 +40,11 @@ const links: NavItem[] = [
 export function InternalShell({ children }: PropsWithChildren) {
   const auth = useAuth();
   const { pathname, navigate } = useAppRouter();
+  const [mobileOpen, setMobileOpen] = useState(false);
+
+  useEffect(() => {
+    setMobileOpen(false);
+  }, [pathname]);
 
   const canSee = (item: NavItem) => {
     if (item.permissions?.length) return item.permissions.some(auth.hasPermission);
@@ -54,11 +60,51 @@ export function InternalShell({ children }: PropsWithChildren) {
   return (
     <div className="internal-layout">
       <aside className="sidebar">
-        <div><p className="brand-kicker">HÁRPIA</p><strong className="brand-title">Patrimonial & Co.</strong><p className="brand-subtitle">Núcleo operacional</p></div>
-        <nav className="sidebar-nav" aria-label="Navegação interna">
-          {links.filter(canSee).map((item) => <AppLink key={item.href} href={item.href} className={pathname === item.href ? 'nav-link active' : 'nav-link'}>{item.label}</AppLink>)}
+        <div className="sidebar-mobile-heading">
+          <div>
+            <p className="brand-kicker">HÁRPIA</p>
+            <strong className="brand-title">Patrimonial & Co.</strong>
+            <p className="brand-subtitle">Núcleo operacional</p>
+          </div>
+          <button
+            className="sidebar-mobile-toggle"
+            type="button"
+            aria-expanded={mobileOpen}
+            aria-controls="internal-navigation"
+            onClick={() => setMobileOpen((open) => !open)}
+          >
+            <span aria-hidden="true">☰</span>
+            <span>{mobileOpen ? 'Fechar' : 'Menu'}</span>
+          </button>
+        </div>
+
+        <nav
+          id="internal-navigation"
+          className={mobileOpen ? 'sidebar-nav sidebar-nav--open' : 'sidebar-nav'}
+          aria-label="Navegação interna"
+        >
+          {links.filter(canSee).map((item) => (
+            <AppLink
+              key={item.href}
+              href={item.href}
+              className={pathname === item.href ? 'nav-link active' : 'nav-link'}
+              onClick={() => setMobileOpen(false)}
+            >
+              {item.label}
+            </AppLink>
+          ))}
         </nav>
-        <div className="sidebar-footer"><div className="user-chip"><span className="avatar-dot">{auth.profile?.full_name?.slice(0, 1).toUpperCase() || 'H'}</span><div><strong>{auth.profile?.full_name || 'Equipe Hárpia'}</strong><span>{auth.user?.email}</span></div></div><button className="button button-ghost button-block" onClick={logout}>Sair</button></div>
+
+        <div className={mobileOpen ? 'sidebar-footer sidebar-footer--open' : 'sidebar-footer'}>
+          <div className="user-chip">
+            <span className="avatar-dot">{auth.profile?.full_name?.slice(0, 1).toUpperCase() || 'H'}</span>
+            <div>
+              <strong>{auth.profile?.full_name || 'Equipe Hárpia'}</strong>
+              <span>{auth.user?.email}</span>
+            </div>
+          </div>
+          <button className="button button-ghost button-block" onClick={logout}>Sair</button>
+        </div>
       </aside>
       <main className="internal-main">{children}</main>
     </div>
