@@ -79,7 +79,8 @@ Não fazer merge forçado das branches históricas divergidas. A `frente-01` atu
 
 🟠 **PARCIAL / EM ANDAMENTO** — backend e E2E server-side validados; build/typecheck e navegador real ainda `NÃO VERIFICADO`.
 
-Detalhamento completo: `docs/QA-FINAL-2026-09-17.md`.
+Detalhamento principal: `docs/QA-FINAL-2026-09-17.md`.
+Segunda passada funcional: `docs/QA-FINAL-PASSADA-2-2026-09-17.md`.
 
 ### Validado nesta passada
 
@@ -90,6 +91,7 @@ Detalhamento completo: `docs/QA-FINAL-2026-09-17.md`.
 - [x] autoalteração de segurança bloqueada.
 - [x] catálogo: transições, publicação hierárquica e integridade empreendimento/unidade.
 - [x] `public-lead-ingest` real: HTTP 201, CRM + outbox, sem envio automático.
+- [x] criação de conta de cliente agora emite `account_created` para o CRM via camada de composição; contrato real do Edge/CRM validado e limpo após QA.
 - [x] ações CRM: etapa, tag, campo e tarefa.
 - [x] grafo SalesBot: válido aceito e ciclo rejeitado.
 - [x] E2E `CRM → Automatize → SalesBot → runtime F05` concluído.
@@ -106,6 +108,7 @@ Detalhamento completo: `docs/QA-FINAL-2026-09-17.md`.
 - [ ] instalação limpa/reprodutível e geração/confirmação de `package-lock.json`;
 - [ ] E2E autenticado admin/viewer/cliente em navegador;
 - [ ] navegação visual desktop/mobile;
+- [ ] formulário real de cadastro em navegador criando conta + lead;
 - [ ] catálogo interno → publicação → site público pela UI;
 - [ ] upload real de mídia pela UI;
 - [ ] Realtime observado em duas sessões simultâneas;
@@ -114,7 +117,7 @@ Detalhamento completo: `docs/QA-FINAL-2026-09-17.md`.
 - [ ] console do navegador sem erros relevantes;
 - [ ] validação visual final do usuário.
 
-Motivo do bloco de build/E2E visual neste ambiente: Node disponível `v22.16.0`, enquanto o projeto exige Node `>=24 <25`; o checkout direto do GitHub também falhou por indisponibilidade de DNS externo. Nenhum desses itens foi marcado artificialmente como aprovado.
+Motivo do bloco de build/E2E visual neste ambiente: Node disponível `v22.16.0`, enquanto o projeto exige Node `>=24 <25`; o checkout direto do GitHub também falhou por indisponibilidade de DNS externo. A tentativa de obter snapshot binário pelo conector GitHub e runtime Node 24 isolado também não foi suportada pelo ambiente. Nenhum desses itens foi marcado artificialmente como aprovado.
 
 WhatsApp e Meta reais continuam reservados para a fase final definida no briefing e não devem ser simulados como conectados.
 
