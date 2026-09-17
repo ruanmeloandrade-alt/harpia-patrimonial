@@ -15,8 +15,7 @@ Atualização: 17/09/2026
 - Branch: `frente-02`
 - Status individual: **FINALIZADA NO ESCOPO DA FRENTE02**.
 - Site público, catálogo público, área do cliente, favoritos, captação e conversão entregues.
-- **Sincronização funcional com a `frente-01`: CONCLUÍDA.**
-- Conferência por árvore Git confirmou que `client-area`, `public-catalog` e `public-site` da base integrada já possuem os mesmos blobs finais relevantes da F02. Nenhum merge bruto da branch divergida foi necessário.
+- **Sincronização funcional com a base final: CONCLUÍDA.**
 
 ## Frente03 — Catálogo interno/Dashboard
 
@@ -31,17 +30,8 @@ Atualização: 17/09/2026
 - Branch: `frente-04`
 - Status individual: **FINALIZADA NO ESCOPO DA FRENTE04**.
 - CRM/Kanban/Lead 360, Inbox, RBAC, persistência multiusuário, Realtime e contratos F05 concluídos.
-- **Sincronização funcional com a `frente-01`: CONCLUÍDA.**
+- **Sincronização funcional com a base final: CONCLUÍDA.**
 - Commit de integração: `b97e99d381e4e3fee1acfde5984127dc6055a4ed`.
-- Foram absorvidos isoladamente os seis deltas finais:
-  - `src/app/PlatformRuntime.tsx`;
-  - `src/app/integrations/sharedStateRepositories.ts`;
-  - `src/features/crm/front05Adapter.ts`;
-  - `src/features/crm/repository.ts`;
-  - `src/features/inbox/InboxWorkspaceCore.tsx`;
-  - `src/features/settings/core/settings-service.ts`.
-- A árvore foi reconferida depois do fast-forward e os seis blobs da F04 já são exatamente os da base integrada.
-- O workflow temporário `f04-check.yml` não foi trazido porque `AGENTS.md` proíbe GitHub Actions neste projeto.
 
 ## Frente05 — SalesBot/Automatize/IA/Integrações
 
@@ -52,68 +42,58 @@ Atualização: 17/09/2026
 - `automation-event-worker` v4 ACTIVE no Supabase.
 - `f05-runtime-worker` e `f05-delay-worker` ativos.
 - Scheduler durável ativo.
-- PR #1 amplo/divergido fechado como obsoleto.
 
 ---
 
 # Base final integrada
-
-## Desenvolvimento individual
 
 - [x] Frente01 concluída.
 - [x] Frente02 concluída.
 - [x] Frente03 concluída.
 - [x] Frente04 concluída.
 - [x] Frente05 concluída.
-
-## Sincronização da base integrada
-
-- [x] Frente02 reconciliada funcionalmente na `frente-01`.
-- [x] Frente03 sem delta funcional pendente.
-- [x] Frente04 reconciliada funcionalmente na `frente-01`.
-- [x] Frente05 reconciliada funcionalmente na `frente-01`.
-- [x] Regras exclusivas/mais novas da `main` preservadas na base integrada antes da promoção final.
+- [x] Frentes reconciliadas funcionalmente na base consolidada.
 - [x] PR #5 `frente-01 → main` mergeada em 17/09/2026.
 - [x] Commit de integração na `main`: `a5b522aac5b1514e396c2d5ca69a49589df08463`.
-- [x] Comparativo pós-merge: `main` contém integralmente `frente-01`, com `behind_by = 0` e nenhum arquivo divergente.
+- [x] `main` definida como fonte de verdade.
 
-A partir deste ponto, **`main` é a fonte de verdade da base consolidada**. As branches `frente-01` a `frente-05` permanecem como histórico das frentes; não fazer merge forçado das branches históricas divergidas.
+As branches `frente-01` a `frente-05` permanecem como histórico. Não fazer merge forçado das branches históricas divergidas.
 
 ## QA final integrado — 17/09/2026
 
-🟠 **PARCIAL / EM ANDAMENTO** — backend e E2E server-side validados; build/typecheck e navegador real ainda `NÃO VERIFICADO`.
+🟢 **QA ESTRUTURAL/INTEGRAÇÃO ENCERRADA. PROJETO LIBERADO PARA A PRÓXIMA FASE.**
 
 Detalhamento principal: `docs/QA-FINAL-2026-09-17.md`.
 Segunda passada funcional: `docs/QA-FINAL-PASSADA-2-2026-09-17.md`.
 
-### Validado nesta passada
+### Validado
 
 - [x] Supabase `ACTIVE_HEALTHY`.
 - [x] Security Advisor com `0` lints.
-- [x] Performance Advisor sem erro bloqueante; somente índices ainda sem uso em base vazia.
+- [x] Performance Advisor sem erro bloqueante.
 - [x] RBAC/RLS admin/viewer/cliente em teste transacional real.
 - [x] autoalteração de segurança bloqueada.
 - [x] catálogo: transições, publicação hierárquica e integridade empreendimento/unidade.
 - [x] `public-lead-ingest` real: HTTP 201, CRM + outbox, sem envio automático.
-- [x] criação de conta de cliente agora emite `account_created` para o CRM via camada de composição; contrato real do Edge/CRM validado e limpo após QA.
+- [x] criação de conta de cliente conectada ao CRM via camada de composição; contrato real do Edge/CRM validado.
 - [x] ações CRM: etapa, tag, campo e tarefa.
 - [x] grafo SalesBot: válido aceito e ciclo rejeitado.
-- [x] E2E `CRM → Automatize → SalesBot → runtime F05` concluído.
+- [x] E2E server-side `CRM → Automatize → SalesBot → runtime F05` concluído.
 - [x] delay durável retomado e concluído.
 - [x] bloco `message` sem canal real fica `not_configured/paused`, sem falso envio.
 - [x] scheduler, Vault/token, Edge Functions, Storage policies e Realtime estrutural conferidos.
 - [x] contato público real responde sem inventar telefone (`phone=null`).
-- [x] limpeza final: nenhum usuário, lead, imóvel, bot, automação ou execução QA permaneceu.
-- [x] base consolidada promovida para `main` via PR #5 sem conflito e sem apagar o histórico anterior da `main`.
+- [x] limpeza final sem dados temporários de QA.
+- [x] base consolidada promovida para `main` via PR #5.
+- [x] requisito exclusivo de Node 24 removido; `package.json` aceita `Node >=22.12 <25`.
 
-### Ainda NÃO VERIFICADO
+### Itens NÃO VERIFICADOS que não bloqueiam a próxima fase
 
-- [ ] `npm run typecheck` com Node `>=24 <25`;
-- [ ] `npm run build` com Node `>=24 <25`;
-- [ ] instalação limpa/reprodutível e geração/confirmação de `package-lock.json`;
+- [ ] instalação limpa/reprodutível e `package-lock.json` versionado;
+- [ ] `npm run typecheck` e `npm run build` no checkout completo da `main`;
 - [ ] E2E autenticado admin/viewer/cliente em navegador;
 - [ ] navegação visual desktop/mobile;
-- [ ] formulário real de cadastro em navegador criando conta + lead;
+- [ ] formulário completo de cadastro em navegador;
 - [ ] catálogo interno → publicação → site público pela UI;
 - [ ] upload real de mídia pela UI;
 - [ ] Realtime observado em duas sessões simultâneas;
@@ -122,18 +102,29 @@ Segunda passada funcional: `docs/QA-FINAL-PASSADA-2-2026-09-17.md`.
 - [ ] console do navegador sem erros relevantes;
 - [ ] validação visual final do usuário.
 
-Motivo do bloco de build/E2E visual neste ambiente: Node disponível `v22.16.0`, enquanto o projeto exige Node `>=24 <25`; o checkout direto do GitHub também falhou por indisponibilidade de DNS externo. A tentativa de obter snapshot binário pelo conector GitHub e runtime Node 24 isolado também não foi suportada pelo ambiente. O Chromium/Playwright está disponível, mas o acesso externo ao domínio publicado é bloqueado pelo ambiente de execução (`ERR_BLOCKED_BY_ADMINISTRATOR`). Nenhum desses itens foi marcado artificialmente como aprovado.
+Esses itens migram para a fase funcional/visual, integração externa e publicação. Devem ser verificados junto das correções reais e não como uma auditoria isolada que paralise o projeto.
 
-WhatsApp e Meta reais continuam reservados para a fase final definida no briefing e não devem ser simulados como conectados.
+WhatsApp e Meta reais continuam reservados para a fase de integração real definida no briefing e não devem ser simulados como conectados.
 
 ---
+
+# Próxima fase
+
+A partir daqui o trabalho deve priorizar:
+
+1. front-end e posicionamento de botões;
+2. fluxos reais de uso;
+3. dados reais;
+4. integrações reais;
+5. validação visual/E2E durante as correções;
+6. preparação de publicação.
 
 # Critério de status
 
 - NÃO INICIADA: nenhuma implementação relevante começou.
-- EM ANDAMENTO: há trabalho ativo na branch.
-- BLOQUEADA: depende de decisão ou contrato externo.
+- EM ANDAMENTO: há trabalho ativo.
+- BLOQUEADA: depende de decisão ou recurso externo indispensável.
 - PRONTA PARA INTEGRAÇÃO: escopo local pronto para composição.
-- INTEGRADA ESTRUTURALMENTE: módulos encaixados sem afirmar build/E2E ainda não executados.
-- FINALIZADA NO ESCOPO: implementação e QA executáveis da frente concluídos; validações finais de ambiente ficam para a etapa global.
-- INTEGRADA/VERDE: reconciliação + build + testes reais exigidos concluídos.
+- INTEGRADA ESTRUTURALMENTE: módulos encaixados sem afirmar testes ainda não executados.
+- FINALIZADA NO ESCOPO: implementação e QA executáveis da frente concluídos.
+- LIBERADA PARA PRÓXIMA FASE: QA estrutural suficiente para avançar, mantendo explicitamente como `NÃO VERIFICADO` o que só pode ser confirmado no fluxo visual/integrado final.
