@@ -18,7 +18,7 @@ interface PublicExperienceProps {
   auth?: PublicAuthBridge;
   favorites?: PublicFavoritesBridge;
   clientAreaData?: ClientAreaDataState;
-  onConversion?: (event: PublicSiteConversion) => void | Promise<void>;
+  onConversion?: (event: PublicSiteConversion) => boolean | void | Promise<boolean | void>;
   internalAreaHref?: string;
 }
 
@@ -202,7 +202,7 @@ export default function PublicExperience(props: PublicExperienceProps) {
     [path],
   );
 
-  const forwardConversion = async (event: PublicSiteConversion) => {
+  const forwardConversion = async (event: PublicSiteConversion): Promise<boolean> => {
     if (!props.onConversion) throw new Error('Atendimento ainda não conectado.');
 
     const resolvedName = event.contact?.name?.trim() || props.auth?.currentClient?.name?.trim();
@@ -211,10 +211,11 @@ export default function PublicExperience(props: PublicExperienceProps) {
     if (!resolvedName || !resolvedWhatsapp) {
       setContactError('');
       setPendingConversion(event);
-      return;
+      return false;
     }
 
-    await props.onConversion(event);
+    const accepted = await props.onConversion(event);
+    return accepted !== false;
   };
 
   const submitPendingConversion = async (event: FormEvent<HTMLFormElement>) => {
@@ -235,7 +236,7 @@ export default function PublicExperience(props: PublicExperienceProps) {
     setContactError('');
 
     try {
-      await props.onConversion({
+      const accepted = await props.onConversion({
         ...pendingConversion,
         contact: {
           name,
@@ -243,6 +244,10 @@ export default function PublicExperience(props: PublicExperienceProps) {
           whatsapp,
         },
       });
+      if (accepted === false) {
+        setContactError('Não foi possível registrar seu contato agora.');
+        return;
+      }
       setPendingConversion(null);
     } catch (error) {
       setContactError(error instanceof Error ? error.message : 'Não foi possível registrar seu contato agora.');
