@@ -9,6 +9,12 @@ import {
   ClientAreaDataProvider,
   type ClientAreaDataState,
 } from '../client-area/ClientArea';
+import {
+  emitFront02LocationChange,
+  FRONT02_LOCATION_EVENT,
+  matchesFront02PublicRoute,
+  normalizeFront02PublicPath,
+} from './routes';
 import './public-experience.css';
 import './public-polish.css';
 
@@ -17,7 +23,7 @@ interface PublicExperienceProps {
   auth?: PublicAuthBridge;
   favorites?: PublicFavoritesBridge;
   clientAreaData?: ClientAreaDataState;
-  onConversion?: (event: PublicSiteConversion) => void | Promise<void>;
+  onConversion?: (event: PublicSiteConversion) => boolean | void | Promise<boolean | void>;
   internalAreaHref?: string;
 }
 
@@ -31,8 +37,6 @@ const navigation = [
   { label: 'Arquitetura', path: '/arquitetura' },
   { label: 'Área do cliente', path: '/cliente' },
 ];
-
-const auxiliaryPublicPaths = ['/vender', '/alugar'];
 
 const routeMetadata: Record<string, { title: string; description: string }> = {
   '/': {
@@ -77,20 +81,6 @@ const routeMetadata: Record<string, { title: string; description: string }> = {
   },
 };
 
-function normalizePath(path: string) {
-  if (path === '/') return path;
-  return path.replace(/\/+$/, '') || '/';
-}
-
-function isKnownPublicPath(path: string) {
-  const normalized = normalizePath(path);
-  return (
-    navigation.some((item) => item.path === normalized) ||
-    auxiliaryPublicPaths.includes(normalized) ||
-    /^\/imoveis\/[^/]+$/.test(normalized)
-  );
-}
-
 function metadataForPath(path: string) {
   if (routeMetadata[path]) return routeMetadata[path];
   if (path.startsWith('/imoveis/')) {
@@ -107,12 +97,13 @@ function metadataForPath(path: string) {
 
 function navigatePublic(path: string) {
   window.history.pushState({}, '', path);
+  emitFront02LocationChange();
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 export default function PublicExperience(props: PublicExperienceProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [path, setPath] = useState(() => normalizePath(window.location.pathname));
+  const [path, setPath] = useState(() => normalizeFront02PublicPath(window.location.pathname));
   const [pendingConversion, setPendingConversion] = useState<PublicSiteConversion | null>(null);
   const [contactBusy, setContactBusy] = useState(false);
   const [contactError, setContactError] = useState('');
@@ -120,41 +111,23 @@ export default function PublicExperience(props: PublicExperienceProps) {
   const contactNameRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    const history = window.history;
-    const originalPushState = history.pushState;
-    const originalReplaceState = history.replaceState;
-    const emitNavigation = () => window.dispatchEvent(new PopStateEvent('popstate'));
-
-    history.pushState = function pushState(...args: Parameters<History['pushState']>) {
-      originalPushState.apply(history, args);
-      emitNavigation();
-    };
-
-    history.replaceState = function replaceState(...args: Parameters<History['replaceState']>) {
-      originalReplaceState.apply(history, args);
-      emitNavigation();
-    };
-
-    return () => {
-      history.pushState = originalPushState;
-      history.replaceState = originalReplaceState;
-    };
-  }, []);
-
-  useEffect(() => {
-    const onPopState = () => {
-      const nextPath = normalizePath(window.location.pathname);
+    const onLocationChange = () => {
+      const nextPath = normalizeFront02PublicPath(window.location.pathname);
       setPath(nextPath);
       setMobileOpen(false);
 
-      if (nextPath !== window.location.pathname && isKnownPublicPath(nextPath)) {
+      if (nextPath !== window.location.pathname && matchesFront02PublicRoute(nextPath)) {
         window.history.replaceState({}, '', `${nextPath}${window.location.search}`);
       }
     };
 
-    window.addEventListener('popstate', onPopState);
-    onPopState();
-    return () => window.removeEventListener('popstate', onPopState);
+    window.addEventListener('popstate', onLocationChange);
+    window.addEventListener(FRONT02_LOCATION_EVENT, onLocationChange);
+    onLocationChange();
+    return () => {
+      window.removeEventListener('popstate', onLocationChange);
+      window.removeEventListener(FRONT02_LOCATION_EVENT, onLocationChange);
+    };
   }, []);
 
   useEffect(() => {
@@ -217,7 +190,7 @@ export default function PublicExperience(props: PublicExperienceProps) {
     [path],
   );
 
-  const forwardConversion = async (event: PublicSiteConversion) => {
+  const forwardConversion = async (event: PublicSiteConversion): Promise<boolean> => {
     if (!props.onConversion) throw new Error('Atendimento ainda não conectado.');
 
     const resolvedName = event.contact?.name?.trim() || props.auth?.currentClient?.name?.trim();
@@ -226,10 +199,11 @@ export default function PublicExperience(props: PublicExperienceProps) {
     if (!resolvedName || !resolvedWhatsapp) {
       setContactError('');
       setPendingConversion(event);
-      return;
+      return false;
     }
 
-    await props.onConversion(event);
+    const accepted = await props.onConversion(event);
+    return accepted !== false;
   };
 
   const submitPendingConversion = async (event: FormEvent<HTMLFormElement>) => {
@@ -250,7 +224,7 @@ export default function PublicExperience(props: PublicExperienceProps) {
     setContactError('');
 
     try {
-      await props.onConversion({
+      const accepted = await props.onConversion({
         ...pendingConversion,
         contact: {
           name,
@@ -258,6 +232,10 @@ export default function PublicExperience(props: PublicExperienceProps) {
           whatsapp,
         },
       });
+      if (accepted === false) {
+        setContactError('Não foi possível registrar seu contato agora.');
+        return;
+      }
       setPendingConversion(null);
     } catch (error) {
       setContactError(error instanceof Error ? error.message : 'Não foi possível registrar seu contato agora.');
@@ -266,7 +244,7 @@ export default function PublicExperience(props: PublicExperienceProps) {
     }
   };
 
-  if (!isKnownPublicPath(path)) {
+  if (!matchesFront02PublicRoute(path)) {
     return (
       <main className="public-not-found">
         <div className="public-not-found__card">

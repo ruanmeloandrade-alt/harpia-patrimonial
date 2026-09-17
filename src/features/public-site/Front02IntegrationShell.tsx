@@ -84,11 +84,12 @@ function ComposedExperience(props: ComposedExperienceProps) {
 
   const onConversion = useMemo(
     () => conversionPipeline
-      ? async (event: PublicSiteConversion) => {
-          await conversionPipeline(event);
+      ? async (event: PublicSiteConversion): Promise<true> => {
+          const accepted = await conversionPipeline(event);
           if (event.source !== 'captacao-proprietario') {
             setConversionNotice('Atendimento registrado com sucesso. A equipe da Hárpia recebeu seu contexto.');
           }
+          return accepted;
         }
       : undefined,
     [conversionPipeline],

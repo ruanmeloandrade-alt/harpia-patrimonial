@@ -15,22 +15,29 @@ export interface PublicConversionPipelineOptions {
  * continuação não executa. Se o lead já foi aceito e apenas o redirecionamento
  * externo falhar, o pipeline preserva o sucesso da captura e sinaliza a falha
  * opcionalmente por `onContinuationError`, evitando falso negativo na UI.
+ *
+ * O retorno `true` significa exclusivamente que a captura no CRM foi aceita.
+ * A continuação para WhatsApp é posterior e nunca transforma um lead aceito em
+ * falso erro de conversão.
  */
 export function createPublicConversionPipeline(options: PublicConversionPipelineOptions) {
-  return async (event: PublicSiteConversion): Promise<void> => {
+  return async (event: PublicSiteConversion): Promise<true> => {
     await options.capture(event);
 
-    if (!options.continueToWhatsApp) return;
+    if (!options.continueToWhatsApp) return true;
 
     try {
       await options.continueToWhatsApp(event);
     } catch (error) {
-      if (!options.onContinuationError) return;
-      try {
-        await options.onContinuationError(error, event);
-      } catch {
-        // Diagnóstico de uma continuação externa nunca invalida o lead já aceito.
+      if (options.onContinuationError) {
+        try {
+          await options.onContinuationError(error, event);
+        } catch {
+          // Diagnóstico de uma continuação externa nunca invalida o lead já aceito.
+        }
       }
     }
+
+    return true;
   };
 }

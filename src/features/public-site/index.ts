@@ -70,22 +70,10 @@ export {
   readCatalogFilters,
   writeCatalogFilters,
 } from './catalogQuery';
-
-/**
- * Rotas de propriedade da Frente02. O roteador global pertence à Frente01;
- * esta lista existe apenas para a integração registrar o conjunto correto
- * sem duplicar descoberta de rotas ou mover ownership.
- */
-export const publicRouteManifest = [
-  '/',
-  '/sobre',
-  '/investimentos',
-  '/leiloes',
-  '/assessoria-juridica',
-  '/arquitetura',
-  '/imoveis',
-  '/imoveis/:slug',
-  '/vender',
-  '/alugar',
-  '/cliente',
-] as const;
+export {
+  emitFront02LocationChange,
+  FRONT02_LOCATION_EVENT,
+  matchesFront02PublicRoute,
+  normalizeFront02PublicPath,
+  publicRouteManifest,
+} from './routes';

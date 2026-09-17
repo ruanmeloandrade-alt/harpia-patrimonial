@@ -49,6 +49,8 @@ const forbiddenIdentityMetadataKeys = new Set([
   'accounttype',
   'authorization',
   'role',
+  'permissions',
+  'isadmin',
 ]);
 
 function normalizeMetadataKey(key: string) {
@@ -109,8 +111,8 @@ function resolveContact(
  *
  * Falta de nome ou WhatsApp é uma falha explícita. Isso garante que um pipeline
  * CRM -> WhatsApp nunca avance sem que a captura do lead tenha sido aceita.
- * Metadados de identidade fornecidos pelo caller público são descartados: a
- * identidade autenticada deve ser derivada apenas no backend.
+ * Metadados de identidade/autorização fornecidos pelo caller público são
+ * descartados: a identidade autenticada deve ser derivada apenas no backend.
  */
 export function createFront04ConversionHandler(options: {
   ingest: Front04LeadConversionIngestPort;

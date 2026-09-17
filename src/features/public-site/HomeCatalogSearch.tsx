@@ -31,8 +31,8 @@ export function HomeCatalogSearch({ options, onNavigate }: HomeCatalogSearchProp
         next.location = undefined;
         changed = true;
       } else if (current.location) {
-        const validLocations = current.city
-          ? options.locationsByCity?.[current.city] ?? options.locations
+        const validLocations = current.city && options.locationsByCity
+          ? options.locationsByCity[current.city] ?? []
           : options.locations;
         if (!validLocations.includes(current.location)) {
           next.location = undefined;
