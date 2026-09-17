@@ -28,6 +28,9 @@ export interface InboxWorkspaceProps {
   aiAgents?: AutomationOption[];
 }
 
+const botSelectionMemory = new Map<string, string>();
+const agentSelectionMemory = new Map<string, string>();
+
 export function InboxWorkspace({
   crmService,
   inboxService: injectedInboxService,
@@ -50,8 +53,12 @@ export function InboxWorkspace({
   const [selectedConversationId, setSelectedConversationId] = useState<string | undefined>(
     () => inboxService.snapshot().conversations[0]?.id,
   );
-  const [selectedBotId, setSelectedBotId] = useState('');
-  const [selectedAgentId, setSelectedAgentId] = useState('');
+  const [selectedBotByConversation, setSelectedBotByConversation] = useState<Record<string, string>>(
+    () => Object.fromEntries(botSelectionMemory),
+  );
+  const [selectedAgentByConversation, setSelectedAgentByConversation] = useState<Record<string, string>>(
+    () => Object.fromEntries(agentSelectionMemory),
+  );
   const [feedback, setFeedback] = useState('');
   const [automationStatus, setAutomationStatus] = useState<ConversationAutomationStatus>({
     salesBot: 'unavailable',
@@ -68,11 +75,26 @@ export function InboxWorkspace({
   );
   const selectedLead = crmState.leads.find((lead) => lead.id === selectedConversation?.leadId);
   const messages = selectedConversation ? inboxService.getMessages(selectedConversation.id) : [];
+  const selectedBotId = selectedConversationId
+    ? selectedBotByConversation[selectedConversationId] ?? ''
+    : '';
+  const selectedAgentId = selectedConversationId
+    ? selectedAgentByConversation[selectedConversationId] ?? ''
+    : '';
 
-  useEffect(() => {
-    setSelectedBotId('');
-    setSelectedAgentId('');
-  }, [selectedConversationId]);
+  const setSelectedBotId = (id: string) => {
+    if (!selectedConversationId) return;
+    if (id) botSelectionMemory.set(selectedConversationId, id);
+    else botSelectionMemory.delete(selectedConversationId);
+    setSelectedBotByConversation((current) => ({ ...current, [selectedConversationId]: id }));
+  };
+
+  const setSelectedAgentId = (id: string) => {
+    if (!selectedConversationId) return;
+    if (id) agentSelectionMemory.set(selectedConversationId, id);
+    else agentSelectionMemory.delete(selectedConversationId);
+    setSelectedAgentByConversation((current) => ({ ...current, [selectedConversationId]: id }));
+  };
 
   useEffect(() => {
     if (!selectedConversation) {

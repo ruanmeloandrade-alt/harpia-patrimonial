@@ -209,7 +209,8 @@ export function PlatformRuntimeProvider({ children }: PropsWithChildren) {
 
         const crm = new CrmService(crmRepository);
         const inbox = inboxRepository ? new InboxService(inboxRepository) : null;
-        const crmActions = createFront05CrmActionPort(crm);
+        const waitForCrmPersistence = () => crmRepository.waitForLastSave?.() ?? Promise.resolve();
+        const crmActions = createFront05CrmActionPort(crm, waitForCrmPersistence);
         const aiCommandPort = createAIAgentCommandPort(aiModelRuntime);
         const salesBotCommandPort = createSalesBotCommandPort({
           ...unconfiguredSalesBotRuntimeDependencies,
@@ -225,7 +226,10 @@ export function PlatformRuntimeProvider({ children }: PropsWithChildren) {
           crm: crmActions,
           webhook: automationWebhook,
         };
-        const sink = new Front05CrmEventSink((event) => processCrmAutomationEvent(event, automationDependencies));
+        const sink = new Front05CrmEventSink(
+          (event) => processCrmAutomationEvent(event, automationDependencies),
+          waitForCrmPersistence,
+        );
         unsubscribeEvents = crm.subscribeEvents(sink);
 
         const automationPort = createFront05InboxAutomationAdapter({
