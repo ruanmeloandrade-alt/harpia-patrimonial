@@ -6,8 +6,8 @@ Atualizar este arquivo ao iniciar e ao concluir blocos relevantes.
 
 - Branch: `frente-01`
 - F01 mantém shell/runtime compartilhado, RBAC `view/manage`, tipos Supabase e integração estrutural da F05.
-- Comparação em 17/09/2026: `frente-05` está **34 commits à frente** e **544 atrás** de `frente-01`; branches divergidas.
-- PR F05→F01 continua aberto e não mergeável automaticamente; integração deve ser feita pela frente proprietária, sem sobrescrever trabalho paralelo.
+- As branches F01 e F05 continuam avançando em paralelo; a contagem exata de commits deve ser conferida no momento da integração.
+- PR F05→F01 continua como handoff oficial; não forçar merge nem sobrescrever trabalho paralelo.
 
 ## Frente02 — Site público/Área do cliente
 
@@ -85,23 +85,16 @@ Teste funcional real em 17/09/2026:
 
 ### 🟠 Integração F05 → F01
 
-Comparação atual:
+A F01 ainda precisa absorver os hardenings e componentes server-side F05 sem sobrescrever mudanças próprias.
 
-- F05 à frente da F01: **34 commits**;
-- F05 atrás da F01: **544 commits**;
-- branches divergidas;
-- PR existente não é mergeável automaticamente.
-
-A F01 precisa absorver os hardenings e os componentes server-side F05 sem sobrescrever as mudanças próprias da F01.
-
-Lacuna operacional ainda existente no `automation-event-worker` da F01:
+Lacuna operacional no `automation-event-worker` da F01:
 
 - CRM: conectado;
 - webhook: conectado;
 - `start_salesbot`: ainda `not_configured`;
 - `invoke_ai`: ainda `not_configured`.
 
-A F05 já disponibiliza `f05-runtime-worker` para essas duas ações.
+A F05 já disponibiliza `f05-runtime-worker` para essas duas ações e documentou o contrato de integração.
 
 ### 🟠 QA autenticado
 
@@ -109,7 +102,7 @@ Conferência real em 17/09/2026:
 
 - `auth.users = 0`;
 - `user_profiles` ativos = 0;
-- `admin-user` existe e usa fluxo oficial de Supabase Auth, porém exige chamador autenticado com `users.manage`;
+- `admin-user` usa fluxo oficial do Supabase Auth, mas exige chamador autenticado com `users.manage`;
 - não será criado bypass nem feito insert direto em `auth.users`.
 
 As 8 permissões F05 existem no backend:
@@ -125,7 +118,7 @@ Grupo de sistema `Administrador` está ativo e possui as 8 permissões F05.
 
 - sincronização F05 → F01;
 - ligar `automation-event-worker` da F01 ao `f05-runtime-worker`;
-- criar admin/viewer QA pelo fluxo oficial de Auth quando houver primeiro admin autenticado;
+- primeiro admin QA pelo fluxo oficial de Auth;
 - E2E autenticado de RBAC/RLS/UI;
 - build/typecheck consolidado;
 - chamada real a provedor IA com chave real;
@@ -137,7 +130,7 @@ Grupo de sistema `Administrador` está ativo e possui as 8 permissões F05.
 # Pedidos entre frentes
 
 - F05 → F01 — rotas/sidebar/cofre/runtime estrutural: **RESOLVIDO HISTORICAMENTE**.
-- F05 → F01 — sincronizar 34 commits atuais da F05: **PENDENTE**.
+- F05 → F01 — sincronizar hardenings/componentes atuais: **PENDENTE**.
 - F05 → F01 — conectar worker de automações ao runtime server-side F05: **PENDENTE**.
 - F05 → F01/Auth — usuários temporários QA: **PENDENTE DE CAMINHO OFICIAL COM ADMIN AUTENTICADO**.
 - F05 ↔ F04 — contratos CRM/Inbox: **ESTRUTURA PRESENTE; E2E PENDENTE**.
