@@ -6,6 +6,7 @@ import { RecoverPasswordPage } from '../features/auth/RecoverPasswordPage';
 import { RegisterPage } from '../features/auth/RegisterPage';
 import { ResetPasswordPage } from '../features/auth/ResetPasswordPage';
 import { PermissionsPage } from '../features/permissions/PermissionsPage';
+import { matchesFront02PublicRoute } from '../features/public-site';
 import { CoreSettingsPage } from '../features/settings/core/CoreSettingsPage';
 import { UsersPage } from '../features/users/UsersPage';
 import { FullPageState } from '../shared/components/FullPageState';
@@ -23,23 +24,6 @@ import {
   IntegratedSalesBot,
 } from './IntegratedInternalModules';
 
-const PUBLIC_EXACT_ROUTES = new Set([
-  '/',
-  '/sobre',
-  '/investimentos',
-  '/leiloes',
-  '/assessoria-juridica',
-  '/arquitetura',
-  '/imoveis',
-  '/vender',
-  '/alugar',
-  '/cliente',
-]);
-
-function isPublicRoute(pathname: string) {
-  return PUBLIC_EXACT_ROUTES.has(pathname) || /^\/imoveis\/[^/]+$/.test(pathname);
-}
-
 export function AppRouter() {
   const { pathname } = useAppRouter();
 
@@ -56,7 +40,7 @@ export function AppRouter() {
   }
   if (pathname === '/interno/entrar') return <LoginPage internal />;
 
-  if (isPublicRoute(pathname)) return <IntegratedPublicExperience />;
+  if (matchesFront02PublicRoute(pathname)) return <IntegratedPublicExperience />;
 
   if (pathname.startsWith('/interno')) {
     let page = <IntegratedDashboard />;
