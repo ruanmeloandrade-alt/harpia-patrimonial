@@ -177,7 +177,7 @@ export function PlatformRuntimeProvider({ children }: PropsWithChildren) {
 
     return () => {
       active = false;
-      if (channel) void supabase.removeChannel(channel);
+      if (channel) void supabase?.removeChannel(channel);
     };
   }, [auth.user?.id, canUseF05]);
 
@@ -290,7 +290,7 @@ export function PlatformRuntimeProvider({ children }: PropsWithChildren) {
     return () => {
       active = false;
       unsubscribeEvents?.();
-      if (channel) void supabase.removeChannel(channel);
+      if (channel) void supabase?.removeChannel(channel);
     };
   }, [aiModelRuntime, auth.user?.id, automationWebhook, canUseCrm, canUseInbox, catalogRepository, f05Revision]);
 
