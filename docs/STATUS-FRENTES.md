@@ -5,17 +5,17 @@ Atualizar este arquivo ao iniciar e ao concluir blocos relevantes.
 ## Frente01 — Núcleo/Auth/Usuários/Permissões
 
 - Branch: `frente-01`
-- Status nesta cópia: consultar a própria branch para o estado mais recente.
+- Status nesta cópia: **CONCLUÍDA ESTRUTURALMENTE + QA BACKEND AUTH/RBAC APROVADO — F02/F03/F04/F05 LIBERADAS**.
 - 🟢 Para a Frente03 já entregou: Supabase dedicado, auth/RBAC, `PlatformRuntimeProvider`, `IntegratedCatalog`, `IntegratedDashboard`, rota `/interno/catalogo`, menu interno, composição do catálogo público/CRM, `createCatalogRuntime`, `catalogMediaStorage`, `dispose()` e tipos Supabase atualizados.
-- 🟢 A comparação atual de branches mostra a Frente03 integralmente incorporada na Frente01.
-- 🟠 Pendência relevante para Frente03: build/typecheck integrado e QA real de navegador/E2E.
+- 🟢 A dependência estrutural da Frente03 com a Frente01 está encerrada.
+- 🟠 Pendência de ambiente conjunto: build/typecheck e QA real de navegador/E2E.
 
 ## Frente02 — Site público/Área do cliente
 
 - Branch: `frente-02`
 - Status nesta cópia: consultar a própria branch para o estado mais recente.
 - 🟢 Integração estrutural com Frente03 já montada pela Frente01 via `IntegratedPublicExperience` + `runtime.publicCatalogService`.
-- 🟠 QA visual/E2E com dados reais publicados ainda depende da validação final da aplicação integrada.
+- 🟠 A publicação pública atual ainda precisa estar no estado final para o E2E da Frente03 validar `publicar interno → aparecer no site publicado`.
 
 ## Frente03 — Catálogo interno/Dashboard
 
@@ -95,7 +95,25 @@ QA real já executado:
 - 🟢 `catalog_items` está na publication `supabase_realtime`;
 - 🟢 payload de mídia com tipo inválido ou URL fora de HTTP(S) é rejeitado no banco;
 - 🟢 payload de mídia HTTPS válido é aceito;
+- 🟢 RLS de `catalog_items` confirmada ativa em 17/09/2026;
+- 🟢 bucket público `catalog-media` confirmado presente em 17/09/2026;
+- 🟢 policies Storage SELECT/INSERT/UPDATE/DELETE confirmadas sob `catalog.manage` para `authenticated`;
+- 🟢 0 unidades órfãs e 0 códigos ativos duplicados na checagem de 17/09/2026;
 - 🟢 nenhum registro `QA-%`/`QA-F03-%` permaneceu no banco após os testes.
+
+### 🟢 QA hierárquico adicional — 17/09/2026
+
+Teste transitório no backend real, removido ao final:
+
+- 🟢 unidade `published` com pai `draft` ficou invisível para `anon`;
+- 🟢 ao publicar o pai, a unidade passou a ser visível para `anon`;
+- 🟢 ao pausar o pai, a unidade voltou a ficar invisível para `anon`;
+- 🟢 vender o empreendimento com unidade ativa não vendida permaneceu bloqueado;
+- 🟢 vender a unidade e depois o empreendimento funcionou;
+- 🟢 `sold` permaneceu terminal e rejeitou nova transição;
+- 🟢 cleanup final confirmou 0 resíduos QA.
+
+A publicação interna antecipada de uma unidade enquanto o pai ainda está em `draft` é aceita pelo backend; a RLS pública impede exposição até o pai estar publicado. Isso segue o contrato atual de elegibilidade pública hierárquica.
 
 ### 🟢 Realtime multi-sessão — implementação
 
@@ -125,7 +143,7 @@ QA real já executado:
 
 ### 🟢 Integração Frente01 — RESOLVIDA
 
-Confirmado no HEAD atual da Frente01:
+Confirmado no estado integrado atual da Frente01:
 
 - 🟢 `PlatformRuntimeProvider` usa `createCatalogRuntime(supabase)`;
 - 🟢 `catalogRepository`, `publicCatalogService` e `catalogMediaStorage` são expostos no runtime;
@@ -135,14 +153,13 @@ Confirmado no HEAD atual da Frente01:
 - 🟢 `/interno/catalogo` e sidebar já usam `catalog.view/manage/publish`;
 - 🟢 Frente02 recebe `runtime.publicCatalogService`;
 - 🟢 `database.types.ts` contém `catalog_items`, relacionamento pai/unidade e enums `catalog_item_kind`, `catalog_purpose`, `catalog_status`;
-- 🟢 schema real e tipos gerados foram conferidos nesta rodada;
-- 🟢 comparação de branches: a Frente03 atual está integralmente incorporada na Frente01, sem arquivos próprios pendentes de sincronização.
+- 🟢 schema real e tipos gerados foram conferidos;
+- 🟢 Frente01 declarou F02/F03/F04/F05 liberadas estruturalmente.
 
 ### Advisors
 
-- 🟢 Security Advisor: **zero findings** após as migrations atuais.
+- 🟢 Security Advisor: **zero findings** na última validação registrada após as migrations da F03.
 - 🟢 Performance Advisor: nenhum erro funcional; apenas `unused_index` INFO em índices de banco ainda sem tráfego.
-- Referência do INFO: https://supabase.com/docs/guides/database/database-linter?lint=0005_unused_index
 
 ### 🟠 Build / navegador — bloqueio restante
 
@@ -151,14 +168,14 @@ Confirmado no HEAD atual da Frente01:
 - 🟠 Upload real pela Storage API no navegador: **NÃO VERIFICADO**.
 - 🟠 Realtime real entre duas sessões/browser: **NÃO VERIFICADO**.
 - 🟠 QA visual/E2E no shell final: **NÃO VERIFICADO**.
-- O `package-lock.json` ainda não existe na Frente01.
-- O executor local desta sessão possui Node 22 e TypeScript global 5.8.3; o projeto exige Node 24 e não há dependências npm instaladas/cacheadas. Isso impede declarar build/typecheck consolidado como executado aqui.
+- O `package-lock.json` ainda não existe na Frente01 no estado consultado.
+- O executor local desta sessão possui Node 22; o projeto exige Node 24 e não há dependências npm instaladas/cacheadas. Isso impede declarar build/typecheck consolidado como executado aqui.
 
 ### Próximo fechamento da Frente03
 
-1. Gerar lockfile/instalar dependências em ambiente Node 24 com registry acessível.
-2. Rodar `npm run typecheck` e `npm run build` na branch integrada.
-3. QA browser com usuário interno real: criar → editar → upload → publicar → verificar site → pausar → republicar → testar duas sessões → vender unidades → vender empreendimento → validar Dashboard/site.
+1. Ambiente Node 24/npm compatível para `npm run typecheck` e `npm run build` na versão integrada.
+2. QA browser com usuário interno real: criar → editar → upload → publicar → verificar site → pausar → republicar → testar duas sessões → vender unidades → vender empreendimento → validar Dashboard/site.
+3. Publicação final da Frente02 disponível para validar o trecho público do E2E.
 4. Só então promover o status geral para 🟢.
 
 ## Frente04 — CRM/Inbox
@@ -166,38 +183,35 @@ Confirmado no HEAD atual da Frente01:
 - Branch: `frente-04`
 - Status nesta cópia: consultar a própria branch para o estado mais recente.
 - 🟢 Para Frente03, a fonte compartilhada já está montada no runtime integrado.
-- 🟠 Métricas comerciais avançadas dependem de semântica explícita futura do CRM.
+- 🟢 Não existe pendência estrutural da Frente04 para o Dashboard atual da Frente03.
+- Métricas comerciais avançadas só entram quando houver semântica objetiva explícita; a Frente03 não deve inferi-las.
 
 ## Frente05 — SalesBot/Automatize/IA/Integrações
 
 - Branch: `frente-05`
 - Status nesta cópia: consultar a própria branch para o estado mais recente.
-- Não bloqueia diretamente a Frente03.
+- 🟢 Não bloqueia diretamente a Frente03.
 
 ---
 
 # Pedidos entre frentes
 
-- Data: 16/09/2026
 - Origem: Frente03
 - Destino: Frente01 / Integrador
 - Necessidade anterior: sincronizar a Frente03 atual, adotar `createCatalogRuntime`, expor `mediaStorage`, usar `dispose()` e regenerar tipos Supabase.
-- Resultado: confirmado no HEAD atual da Frente01.
+- Resultado: confirmado no estado integrado da Frente01.
 - Status: 🟢 RESOLVIDO.
 
-- Data: 16/09/2026
 - Origem: Frente03
 - Destino: Integração final
 - Necessidade: build/typecheck integrado e QA browser/E2E com sessão interna real.
 - Urgência: ALTA para fechamento.
 - Status: 🟠 PENDENTE.
 
-- Data: 16/09/2026
 - Origem: Frente03
-- Destino: Frente01 / Frente02 / Frente04
-- Necessidades anteriores de rota, catálogo público e CRM compartilhado.
-- Resultado: composição estrutural já existente na Frente01.
-- Status: 🟢 RESOLVIDO estruturalmente; QA final continua conjunto.
+- Destino: Frente02
+- Necessidade: publicação pública final disponível para validar `publicar interno → aparecer no site publicado`.
+- Status: 🟠 PENDENTE apenas para o E2E final.
 
 ---
 
