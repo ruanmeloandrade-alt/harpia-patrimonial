@@ -87,7 +87,7 @@ const haltOnCommand = (
   if (result.status === 'accepted') return null;
   const reason = result.reason ?? 'Ação não executada.';
   if (result.status === 'not_configured') {
-    updateExecution(executionId, { status: 'paused', currentBlockId: block.id, resumeMode: 'retry_current', resumeAt: undefined, action: reason });
+    updateExecution(executionId, { status: 'paused', currentBlockId: block.id, resumeMode: 'retry_current', resumeAt: undefined, resumeClaimToken: undefined, resumeClaimedUntil: undefined, action: reason });
     return { status: 'paused', blockId: block.id, reason };
   }
   finishExecution(executionId, 'failed', reason);
@@ -113,7 +113,7 @@ async function executeBlock(
   if (block.type === 'condition') {
     const result = await deps.condition.evaluate({ expression: stringConfig(block, 'expression'), context: data });
     if (result.status === 'not_configured') {
-      updateExecution(executionId, { status: 'paused', currentBlockId: block.id, resumeMode: 'retry_current', resumeAt: undefined, action: result.reason });
+      updateExecution(executionId, { status: 'paused', currentBlockId: block.id, resumeMode: 'retry_current', resumeAt: undefined, resumeClaimToken: undefined, resumeClaimedUntil: undefined, action: result.reason });
       return { status: 'paused', blockId: block.id, reason: result.reason };
     }
     if (result.status === 'failed') {
@@ -140,7 +140,15 @@ async function executeBlock(
     const halted = haltOnCommand(executionId, block, result);
     if (halted) return halted;
     const reason = `Aguardando ${duration}.`;
-    updateExecution(executionId, { status: 'paused', currentBlockId: block.id, resumeMode: 'next_block', resumeAt, action: reason });
+    updateExecution(executionId, {
+      status: 'paused',
+      currentBlockId: block.id,
+      resumeMode: 'next_block',
+      resumeAt,
+      resumeClaimToken: undefined,
+      resumeClaimedUntil: undefined,
+      action: reason,
+    });
     return { status: 'paused', blockId: block.id, reason };
   }
 
@@ -210,7 +218,16 @@ export async function runSalesBotExecution(
     if (currentIndex >= 0) startIndex = currentIndex + (execution.resumeMode === 'next_block' ? 1 : 0);
   }
 
-  updateExecution(executionId, { status: 'running', resumeMode: undefined, resumeAt: undefined, error: undefined, action: 'Execução iniciada/retomada.' });
+  updateExecution(executionId, {
+    status: 'running',
+    runtimeContext: context.data ?? execution.runtimeContext,
+    resumeMode: undefined,
+    resumeAt: undefined,
+    resumeClaimToken: undefined,
+    resumeClaimedUntil: undefined,
+    error: undefined,
+    action: 'Execução iniciada/retomada.',
+  });
 
   try {
     for (let index = startIndex; index < bot.blocks.length; index += 1) {
