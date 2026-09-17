@@ -1,6 +1,6 @@
 # Frente03 — Handoff de Catálogo + Dashboard
 
-Data: 16/09/2026
+Data: 17/09/2026
 Branch: `frente-03`
 
 Legenda:
@@ -13,7 +13,7 @@ Legenda:
 
 🟠 **INTEGRADA NA FRENTE01 + BACKEND REAL VALIDADO; FALTAM BUILD/TYPECHECK CONSOLIDADO E QA REAL DE NAVEGADOR/E2E.**
 
-A Frente01 já incorporou integralmente a Frente03 atual e usa o runtime de catálogo, Storage, Realtime e tipos Supabase atualizados.
+A Frente01 já incorporou integralmente a Frente03 atual e usa o runtime de catálogo, Storage, Realtime e tipos Supabase atualizados. Em 17/09/2026 a Frente01 registrou QA backend Auth/RBAC aprovado e liberou estruturalmente as Frentes02–05; portanto a Frente03 não deve aguardar a Frente01 para trabalho próprio.
 
 ## 🟢 Domínio e regras
 
@@ -41,6 +41,20 @@ Garantias:
 - preço do pai só é fallback quando não houver unidade publicada precificada;
 - `storagePath` não faz parte do contrato público.
 
+### QA real adicional — 17/09/2026
+
+Validação executada diretamente no backend real, com dados transitórios removidos ao final:
+
+- 🟢 unidade `published` com empreendimento pai em `draft` ficou invisível para `anon`;
+- 🟢 após publicar o empreendimento pai, a mesma unidade passou a ficar visível para `anon`;
+- 🟢 após pausar o empreendimento pai, a unidade voltou a ficar invisível para `anon`;
+- 🟢 venda do empreendimento com unidade ativa não vendida permaneceu bloqueada;
+- 🟢 após vender a unidade, foi possível vender o empreendimento;
+- 🟢 item vendido permaneceu terminal e rejeitou nova transição de status;
+- 🟢 limpeza final confirmou 0 registros com prefixo `QA-%` / `QA-F03-%`.
+
+Observação: o backend permite que uma unidade seja marcada como `published` enquanto o pai ainda está em `draft`, porém a RLS pública mantém a unidade invisível até o pai também estar publicado. Isso está coerente com o contrato atual da Frente03, cuja regra é de elegibilidade pública hierárquica, não de proibição absoluta da publicação interna antecipada.
+
 ## 🟢 Dashboard
 
 Patrimonial:
@@ -64,6 +78,8 @@ Não inferir pelo nome de etapa: visitas, propostas, negociações, vendas, VGV,
 
 Testes isolados relevantes: `DASHBOARD_HIDDEN_PUBLISHED_OK`, `DASHBOARD_INVENTORY_COUNT_OK`, `PUBLIC_DEVELOPMENT_PRICE_OK`.
 
+A integração atual da Frente01 continua compondo `CrmRepositorySnapshotSource` + `CrmSnapshotMetricsProvider` com o `catalogRepository`, mantendo somente métricas objetivas disponíveis e sem inferência por nome configurável de etapa.
+
 ## 🟢 Supabase real
 
 Projeto: `Harpia Patrimonial` (`desxomqvtjaymwwxivwq`).
@@ -82,10 +98,16 @@ Migrations Frente03 registradas:
 
 QA real cobriu RLS público/interno, RBAC `view/manage/publish`, máquina de estados, código único, tipologia, relação pai/unidade, venda do empreendimento, visibilidade hierárquica e payload de mídia.
 
-Último check:
+Último check de 17/09/2026:
 
+- 🟢 `catalog_items`: RLS habilitada;
+- 🟢 `catalog_items`: incluída em `supabase_realtime`;
+- 🟢 bucket público `catalog-media`: presente;
+- 🟢 policies de Storage para SELECT/INSERT/UPDATE/DELETE exigem `catalog.manage` para `authenticated`;
+- 🟢 0 unidades órfãs;
+- 🟢 0 códigos ativos duplicados;
 - 🟢 `QA-%` / `QA-F03-%`: 0 resíduos;
-- 🟢 Security Advisor: 0 findings;
+- 🟢 Security Advisor previamente validado com 0 findings;
 - 🟢 Performance: somente `unused_index` INFO em banco sem tráfego relevante.
 
 ## 🟢 Realtime multi-sessão — implementação
@@ -121,7 +143,7 @@ Testes: `CATALOG_MEDIA_VALIDATION_OK` e `MEDIA_REFERENCE_GUARD_OK`.
 
 ## 🟢 Integração Frente01 — confirmada
 
-No HEAD atual da Frente01:
+No estado integrado atual da Frente01:
 
 - `PlatformRuntimeProvider` usa `createCatalogRuntime`;
 - runtime expõe `catalogRepository`, `publicCatalogService` e `catalogMediaStorage`;
@@ -132,7 +154,31 @@ No HEAD atual da Frente01:
 - Frente02 recebe `runtime.publicCatalogService`;
 - `database.types.ts` contém `catalog_items`, relacionamento pai/unidade e enums do catálogo;
 - tipos gerados foram conferidos contra o schema real;
-- comparação de branches confirmou a Frente03 integralmente incorporada na Frente01.
+- Frente01 declarou em `docs/STATUS-FRENTES.md` a dependência estrutural da Frente03 como **LIBERADA**.
+
+## 🟠 Integração Frente02
+
+O contrato estrutural F03 → F02 está resolvido pela `PublicCatalogService` integrada na Frente01.
+
+A Frente02 ainda possui pendência ligada à publicação/ambiente público atual. Para a Frente03, isso bloqueia apenas o E2E final `publicar no interno → aparecer no site publicado`; não bloqueia o backend próprio nem o contrato público da F03.
+
+## 🟢 Integração Frente04
+
+O Dashboard da Frente03 já recebe o provider comercial compartilhado da Frente04 via integração da Frente01.
+
+Métricas hoje consideradas objetivas:
+
+- leads;
+- origem dos leads;
+- próximas ações/tarefas;
+- demanda por região quando há referência real de catálogo;
+- interesse por produto quando há referência real.
+
+Métricas sem semântica objetiva permanecem indisponíveis/zero, conforme regra do projeto.
+
+## 🟢 Frente05
+
+A Frente05 não bloqueia o escopo ou o fechamento técnico próprio da Frente03.
 
 ## 🟠 Validação final ainda NÃO VERIFICADA
 
@@ -146,14 +192,18 @@ No HEAD atual da Frente01:
 
 ## Bloqueio técnico atual deste chat
 
-- Frente01 ainda não possui `package-lock.json`;
+- Frente01 continua sem `package-lock.json` no estado consultado;
 - executor local desta sessão usa Node 22, enquanto o projeto exige Node 24;
 - dependências npm do projeto não estão instaladas/cacheadas neste executor.
 
 Por isso build/typecheck consolidado não foi declarado aprovado.
 
-## Estado para o usuário
+## Estado para integração final
 
-🟢 Não há dependência estrutural restante da Frente01 para a Frente03.
+🟢 Trabalho próprio de backend, domínio, catálogo público, dashboard, Storage, RLS e Realtime da Frente03 está implementado e validado no nível disponível.
 
-🟠 O verde geral depende somente de build/typecheck em ambiente compatível e QA browser/E2E real.
+🟢 Dependência estrutural da Frente01 está encerrada.
+
+🟢 Frente05 não bloqueia a Frente03.
+
+🟠 O verde geral da Frente03 depende agora somente das validações de ambiente integrado: build/typecheck, navegador/E2E, upload real pela UI, Realtime multi-sessão e o trecho do E2E público que depende da publicação atual da Frente02.
