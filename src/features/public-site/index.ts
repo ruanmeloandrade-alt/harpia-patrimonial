@@ -74,36 +74,8 @@ export {
   readCatalogFilters,
   writeCatalogFilters,
 } from './catalogQuery';
-
-/**
- * Rotas de propriedade da Frente02. O roteador global pertence à Frente01;
- * este manifesto e o matcher abaixo são a fonte local de verdade da F02 para
- * evitar que o integrador precise duplicar regras de reconhecimento de rota.
- */
-export const publicRouteManifest = [
-  '/',
-  '/sobre',
-  '/investimentos',
-  '/leiloes',
-  '/assessoria-juridica',
-  '/arquitetura',
-  '/imoveis',
-  '/imoveis/:slug',
-  '/vender',
-  '/alugar',
-  '/cliente',
-] as const;
-
-const exactPublicRoutes = new Set<string>(
-  publicRouteManifest.filter((route) => route !== '/imoveis/:slug'),
-);
-
-function normalizePublicPath(pathname: string) {
-  if (pathname === '/') return '/';
-  return pathname.replace(/\/+$/, '') || '/';
-}
-
-export function matchesFront02PublicRoute(pathname: string) {
-  const normalized = normalizePublicPath(pathname);
-  return exactPublicRoutes.has(normalized) || /^\/imoveis\/[^/]+$/.test(normalized);
-}
+export {
+  matchesFront02PublicRoute,
+  normalizeFront02PublicPath,
+  publicRouteManifest,
+} from './routes';
