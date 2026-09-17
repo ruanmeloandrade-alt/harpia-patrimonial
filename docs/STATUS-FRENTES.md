@@ -5,9 +5,9 @@ Atualizar este arquivo ao iniciar e ao concluir blocos relevantes.
 ## Frente01 — Núcleo/Auth/Usuários/Permissões
 
 - Branch: `frente-01`
-- Observação F05 em 17/09/2026: status autoritativo da F01 permanece **INTEGRADA ESTRUTURALMENTE — F02/F03/F04/F05 LIBERADAS PARA CONTINUAR**.
-- F01 mantém shell/runtime compartilhado, RBAC `view/manage`, tipos Supabase e a integração estrutural da F05.
-- Atenção de sincronização: comparação atual `frente-01...frente-05` mostra **26 commits da F05 ainda fora da F01**.
+- F01 mantém shell/runtime compartilhado, RBAC `view/manage`, tipos Supabase e integração estrutural da F05.
+- Comparação em 17/09/2026: `frente-05` está **34 commits à frente** e **544 atrás** de `frente-01`; branches divergidas.
+- PR F05→F01 continua aberto e não mergeável automaticamente; integração deve ser feita pela frente proprietária, sem sobrescrever trabalho paralelo.
 
 ## Frente02 — Site público/Área do cliente
 
@@ -28,10 +28,9 @@ Atualizar este arquivo ao iniciar e ao concluir blocos relevantes.
 ## Frente05 — SalesBot/Automatize/IA/Integrações
 
 - Branch: `frente-05`
-- Status: **NÚCLEO F05 🟢 / RUNTIME SERVER-SIDE F05 🟢 / INTEGRAÇÃO ESTRUTURAL F01↔F05 🟢 / SINCRONIZAÇÃO F05→F01 🟠 / QA FINAL AUTENTICADO 🟠**.
-- Responsável: chat atual — Frente05.
-- Relatório histórico: `docs/frentes/FRENTE-05-TESTES.md`.
-- Handoff atual: `docs/frentes/FRENTE-05-INTEGRACAO-F01.md`.
+- Status: **NÚCLEO 🟢 / RUNTIME SERVER-SIDE 🟢 / DELAY DURÁVEL 🟢 / INTEGRAÇÃO F01 🟠 / QA AUTENTICADO 🟠**.
+- Relatório de testes: `docs/frentes/FRENTE-05-TESTES.md`.
+- Handoff: `docs/frentes/FRENTE-05-INTEGRACAO-F01.md`.
 
 ### 🟢 Núcleo F05
 
@@ -42,112 +41,105 @@ Atualizar este arquivo ao iniciar e ao concluir blocos relevantes.
 - cofre IA via Vault;
 - storage compartilhado com optimistic locking, rollback e escrita confirmada;
 - RBAC F05 com `view/manage`, `manage => view` e default-deny;
-- URL/webhook validation alinhada ao backend;
-- proteção contra ciclos A→B→A e exclusão/pausa de recursos ainda referenciados;
+- proteção contra ciclos e exclusão/pausa de recursos referenciados;
 - consistência perfil IA ↔ Vault com compensação;
-- API pública consolidada em `src/features/automations/index.ts`;
-- retomada de delays com `resumeAt`, lease temporário e proteção contra retomada duplicada entre sessões.
+- API pública consolidada em `src/features/automations/index.ts`.
 
 ### 🟢 Runtime server-side F05
 
-Criado e implantado no Supabase o Edge Function interno `f05-runtime-worker`.
-
-Responsabilidades já implementadas no lado F05:
-
+- `f05-runtime-worker` implantado e ACTIVE;
 - `start_salesbot` server-side;
 - `invoke_ai` server-side;
-- leitura de SalesBots/agentes/perfis a partir do storage compartilhado real;
-- persistência de execuções com optimistic locking por `revision`;
-- ações CRM via `admin_apply_crm_automation_action`;
-- encadeamento de SalesBot com limite de profundidade;
-- condições e delays;
-- webhooks HTTPS com bloqueio de hosts privados/reservados, DNS validation, redirect manual e timeout;
-- execução de OpenAI/Codex, Claude, Gemini e customizado usando credencial resolvida server-side;
-- canal de mensagem continua corretamente `not_configured` enquanto WhatsApp real não estiver conectado;
-- função aceita somente chamadas internas autenticadas com a chave server-side.
+- ações CRM;
+- condições;
+- webhook com SSRF hardening;
+- encadeamento de SalesBots;
+- credencial IA resolvida somente server-side;
+- chamada não autorizada ao runtime retorna `401`.
 
-Security Advisor após deploy: 0 lints.
+### 🟢 Scheduler durável de delays
 
-### 🟢 Testes/validações isoladas já registradas
+- `f05-delay-worker` implantado e ACTIVE;
+- `pg_cron` + `pg_net` ativos;
+- job `f05-delay-resume-30s` ativo a cada 30 segundos;
+- token interno no Supabase Vault;
+- endpoint rejeita token inválido com `401`;
+- lease/claim impede retomada simultânea;
+- código e schema versionados em GitHub.
 
-- runtime SalesBot básico;
-- command port SalesBot;
-- motor Automatize;
-- adapters de provedores IA;
-- runtime de agente IA;
-- storage race/rollback;
-- escrita confirmada;
-- consistência perfil/Vault;
-- integridade de referências/ciclos;
-- validação de URLs externas;
-- `F05_CONTEXT_RESUME_TEST_OK`;
-- `F05_CHAIN_CONTEXT_TEST_OK`.
+Teste funcional real em 17/09/2026:
 
-### 🟢 Integração estrutural confirmada na Frente01
+- execução temporária `paused/next_block` vencida foi retomada no backend;
+- avançou para `finish` e terminou `completed`;
+- teste adicional retomou um SalesBot pai, chamou `f05-runtime-worker`, executou SalesBot filho e ambos terminaram `completed`;
+- todos os fixtures foram removidos após os testes;
+- coleções `salesbots` e `salesbot-executions` voltaram a zero itens.
 
-- rotas/sidebar F05;
-- RBAC `view OR manage` nas rotas;
-- `canManage` explícito nos workspaces;
-- gate de hidratação e Realtime;
-- CRM → Automatize;
-- Inbox → SalesBot/IA;
-- SalesBot composto com CRM + IA + condição + webhook;
-- Automatize composto com CRM + SalesBot + IA + webhook no runtime interno;
-- `ai-model-invoke`;
-- `ai-credential-vault` + Supabase Vault;
-- worker server-side de eventos;
-- tipos Supabase sincronizados com schema integrado.
+### 🟢 Segurança/backend
 
-### 🟠 Sincronização F05 → F01
+- Security Advisor: 0 lints na última conferência;
+- scheduler RPC restrito a `service_role`/postgres;
+- runtime server-side exige bearer da service role;
+- scheduler usa segredo dedicado do Vault e valida hash server-side;
+- endpoints externos exigem HTTPS e bloqueiam redes internas/reservadas e redirects.
 
-Comparação atual entre as branches confirma `frente-05` com 26 commits ainda fora de `frente-01`.
+### 🟠 Integração F05 → F01
 
-Além dos hardenings anteriores, a F05 agora também entrega:
+Comparação atual:
 
-- lease de retomada de delays;
-- proteção contra retomada duplicada;
-- limpeza correta do lease;
-- `f05-runtime-worker` server-side para SalesBot e IA.
+- F05 à frente da F01: **34 commits**;
+- F05 atrás da F01: **544 commits**;
+- branches divergidas;
+- PR existente não é mergeável automaticamente.
 
-O PR #1 continua sendo o canal de integração F05 → F01 e não deve ser forçado se houver conflito com trabalho paralelo da F01.
+A F01 precisa absorver os hardenings e os componentes server-side F05 sem sobrescrever as mudanças próprias da F01.
 
-### 🟠 Pendências reais de QA/fase final
+Lacuna operacional ainda existente no `automation-event-worker` da F01:
 
-- `auth.users = 0` e perfis internos ativos = 0 na conferência de 17/09/2026;
-- o antigo `f01-bootstrap-qa` está encerrado (HTTP 410), portanto a F05 não possui caminho autorizado próprio para criar Auth sem invadir responsabilidade da F01;
-- criar admin QA + viewer QA por caminho oficial da F01/Auth;
-- E2E autenticado de `view/manage`, RLS, storage, Realtime e cofre;
-- build/typecheck consolidado ainda sem aprovação registrada;
-- chamada real de IA continua dependendo de uma chave real cadastrada;
-- WhatsApp/Meta reais permanecem fase posterior.
+- CRM: conectado;
+- webhook: conectado;
+- `start_salesbot`: ainda `not_configured`;
+- `invoke_ai`: ainda `not_configured`.
 
-### 🟠 Integração do outbox server-side
+A F05 já disponibiliza `f05-runtime-worker` para essas duas ações.
 
-A lacuna que antes era falta de runtime do lado F05 foi reduzida: `f05-runtime-worker` agora executa `start_salesbot` e `invoke_ai`.
+### 🟠 QA autenticado
 
-Ainda falta a Frente01 alterar o `automation-event-worker` dela para encaminhar essas duas ações ao novo runtime interno F05. A F05 não deve sobrescrever a Edge Function proprietária da F01 sem coordenação.
+Conferência real em 17/09/2026:
 
-### Dependências atuais
+- `auth.users = 0`;
+- `user_profiles` ativos = 0;
+- `admin-user` existe e usa fluxo oficial de Supabase Auth, porém exige chamador autenticado com `users.manage`;
+- não será criado bypass nem feito insert direto em `auth.users`.
 
-- Frente01: sincronizar os 26 commits/hardenings atuais da F05.
-- Frente01: conectar `automation-event-worker` → `f05-runtime-worker` para `start_salesbot` e `invoke_ai`.
-- Frente01/Auth: criar os dois usuários temporários de QA por caminho oficial.
-- Produto/integração: build/typecheck conjunto.
-- Frente04: nenhuma mudança nova de contrato exigida neste momento.
+As 8 permissões F05 existem no backend:
 
-### Próximo passo da Frente05
+- `salesbot.view` / `salesbot.manage`;
+- `automations.view` / `automations.manage`;
+- `ai.view` / `ai.manage`;
+- `integrations.view` / `integrations.manage`.
 
-Continuar hardening próprio e validação do runtime server-side. Quando F01 conectar o worker e disponibilizar usuários de QA, executar imediatamente E2E autenticado e fluxo outbox → SalesBot/IA. Não criar dados operacionais falsos, não forçar credenciais e não marcar WhatsApp/Meta como conectados antes da fase real.
+Grupo de sistema `Administrador` está ativo e possui as 8 permissões F05.
+
+### 🟠 Pendências finais reais
+
+- sincronização F05 → F01;
+- ligar `automation-event-worker` da F01 ao `f05-runtime-worker`;
+- criar admin/viewer QA pelo fluxo oficial de Auth quando houver primeiro admin autenticado;
+- E2E autenticado de RBAC/RLS/UI;
+- build/typecheck consolidado;
+- chamada real a provedor IA com chave real;
+- WhatsApp real;
+- Meta real.
 
 ---
 
 # Pedidos entre frentes
 
-- F05 → F01 — rotas/sidebar/cofre/runtime interno: **RESOLVIDO**.
-- F05 → F01 — sincronizar branch F05: **PENDENTE — 26 commits atuais ainda fora da F01**.
-- F05 → F01 — RBAC `view/manage`: **RESOLVIDO**.
-- F05 → F01/Auth — usuários temporários de QA: **PENDENTE**.
-- F05 → F01 — conectar `automation-event-worker` ao `f05-runtime-worker`: **PENDENTE**.
+- F05 → F01 — rotas/sidebar/cofre/runtime estrutural: **RESOLVIDO HISTORICAMENTE**.
+- F05 → F01 — sincronizar 34 commits atuais da F05: **PENDENTE**.
+- F05 → F01 — conectar worker de automações ao runtime server-side F05: **PENDENTE**.
+- F05 → F01/Auth — usuários temporários QA: **PENDENTE DE CAMINHO OFICIAL COM ADMIN AUTENTICADO**.
 - F05 ↔ F04 — contratos CRM/Inbox: **ESTRUTURA PRESENTE; E2E PENDENTE**.
 
 ---
