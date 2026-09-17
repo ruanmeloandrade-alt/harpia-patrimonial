@@ -1,6 +1,6 @@
 # Frente05 — validações e testes
 
-Data: 16/09/2026
+Data: 17/09/2026
 Branch: `frente-05`
 
 Este documento registra somente verificações realmente executadas. Não substitui build/E2E autenticado do produto consolidado.
@@ -20,32 +20,33 @@ Validado:
 - encadeamento usa o mesmo factory de command port;
 - erros não são mascarados como sucesso.
 
-## 2. Contexto de retomada e encadeamento
+## 2. Contexto de retomada, concorrência e encadeamento
 
-Status: 🟢 OK em harness isolado executado em 16/09/2026.
+Status: 🟢 estrutura implementada; testes isolados anteriores aprovados para contexto/encadeamento.
 
-Código testado: `runtimePorts.ts`, contrato atual de `runtime.ts` e repositório de execuções com dependências controladas.
+Validado anteriormente:
 
-Cenário 1 — pausa/recriação/retomada:
+- contexto persiste durante pausa;
+- recriação do command port não perde contexto;
+- `resume()` preserva `leadId` e `conversationId` canônicos;
+- conclusão remove `runtimeContext`;
+- SalesBot A → B preserva contexto.
 
-- `start()` recebeu contexto inicial;
-- contexto foi persistido junto da execução pausada;
-- command port foi recriado;
-- `resume()` recuperou contexto anterior;
-- contexto novo sobrescreveu somente chaves novas/alteradas;
-- `leadId` e `conversationId` permaneceram canônicos;
-- bloco posterior ao delay recebeu o contexto mesclado;
-- ao concluir, `runtimeContext` foi removido do log.
+Resultados anteriores:
 
-Resultado: `F05_CONTEXT_RESUME_TEST_OK`.
+- `F05_CONTEXT_RESUME_TEST_OK`;
+- `F05_CHAIN_CONTEXT_TEST_OK`.
 
-Cenário 2 — SalesBot A → SalesBot B:
+Hardening posterior implementado em 17/09/2026:
 
-- A chamou B por `chain_flow`;
-- B recebeu o mesmo payload operacional;
-- `leadId` e `conversationId` foram preservados.
+- `resumeClaimToken`;
+- `resumeClaimedUntil`;
+- lease de retomada;
+- escrita confirmada com optimistic locking antes de retomar;
+- exclusão de execuções com lease ativo da lista de delays elegíveis;
+- limpeza do lease ao iniciar, pausar, concluir ou falhar.
 
-Resultado: `F05_CHAIN_CONTEXT_TEST_OK`.
+Teste concorrente multi-browser ainda depende de E2E autenticado.
 
 ## 3. Automatize
 
@@ -53,8 +54,10 @@ Status: 🟢 OK em teste isolado.
 
 - evento + condição verdadeira executa ações em ordem;
 - condição falsa não executa ações;
-- `not_configured`/`rejected` interrompem sequência para evitar estado parcial;
-- referências de SalesBot/agente são validadas.
+- `not_configured`/`rejected` interrompem sequência;
+- referências de SalesBot/agente são validadas;
+- metadados canônicos do evento não podem ser sobrescritos pelo payload;
+- método de webhook é normalizado.
 
 ## 4. Integridade de referências
 
@@ -67,8 +70,6 @@ Status: 🟢 OK em testes controlados.
 - ciclos A→B→A em SalesBots são detectados;
 - autoencadeamento é bloqueado.
 
-Resultado registrado anteriormente: `F05 reference-integrity/cycle tests: OK`.
-
 ## 5. Provedores e runtime IA
 
 Status: 🟢 estrutural/isolado; 🟠 chamada real depende de credencial real.
@@ -80,9 +81,11 @@ Validado com respostas controladas:
 - Google Gemini;
 - customizado;
 - resolução de `secretRef` somente no backend;
-- logs de IA não persistem prompt/resposta.
-
-Runtime integrado da F01 usa `ai-model-invoke`.
+- logs de IA não persistem prompt/resposta;
+- HTTPS obrigatório;
+- CGNAT e redes privadas/reservadas bloqueados;
+- redirect manual;
+- timeout explícito.
 
 ## 6. Cofre Supabase/Vault
 
@@ -90,14 +93,14 @@ Status: 🟢 backend real validado.
 
 Projeto: `desxomqvtjaymwwxivwq`.
 
-Validado:
+Validado anteriormente:
 
 - salvar segredo;
 - resolver por `secretRef`;
 - remover segredo;
 - segredo de teste removido ao final;
 - browser não recebe chave bruta;
-- caminho canônico atual: `ai-credential-vault` + `private.ai_credential_refs` + Supabase Vault.
+- caminho canônico: `ai-credential-vault` + Supabase Vault.
 
 ## 7. Consistência perfil IA ↔ Vault
 
@@ -107,12 +110,10 @@ Validado:
 
 - primeira chave só fica configurada após persistência confirmada do perfil;
 - falha de persistência aciona compensação no Vault;
-- atualização de chave preserva `secretRef` existente quando aplicável;
+- atualização preserva `secretRef` quando aplicável;
 - remoção confirma perfil antes de apagar segredo;
 - falha de remoção restaura perfil anterior;
 - exclusão de perfil é revertida se limpeza do Vault falhar.
-
-Resultado: `F05 credential/profile consistency tests: OK`.
 
 ## 8. Storage compartilhado / multiusuário
 
@@ -120,23 +121,18 @@ Status: 🟢 em backend e testes controlados; 🟠 browser autenticado pendente.
 
 Validado:
 
-- sete coleções estruturais F05 existem sem dados operacionais fictícios;
+- coleções estruturais F05 sem dados operacionais fictícios;
 - optimistic locking por revisão;
 - rollback por geração;
 - refresh remoto invalida rollback atrasado;
-- `writeStoredListConfirmed(...)` confirma/rejeita mutações críticas;
-- listeners atualizam SalesBot, Automatize, Agentes, Integrações e Execuções;
-- RLS/default-deny verificados;
-- Security Advisor já foi validado com 0 lints após hardening.
-
-Resultados:
-
-- `F05 storage race/rollback tests: OK`;
-- `F05 confirmed-write tests: OK`.
+- escrita confirmada para mutações críticas;
+- listeners de UI;
+- RLS/default-deny;
+- Security Advisor atual: 0 lints.
 
 ## 9. URLs externas / webhook
 
-Status: 🟢 F05; 🟢 hardening correspondente no worker F01.
+Status: 🟢 F05.
 
 Validado/bloqueado:
 
@@ -146,22 +142,21 @@ Validado/bloqueado:
 - CGNAT `100.64.0.0/10`;
 - IPv6 local/privado literal;
 - métodos fora do conjunto permitido;
-- worker server-side recusa redirects externos.
-
-Resultado anterior: `F05 outbound URL validation tests: OK`.
+- redirects externos;
+- timeout explícito.
 
 ## 10. RBAC Frente01 ↔ Frente05
 
-Status: 🟢 estruturalmente RESOLVIDO na F01; 🟠 E2E com usuários reais pendente.
+Status: 🟢 estruturalmente resolvido na F01; 🟠 E2E com usuários reais pendente.
 
-Confirmado na branch F01:
+Confirmado anteriormente:
 
-- rotas SalesBot aceitam `salesbot.view OR salesbot.manage`;
-- Automatize aceita `automations.view OR automations.manage`;
-- Agentes IA aceita `ai.view OR ai.manage`;
-- Integrações aceita `integrations.view OR integrations.manage`;
-- `canManage` é passado explicitamente;
-- F05 continua default-deny quando acesso não é informado.
+- `salesbot.view OR salesbot.manage`;
+- `automations.view OR automations.manage`;
+- `ai.view OR ai.manage`;
+- `integrations.view OR integrations.manage`;
+- `canManage` explícito;
+- default-deny na F05.
 
 ## 11. Integração CRM/Inbox
 
@@ -173,40 +168,78 @@ Confirmado:
 - ações CRM usadas por SalesBot/Automatize;
 - Inbox → command ports SalesBot/IA;
 - condição e webhook ligados ao runtime interno;
-- contexto de SalesBot agora sobrevive a pausa/recriação/retomada;
-- canais de mensagem não fingem conexão real.
+- contexto de SalesBot sobrevive a pausa/recriação/retomada;
+- canais não fingem conexão WhatsApp real.
 
-## 12. Worker server-side de automações
+## 12. Runtime server-side F05
 
-Status: 🟠 parcial.
+Status: 🟢 implementado e implantado no Supabase; 🟠 consumo pelo worker F01 ainda pendente.
 
-O worker atual da F01 executa:
+Edge Function implantada em 17/09/2026:
+
+- `f05-runtime-worker` — ACTIVE, versão 1.
+
+Fonte versionada na branch F05:
+
+- `supabase/functions/f05-runtime-worker/index.ts`;
+- `supabase/functions/f05-runtime-worker/config.toml`.
+
+Capacidades implementadas:
+
+- `start_salesbot`;
+- `invoke_ai`;
+- leitura de estado compartilhado F05;
+- persistência de execução com revisão otimista;
+- condições;
+- delays;
+- ações CRM;
+- webhook;
+- encadeamento de bot;
+- agente IA;
+- execução dos quatro perfis de provedor suportados;
+- credencial resolvida somente server-side;
+- SSRF hardening;
+- `not_configured` correto para mensagem enquanto canal real não estiver conectado.
+
+Validação executada nesta rodada:
+
+- deploy aceito pelo Supabase e função retornada como `ACTIVE`;
+- Security Advisor após deploy: 0 lints.
+
+Não foi afirmado teste funcional com bot/agente real porque as coleções operacionais continuam vazias e não devem ser populadas com mock permanente.
+
+## 13. Worker server-side de automações da F01
+
+Status: 🟠 integração pendente na frente proprietária.
+
+O `automation-event-worker` atual da F01 ainda executa:
 
 - CRM: conectado;
 - webhook: conectado;
-- `start_salesbot`: `not_configured`;
-- `invoke_ai`: `not_configured`.
+- `start_salesbot`: ainda `not_configured`;
+- `invoke_ai`: ainda `not_configured`.
 
-Consequência: automação originada no outbox server-side ainda não é ponta a ponta para SalesBot/IA. O runtime interno/browser já possui esses dois recursos conectados.
+A diferença agora é que existe runtime F05 pronto para receber essas duas ações. Falta somente o encaminhamento no worker proprietário da F01.
 
-## 13. Usuários temporários de QA
+## 14. Usuários temporários de QA
 
 Status: 🟠 autorizados, ainda inexistentes.
 
-Autorizado criar:
-
-- 1 admin interno temporário;
-- 1 viewer interno temporário com `*.view` sem `*.manage`;
-- excluir ambos após QA.
-
-Última conferência real nesta rodada:
+Conferência real em 17/09/2026:
 
 - `auth.users = 0`;
-- usuários internos ativos = 0.
+- `user_profiles` ativos = 0;
+- `f01-bootstrap-qa` está encerrado e retorna 410.
 
-A sessão F05 não possui caminho seguro para criar Auth e não fez bypass direto em `auth.users`.
+A F05 não fará insert direto em `auth.users` nem criará bypass de autenticação.
 
-## 14. Ainda não verificado
+## 15. Build/typecheck
+
+Status: 🟠 NÃO VERIFICADO no produto consolidado.
+
+Tentativa local nesta sessão não foi considerada validação porque o ambiente de execução não possui acesso de rede direto ao GitHub/npm para clonar/instalar a branch. Não marcar como verde até execução em ambiente apropriado.
+
+## 16. Ainda não verificado
 
 Não marcar como verde final:
 
@@ -216,7 +249,7 @@ Não marcar como verde final:
 - persistência/concorrência via browser autenticado;
 - cofre pela UI autenticada;
 - chamada real a provedor IA com chave real;
-- outbox server-side → SalesBot/IA;
-- agendador durável de produção para `delay`;
+- `automation-event-worker` F01 → `f05-runtime-worker`;
+- scheduler server-side durável para retomar delays sem depender de sessão/processo cliente;
 - WhatsApp real;
 - Meta real.
