@@ -1,35 +1,40 @@
 # Handoff — Frente04 CRM/Inbox
 
-Data-base: 16/09/2026
+Data-base: 17/09/2026
 Branch: `frente-04`
 
-## Status visual
+## Status
 
-- 🟠 CRM/Kanban/Lead 360 — implementação, hardening, realtime visual, fila sem etapa, modo leitura e aviso de persistência já integrados na Frente01; backend RBAC real validado; falta build/UI E2E.
-- 🟠 Inbox — implementação, invariantes de transporte, realtime visual, RBAC fino e integração F05 já integrados na Frente01; backend RBAC real validado; falta build/UI E2E.
-- 🟢 RBAC backend CRM/Inbox — `view/manage`, leitura RLS, bloqueio de escrita e diretório de responsáveis validados com identidades temporárias autenticadas e depois removidas.
-- 🟠 Persistência multiusuário — infraestrutura oficial da Frente01 com Supabase/optimistic locking/realtime; falha de persistência agora é exibida na UI; falta ensaio visual de conflito real entre sessões.
-- 🟠 Site→CRM / Dashboard / F05 — composição integrada existe na Frente01; falta E2E visual/autenticado.
-- 🔴 Build/typecheck consolidado — ainda não verificado pela árvore integrada.
-- 🔴 Validação final pelo usuário — ainda não executada.
+- 🟠 CRM/Kanban/Lead 360 — implementação e integração estrutural concluídas; backend RBAC já validado; falta somente execução de build/typecheck e E2E visual em ambiente executável.
+- 🟠 Inbox — implementação e integração estrutural concluídas; seleção explícita de SalesBot/agente agora é preservada por conversa e também durante remount causado por realtime; falta build/typecheck e E2E visual.
+- 🟢 RBAC backend CRM/Inbox — `view/manage`, leitura RLS, bloqueio de escrita e diretório de responsáveis validados com identidades temporárias autenticadas e removidas após o QA.
+- 🟠 Persistência multiusuário — usa infraestrutura oficial da Frente01 com Supabase, optimistic locking e realtime; falha de persistência é exibida na UI; conflito visual entre duas sessões continua NÃO VERIFICADO.
+- 🟠 Site→CRM / Dashboard / F05 — contratos e composição integrados; E2E visual/autenticado continua NÃO VERIFICADO.
 
-Nenhum item de produto recebe 🟢 apenas porque o código existe.
+Nenhum item foi marcado como 🟢 apenas porque o código existe.
 
-## Sincronização atual com a Frente01
+## Sincronização com a Frente01
 
-A Frente01 já absorveu o delta atual de RBAC/persistência da Frente04.
+A Frente04 foi reposicionada sobre o head final informado da Frente01:
 
-No head observado da Frente01 (`603af07f66f52428d9f21de32ef441831eb82ad7`):
+- base Frente01: `bd6dbbc50dfe35841d6ca4ba6c930e6bc5d16cf5`;
+- commit funcional de sync F04: `030116fb7ac6a864e28f8330889c009a6b009b77`;
+- a branch `frente-04` está 0 commits atrás da Frente01;
+- o delta funcional de código da Frente04 sobre essa base é somente `src/features/inbox/InboxWorkspaceCore.tsx`;
+- CRM e os demais arquivos da Inbox estão alinhados com a árvore final da Frente01.
 
-- `/interno/crm` aceita `CRM_VIEW` ou `CRM_MANAGE`;
-- `/interno/inbox` aceita `INBOX_VIEW` ou `INBOX_MANAGE`;
-- `IntegratedCrm` passa `canManage={CRM_MANAGE}`;
-- `IntegratedInbox` passa capacidades separadas de Inbox, CRM, SalesBot e IA;
-- `PersistenceErrorNotice.tsx` está presente;
-- `readOnlyAccess.ts` está presente;
-- wrappers atuais de CRM/Inbox estão presentes.
+O histórico divergente antigo não é mais usado como base de trabalho.
 
-A Frente04 e a Frente01 continuam com históricos de branch divergentes, mas o comportamento necessário da F04 está presente na árvore integrada observada.
+## Delta funcional novo da Inbox
+
+A Inbox passou a preservar a seleção de automação por conversa:
+
+- SalesBot selecionado é memorizado por `conversationId`;
+- agente IA selecionado é memorizado por `conversationId`;
+- alternar entre conversas não apaga a escolha da outra conversa;
+- remount causado por atualização realtime não apaga a seleção da sessão atual;
+- a seleção continua explícita; nenhum bot/agente é escolhido automaticamente;
+- o estado não é persistido como dado operacional no backend e não cria mock.
 
 ## CRM entregue
 
@@ -39,155 +44,107 @@ A Frente04 e a Frente01 continuam com históricos de branch divergentes, mas o c
 - Lead 360;
 - responsável;
 - tags;
-- campos personalizados tipados e validados;
+- campos personalizados tipados;
 - tarefas/próximas ações;
 - histórico;
 - eventos CRM;
 - fila de leads sem etapa;
-- conversões sem etapa continuam visíveis;
+- conversões sem etapa permanecem visíveis;
 - nenhuma etapa/default fictícia;
-- classificação somente para funil ativo;
 - realtime sem reset visual por eco do próprio save;
-- falha de persistência compartilhada aparece na UI;
-- `CrmWorkspace` aceita `canManage?: boolean`;
-- em modo leitura, métodos mutáveis do `CrmService` são bloqueados no contrato e a fila sem etapa não permite classificação.
-
-Arquitetura canônica:
-
-- `CrmWorkspace.tsx` — integração/realtime/RBAC;
-- `CrmWorkspaceCore.tsx` — implementação visual;
-- `service.ts` — hardening;
-- `serviceCore.ts` — CRUD/base;
-- `readOnlyAccess.ts` — proteção de mutações por capacidade;
-- `PersistenceErrorNotice.tsx` — aviso de falha remota.
+- falha de persistência compartilhada visível na UI;
+- modo somente leitura por capacidade de gestão.
 
 ## Inbox entregue
 
-- três colunas;
+- layout em três colunas;
 - conversa + contexto CRM;
 - sessão interna sem simular WhatsApp;
-- envio real bloqueado sem transporte;
-- texto/áudio/imagem/vídeo/documento/form previstos no contrato;
-- responsável, etapa, tags, campos e tarefas pelo contexto da conversa;
+- envio bloqueado sem transporte real;
+- recursos preparados para texto, áudio, imagem, vídeo, documento e formulário;
+- alteração de responsável, etapa, tags, campos e tarefas pelo contexto da conversa;
 - seleção explícita de SalesBot e agente IA;
-- realtime sem reset visual quando snapshots são equivalentes;
+- seleção preservada por conversa durante navegação/remount realtime;
 - canal não pode ficar `connected` sem transporte real;
 - dedupe de mensagem externa por conversa + ID externo;
-- falhas de persistência CRM/Inbox aparecem na UI.
+- falhas de persistência CRM/Inbox visíveis na UI.
 
-### RBAC fino da Inbox
+## RBAC fino da Inbox
 
-`InboxWorkspace` aceita:
+`InboxWorkspace` mantém capacidades independentes:
 
-- `canManageInbox?: boolean`;
-- `canManageCrm?: boolean`;
-- `canManageSalesBot?: boolean`;
-- `canManageAiAgent?: boolean`;
-- `canManage?: boolean` como atalho legado.
+- `canManageInbox`;
+- `canManageCrm`;
+- `canManageSalesBot`;
+- `canManageAiAgent`;
+- `canManage` apenas como atalho legado.
 
-As quatro capacidades são independentes:
+Status pode continuar legível sem liberar comando de gestão.
 
-- Inbox controla sessão/envio/mutação de conversa;
-- CRM controla estágio/responsável/tags/campos/tarefas;
-- SalesBot controla start/pause do bot;
-- IA controla start/pause do agente.
+## QA backend já executado
 
-Status de automação continua legível quando o usuário possui acesso de leitura, sem liberar comando de gestão.
+Documento: `docs/frentes/FRENTE-04-RBAC-QA.md`.
 
-## QA real de RBAC executado
+Resultado preservado:
 
-Documento detalhado: `docs/frentes/FRENTE-04-RBAC-QA.md`.
-
-Foram criadas identidades temporárias de QA autorizadas, sem senha e sem dados operacionais fictícios:
-
-- administrador temporário;
-- usuário interno somente leitura.
-
-Resultados observados com `auth.uid()` simulado por JWT `authenticated`:
-
-### Administrador
-
-- `crm.view`/`crm.manage` → `true`;
-- `inbox.view`/`inbox.manage` → `true`;
-- `salesbot.view`/`salesbot.manage` → `true`;
-- `ai.view`/`ai.manage` → `true`.
-
-### Somente leitura
-
-- `crm.view` → `true`;
-- `crm.manage` → `false`;
-- `inbox.view` → `true`;
-- `inbox.manage` → `false`;
-- `salesbot.view` → `true`;
-- `salesbot.manage` → `false`;
-- `ai.view` → `true`;
-- `ai.manage` → `false`.
-
-Com o usuário somente leitura:
-
-- leitura de `platform_module_state` CRM/Inbox funcionou;
-- tentativa de `save_platform_module_state` foi recusada com `not authorized to write module state`;
-- `list_internal_assignees()` funcionou.
-
-Após o ensaio:
-
-- usuários temporários restantes = `0`;
-- grupos temporários restantes = `0`;
-- CRM revision = `0`;
-- Inbox revision = `0`;
-- nenhum lead/conversa/dado operacional fictício foi criado.
+- administrador temporário recebeu permissões de leitura/gestão esperadas;
+- usuário temporário somente leitura recebeu `*.view` e não recebeu `*.manage`;
+- leitura de estado CRM/Inbox funcionou;
+- tentativa de escrita sem permissão foi recusada;
+- diretório de responsáveis funcionou;
+- identidades/grupos temporários foram removidos;
+- nenhum lead, conversa ou dado operacional fictício foi deixado.
 
 ## Integração Frente05
 
-O adapter F04↔F05:
+O adapter F04↔F05 continua responsável por:
 
-- recebe `botId`/`agentId` explícitos;
-- preserva `executionId` por lead/conversa durante recriações de runtime na mesma sessão;
-- só retoma o mesmo SalesBot;
-- não reaproveita status de recurso diferente;
-- evita invocação duplicada do mesmo agente já `running`;
-- não pausa execução já encerrada;
-- limpa ponteiros concluídos/falhos/not_found;
-- expõe ações CRM reais para Automatize;
-- converte eventos CRM para o contrato F05.
+- `botId`/`agentId` explícitos;
+- preservar `executionId` durante recriações de runtime na mesma sessão;
+- não retomar recurso diferente;
+- evitar invocação duplicada de agente já em execução;
+- não pausar execução encerrada;
+- limpar ponteiros concluídos/falhos/not_found;
+- expor ações CRM para Automatize;
+- converter eventos CRM para o contrato F05.
 
 ## Persistência oficial
 
-A fonte de verdade permanece na Frente01:
+A fonte de verdade multiusuário permanece na infraestrutura da Frente01:
 
 - `platform_module_state`;
 - RLS;
 - RPC de save;
 - optimistic locking;
-- merge seguro de leads públicos;
+- merge de leads públicos;
 - Supabase Realtime.
 
-`sharedStatePersistence.ts` não deve ser restaurado na Frente04.
+Não restaurar persistência paralela/local como fonte de verdade multiusuário.
 
-## Backend observado após o QA
+## NÃO VERIFICADO neste ambiente
 
-- projeto Supabase Hárpia ativo;
-- usuários temporários de QA removidos;
-- CRM revision = `0`;
-- Inbox revision = `0`;
-- sem dados fictícios operacionais;
-- build/typecheck consolidado ainda não confirmado pela Frente01.
-
-## NÃO VERIFICADO ainda
-
-- `npm run build` consolidado;
-- TypeScript completo da árvore integrada;
+- `npm run build` com Node 24;
+- `npm run typecheck` completo;
 - login real pelo navegador;
 - comportamento visual de `crm.view` e `inbox.view` em sessão real;
 - CRUD + refresh pela UI autenticada;
 - conflito real entre duas sessões;
 - conversão pública → fila sem etapa → classificação pela UI;
 - dashboard refletindo alteração CRM real;
-- Inbox ↔ SalesBot/IA/Automatize ponta a ponta;
+- Inbox ↔ SalesBot/IA/Automatize ponta a ponta no navegador;
 - continuidade de execução após reload completo;
 - WhatsApp real;
-- teste final pelo usuário.
+- validação final pelo usuário.
 
-## Critério de fechamento
+## Handoff obrigatório
 
-A Frente04 só muda para 🟢 quando build/typecheck integrado estiver válido, a UI autenticada estiver executável e os fluxos principais puderem ser testados ponta a ponta pelo usuário.
+- Status: 🟠 funcionalmente implementado e sincronizado; validação executável final ainda pendente.
+- Commit funcional: `030116fb7ac6a864e28f8330889c009a6b009b77`.
+- O que foi entregue: CRM configurável, Lead 360, Inbox operacional, RBAC fino, persistência integrada, contratos F02/F03/F05 e preservação de seleção de automação por conversa.
+- O que ficou pendente: build/typecheck e E2E visual/autenticado em ambiente executável.
+- Modelo de dados CRM: funil, etapa, lead, tags, campos personalizados, tarefas, histórico e origem/contexto de conversão.
+- Eventos emitidos: criação de lead, mudança de etapa, campo, tag e demais eventos extensíveis do contrato CRM.
+- Contratos esperados da Frente05: comandos/status de SalesBot e IA e eventos para Automatize.
+- Integrações esperadas com catálogo/site: contexto de imóvel/produto e ingestão de conversão sem mensagem automática.
+- Riscos conhecidos: somente os itens marcados como NÃO VERIFICADO acima; não há dependência estrutural pendente da Frente01.
+- Instruções para integração: usar `frente-04` atual; não recuperar o histórico divergente anterior; preservar o delta de `InboxWorkspaceCore.tsx` ao integrar.
