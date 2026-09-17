@@ -43,7 +43,7 @@ Hardening de 17/09/2026:
 - exclusão de execuções com lease ativo da lista de delays elegíveis;
 - limpeza do lease ao iniciar, pausar, concluir ou falhar.
 
-Teste concorrente multi-browser ainda depende de E2E autenticado.
+Teste concorrente backend real também executado; detalhes na seção 18.
 
 ## 3. Automatize
 
@@ -218,7 +218,7 @@ Componentes ativos:
 
 - Edge Function `f05-delay-worker` — ACTIVE;
 - `pg_cron` ativo;
-- `pg_net` ativo;
+- `pg_net` ativo no schema `extensions`;
 - cron `f05-delay-resume-30s` ativo, frequência de 30 segundos;
 - token do scheduler armazenado no Supabase Vault;
 - RPC `admin_validate_f05_scheduler_token` para autenticação do worker;
@@ -267,7 +267,7 @@ O `automation-event-worker` atual da F01 ainda executa:
 - `start_salesbot`: `not_configured`;
 - `invoke_ai`: `not_configured`.
 
-A F05 já possui runtime server-side pronto e documentou contrato/pseudocódigo de integração em `FRENTE-05-INTEGRACAO-F01.md`.
+A F05 já possui runtime server-side pronto e o patch mínimo isolado está no PR #3, atualmente `mergeable=true` na última conferência.
 
 ## 15. Usuários temporários de QA
 
@@ -286,7 +286,7 @@ A F05 não fará insert direto em `auth.users` nem criará bypass de autenticaç
 
 Status: 🟠 NÃO VERIFICADO no produto consolidado.
 
-Não marcar como verde até execução em ambiente apropriado da branch integrada.
+O runtime local desta sessão possui TypeScript global, mas não possui as dependências React/Vite do projeto e não alcança npm/GitHub por rede direta. Patches locais novos foram validados por parse/transpile sintático, mas isso não equivale a `vite build` consolidado.
 
 ## 17. Ainda não verificado
 
@@ -298,6 +298,73 @@ Não marcar como verde final:
 - persistência/concorrência via browser autenticado;
 - cofre pela UI autenticada;
 - chamada real a provedor IA com chave real;
-- `automation-event-worker` F01 → `f05-runtime-worker`;
+- `automation-event-worker` F01 → `f05-runtime-worker` no worker oficial;
 - WhatsApp real;
 - Meta real.
+
+## 18. QA adicional executado em 17/09/2026
+
+Status: 🟢 backend real para os casos abaixo.
+
+### Dois delays consecutivos
+
+- fixture `trigger → delay 1s → delay 1s → finish`;
+- primeira retomada avançou até o segundo delay;
+- segundo delay foi respeitado pelo scheduler;
+- cron posterior retomou novamente;
+- execução terminou `completed` no bloco `finish`;
+- fixture removido; coleções voltaram a zero itens.
+
+### Concorrência real de workers
+
+- uma execução `paused/next_block` vencida foi criada;
+- dois requests para `f05-delay-worker` foram disparados praticamente juntos;
+- um worker respondeu `accepted` e concluiu a execução;
+- o outro respondeu `rejected` com `Execução foi reservada por outro worker.`;
+- nenhuma execução duplicada foi criada;
+- fixture removido.
+
+### Canal de mensagem ainda desconectado
+
+- fluxo temporário `trigger → delay → message → finish`;
+- após retomar, o bloco `message` não simulou envio;
+- execução ficou `paused`;
+- `resumeMode=retry_current`;
+- `currentBlockId=qa_message`;
+- `runtimeContext` preservado;
+- ação registrada: `Canal de mensagem real ainda não conectado.`;
+- fixture removido.
+
+### RLS e segredo do scheduler
+
+- simulação com role `authenticated` e sem sessão: `SELECT` no storage F05 retornou 0 linhas;
+- tentativa de `UPDATE` sem sessão alterou 0 linhas;
+- `anon` e `authenticated` não possuem `SELECT` em `private.f05_scheduler_auth`;
+- `anon` e `authenticated` não possuem `EXECUTE` em `admin_validate_f05_scheduler_token`;
+- `service_role` possui os acessos internos necessários.
+
+### Hardening de pg_net
+
+- Advisor detectou `pg_net` no schema `public`;
+- fila HTTP estava vazia antes da mudança;
+- extensão foi reinstalada no schema `extensions`;
+- cron foi recriado e executou `succeeded` depois da mudança;
+- Security Advisor voltou a 0 lints;
+- `supabase/schema/f05_durable_delay_scheduler.sql` foi atualizado para preservar essa configuração em deploy futuro.
+
+### Endpoints legados de IA
+
+- frontend F01/F05 usa `ai-model-invoke` para execução e `ai-credential-vault` para credenciais;
+- `ai-provider-runtime` legado foi neutralizado e retorna `410` para chamadas que chegarem à função;
+- `ai-credentials` legado foi neutralizado da mesma forma;
+- tombstones versionados na branch F05 para impedir reintrodução acidental.
+
+### Fechamento de lacunas de UI do escopo
+
+- `IntegrationConnectionStatus` passou a aceitar `future`;
+- E-mail e APIs externas usam `future` como default estrutural;
+- UI mostra `Planejado para depois` sem permitir forçar `connected`;
+- log de SalesBot passou a exibir o agente IA usado;
+- log passou a exibir `leadId` e `conversationId` quando ambos existem;
+- nomes de bot/agente nos logs deixam de ficar presos ao tamanho anterior da lista após renomeação;
+- patches novos passaram em validação sintática TypeScript local.
