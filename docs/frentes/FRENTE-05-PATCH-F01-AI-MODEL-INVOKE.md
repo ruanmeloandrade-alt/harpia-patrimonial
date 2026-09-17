@@ -85,3 +85,5 @@ Além dos testes isolados, a F05 validou em backend real:
 - token inválido do scheduler retornando `401`;
 - bearer inválido do runtime retornando `401`;
 - fixtures temporários removidos após testes.
+
+Status do patch F05: **PRONTO PARA ABSORÇÃO PELA F01**.
