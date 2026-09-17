@@ -3,7 +3,10 @@ import { ClientArea, type ClientAreaDataState } from '../client-area/ClientArea'
 import { useClientAreaData, type ClientAreaDataSourcePort } from '../client-area/useClientAreaData';
 import { createFront03PublicCatalogReader, type Front03PublicCatalogServicePort } from '../public-catalog/front03Adapter';
 import { createFront01PublicAuthBridge, type Front01AuthContextPort } from './front01AuthAdapter';
+import { PublicExperienceBoundary } from './PublicExperienceBoundary';
 import { usePublicFavoritesBridge, type PublicFavoritesStorePort } from './usePublicFavoritesBridge';
+import './public-site.css';
+import './public-polish.css';
 
 export interface Front02ClientAccountShellProps {
   auth: Front01AuthContextPort;
@@ -69,17 +72,21 @@ export function Front02ClientAccountShell({
   };
 
   return (
-    <ClientArea
-      profile={authBridge.currentClient}
-      favorites={favorites.bridge.items}
-      data={accountData.data}
-      dataLoading={accountData.loading}
-      dataError={accountData.error}
-      onReloadData={accountData.reload}
-      onRequestLogin={() => requestLogin('area-do-cliente')}
-      onOpenProperty={(slug) => onNavigate(`/imoveis/${encodeURIComponent(slug)}`)}
-      onGoToCatalog={() => onNavigate('/imoveis')}
-      onRequestService={onRequestService}
-    />
+    <PublicExperienceBoundary>
+      <div className="harpia-public">
+        <ClientArea
+          profile={authBridge.currentClient}
+          favorites={favorites.bridge.items}
+          data={accountData.data}
+          dataLoading={accountData.loading}
+          dataError={accountData.error}
+          onReloadData={accountData.reload}
+          onRequestLogin={() => requestLogin('area-do-cliente')}
+          onOpenProperty={(slug) => onNavigate(`/imoveis/${encodeURIComponent(slug)}`)}
+          onGoToCatalog={() => onNavigate('/imoveis')}
+          onRequestService={onRequestService}
+        />
+      </div>
+    </PublicExperienceBoundary>
   );
 }
