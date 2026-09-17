@@ -313,6 +313,21 @@ export default function PublicExperience(props: PublicExperienceProps) {
             </div>
 
             <div className="mobile-public-menu__owner-actions">
+              <button
+                type="button"
+                onClick={() => {
+                  setMobileOpen(false);
+                  if (!props.onConversion) return;
+                  void forwardConversion({
+                    source: 'site-publico',
+                    action: 'solicitar-atendimento',
+                    page: path,
+                    service: 'Atendimento consultivo',
+                  });
+                }}
+              >
+                Ser Atendido Agora!
+              </button>
               <button type="button" onClick={() => navigatePublic('/vender')}>Quero vender meu imóvel</button>
               <button type="button" onClick={() => navigatePublic('/alugar')}>Quero alugar meu imóvel</button>
             </div>
