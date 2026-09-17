@@ -8,6 +8,15 @@ interface HomeCatalogSearchProps {
   onNavigate: (path: string) => void;
 }
 
+function priceHint(value: number | null) {
+  if (value === null) return '';
+  return new Intl.NumberFormat('pt-BR', {
+    style: 'currency',
+    currency: 'BRL',
+    maximumFractionDigits: 0,
+  }).format(value);
+}
+
 export function HomeCatalogSearch({ options, onNavigate }: HomeCatalogSearchProps) {
   const [filters, setFilters] = useState<PublicCatalogFilters>({});
   const locationOptions = useMemo(() => {
@@ -97,6 +106,52 @@ export function HomeCatalogSearch({ options, onNavigate }: HomeCatalogSearchProp
             {locationOptions.map((value) => <option key={value}>{value}</option>)}
           </select>
         </label>
+
+        <label>
+          <span>Lançamento</span>
+          <select
+            value={filters.launch === undefined ? '' : String(filters.launch)}
+            onChange={(event) => setFilters((current) => ({
+              ...current,
+              launch: event.target.value === '' ? undefined : event.target.value === 'true',
+            }))}
+          >
+            <option value="">Todos</option>
+            <option value="true">Sim</option>
+            <option value="false">Não</option>
+          </select>
+        </label>
+
+        <div className="home-catalog-search__price-row">
+          <label>
+            <span>Preço mínimo</span>
+            <input
+              type="number"
+              min="0"
+              inputMode="numeric"
+              value={filters.minPrice ?? ''}
+              placeholder={options.minPrice === null ? 'Sem mínimo' : priceHint(options.minPrice)}
+              onChange={(event) => setFilters((current) => ({
+                ...current,
+                minPrice: event.target.value ? Number(event.target.value) : undefined,
+              }))}
+            />
+          </label>
+          <label>
+            <span>Preço máximo</span>
+            <input
+              type="number"
+              min="0"
+              inputMode="numeric"
+              value={filters.maxPrice ?? ''}
+              placeholder={options.maxPrice === null ? 'Sem máximo' : priceHint(options.maxPrice)}
+              onChange={(event) => setFilters((current) => ({
+                ...current,
+                maxPrice: event.target.value ? Number(event.target.value) : undefined,
+              }))}
+            />
+          </label>
+        </div>
 
         {options.lifestyleTags.length > 0 ? (
           <label>
