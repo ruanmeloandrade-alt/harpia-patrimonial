@@ -36,67 +36,13 @@ Cadastro mínimo obrigatório:
 - WhatsApp;
 - senha.
 
-Entregar:
+Entregar cadastro, login, logout, recovery, sessão persistente, usuário autenticado e guards da área pessoal.
 
-- cadastro;
-- login;
-- logout;
-- recuperação/fluxo mínimo de acesso se a stack escolhida suportar;
-- sessão persistente;
-- usuário permanece logado até logout ou perda da sessão;
-- obtenção do usuário autenticado;
-- guardas de rota para área pessoal.
+### 3. Autenticação interna / usuários / permissões
 
-### 3. Autenticação interna
-
-Preparar acesso da equipe Hárpia separado logicamente do cliente final.
-
-Não cadastrar funcionários reais agora.
-
-### 4. Usuários internos
-
-Entregar estrutura para:
-
-- criar usuário;
-- editar;
-- ativar/desativar;
-- visualizar status;
-- associar função/grupo;
-- aplicar exceções individuais de permissão.
-
-### 5. Funções/grupos e permissões
-
-Permissões precisam funcionar em duas camadas:
-
-1. conjunto-base herdado de função/grupo;
-2. exceções individuais para permitir ou negar capacidades específicas.
-
-Não fixar corretores, jurídico, marketing etc. como únicas funções possíveis. O administrador deve poder configurar grupos.
-
-### 6. Configurações estruturais
-
-Criar estrutura base para:
-
-- dados da empresa;
-- preferências gerais;
-- usuários;
-- funções;
-- permissões;
-- campos/configurações compartilhadas quando pertencentes ao núcleo.
-
-Integrações externas pertencem à Frente05.
-
-### 7. Segurança mínima
-
-- nunca colocar segredos no GitHub;
-- proteger ações internas por autenticação/permissão;
-- não confiar apenas em esconder botão no frontend;
-- validar autorização na camada de serviço/backend quando aplicável;
-- evitar exposição de dados internos na área pública.
+Preparar acesso de equipe separado do cliente final; CRUD estrutural de usuários; grupos configuráveis; permissões herdadas; exceções individuais allow/deny; segurança mínima em backend e frontend.
 
 ## Arquivos/pastas sob responsabilidade
-
-Preferencialmente:
 
 - `src/app/**`
 - `src/core/**`
@@ -105,37 +51,13 @@ Preferencialmente:
 - `src/features/users/**`
 - `src/features/permissions/**`
 - `src/features/settings/core/**`
-- bootstrap global;
-- providers;
-- roteador raiz;
-- configuração global necessária.
-
-## Arquivos protegidos que esta frente pode editar
-
-- `package.json`
-- arquivos globais de build
-- roteador raiz
-- providers globais
-- CSS/tokens globais
-
-Ao mudar algo que pode afetar outra frente, registrar em `docs/STATUS-FRENTES.md`.
+- bootstrap/providers/roteador/configuração global.
 
 ## Fora do escopo
 
-Não construir:
+Site público completo, catálogo, CRM, Inbox, SalesBot, Automatize, agentes IA, WhatsApp e Meta reais pertencem às outras frentes/fase final.
 
-- site público completo;
-- catálogo de imóveis;
-- dashboard de negócio;
-- CRM;
-- Inbox;
-- SalesBot;
-- Automatize;
-- agentes IA;
-- WhatsApp real;
-- Meta real.
-
-## Contratos que deve expor
+## Contratos expostos
 
 - `getCurrentUser`
 - `signUpClient`
@@ -144,31 +66,30 @@ Não construir:
 - `isAuthenticated`
 - `isInternalUser`
 - `hasPermission`
-- acesso aos dados básicos do usuário atual
+- dados básicos do usuário atual
 
-Os nomes finais podem variar conforme a arquitetura, mas a capacidade deve existir.
+## Handoff final da Frente01 — 17/09/2026
 
-## Critérios de aceite
+- **Status:** FINALIZADA NO ESCOPO DA FRENTE01 — NÃO BLOQUEIA NENHUMA OUTRA FRENTE.
+- **Branch:** `frente-01`.
+- **Núcleo entregue:** shell/roteamento; `AuthProvider`; sessão; cadastro/login/logout/recovery; separação cliente/equipe; guards; usuários; grupos; RBAC; overrides individuais; configurações; Error Boundary; persistência compartilhada; Supabase tipado; `admin-user`; RLS/hardening.
+- **QA backend real:** admin temporário autenticou com `22` permissões; viewer temporário autenticou com `11` permissões de leitura e `0` de gestão; `auth.getUser()` validou ambas as sessões; todos os dados temporários foram removidos.
+- **Bug corrigido no QA:** o hardening lia apenas `request.jwt.claim.role`, incompatível com o formato atual do service key do Supabase. A detecção agora reconhece `request.jwt.claims.role` e `current_setting('role')`, mantendo compatibilidade com o claim legado.
+- **Commit do fix:** `af09b2faa7e072125ccb2fc1c91ab74c0d9ab39c`.
+- **Security Advisor final:** `0` lints.
+- **Backend limpo após QA:** `auth.users=0`, `user_profiles=0`, grupos QA=0, memberships QA=0, overrides QA=0.
+- **Função temporária de QA:** encerrada e responde `410`, com JWT obrigatório novamente.
+- **Contratos públicos:** consumir `src/core/auth/index.ts`, `useAuth()`, guards e `PERMISSIONS`; não criar auth paralelo.
+- **Frentes02–05:** liberadas para trabalhar imediatamente e não devem aguardar a Frente01.
 
-- cliente consegue criar conta com nome/e-mail/WhatsApp/senha;
-- cliente consegue entrar e permanece autenticado;
-- área interna não abre para usuário sem permissão;
-- administrador pode gerir usuários/grupos/permissões na estrutura criada;
-- exceção individual de permissão é suportada;
-- nenhuma equipe real é pré-cadastrada;
-- não existem credenciais hardcoded;
-- build funciona;
-- outras frentes conseguem consumir os contratos sem copiar lógica de autenticação.
+## QA final de ambiente/publicação
 
-## Handoff obrigatório ao terminar
+Ainda não executável neste ambiente por indisponibilidade de rede externa/checkout/npm:
 
-Atualizar este bloco e `docs/STATUS-FRENTES.md`:
+- build/typecheck completo em Node/npm compatível;
+- persistência de sessão em navegador real após fechar/reabrir;
+- confirmação/recovery por e-mail real;
+- redirects finais do Auth no domínio publicado;
+- E2E visual no navegador do produto consolidado.
 
-- Status:
-- Commit final:
-- O que foi entregue:
-- O que ficou pendente:
-- Contratos expostos:
-- Migrações/configurações necessárias:
-- Riscos conhecidos:
-- Instruções para o chat de integração:
+Esses itens pertencem ao QA final de ambiente/publicação e **não são dependência estrutural da Frente01 nem motivo para bloquear F02–F05**.

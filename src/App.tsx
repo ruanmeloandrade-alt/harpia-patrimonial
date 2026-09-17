@@ -1,11 +1,19 @@
+import { AppRouter } from './app/AppRouter';
+import { PlatformRuntimeProvider } from './app/PlatformRuntime';
+import { AuthProvider } from './core/auth/AuthProvider';
+import { RouterProvider } from './core/router/router';
+import { AppErrorBoundary } from './shared/components/AppErrorBoundary';
+
 export default function App() {
   return (
-    <main className="boot-screen">
-      <div>
-        <p className="eyebrow">HÁRPIA PATRIMONIAL & CO.</p>
-        <h1>Plataforma em construção.</h1>
-        <p className="subtitle">Negócios e investimentos imobiliários.</p>
-      </div>
-    </main>
+    <AppErrorBoundary>
+      <RouterProvider>
+        <AuthProvider>
+          <PlatformRuntimeProvider>
+            <AppRouter />
+          </PlatformRuntimeProvider>
+        </AuthProvider>
+      </RouterProvider>
+    </AppErrorBoundary>
   );
 }
