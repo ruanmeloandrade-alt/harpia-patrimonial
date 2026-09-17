@@ -155,6 +155,11 @@ Confirmado anteriormente:
 - `canManage` explícito;
 - default-deny na F05.
 
+Backend real conferido em 17/09/2026:
+
+- as 8 permissões F05 existem em `permissions`;
+- grupo de sistema `Administrador` está ativo e contém as 8 permissões F05.
+
 ## 11. Integração CRM/Inbox
 
 Status: 🟢 estrutural; 🟠 E2E real pendente.
@@ -172,9 +177,9 @@ Confirmado:
 
 Status: 🟢 implementado e implantado no Supabase; 🟠 consumo pelo worker F01 ainda pendente.
 
-Edge Function implantada em 17/09/2026:
+Edge Function:
 
-- `f05-runtime-worker` — ACTIVE, versão 1.
+- `f05-runtime-worker` — ACTIVE.
 
 Fonte versionada:
 
@@ -198,10 +203,12 @@ Capacidades:
 - SSRF hardening;
 - `not_configured` para mensagem enquanto canal real não estiver conectado.
 
-Validação:
+Validação executada:
 
-- deploy aceito pelo Supabase e função `ACTIVE`;
-- Security Advisor: 0 lints.
+- deploy aceito e função `ACTIVE`;
+- Security Advisor: 0 lints;
+- chamada com bearer inválido retornou `401` com `Não autorizado.`;
+- caminho server-side de `start_salesbot` foi exercitado indiretamente pelo `f05-delay-worker` em teste de encadeamento e concluiu bot filho com sucesso.
 
 ## 13. Scheduler server-side durável de delays
 
@@ -215,26 +222,39 @@ Componentes ativos:
 - cron `f05-delay-resume-30s` ativo, frequência de 30 segundos;
 - token do scheduler armazenado no Supabase Vault;
 - RPC `admin_validate_f05_scheduler_token` para autenticação do worker;
+- RPC restrito a `service_role` e postgres;
 - schema versionado em `supabase/schema/f05_durable_delay_scheduler.sql`;
 - código versionado em `supabase/functions/f05-delay-worker/**`.
 
-Teste funcional executado em 17/09/2026:
+Teste funcional 1 — retomada simples:
 
-1. coleções reais estavam vazias antes do teste;
-2. foi criado um fixture temporário isolado com SalesBot `trigger → delay → finish` e uma execução `paused/next_block` já vencida;
-3. o `f05-delay-worker` foi disparado pelo mesmo caminho HTTP usado pelo cron;
-4. a execução avançou de `paused` para `completed`;
-5. `currentBlockId` terminou em `qa_finish`;
-6. `action` terminou em `Execução concluída após delay.`;
-7. o fixture foi removido imediatamente;
-8. após limpeza, `salesbots=0` e `salesbot-executions=0` novamente.
+1. coleções reais estavam vazias;
+2. fixture temporário `trigger → delay → finish` foi criado;
+3. execução `paused/next_block` com `resumeAt` vencido foi inserida;
+4. worker foi disparado pelo mesmo caminho HTTP do cron;
+5. execução avançou para `qa_finish` e terminou `completed`;
+6. fixture removido imediatamente;
+7. coleções voltaram a zero itens.
 
-Também conferido:
+Teste funcional 2 — encadeamento server-side:
 
-- execuções recentes do job em `cron.job_run_details` com status `succeeded`;
-- lease/claim impede retomada concorrente enquanto ativo;
-- o worker continua a partir do bloco posterior ao `delay`, sem reiniciar o SalesBot;
-- novo `delay` encontrado após retomada agenda novo `resumeAt` e pausa novamente.
+1. SalesBot pai temporário: `trigger → delay → chain_flow → finish`;
+2. SalesBot filho temporário: `trigger → finish`;
+3. pai retomado pelo `f05-delay-worker`;
+4. `chain_flow` chamou `f05-runtime-worker`;
+5. runtime criou execução do filho;
+6. filho terminou `completed` no `qa_child_finish`;
+7. pai terminou `completed` no `qa_parent_finish`;
+8. fixtures removidos e coleções voltaram a zero itens.
+
+Teste de autenticação:
+
+- chamada ao scheduler com token inválido retornou HTTP `401` e `Token de scheduler inválido.`;
+- chamada válida retornou HTTP `200` quando não havia delays pendentes.
+
+Cron:
+
+- execuções recentes em `cron.job_run_details` aparecem como `succeeded`.
 
 ## 14. Worker server-side de automações da F01
 
@@ -247,7 +267,7 @@ O `automation-event-worker` atual da F01 ainda executa:
 - `start_salesbot`: `not_configured`;
 - `invoke_ai`: `not_configured`.
 
-A F05 já possui runtime server-side pronto para receber essas duas ações. Falta somente o encaminhamento no worker proprietário da F01.
+A F05 já possui runtime server-side pronto e documentou contrato/pseudocódigo de integração em `FRENTE-05-INTEGRACAO-F01.md`.
 
 ## 15. Usuários temporários de QA
 
@@ -257,6 +277,7 @@ Conferência real em 17/09/2026:
 
 - `auth.users = 0`;
 - `user_profiles` ativos = 0;
+- `admin-user` existe e usa `auth.admin.createUser`, mas exige chamador já autenticado com `users.manage`;
 - `f01-bootstrap-qa` está encerrado e retorna 410.
 
 A F05 não fará insert direto em `auth.users` nem criará bypass de autenticação.
