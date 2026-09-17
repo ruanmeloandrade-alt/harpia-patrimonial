@@ -20,7 +20,8 @@
   font-weight: 750;
 }
 
-.home-catalog-search__fields select {
+.home-catalog-search__fields select,
+.home-catalog-search__fields input {
   width: 100%;
   min-height: 46px;
   padding: 0 12px;
@@ -31,9 +32,16 @@
   outline: none;
 }
 
-.home-catalog-search__fields select:focus {
+.home-catalog-search__fields select:focus,
+.home-catalog-search__fields input:focus {
   border-color: #b99455;
   box-shadow: 0 0 0 3px rgba(185, 148, 85, .12);
+}
+
+.home-catalog-search__price-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
 }
 
 .property-related-services {
@@ -170,7 +178,8 @@
     flex-direction: column;
   }
 
-  .home-catalog-search__fields {
+  .home-catalog-search__fields,
+  .home-catalog-search__price-row {
     grid-template-columns: 1fr;
   }
 
