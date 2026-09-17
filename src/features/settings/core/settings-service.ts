@@ -1,4 +1,5 @@
 import { requireSupabase } from '../../../core/supabase/client';
+import type { Json } from '../../../core/supabase/database.types';
 
 export type OrganizationPreferences = Record<string, unknown>;
 
@@ -34,6 +35,9 @@ export async function updateOrganizationSettings(input: Omit<OrganizationSetting
 
 export async function updateOrganizationPreferences(preferences: OrganizationPreferences) {
   const supabase = requireSupabase();
-  const { error } = await supabase.from('organization_settings').update({ preferences }).eq('id', 1);
+  const { error } = await supabase
+    .from('organization_settings')
+    .update({ preferences: preferences as Json })
+    .eq('id', 1);
   if (error) throw error;
 }

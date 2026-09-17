@@ -96,6 +96,7 @@ export class SupabaseCrmRepository implements CrmRepository {
   private base: CrmState;
   private revision: number;
   private queue: Promise<void> = Promise.resolve();
+  private lastSave: Promise<void> = Promise.resolve();
 
   constructor(initialState: CrmState, revision: number) {
     this.memory = clone(initialState);
@@ -108,14 +109,19 @@ export class SupabaseCrmRepository implements CrmRepository {
   save(state: CrmState): void {
     const pending = normalizeCrm(state);
     this.memory = clone(pending);
-    this.queue = this.queue
-      .then(() => this.persist(pending))
-      .catch((error) => persistenceError('crm', error));
+
+    const operation = this.queue.then(() => this.persist(pending));
+    this.lastSave = operation;
+    this.queue = operation.catch((error) => persistenceError('crm', error));
   }
 
   clear(): void { this.save(createEmptyCrmState()); }
 
   async whenIdle() { await this.queue; }
+
+  async waitForLastSave(): Promise<void> {
+    await this.lastSave;
+  }
 
   private async persist(pending: CrmState) {
     let nextRevision = await saveModule('crm', pending, this.revision);

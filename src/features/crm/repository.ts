@@ -7,6 +7,7 @@ export interface CrmRepository {
   load(): CrmState;
   save(state: CrmState): void;
   clear(): void;
+  waitForLastSave?(): Promise<void>;
 }
 
 export const cloneCrmState = (state: CrmState): CrmState => JSON.parse(JSON.stringify(state)) as CrmState;
@@ -85,5 +86,9 @@ export class BrowserCrmRepository implements CrmRepository {
       }
     }
     notifyCrmUpdated();
+  }
+
+  async waitForLastSave(): Promise<void> {
+    // Persistência local é síncrona; a Promise mantém o mesmo contrato do repository remoto.
   }
 }
