@@ -1,5 +1,25 @@
 create extension if not exists pg_cron;
-create extension if not exists pg_net;
+create schema if not exists extensions;
+
+-- pg_net não é relocável via ALTER EXTENSION. Se uma instalação antiga estiver
+-- no schema public, removemos e recriamos em extensions dentro da mesma migração.
+do $$
+declare
+  v_schema text;
+begin
+  select n.nspname
+    into v_schema
+    from pg_extension e
+    join pg_namespace n on n.oid = e.extnamespace
+   where e.extname = 'pg_net';
+
+  if v_schema is not null and v_schema <> 'extensions' then
+    execute 'drop extension pg_net';
+  end if;
+end
+$$;
+
+create extension if not exists pg_net with schema extensions;
 
 create schema if not exists private;
 
