@@ -28,15 +28,31 @@ const conditionExistsPrefix = new RegExp(`^exists\\s+${CONDITION_PATH}$`, 'iu');
 const conditionExistsSuffix = new RegExp(`^${CONDITION_PATH}\\s+exists$`, 'iu');
 const conditionComparison = new RegExp(`^${CONDITION_PATH}\\s*(contains|==|!=|>=|<=|=|>|<)\\s*.+$`, 'iu');
 const delayDuration = /^(\d+)\s*(s|m|h|d|w)$/i;
+const DELAY_UNIT_MS: Record<string, number> = {
+  s: 1_000,
+  m: 60_000,
+  h: 3_600_000,
+  d: 86_400_000,
+  w: 604_800_000,
+};
 
 export function validateSalesBotConditionExpression(expression: string): boolean {
   const value = expression.trim();
   return conditionExistsPrefix.test(value) || conditionExistsSuffix.test(value) || conditionComparison.test(value);
 }
 
-export function validateSalesBotDelayDuration(duration: string): boolean {
+export function salesBotDelayDurationToMs(duration: string): number | null {
   const match = duration.trim().match(delayDuration);
-  return Boolean(match && Number(match[1]) > 0);
+  if (!match) return null;
+  const amount = Number(match[1]);
+  const unitMs = DELAY_UNIT_MS[match[2].toLowerCase()];
+  if (!Number.isSafeInteger(amount) || amount <= 0 || !unitMs) return null;
+  const total = amount * unitMs;
+  return Number.isSafeInteger(total) && total > 0 ? total : null;
+}
+
+export function validateSalesBotDelayDuration(duration: string): boolean {
+  return salesBotDelayDurationToMs(duration) !== null;
 }
 
 export function validateSalesBotBlock(block: SalesBotBlock): string[] {
