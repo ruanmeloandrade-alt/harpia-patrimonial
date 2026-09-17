@@ -3,7 +3,6 @@ import type {
   InboxAutomationPort,
 } from './contracts';
 import type { CrmEvent, CrmEventSink } from './domain';
-import { waitForCrmPersistence } from './repository';
 import { CrmService } from './service';
 import {
   createFront05CrmActionPort as createCoreFront05CrmActionPort,
@@ -37,6 +36,10 @@ type ExecutionState = {
   aiAgentId?: string;
   aiAgentExecutionId?: string;
 };
+
+type PersistenceBarrier = () => Promise<void>;
+
+const immediatePersistence: PersistenceBarrier = async () => undefined;
 
 // O PlatformRuntime da Frente01 recria os ports quando chega atualização realtime.
 // Este mapa pertence ao módulo, não à instância do adapter, para preservar o
@@ -100,38 +103,45 @@ function persistenceFailure(error: unknown): Front05CommandResult {
 
 async function confirmCrmAction(
   action: () => Promise<Front05CommandResult>,
+  waitForPersistence: PersistenceBarrier,
 ): Promise<Front05CommandResult> {
   const result = await action();
   if (result.status !== 'accepted') return result;
 
   try {
-    await waitForCrmPersistence();
+    await waitForPersistence();
     return result;
   } catch (error) {
     return persistenceFailure(error);
   }
 }
 
-export function createFront05CrmActionPort(crm: CrmService): Front05CrmActionPort {
+export function createFront05CrmActionPort(
+  crm: CrmService,
+  waitForPersistence: PersistenceBarrier = immediatePersistence,
+): Front05CrmActionPort {
   const core = createCoreFront05CrmActionPort(crm);
   return {
-    moveStage: (input) => confirmCrmAction(() => core.moveStage(input)),
-    assignOwner: (input) => confirmCrmAction(() => core.assignOwner(input)),
-    createTask: (input) => confirmCrmAction(() => core.createTask(input)),
-    updateField: (input) => confirmCrmAction(() => core.updateField(input)),
-    addTag: (input) => confirmCrmAction(() => core.addTag(input)),
-    removeTag: (input) => confirmCrmAction(() => core.removeTag(input)),
+    moveStage: (input) => confirmCrmAction(() => core.moveStage(input), waitForPersistence),
+    assignOwner: (input) => confirmCrmAction(() => core.assignOwner(input), waitForPersistence),
+    createTask: (input) => confirmCrmAction(() => core.createTask(input), waitForPersistence),
+    updateField: (input) => confirmCrmAction(() => core.updateField(input), waitForPersistence),
+    addTag: (input) => confirmCrmAction(() => core.addTag(input), waitForPersistence),
+    removeTag: (input) => confirmCrmAction(() => core.removeTag(input), waitForPersistence),
   };
 }
 
 export class Front05CrmEventSink implements CrmEventSink {
-  constructor(private readonly processEvent: Front05CrmAutomationEventProcessor) {}
+  constructor(
+    private readonly processEvent: Front05CrmAutomationEventProcessor,
+    private readonly waitForPersistence: PersistenceBarrier = immediatePersistence,
+  ) {}
 
   async publish(event: CrmEvent): Promise<void> {
     try {
-      await waitForCrmPersistence();
+      await this.waitForPersistence();
     } catch {
-      // O repository já publica harpia:persistence-error. Sem commit confirmado,
+      // O repository publica harpia:persistence-error. Sem commit confirmado,
       // a automação não pode observar nem reagir ao estado otimista local.
       return;
     }
