@@ -7,7 +7,8 @@ Atualizar este arquivo ao iniciar e ao concluir blocos relevantes.
 - Branch: `frente-01`
 - F01 mantém shell/runtime compartilhado, RBAC `view/manage`, tipos Supabase e integração estrutural da F05.
 - As branches F01 e F05 continuam avançando em paralelo; a contagem exata deve ser conferida no momento da integração.
-- PR F05→F01 continua como handoff oficial; não forçar merge nem sobrescrever trabalho paralelo.
+- PR #1 permanece como handoff amplo F05→F01; não forçar merge da branch divergida.
+- PR #3 é o patch mínimo preferencial para o `automation-event-worker`: 1 commit, 1 arquivo, criado diretamente sobre a F01 atual e `mergeable=true` na última conferência.
 
 ## Frente02 — Site público/Área do cliente
 
@@ -28,7 +29,7 @@ Atualizar este arquivo ao iniciar e ao concluir blocos relevantes.
 ## Frente05 — SalesBot/Automatize/IA/Integrações
 
 - Branch: `frente-05`
-- Status: **NÚCLEO 🟢 / RUNTIME SERVER-SIDE 🟢 / DELAY DURÁVEL 🟢 / INTEGRAÇÃO F01 🟠 / QA AUTENTICADO 🟠**.
+- Status: **NÚCLEO 🟢 / RUNTIME SERVER-SIDE 🟢 / DELAY DURÁVEL 🟢 / PATCH WORKER F01 PRONTO 🟢 / INTEGRAÇÃO F01 🟠 / QA AUTENTICADO 🟠**.
 - Testes: `docs/frentes/FRENTE-05-TESTES.md`.
 - Handoff: `docs/frentes/FRENTE-05-INTEGRACAO-F01.md`.
 
@@ -57,7 +58,31 @@ Atualizar este arquivo ao iniciar e ao concluir blocos relevantes.
 - cron com execuções `succeeded`;
 - Security Advisor sem lints;
 - fixtures temporários removidos;
-- `salesbots` e `salesbot-executions` voltaram a zero itens.
+- `salesbots`, `salesbot-executions` e `automations` permanecem sem dados operacionais fictícios.
+
+### 🟢 Patch mínimo do worker F01 pronto
+
+Branch auxiliar: `f05-f01-worker-integration`.
+
+PR #3: `[F05→F01] Conectar automation-event-worker ao runtime server-side F05`.
+
+Última conferência:
+
+- base exatamente na F01 atual;
+- 1 commit à frente;
+- 0 commits atrás;
+- 1 arquivo alterado;
+- `mergeable=true`;
+- nenhuma alteração em Auth, UI, CRM core ou Inbox core.
+
+O patch:
+
+- conecta `start_salesbot` ao `f05-runtime-worker`;
+- conecta `invoke_ai` ao `f05-runtime-worker`;
+- preserva idempotência de `automation_action_runs`;
+- mantém `service_role` apenas server-side;
+- mantém timeout e `redirect: manual`;
+- corrige precedência dos metadados canônicos sobre `event.payload` no matcher e no webhook.
 
 ### 🟢 RBAC estrutural F05
 
@@ -67,14 +92,9 @@ Atualizar este arquivo ao iniciar e ao concluir blocos relevantes.
 
 ### 🟠 Integração F05 → F01
 
-O `automation-event-worker` da F01 ainda mantém:
+O worker oficial da F01 ainda não recebeu o PR #3 e, portanto, continua com `start_salesbot`/`invoke_ai` como `not_configured` no código implantado atual.
 
-- CRM: conectado;
-- webhook: conectado;
-- `start_salesbot`: `not_configured`;
-- `invoke_ai`: `not_configured`.
-
-A F05 já disponibiliza runtime para as duas ações e documentou o patch mínimo no handoff.
+A F05 não fará merge forçado nem deploy por cima da frente proprietária. O patch de integração já está isolado e pronto para absorção.
 
 ### 🟠 QA autenticado
 
@@ -87,8 +107,8 @@ Conferência real em 17/09/2026:
 
 ### 🟠 Pendências externas/finais
 
-- F01 absorver a branch/hardenings F05;
-- F01 ligar `automation-event-worker` ao `f05-runtime-worker`;
+- F01 absorver PR #3 para ligar o worker oficial;
+- F01 absorver demais hardenings/componentes F05 conforme necessário;
 - primeiro admin QA pelo fluxo oficial;
 - E2E autenticado admin/viewer;
 - build/typecheck consolidado;
@@ -101,8 +121,8 @@ Conferência real em 17/09/2026:
 # Pedidos entre frentes
 
 - F05 → F01 — rotas/sidebar/cofre/runtime estrutural: **RESOLVIDO HISTORICAMENTE**.
-- F05 → F01 — sincronizar hardenings/componentes atuais: **PENDENTE**.
-- F05 → F01 — conectar worker de automações ao runtime server-side F05: **PENDENTE**.
+- F05 → F01 — worker `start_salesbot`/`invoke_ai`: **PATCH PR #3 PRONTO E MERGEÁVEL; ABSORÇÃO PELA F01 PENDENTE**.
+- F05 → F01 — demais hardenings/componentes atuais: **PENDENTE**.
 - F05 → F01/Auth — usuários temporários QA: **PENDENTE DE CAMINHO OFICIAL COM ADMIN AUTENTICADO**.
 - F05 ↔ F04 — contratos CRM/Inbox: **ESTRUTURA PRESENTE; E2E PENDENTE**.
 
