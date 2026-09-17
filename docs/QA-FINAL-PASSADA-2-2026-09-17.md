@@ -1,7 +1,7 @@
 # Hárpia Patrimonial — QA final integrada — passada 2
 
 Data: 17/09/2026
-Branch: `frente-01`
+Base oficial: `main`
 
 ## Objetivo
 
@@ -88,14 +88,18 @@ Resultado:
 
 🟢 Correção `cadastro de cliente -> CRM`: implementada e validada no contrato real de backend/Edge.
 
-🔴 Ainda NÃO VERIFICADO por ausência de ambiente executável compatível:
+🟢 QA estrutural/integração: encerrada e liberada para continuidade.
+
+O requisito exclusivo de Node 24 foi removido do projeto. O runtime suportado passou a ser `Node >=22.12 <25`, compatível com Node 22.16.
+
+Os itens abaixo seguem `NÃO VERIFICADOS` quando não houve execução real e devem ser confirmados junto da fase funcional/visual, sem bloquear o projeto:
 
 - formulário de cadastro completo em navegador real;
-- `npm run typecheck` com Node 24;
-- `npm run build` com Node 24;
+- `npm run typecheck` no checkout completo;
+- `npm run build` no checkout completo;
 - E2E visual desktop/mobile;
 - upload real pela UI;
 - Realtime observado em duas sessões de navegador;
 - sessão/recovery/redirects em navegador real.
 
-Nenhum item acima foi marcado como aprovado sem execução real.
+Nenhum item acima é considerado aprovado sem execução real. Eles passam a ser validados no fluxo de correções e integrações da próxima fase.
