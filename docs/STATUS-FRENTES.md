@@ -56,7 +56,7 @@ Atualização: 17/09/2026
 
 ---
 
-# Base final antes da QA
+# Base final integrada
 
 ## Desenvolvimento individual
 
@@ -73,25 +73,48 @@ Atualização: 17/09/2026
 - [x] Frente04 reconciliada funcionalmente na `frente-01`.
 - [x] Frente05 reconciliada funcionalmente na `frente-01`.
 
-**A base `frente-01` está liberada para a QA final integrada.**
-
 Não fazer merge forçado das branches históricas divergidas. A `frente-01` atual é a fonte de verdade para a etapa final.
 
-## QA final integrado
+## QA final integrado — 17/09/2026
 
-Próxima etapa:
+🟠 **PARCIAL / EM ANDAMENTO** — backend e E2E server-side validados; build/typecheck e navegador real ainda `NÃO VERIFICADO`.
+
+Detalhamento completo: `docs/QA-FINAL-2026-09-17.md`.
+
+### Validado nesta passada
+
+- [x] Supabase `ACTIVE_HEALTHY`.
+- [x] Security Advisor com `0` lints.
+- [x] Performance Advisor sem erro bloqueante; somente índices ainda sem uso em base vazia.
+- [x] RBAC/RLS admin/viewer/cliente em teste transacional real.
+- [x] autoalteração de segurança bloqueada.
+- [x] catálogo: transições, publicação hierárquica e integridade empreendimento/unidade.
+- [x] `public-lead-ingest` real: HTTP 201, CRM + outbox, sem envio automático.
+- [x] ações CRM: etapa, tag, campo e tarefa.
+- [x] grafo SalesBot: válido aceito e ciclo rejeitado.
+- [x] E2E `CRM → Automatize → SalesBot → runtime F05` concluído.
+- [x] delay durável retomado e concluído.
+- [x] bloco `message` sem canal real fica `not_configured/paused`, sem falso envio.
+- [x] scheduler, Vault/token, Edge Functions, Storage policies e Realtime estrutural conferidos.
+- [x] contato público real responde sem inventar telefone (`phone=null`).
+- [x] limpeza final: nenhum usuário, lead, imóvel, bot, automação ou execução QA permaneceu.
+
+### Ainda NÃO VERIFICADO
 
 - [ ] `npm run typecheck` com Node `>=24 <25`;
 - [ ] `npm run build` com Node `>=24 <25`;
-- [ ] E2E autenticado admin/viewer/cliente;
+- [ ] instalação limpa/reprodutível e geração/confirmação de `package-lock.json`;
+- [ ] E2E autenticado admin/viewer/cliente em navegador;
 - [ ] navegação visual desktop/mobile;
-- [ ] catálogo interno → publicação → site público;
-- [ ] upload real de mídia;
-- [ ] Realtime com duas sessões;
-- [ ] CRM/Inbox ↔ Automatize/SalesBot/IA ponta a ponta;
-- [ ] sessão/reload/concorrência;
+- [ ] catálogo interno → publicação → site público pela UI;
+- [ ] upload real de mídia pela UI;
+- [ ] Realtime observado em duas sessões simultâneas;
+- [ ] sessão/reload/fechar-reabrir navegador;
 - [ ] e-mail/recovery/redirects finais;
+- [ ] console do navegador sem erros relevantes;
 - [ ] validação visual final do usuário.
+
+Motivo do bloco de build/E2E visual neste ambiente: Node disponível `v22.16.0`, enquanto o projeto exige Node `>=24 <25`; o checkout direto do GitHub também falhou por indisponibilidade de DNS externo. Nenhum desses itens foi marcado artificialmente como aprovado.
 
 WhatsApp e Meta reais continuam reservados para a fase final definida no briefing e não devem ser simulados como conectados.
 
