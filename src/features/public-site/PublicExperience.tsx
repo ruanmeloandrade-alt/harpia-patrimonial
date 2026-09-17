@@ -9,7 +9,12 @@ import {
   ClientAreaDataProvider,
   type ClientAreaDataState,
 } from '../client-area/ClientArea';
-import { matchesFront02PublicRoute, normalizeFront02PublicPath } from './routes';
+import {
+  emitFront02LocationChange,
+  FRONT02_LOCATION_EVENT,
+  matchesFront02PublicRoute,
+  normalizeFront02PublicPath,
+} from './routes';
 import './public-experience.css';
 import './public-polish.css';
 
@@ -92,6 +97,7 @@ function metadataForPath(path: string) {
 
 function navigatePublic(path: string) {
   window.history.pushState({}, '', path);
+  emitFront02LocationChange();
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
@@ -105,29 +111,7 @@ export default function PublicExperience(props: PublicExperienceProps) {
   const contactNameRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    const history = window.history;
-    const originalPushState = history.pushState;
-    const originalReplaceState = history.replaceState;
-    const emitNavigation = () => window.dispatchEvent(new PopStateEvent('popstate'));
-
-    history.pushState = function pushState(...args: Parameters<History['pushState']>) {
-      originalPushState.apply(history, args);
-      emitNavigation();
-    };
-
-    history.replaceState = function replaceState(...args: Parameters<History['replaceState']>) {
-      originalReplaceState.apply(history, args);
-      emitNavigation();
-    };
-
-    return () => {
-      history.pushState = originalPushState;
-      history.replaceState = originalReplaceState;
-    };
-  }, []);
-
-  useEffect(() => {
-    const onPopState = () => {
+    const onLocationChange = () => {
       const nextPath = normalizeFront02PublicPath(window.location.pathname);
       setPath(nextPath);
       setMobileOpen(false);
@@ -137,9 +121,13 @@ export default function PublicExperience(props: PublicExperienceProps) {
       }
     };
 
-    window.addEventListener('popstate', onPopState);
-    onPopState();
-    return () => window.removeEventListener('popstate', onPopState);
+    window.addEventListener('popstate', onLocationChange);
+    window.addEventListener(FRONT02_LOCATION_EVENT, onLocationChange);
+    onLocationChange();
+    return () => {
+      window.removeEventListener('popstate', onLocationChange);
+      window.removeEventListener(FRONT02_LOCATION_EVENT, onLocationChange);
+    };
   }, []);
 
   useEffect(() => {
