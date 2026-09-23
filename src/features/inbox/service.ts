@@ -56,6 +56,20 @@ export class InboxService {
     return conversation;
   }
 
+  async connectTransport(conversationId: CrmId): Promise<InboxConversation> {
+    const conversation = this.requireConversation(conversationId);
+    if (!this.transport?.prepareConversation) {
+      throw new InboxIntegrityError('O transporte desta conversa ainda não oferece ativação segura.');
+    }
+
+    const result = await this.transport.prepareConversation(conversationId);
+    conversation.transportStatus = 'connected';
+    conversation.externalThreadId = result.externalThreadId ?? conversation.externalThreadId;
+    conversation.updatedAt = nowIso();
+    this.persist();
+    return conversation;
+  }
+
   getMessages(conversationId: CrmId): InboxMessage[] {
     this.requireConversation(conversationId);
     return this.state.messages
