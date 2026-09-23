@@ -33,7 +33,7 @@ import { SupabaseAICredentialVault } from './integrations/supabaseAICredentialVa
 import { SupabaseAIModelRuntime } from './integrations/supabaseAIModelRuntime';
 import { SupabaseAutomationWebhook } from './integrations/supabaseAutomationWebhook';
 import { SupabaseFavoritesStore } from './integrations/supabaseFavoritesStore';
-import { SupabaseWhatsAppTransport } from './integrations/supabaseWhatsAppTransport';
+import { SupabaseSalesBotWhatsAppMessagePort, SupabaseWhatsAppTransport } from './integrations/supabaseWhatsAppTransport';
 import { loadInternalAssignees } from './integrations/internalAssignees';
 import { salesBotConditionEvaluator } from './integrations/salesBotConditionEvaluator';
 import { hydrateSharedF05Storage } from './integrations/sharedF05Storage';
@@ -85,6 +85,7 @@ export function PlatformRuntimeProvider({ children }: PropsWithChildren) {
   const aiModelRuntime = useMemo(() => new SupabaseAIModelRuntime(), []);
   const automationWebhook = useMemo(() => new SupabaseAutomationWebhook(), []);
   const whatsappTransport = useMemo(() => new SupabaseWhatsAppTransport(), []);
+  const whatsappSalesBotMessage = useMemo(() => new SupabaseSalesBotWhatsAppMessagePort(), []);
 
   useEffect(() => () => catalogRuntime?.dispose(), [catalogRuntime]);
 
@@ -218,6 +219,7 @@ export function PlatformRuntimeProvider({ children }: PropsWithChildren) {
           ...unconfiguredSalesBotRuntimeDependencies,
           crm: crmActions,
           ai: aiCommandPort,
+          message: whatsappSalesBotMessage,
           condition: salesBotConditionEvaluator,
           webhook: automationWebhook,
         });
@@ -309,7 +311,7 @@ export function PlatformRuntimeProvider({ children }: PropsWithChildren) {
       unsubscribeEvents?.();
       if (channel) void supabase?.removeChannel(channel);
     };
-  }, [aiModelRuntime, auth.user?.id, automationWebhook, canUseCrm, canUseInbox, catalogRepository, f05Revision, whatsappTransport]);
+  }, [aiModelRuntime, auth.user?.id, automationWebhook, canUseCrm, canUseInbox, catalogRepository, f05Revision, whatsappSalesBotMessage, whatsappTransport]);
 
   const value = useMemo<PlatformRuntimeValue>(() => ({
     catalogRepository,
