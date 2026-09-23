@@ -240,6 +240,33 @@ export class WhatsAppConnector {
     });
   }
 
+  async shutdown() {
+    this.manualStop = true;
+    this.clearReconnectTimer();
+    this.stopHeartbeat();
+    this.qr = null;
+
+    const socket = this.socket;
+    this.socket = null;
+
+    if (socket) {
+      try {
+        socket.end(new Error('connector process shutdown'));
+      } catch {
+        // O processo pode estar encerrando depois do socket já ter fechado.
+      }
+    }
+
+    if (this.status === 'connected' || this.status === 'connecting') {
+      this.status = 'degraded';
+      await setConnectionStatus('degraded', {
+        lastHealthAt: new Date().toISOString(),
+        lastErrorCode: 'process_shutdown',
+        metadata: { qrAvailable: false },
+      }).catch(() => undefined);
+    }
+  }
+
   async send(input: SendInput) {
     if (!this.socket || this.status !== 'connected') {
       throw new Error('WhatsApp Web não está conectado.');
