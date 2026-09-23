@@ -140,7 +140,7 @@ create table if not exists public.inbox_message_attachments (
   created_at timestamptz not null default now()
 );
 
-create index if not exists inbox_message_attachments_message_idx
+create unique index if not exists inbox_message_attachments_message_uidx
   on public.inbox_message_attachments(message_id);
 
 alter table public.integration_connections enable row level security;
@@ -373,5 +373,14 @@ begin
   ) then
     alter publication supabase_realtime add table public.inbox_messages;
   end if;
+
+  if not exists (
+    select 1 from pg_publication_tables
+    where pubname = 'supabase_realtime'
+      and schemaname = 'public'
+      and tablename = 'inbox_message_attachments'
+  ) then
+    alter publication supabase_realtime add table public.inbox_message_attachments;
+  end if;
 end
-$$;
+$;
