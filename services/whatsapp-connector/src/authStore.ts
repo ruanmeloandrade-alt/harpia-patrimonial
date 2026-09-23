@@ -24,19 +24,16 @@ function stateKey(type: string, id: string) {
 }
 
 async function readEncrypted(sessionId: string, key: string): Promise<unknown | null> {
-  const { data, error } = await db
-    .schema('private')
-    .from('whatsapp_auth_state')
-    .select('encrypted_value')
-    .eq('session_id', sessionId)
-    .eq('state_key', key)
-    .maybeSingle();
+  const { data, error } = await db.rpc('admin_get_whatsapp_auth_state', {
+    p_session_id: sessionId,
+    p_state_key: key,
+  });
 
   if (error) throw error;
-  if (!data?.encrypted_value) return null;
+  if (!data) return null;
 
   const json = decryptState(
-    String(data.encrypted_value),
+    String(data),
     config.sessionEncryptionKey,
   );
   return JSON.parse(json, BufferJSON.reviver);
@@ -46,28 +43,20 @@ async function writeEncrypted(sessionId: string, key: string, value: unknown): P
   const json = JSON.stringify(value, BufferJSON.replacer);
   const encrypted = encryptState(json, config.sessionEncryptionKey);
 
-  const { error } = await db
-    .schema('private')
-    .from('whatsapp_auth_state')
-    .upsert({
-      session_id: sessionId,
-      state_key: key,
-      encrypted_value: encrypted,
-      updated_at: new Date().toISOString(),
-    }, {
-      onConflict: 'session_id,state_key',
-    });
+  const { error } = await db.rpc('admin_upsert_whatsapp_auth_state', {
+    p_session_id: sessionId,
+    p_state_key: key,
+    p_encrypted_value: encrypted,
+  });
 
   if (error) throw error;
 }
 
 async function removeEncrypted(sessionId: string, key: string): Promise<void> {
-  const { error } = await db
-    .schema('private')
-    .from('whatsapp_auth_state')
-    .delete()
-    .eq('session_id', sessionId)
-    .eq('state_key', key);
+  const { error } = await db.rpc('admin_delete_whatsapp_auth_state', {
+    p_session_id: sessionId,
+    p_state_key: key,
+  });
 
   if (error) throw error;
 }
@@ -120,11 +109,10 @@ export async function createDatabaseAuthState(sessionId: string): Promise<AuthSt
       await writeEncrypted(sessionId, 'creds', creds);
     },
     clear: async () => {
-      const { error } = await db
-        .schema('private')
-        .from('whatsapp_auth_state')
-        .delete()
-        .eq('session_id', sessionId);
+      const { error } = await db.rpc('admin_delete_whatsapp_auth_state', {
+        p_session_id: sessionId,
+        p_state_key: null,
+      });
 
       if (error) throw error;
     },
