@@ -13,6 +13,14 @@ alter table private.whatsapp_auth_state enable row level security;
 revoke all on private.whatsapp_auth_state from public, anon, authenticated;
 grant select, insert, update, delete on private.whatsapp_auth_state to service_role;
 
+drop policy if exists "whatsapp_auth_state_client_deny" on private.whatsapp_auth_state;
+create policy "whatsapp_auth_state_client_deny"
+on private.whatsapp_auth_state
+for all
+to anon, authenticated
+using (false)
+with check (false);
+
 insert into storage.buckets (
   id,
   name,
