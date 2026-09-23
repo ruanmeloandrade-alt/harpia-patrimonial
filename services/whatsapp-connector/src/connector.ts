@@ -46,8 +46,28 @@ function timestampFromMessage(message: WAMessage) {
   return new Date((Number.isFinite(seconds) && seconds > 0 ? seconds : Date.now() / 1000) * 1000).toISOString();
 }
 
-function phoneFromJid(jid: string) {
-  return jidNormalizedUser(jid).split('@')[0]?.replace(/\D/g, '') || '';
+function phoneFromPnJid(jid: string) {
+  const normalized = jidNormalizedUser(jid);
+  if (!normalized.endsWith('@s.whatsapp.net')) return '';
+  return normalized.split('@')[0]?.replace(/\D/g, '') || '';
+}
+
+async function resolvePnJid(socket: Socket, ...candidates: Array<string | null | undefined>) {
+  for (const candidate of candidates) {
+    if (!candidate) continue;
+    const normalized = jidNormalizedUser(candidate);
+    if (normalized.endsWith('@s.whatsapp.net')) return normalized;
+  }
+
+  for (const candidate of candidates) {
+    if (!candidate) continue;
+    const normalized = jidNormalizedUser(candidate);
+    if (!normalized.endsWith('@lid')) continue;
+    const pn = await socket.signalRepository.lidMapping.getPNForLID(normalized);
+    if (pn) return jidNormalizedUser(pn);
+  }
+
+  return undefined;
 }
 
 function extractText(content: ReturnType<typeof normalizeMessageContent>) {
@@ -295,8 +315,12 @@ export class WhatsAppConnector {
         this.status = 'connected';
         this.reconnectAttempt = 0;
 
-        const userJid = socket.user?.id ? jidNormalizedUser(socket.user.id) : undefined;
-        const phoneNumber = userJid ? phoneFromJid(userJid) : '';
+        const userPnJid = await resolvePnJid(
+          socket,
+          socket.user?.id,
+          socket.user?.lid,
+        );
+        const phoneNumber = userPnJid ? phoneFromPnJid(userPnJid) : '';
         this.phoneNumber = phoneNumber || undefined;
 
         if (phoneNumber) {
@@ -331,10 +355,14 @@ export class WhatsAppConnector {
         this.socket = null;
         this.qr = null;
 
-        const boom = update.lastDisconnect?.error
-          ? new Boom(update.lastDisconnect.error as Error)
-          : null;
-        const statusCode = boom?.output.statusCode;
+        const disconnectError = update.lastDisconnect?.error as {
+          output?: { statusCode?: number };
+        } | Error | undefined;
+        const statusCode = disconnectError
+          ? ('output' in disconnectError && disconnectError.output?.statusCode
+            ? disconnectError.output.statusCode
+            : new Boom(disconnectError as Error).output.statusCode)
+          : undefined;
         const loggedOut = statusCode === DisconnectReason.loggedOut;
 
         if (loggedOut) {
@@ -409,8 +437,30 @@ export class WhatsAppConnector {
     const type = classifyMessage(normalizedContent);
     if (!type) return;
 
-    const phone = phoneFromJid(remoteJid);
-    if (!phone) return;
+    const pnJid = await resolvePnJid(
+      socket,
+      message.key.participantAlt,
+      message.key.remoteJidAlt,
+      message.key.participant,
+      remoteJid,
+    );
+    const phone = pnJid ? phoneFromPnJid(pnJid) : '';
+
+    if (!phone || !pnJid) {
+      await recordIntegrationEvent({
+        eventType: 'message_address_unresolved',
+        success: false,
+        externalId: externalMessageId,
+        errorCode: 'lid_unresolved',
+        errorMessage: 'Mensagem recebida sem mapeamento disponível entre LID e número de telefone.',
+        metadata: {
+          addressingMode: message.key.addressingMode ?? null,
+          hasRemoteJidAlt: Boolean(message.key.remoteJidAlt),
+          hasParticipantAlt: Boolean(message.key.participantAlt),
+        },
+      });
+      return;
+    }
 
     const startedAt = Date.now();
     let attachment: Awaited<ReturnType<typeof uploadInboundMedia>> & {
@@ -446,7 +496,7 @@ export class WhatsAppConnector {
 
     const result = await ingestIncomingMessage({
       externalMessageId,
-      threadId: jidNormalizedUser(remoteJid),
+      threadId: pnJid,
       phone,
       displayName: message.pushName || undefined,
       type,
