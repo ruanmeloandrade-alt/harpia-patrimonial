@@ -219,6 +219,59 @@ Deno.serve(async (req) => {
   const conversationId = text(body.conversationId) || undefined;
   const context = body.context && typeof body.context === 'object' && !Array.isArray(body.context) ? body.context as Json : {};
 
+  async function sendMessageThroughWhatsApp(message: string): Promise<Result> {
+    if (!conversationId) return { status: 'rejected', reason: 'Conversa obrigatória para enviar mensagem.' };
+    const cleanMessage = message.trim();
+    if (!cleanMessage) return { status: 'rejected', reason: 'Mensagem vazia.' };
+
+    try {
+      const response = await fetch(`${supabaseUrl}/functions/v1/whatsapp-transport`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${serviceKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          action: 'send',
+          conversationId,
+          type: 'text',
+          text: cleanMessage,
+        }),
+        signal: AbortSignal.timeout(20_000),
+      });
+      const payload = await response.json().catch(() => ({})) as {
+        ok?: boolean;
+        externalMessageId?: string;
+        sentAt?: string;
+        message?: string;
+      };
+
+      if (response.ok && payload.ok && payload.externalMessageId) {
+        return {
+          status: 'accepted',
+          data: {
+            externalMessageId: payload.externalMessageId,
+            sentAt: payload.sentAt ?? null,
+          },
+        };
+      }
+
+      const reason = payload.message || `Transporte WhatsApp respondeu HTTP ${response.status}.`;
+      const unavailable = response.status === 503
+        || /não está conectado|ainda não foi configurado|heartbeat|reconexão/i.test(reason);
+
+      return {
+        status: unavailable ? 'not_configured' : 'rejected',
+        reason,
+      };
+    } catch (error) {
+      return {
+        status: 'not_configured',
+        reason: error instanceof Error ? error.message : 'Transporte WhatsApp indisponível.',
+      };
+    }
+  }
+
   async function loadList<T>(key: string): Promise<T[]> { const { data, error } = await db.from('f05_shared_storage').select('value').eq('storage_key', key).maybeSingle(); if (error) throw error; return Array.isArray(data?.value) ? data.value as T[] : []; }
   async function saveList<T>(key: string, value: T[]) { const { data: row, error: readError } = await db.from('f05_shared_storage').select('revision').eq('storage_key', key).single(); if (readError) throw readError; const { data, error } = await db.from('f05_shared_storage').update({ value, revision: Number(row.revision) + 1, updated_at: nowIso(), updated_by: null }).eq('storage_key', key).eq('revision', row.revision).select('revision').maybeSingle(); if (error) throw error; if (!data) throw new Error('Conflito de concorrência ao persistir runtime F05.'); }
 
@@ -259,7 +312,7 @@ Deno.serve(async (req) => {
         if (block.type === 'condition') { const matched = evaluateCondition(text(config.expression), inputContext); if (matched === null) { await persist({ status: 'failed', finishedAt: nowIso(), error: 'Condição inválida.', runtimeContext: undefined }); return { status: 'rejected', executionId: execution.id, reason: 'Condição inválida.' }; } if (!matched) { await persist({ status: 'completed', finishedAt: nowIso(), runtimeContext: undefined, action: 'Condição não atendida; fluxo encerrado.' }); return { status: 'accepted', executionId: execution.id, data: { runtimeStatus: 'completed' } }; } continue; }
         if (block.type === 'delay') { const duration = delayMs(text(config.duration)); if (!duration) { await persist({ status: 'failed', finishedAt: nowIso(), error: 'Duração de espera inválida.', runtimeContext: undefined }); return { status: 'rejected', executionId: execution.id, reason: 'Duração de espera inválida.' }; } const resumeAt = new Date(Date.now() + duration).toISOString(); await persist({ status: 'paused', resumeMode: 'next_block', resumeAt, runtimeContext: inputContext, action: `Aguardando ${text(config.duration)}.` }); return { status: 'accepted', executionId: execution.id, data: { runtimeStatus: 'paused', resumeAt } }; }
         let result: Result;
-        if (block.type === 'message') result = { status: 'not_configured', reason: 'Canal de mensagem real ainda não conectado.' };
+        if (block.type === 'message') result = await sendMessageThroughWhatsApp(text(config.message));
         else if (block.type === 'ai_agent') {
           const agentId = text(config.agentId);
           await persist({ aiAgentId: agentId });
