@@ -44,6 +44,19 @@ async function canSend(authorization: string) {
   return (data ?? []).some((row: { permission_key: string | null }) => row.permission_key === 'inbox.manage');
 }
 
+function serviceClient() {
+  const supabaseUrl = Deno.env.get('SUPABASE_URL');
+  const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+  if (!supabaseUrl || !serviceRoleKey) throw new Error('Configuração do Supabase incompleta.');
+
+  return createClient(supabaseUrl, serviceRoleKey, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+    },
+  });
+}
+
 async function callConnector(payload: Record<string, unknown>) {
   const baseUrl = Deno.env.get('WHATSAPP_CONNECTOR_URL')?.trim().replace(/\/+$/, '');
   const token = Deno.env.get('WHATSAPP_CONNECTOR_TOKEN')?.trim();
@@ -81,23 +94,51 @@ Deno.serve(async (req: Request) => {
 
   const authorization = req.headers.get('Authorization');
   if (!authorization) return respond(401, { ok: false, message: 'Sessão ausente.' });
-  if (!await canSend(authorization)) return respond(403, { ok: false, message: 'Sem permissão para enviar pela Inbox.' });
+  if (!await canSend(authorization)) return respond(403, { ok: false, message: 'Sem permissão para operar a Inbox.' });
 
   const body = await req.json().catch(() => ({}));
+  const action = String(body.action || 'send').trim();
   const conversationId = String(body.conversationId || '').trim();
-  const type = String(body.type || 'text').trim();
-  const text = typeof body.text === 'string' ? body.text : undefined;
 
   if (!conversationId) return respond(400, { ok: false, message: 'conversationId é obrigatório.' });
-  if (!['text', 'audio', 'image', 'video', 'document', 'form'].includes(type)) {
-    return respond(400, { ok: false, message: 'Tipo de mensagem inválido.' });
-  }
 
   try {
+    if (action === 'prepare') {
+      const admin = serviceClient();
+      const { data, error } = await admin.rpc('admin_prepare_whatsapp_conversation', {
+        p_conversation_id: conversationId,
+      });
+
+      if (error) {
+        const normalized = error.message.includes('not healthy')
+          ? 'O WhatsApp não está conectado ou o heartbeat está desatualizado.'
+          : error.message.includes('valid whatsapp')
+            ? 'O lead não possui um WhatsApp válido.'
+            : error.message.includes('already linked')
+              ? 'Este número já está vinculado a outra conversa.'
+              : error.message;
+
+        return respond(409, { ok: false, message: normalized });
+      }
+
+      return respond(200, { ok: true, ...((data ?? {}) as Record<string, unknown>) });
+    }
+
+    if (action !== 'send') {
+      return respond(400, { ok: false, message: 'Ação inválida.' });
+    }
+
+    const type = String(body.type || 'text').trim();
+    const text = typeof body.text === 'string' ? body.text : undefined;
+
+    if (!['text', 'audio', 'image', 'video', 'document', 'form'].includes(type)) {
+      return respond(400, { ok: false, message: 'Tipo de mensagem inválido.' });
+    }
+
     const result = await callConnector({ conversationId, type, text });
     return respond(result.status, result.payload);
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Falha ao enviar pelo conector WhatsApp.';
+    const message = error instanceof Error ? error.message : 'Falha ao operar o transporte WhatsApp.';
     return respond(502, { ok: false, message });
   }
 });
