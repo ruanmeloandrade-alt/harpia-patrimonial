@@ -920,6 +920,10 @@ export type Database = {
         Args: { p_profile_id: string; p_secret_ref?: string }
         Returns: boolean
       }
+      admin_delete_whatsapp_auth_state: {
+        Args: { p_session_id: string; p_state_key?: string }
+        Returns: number
+      }
       admin_finish_automation_event: {
         Args: {
           p_error?: string
@@ -928,6 +932,10 @@ export type Database = {
           p_success: boolean
         }
         Returns: undefined
+      }
+      admin_get_whatsapp_auth_state: {
+        Args: { p_session_id: string; p_state_key: string }
+        Returns: string
       }
       admin_ingest_public_lead: {
         Args: {
@@ -957,6 +965,10 @@ export type Database = {
         }
         Returns: Json
       }
+      admin_prepare_whatsapp_conversation: {
+        Args: { p_conversation_id: string }
+        Returns: Json
+      }
       admin_resolve_ai_credential: {
         Args: { p_profile_id: string; p_secret_ref: string }
         Returns: string
@@ -968,6 +980,14 @@ export type Database = {
       admin_store_ai_credential: {
         Args: { p_api_key: string; p_profile_id: string }
         Returns: string
+      }
+      admin_upsert_whatsapp_auth_state: {
+        Args: {
+          p_encrypted_value: string
+          p_session_id: string
+          p_state_key: string
+        }
+        Returns: undefined
       }
       admin_validate_f05_scheduler_token: {
         Args: { p_token: string }
