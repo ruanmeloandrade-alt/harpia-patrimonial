@@ -111,26 +111,48 @@ export async function setConnectionStatus(
     .eq('id', connection.id);
 
   if (error) throw error;
+
+  const channelUpdate = {
+    status,
+    last_heartbeat_at: patch.lastHealthAt ?? undefined,
+    last_event_at: patch.lastEventAt ?? undefined,
+    last_error_at: patch.lastErrorAt ?? undefined,
+    last_error_code: patch.lastErrorCode ?? undefined,
+    updated_at: now,
+  };
+
+  const { error: channelError } = await db
+    .from('inbox_channel_accounts')
+    .update(channelUpdate)
+    .eq('connection_id', connection.id)
+    .eq('provider', 'whatsapp_web');
+
+  if (channelError) throw channelError;
+
+  const conversationStatus = status === 'connected'
+    ? 'connected'
+    : status === 'degraded' || status === 'error'
+      ? 'error'
+      : 'not_connected';
+
+  const { error: conversationError } = await db
+    .from('inbox_conversations')
+    .update({
+      transport_status: conversationStatus,
+      updated_at: now,
+    })
+    .eq('provider', 'whatsapp_web');
+
+  if (conversationError) throw conversationError;
+
   return connection.id as string;
 }
 
 export async function heartbeat() {
   const now = new Date().toISOString();
-  const connectionId = await setConnectionStatus('connected', {
+  await setConnectionStatus('connected', {
     lastHealthAt: now,
   });
-
-  const { error } = await db
-    .from('inbox_channel_accounts')
-    .update({
-      status: 'connected',
-      last_heartbeat_at: now,
-      updated_at: now,
-    })
-    .eq('connection_id', connectionId)
-    .eq('provider', 'whatsapp_web');
-
-  if (error) throw error;
 }
 
 export async function recordIntegrationEvent(input: {
