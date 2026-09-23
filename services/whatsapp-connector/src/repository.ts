@@ -43,7 +43,7 @@ type ConnectionPatch = {
 async function getConnection() {
   const { data, error } = await db
     .from('integration_connections')
-    .select('id,status,metadata')
+    .select('id,status,metadata,revision')
     .eq('provider', 'whatsapp')
     .eq('external_account_id', config.sessionId)
     .maybeSingle();
