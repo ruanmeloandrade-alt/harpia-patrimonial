@@ -120,6 +120,7 @@ export class WhatsAppConnector {
   private reconnectAttempt = 0;
   private reconnectTimer: NodeJS.Timeout | null = null;
   private heartbeatTimer: NodeJS.Timeout | null = null;
+  private socketGeneration = 0;
 
   snapshot(): ConnectorSnapshot {
     return {
@@ -150,6 +151,7 @@ export class WhatsAppConnector {
     try {
       this.authState = await createDatabaseAuthState(config.sessionId);
 
+      const generation = ++this.socketGeneration;
       const socket = makeWASocket({
         auth: {
           creds: this.authState.state.creds,
@@ -167,7 +169,7 @@ export class WhatsAppConnector {
       });
 
       this.socket = socket;
-      this.bindSocket(socket);
+      this.bindSocket(socket, generation);
       return this.snapshot();
     } catch (error) {
       this.socket = null;
@@ -196,12 +198,14 @@ export class WhatsAppConnector {
     this.stopHeartbeat();
 
     if (this.socket) {
+      const oldSocket = this.socket;
+      this.socket = null;
+      this.socketGeneration += 1;
       try {
-        this.socket.end(new Error('manual reconnect'));
+        oldSocket.end(new Error('manual reconnect'));
       } catch {
         // O socket pode já estar encerrado.
       }
-      this.socket = null;
     }
 
     return this.start();
@@ -215,6 +219,7 @@ export class WhatsAppConnector {
 
     const socket = this.socket;
     this.socket = null;
+    this.socketGeneration += 1;
 
     if (socket) {
       try {
@@ -248,6 +253,7 @@ export class WhatsAppConnector {
 
     const socket = this.socket;
     this.socket = null;
+    this.socketGeneration += 1;
 
     if (socket) {
       try {
@@ -311,8 +317,9 @@ export class WhatsAppConnector {
     }
   }
 
-  private bindSocket(socket: Socket) {
+  private bindSocket(socket: Socket, generation: number) {
     socket.ev.on('creds.update', async () => {
+      if (generation !== this.socketGeneration) return;
       try {
         await this.authState?.saveCreds();
       } catch (error) {
@@ -326,6 +333,7 @@ export class WhatsAppConnector {
     });
 
     socket.ev.on('connection.update', async (update) => {
+      if (generation !== this.socketGeneration) return;
       this.lastProtocolEventAt = new Date().toISOString();
 
       if (update.qr) {
@@ -426,6 +434,7 @@ export class WhatsAppConnector {
     });
 
     socket.ev.on('messages.upsert', async (event) => {
+      if (generation !== this.socketGeneration) return;
       if ((event as { requestId?: unknown }).requestId) {
         logger.warn('Evento messages.upsert com requestId descartado.');
         return;
