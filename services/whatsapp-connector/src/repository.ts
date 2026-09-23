@@ -94,16 +94,20 @@ export async function setConnectionStatus(
     sessionId: config.sessionId,
   };
 
+  const patchValue = <K extends keyof ConnectionPatch>(key: K): ConnectionPatch[K] | undefined => (
+    Object.prototype.hasOwnProperty.call(patch, key) ? patch[key] : undefined
+  );
+
   const { error } = await db
     .from('integration_connections')
     .update({
       status,
-      account_label: patch.accountLabel ?? undefined,
-      connected_at: patch.connectedAt ?? undefined,
-      last_health_at: patch.lastHealthAt ?? undefined,
-      last_event_at: patch.lastEventAt ?? undefined,
-      last_error_at: patch.lastErrorAt ?? undefined,
-      last_error_code: patch.lastErrorCode ?? undefined,
+      account_label: patchValue('accountLabel'),
+      connected_at: patchValue('connectedAt'),
+      last_health_at: patchValue('lastHealthAt'),
+      last_event_at: patchValue('lastEventAt'),
+      last_error_at: patchValue('lastErrorAt'),
+      last_error_code: patchValue('lastErrorCode'),
       metadata,
       revision: Number((connection as { revision?: number }).revision ?? 0) + 1,
       updated_at: now,
@@ -114,10 +118,10 @@ export async function setConnectionStatus(
 
   const channelUpdate = {
     status,
-    last_heartbeat_at: patch.lastHealthAt ?? undefined,
-    last_event_at: patch.lastEventAt ?? undefined,
-    last_error_at: patch.lastErrorAt ?? undefined,
-    last_error_code: patch.lastErrorCode ?? undefined,
+    last_heartbeat_at: patchValue('lastHealthAt'),
+    last_event_at: patchValue('lastEventAt'),
+    last_error_at: patchValue('lastErrorAt'),
+    last_error_code: patchValue('lastErrorCode'),
     updated_at: now,
   };
 
@@ -152,6 +156,8 @@ export async function heartbeat() {
   const now = new Date().toISOString();
   await setConnectionStatus('connected', {
     lastHealthAt: now,
+    lastErrorAt: null,
+    lastErrorCode: null,
   });
 }
 
@@ -188,7 +194,12 @@ export async function recordIntegrationEvent(input: {
   await setConnectionStatus(
     input.success ? 'connected' : 'degraded',
     input.success
-      ? { lastEventAt: occurredAt, lastHealthAt: occurredAt }
+      ? {
+        lastEventAt: occurredAt,
+        lastHealthAt: occurredAt,
+        lastErrorAt: null,
+        lastErrorCode: null,
+      }
       : {
         lastErrorAt: occurredAt,
         lastErrorCode: input.errorCode ?? 'connector_error',
