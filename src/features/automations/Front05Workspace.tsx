@@ -44,7 +44,7 @@ export function Front05Workspace({
   return <div className="f05-shell">
     <div className="f05-shell__intro">
       <div><span className="f05-kicker">Hárpia Patrimonial · Frente 05</span><h1>Automação inteligente</h1><p>SalesBot, Automatize, agentes de IA e integrações preparatórias em módulos independentes.</p></div>
-      <div className="f05-readiness"><span>WhatsApp</span><strong>Não conectado</strong><span>Meta</span><strong>Não conectado</strong></div>
+      <div className="f05-readiness"><span>WhatsApp Web</span><strong>Status em Integrações</strong><span>Meta Lead Ads</span><strong>Status em Integrações</strong></div>
     </div>
     <nav className="f05-tabs" aria-label="Módulos da Frente 05">
       {visibleTabs.map((item) => <button key={item.id} className={activeTab === item.id ? 'is-active' : ''} onClick={() => setTab(item.id)}>{item.label}</button>)}
