@@ -67,7 +67,7 @@ set search_path = ''
 as $$
 declare
   normalized_phone text;
-  lead_id text;
+  v_lead_id text;
   current_state jsonb;
 begin
   if coalesce(current_setting('request.jwt.claim.role', true), '') <> 'service_role' then
@@ -82,13 +82,13 @@ begin
   where module = 'crm';
 
   select lead->>'id'
-    into lead_id
+    into v_lead_id
   from jsonb_array_elements(coalesce(current_state->'leads', '[]'::jsonb)) lead
   where regexp_replace(coalesce(lead->>'whatsapp', ''), '[^0-9]', '', 'g') = normalized_phone
   order by coalesce(lead->>'updatedAt', lead->>'createdAt') desc
   limit 1;
 
-  if lead_id is not null then return lead_id; end if;
+  if v_lead_id is not null then return v_lead_id; end if;
 
   return public.admin_ingest_public_lead(
     coalesce(nullif(btrim(coalesce(p_display_name, '')), ''), p_phone),
@@ -125,7 +125,7 @@ set search_path = ''
 as $$
 declare
   provider_name text := 'whatsapp_web';
-  lead_id text;
+  v_lead_id text;
   conversation_id text;
   message_id text;
   received_at timestamptz := coalesce(p_received_at, now());
@@ -153,19 +153,19 @@ begin
   limit 1;
 
   if message_id is not null then
-    select c.lead_id into lead_id
+    select c.lead_id into v_lead_id
     from public.inbox_conversations c
     where c.id = conversation_id;
 
     return jsonb_build_object(
       'duplicate', true,
-      'leadId', lead_id,
+      'leadId', v_lead_id,
       'conversationId', conversation_id,
       'messageId', message_id
     );
   end if;
 
-  lead_id := public.admin_resolve_or_create_whatsapp_lead(
+  v_lead_id := public.admin_resolve_or_create_whatsapp_lead(
     p_phone,
     p_display_name,
     coalesce(p_metadata, '{}'::jsonb)
@@ -193,7 +193,7 @@ begin
         updated_at
       ) values (
         conversation_id,
-        lead_id,
+        v_lead_id,
         'whatsapp',
         provider_name,
         p_thread_id,
@@ -285,7 +285,7 @@ begin
   end if;
 
   update public.inbox_conversations
-  set lead_id = lead_id,
+  set lead_id = v_lead_id,
       transport_status = 'connected',
       last_message_at = greatest(coalesce(last_message_at, received_at), received_at),
       updated_at = greatest(updated_at, received_at)
@@ -293,7 +293,7 @@ begin
 
   return jsonb_build_object(
     'duplicate', not inserted_message,
-    'leadId', lead_id,
+    'leadId', v_lead_id,
     'conversationId', conversation_id,
     'messageId', message_id
   );
