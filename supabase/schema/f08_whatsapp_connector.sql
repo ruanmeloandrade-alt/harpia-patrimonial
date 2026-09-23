@@ -29,7 +29,7 @@ returns text
 language plpgsql
 security definer
 set search_path = ''
-as $
+as $function$
 declare
   value text;
 begin
@@ -45,7 +45,7 @@ begin
 
   return value;
 end;
-$;
+$function$;
 
 create or replace function public.admin_upsert_whatsapp_auth_state(
   p_session_id text,
@@ -56,7 +56,7 @@ returns void
 language plpgsql
 security definer
 set search_path = ''
-as $
+as $function$
 begin
   if coalesce(current_setting('request.jwt.claim.role', true), '') <> 'service_role' then
     raise exception 'service_role required';
@@ -84,7 +84,7 @@ begin
     encrypted_value = excluded.encrypted_value,
     updated_at = excluded.updated_at;
 end;
-$;
+$function$;
 
 create or replace function public.admin_delete_whatsapp_auth_state(
   p_session_id text,
@@ -94,7 +94,7 @@ returns bigint
 language plpgsql
 security definer
 set search_path = ''
-as $
+as $function$
 declare
   deleted_count bigint;
 begin
@@ -114,7 +114,7 @@ begin
   get diagnostics deleted_count = row_count;
   return deleted_count;
 end;
-$;
+$function$;
 
 revoke all on function public.admin_get_whatsapp_auth_state(text,text) from public, anon, authenticated;
 revoke all on function public.admin_upsert_whatsapp_auth_state(text,text,text) from public, anon, authenticated;
