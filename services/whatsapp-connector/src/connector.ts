@@ -13,6 +13,7 @@ import { createDatabaseAuthState } from './authStore.js';
 import { config } from './config.js';
 import { logger } from './logger.js';
 import {
+  downloadOutboundMedia,
   getConversationDestination,
   heartbeat,
   ingestIncomingMessage,
@@ -28,6 +29,13 @@ type SendInput = {
   conversationId: string;
   type: 'text' | 'audio' | 'image' | 'video' | 'document' | 'form';
   text?: string;
+  attachment?: {
+    name?: string;
+    mimeType?: string;
+    size?: number;
+    storageBucket?: string;
+    storagePath?: string;
+  };
 };
 
 export type ConnectorSnapshot = {
@@ -277,18 +285,61 @@ export class WhatsAppConnector {
     if (!this.socket || this.status !== 'connected') {
       throw new Error('WhatsApp Web não está conectado.');
     }
-    if (input.type !== 'text') {
-      throw new Error('Envio de mídia ainda não está habilitado no conector.');
-    }
-
-    const text = input.text?.trim();
-    if (!text) throw new Error('Mensagem de texto vazia.');
 
     const destination = await getConversationDestination(input.conversationId);
     const startedAt = Date.now();
 
     try {
-      const response = await this.socket.sendMessage(destination, { text });
+      let payload: Record<string, unknown>;
+      const text = input.text?.trim() || undefined;
+
+      if (input.type === 'text') {
+        if (!text) throw new Error('Mensagem de texto vazia.');
+        payload = { text };
+      } else if (input.type === 'form') {
+        throw new Error('Formulário ainda não é suportado pelo transporte WhatsApp Web.');
+      } else {
+        const attachment = input.attachment;
+        if (!attachment?.storageBucket || !attachment.storagePath) {
+          throw new Error('Referência segura da mídia não informada.');
+        }
+
+        const media = await downloadOutboundMedia({
+          storageBucket: attachment.storageBucket,
+          storagePath: attachment.storagePath,
+          mimeType: attachment.mimeType,
+          name: attachment.name,
+        });
+
+        if (input.type === 'image') {
+          payload = {
+            image: media.bytes,
+            mimetype: media.mimeType,
+            caption: text,
+          };
+        } else if (input.type === 'video') {
+          payload = {
+            video: media.bytes,
+            mimetype: media.mimeType,
+            caption: text,
+          };
+        } else if (input.type === 'audio') {
+          payload = {
+            audio: media.bytes,
+            mimetype: media.mimeType,
+            ptt: media.mimeType === 'audio/ogg',
+          };
+        } else {
+          payload = {
+            document: media.bytes,
+            mimetype: media.mimeType,
+            fileName: media.fileName,
+            caption: text,
+          };
+        }
+      }
+
+      const response = await this.socket.sendMessage(destination, payload as never);
       const externalMessageId = response?.key?.id;
       if (!externalMessageId) throw new Error('WhatsApp confirmou envio sem ID externo.');
 
