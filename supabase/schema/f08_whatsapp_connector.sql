@@ -21,6 +21,109 @@ to anon, authenticated
 using (false)
 with check (false);
 
+create or replace function public.admin_get_whatsapp_auth_state(
+  p_session_id text,
+  p_state_key text
+)
+returns text
+language plpgsql
+security definer
+set search_path = ''
+as $
+declare
+  value text;
+begin
+  if coalesce(current_setting('request.jwt.claim.role', true), '') <> 'service_role' then
+    raise exception 'service_role required';
+  end if;
+
+  select s.encrypted_value
+    into value
+  from private.whatsapp_auth_state s
+  where s.session_id = p_session_id
+    and s.state_key = p_state_key;
+
+  return value;
+end;
+$;
+
+create or replace function public.admin_upsert_whatsapp_auth_state(
+  p_session_id text,
+  p_state_key text,
+  p_encrypted_value text
+)
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $
+begin
+  if coalesce(current_setting('request.jwt.claim.role', true), '') <> 'service_role' then
+    raise exception 'service_role required';
+  end if;
+
+  if nullif(btrim(coalesce(p_session_id, '')), '') is null
+     or nullif(btrim(coalesce(p_state_key, '')), '') is null
+     or nullif(p_encrypted_value, '') is null then
+    raise exception 'invalid auth state payload';
+  end if;
+
+  insert into private.whatsapp_auth_state (
+    session_id,
+    state_key,
+    encrypted_value,
+    updated_at
+  ) values (
+    p_session_id,
+    p_state_key,
+    p_encrypted_value,
+    now()
+  )
+  on conflict (session_id, state_key)
+  do update set
+    encrypted_value = excluded.encrypted_value,
+    updated_at = excluded.updated_at;
+end;
+$;
+
+create or replace function public.admin_delete_whatsapp_auth_state(
+  p_session_id text,
+  p_state_key text default null
+)
+returns bigint
+language plpgsql
+security definer
+set search_path = ''
+as $
+declare
+  deleted_count bigint;
+begin
+  if coalesce(current_setting('request.jwt.claim.role', true), '') <> 'service_role' then
+    raise exception 'service_role required';
+  end if;
+
+  if p_state_key is null then
+    delete from private.whatsapp_auth_state
+    where session_id = p_session_id;
+  else
+    delete from private.whatsapp_auth_state
+    where session_id = p_session_id
+      and state_key = p_state_key;
+  end if;
+
+  get diagnostics deleted_count = row_count;
+  return deleted_count;
+end;
+$;
+
+revoke all on function public.admin_get_whatsapp_auth_state(text,text) from public, anon, authenticated;
+revoke all on function public.admin_upsert_whatsapp_auth_state(text,text,text) from public, anon, authenticated;
+revoke all on function public.admin_delete_whatsapp_auth_state(text,text) from public, anon, authenticated;
+
+grant execute on function public.admin_get_whatsapp_auth_state(text,text) to service_role;
+grant execute on function public.admin_upsert_whatsapp_auth_state(text,text,text) to service_role;
+grant execute on function public.admin_delete_whatsapp_auth_state(text,text) to service_role;
+
 insert into storage.buckets (
   id,
   name,
