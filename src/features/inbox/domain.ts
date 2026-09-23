@@ -62,6 +62,7 @@ export interface OutgoingTransportMessage {
 }
 
 export interface InboxTransportPort {
+  prepareConversation?(conversationId: CrmId): Promise<{ externalThreadId?: string }>;
   send(message: OutgoingTransportMessage): Promise<{ externalMessageId: string; sentAt?: IsoDateTime }>;
 }
 
