@@ -3,6 +3,7 @@ import type {
   InboxMessage,
   InboxState,
   InboxTransportPort,
+  MessageAttachmentUpload,
   IncomingTransportMessage,
   MessageType,
   OutgoingTransportMessage,
@@ -75,6 +76,13 @@ export class InboxService {
     return this.state.messages
       .filter((message) => message.conversationId === conversationId)
       .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+  }
+
+  async uploadAttachment(input: MessageAttachmentUpload) {
+    if (!this.transport?.uploadAttachment) {
+      throw new InboxIntegrityError('Upload de mídia ainda não está disponível neste transporte.');
+    }
+    return this.transport.uploadAttachment(input);
   }
 
   ingestIncomingMessage(input: IncomingTransportMessage): InboxMessage {
