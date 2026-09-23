@@ -472,7 +472,7 @@ export function InboxWorkspace({
                 <span>{mediaBusy ? 'Enviando mídia...' : 'Anexar mídia'}</span>
                 <input
                   type="file"
-                  accept="image/jpeg,image/png,image/webp,audio/ogg,audio/mpeg,audio/mp4,video/mp4,application/pdf,application/octet-stream"
+                  accept="image/jpeg,image/png,image/webp,audio/ogg,audio/mpeg,audio/mp4,video/mp4,application/pdf,text/plain,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation,application/zip,application/octet-stream"
                   disabled={selectedConversation.transportStatus !== 'connected' || mediaBusy}
                   onChange={(event) => { void submitMedia(event); }}
                 />
@@ -796,7 +796,18 @@ function mediaTypeFromMime(mimeType: string): Exclude<MessageType, 'text' | 'for
   if (mimeType.startsWith('image/')) return 'image';
   if (mimeType.startsWith('audio/')) return 'audio';
   if (mimeType === 'video/mp4') return 'video';
-  if (mimeType === 'application/pdf' || mimeType === 'application/octet-stream') return 'document';
+  if (
+    mimeType === 'text/plain'
+    || mimeType === 'application/pdf'
+    || mimeType === 'application/msword'
+    || mimeType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    || mimeType === 'application/vnd.ms-excel'
+    || mimeType === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    || mimeType === 'application/vnd.ms-powerpoint'
+    || mimeType === 'application/vnd.openxmlformats-officedocument.presentationml.presentation'
+    || mimeType === 'application/zip'
+    || mimeType === 'application/octet-stream'
+  ) return 'document';
   return null;
 }
 
