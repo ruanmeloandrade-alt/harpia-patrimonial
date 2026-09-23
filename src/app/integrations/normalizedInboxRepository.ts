@@ -58,6 +58,8 @@ type AttachmentRow = {
   name: string | null;
   mime_type: string | null;
   url: string | null;
+  storage_bucket: string | null;
+  storage_path: string | null;
   size_bytes: number | null;
 };
 
@@ -81,6 +83,29 @@ function attachmentFromRow(row: AttachmentRow | undefined): MessageAttachment | 
     mimeType: row.mime_type ?? undefined,
     url: row.url ?? undefined,
     size: row.size_bytes ?? undefined,
+  };
+}
+
+async function resolvePrivateAttachmentUrl(row: AttachmentRow): Promise<AttachmentRow> {
+  if (row.url || !row.storage_bucket || !row.storage_path) return row;
+
+  const supabase = requireSupabase() as any;
+  const { data, error } = await supabase.storage
+    .from(row.storage_bucket)
+    .createSignedUrl(row.storage_path, 60 * 60);
+
+  if (error) {
+    console.warn('[inbox] signed media url failed', {
+      messageId: row.message_id,
+      bucket: row.storage_bucket,
+      error: error.message,
+    });
+    return row;
+  }
+
+  return {
+    ...row,
+    url: data?.signedUrl ?? null,
   };
 }
 
@@ -272,7 +297,7 @@ export async function hydrateNormalizedInboxRepository() {
       .order('created_at', { ascending: true }),
     supabase
       .from('inbox_message_attachments')
-      .select('message_id,name,mime_type,url,size_bytes')
+      .select('message_id,name,mime_type,url,storage_bucket,storage_path,size_bytes')
       .order('created_at', { ascending: true }),
   ]);
 
@@ -280,8 +305,12 @@ export async function hydrateNormalizedInboxRepository() {
   if (messagesResult.error) throw messagesResult.error;
   if (attachmentsResult.error) throw attachmentsResult.error;
 
+  const resolvedAttachments = await Promise.all(
+    ((attachmentsResult.data ?? []) as AttachmentRow[]).map(resolvePrivateAttachmentUrl),
+  );
+
   const attachmentsByMessage = new Map<string, AttachmentRow>();
-  for (const row of (attachmentsResult.data ?? []) as AttachmentRow[]) {
+  for (const row of resolvedAttachments) {
     if (!attachmentsByMessage.has(row.message_id)) attachmentsByMessage.set(row.message_id, row);
   }
 
