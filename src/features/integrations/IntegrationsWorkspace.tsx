@@ -1,14 +1,23 @@
-import { useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useF05StorageListener } from '../automations/useF05StorageListener';
 import type { AICredentialVaultPort } from './aiCredentialPort';
-import { listIntegrations, updateIntegration } from './repository';
+import {
+  listIntegrations,
+  loadIntegrations,
+  subscribeIntegrationConnections,
+  updateIntegrationNotes,
+} from './repository';
 import { AIProvidersWorkspace } from './AIProvidersWorkspace';
 
 const STATUS_LABELS = {
   not_connected: 'Não conectado',
+  connecting: 'Conectando',
+  connected: 'Conectado',
+  degraded: 'Conexão degradada',
+  reauth_required: 'Reconexão necessária',
+  error: 'Erro',
   pending: 'Configuração pendente',
   future: 'Planejado para depois',
-  connected: 'Conectado',
 } as const;
 
 interface IntegrationsWorkspaceProps {
@@ -16,31 +25,95 @@ interface IntegrationsWorkspaceProps {
   canManage?: boolean;
 }
 
+function formatDate(value?: string) {
+  if (!value) return 'Sem registro';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return 'Sem registro';
+  return new Intl.DateTimeFormat('pt-BR', {
+    dateStyle: 'short',
+    timeStyle: 'short',
+  }).format(date);
+}
+
 export function IntegrationsWorkspace({ credentialVault, canManage = false }: IntegrationsWorkspaceProps) {
   const [items, setItems] = useState(() => listIntegrations());
-  const refresh = () => setItems(listIntegrations());
-  useF05StorageListener(refresh);
+  const [loadError, setLoadError] = useState('');
+
+  const refresh = useCallback(async () => {
+    try {
+      setItems(await loadIntegrations());
+      setLoadError('');
+    } catch (error) {
+      setLoadError(error instanceof Error ? error.message : 'Não foi possível consultar o estado das integrações.');
+    }
+  }, []);
+
+  useEffect(() => {
+    void refresh();
+    return subscribeIntegrationConnections(() => { void refresh(); });
+  }, [refresh]);
+
+  useF05StorageListener(() => { void refresh(); });
+
   const externalItems = items.filter((item) => item.id !== 'ai');
 
   return <section className="f05-module">
-    <header className="f05-module__header"><div><span className="f05-kicker">Integrações</span><h2>Conexões externas e provedores</h2><p>IA é configurável por cliente. WhatsApp e Meta permanecem sem conexão real até a fase final.</p></div></header>
+    <header className="f05-module__header">
+      <div>
+        <span className="f05-kicker">Integrações</span>
+        <h2>Conexões externas e provedores</h2>
+        <p>WhatsApp e Meta agora exibem o estado registrado pelo backend. A interface não pode forçar uma conexão como ativa.</p>
+      </div>
+    </header>
 
     <AIProvidersWorkspace credentialVault={credentialVault} canManage={canManage} />
 
     <div className="f05-divider" />
-    <div className="f05-subheader"><div><span className="f05-kicker">Demais integrações</span><h3>Estrutura preparatória</h3><p>Estados explícitos distinguem conexão ausente, configuração pendente e integração planejada para fase futura.</p></div></div>
+    <div className="f05-subheader">
+      <div>
+        <span className="f05-kicker">Demais integrações</span>
+        <h3>Saúde das conexões</h3>
+        <p>Conexões operacionais mostram health, último evento e último erro quando essas informações existem.</p>
+      </div>
+    </div>
+
+    {loadError && <div className="f05-empty" role="alert">{loadError}</div>}
+
     <div className="f05-card-grid">
       {externalItems.map((item) => <article className="f05-card" key={item.id}>
-        <div className="f05-card__top"><h3>{item.label}</h3><span className={`f05-status f05-status--${item.status}`}>{STATUS_LABELS[item.status]}</span></div>
+        <div className="f05-card__top">
+          <h3>{item.label}</h3>
+          <span className={`f05-status f05-status--${item.status}`}>{STATUS_LABELS[item.status]}</span>
+        </div>
+
         <fieldset className="f05-readonly-fieldset" disabled={!canManage}>
-          <textarea rows={3} value={item.notes} onChange={(e) => { updateIntegration(item.id, { notes: e.target.value }); refresh(); }}/>
-          <div className="f05-actions">
-            <button className="secondary" disabled={item.status === 'not_connected'} onClick={() => { updateIntegration(item.id, { status: 'not_connected' }); refresh(); }}>Marcar não conectado</button>
-            <button disabled={item.status === 'pending'} onClick={() => { updateIntegration(item.id, { status: 'pending' }); refresh(); }}>Configuração pendente</button>
-            <button className="secondary" disabled={item.status === 'future'} onClick={() => { updateIntegration(item.id, { status: 'future' }); refresh(); }}>Planejado para depois</button>
-          </div>
+          <textarea
+            rows={3}
+            value={item.notes}
+            onChange={(event) => {
+              updateIntegrationNotes(item.id, event.target.value);
+              setItems(listIntegrations());
+              void refresh();
+            }}
+          />
         </fieldset>
-        <small>O estado “Conectado” não pode ser forçado por esta tela; só deve vir da integração real.</small>
+
+        {(item.id === 'whatsapp' || item.id === 'meta') && (
+          <dl className="f05-meta-list">
+            <div><dt>Conta</dt><dd>{item.accountLabel ?? item.externalAccountId ?? 'Nenhuma conta conectada'}</dd></div>
+            <div><dt>Último health</dt><dd>{formatDate(item.lastHealthAt)}</dd></div>
+            <div><dt>Último evento</dt><dd>{formatDate(item.lastEventAt)}</dd></div>
+            <div><dt>Último erro</dt><dd>{item.lastErrorCode ? `${item.lastErrorCode} em ${formatDate(item.lastErrorAt)}` : 'Sem erro registrado'}</dd></div>
+          </dl>
+        )}
+
+        <small>
+          {item.id === 'whatsapp'
+            ? 'O pareamento por QR e a reconexão serão ativados pelo conector do WhatsApp Web.'
+            : item.id === 'meta'
+              ? 'A autorização, webhook e seleção de ativos serão ativados pela integração Meta.'
+              : 'Integração ainda planejada para uma etapa posterior.'}
+        </small>
       </article>)}
     </div>
   </section>;
