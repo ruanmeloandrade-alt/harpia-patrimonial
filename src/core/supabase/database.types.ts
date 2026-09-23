@@ -943,8 +943,26 @@ export type Database = {
         }
         Returns: string
       }
+      admin_ingest_whatsapp_message: {
+        Args: {
+          p_attachment?: Json
+          p_display_name: string
+          p_external_message_id: string
+          p_metadata?: Json
+          p_phone: string
+          p_received_at?: string
+          p_text?: string
+          p_thread_id: string
+          p_type: string
+        }
+        Returns: Json
+      }
       admin_resolve_ai_credential: {
         Args: { p_profile_id: string; p_secret_ref: string }
+        Returns: string
+      }
+      admin_resolve_or_create_whatsapp_lead: {
+        Args: { p_display_name?: string; p_metadata?: Json; p_phone: string }
         Returns: string
       }
       admin_store_ai_credential: {
