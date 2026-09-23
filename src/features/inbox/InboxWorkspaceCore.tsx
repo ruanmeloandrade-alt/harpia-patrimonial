@@ -214,6 +214,17 @@ export function InboxWorkspace({
     }
   };
 
+  const activateWhatsApp = async () => {
+    if (!selectedConversation || !selectedLead?.whatsapp) return;
+    try {
+      await inboxService.connectTransport(selectedConversation.id);
+      refresh();
+      setFeedback('WhatsApp ativado para esta conversa.');
+    } catch (error) {
+      setFeedback(error instanceof Error ? error.message : 'Não foi possível ativar o WhatsApp nesta conversa.');
+    }
+  };
+
   const submitText = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!selectedConversation) return;
@@ -407,7 +418,7 @@ export function InboxWorkspace({
                   placeholder={
                     selectedConversation.transportStatus === 'connected'
                       ? 'Digite uma mensagem'
-                      : 'Canal não conectado — envio bloqueado'
+                      : 'Canal não conectado. Envio bloqueado.'
                   }
                   disabled={selectedConversation.transportStatus !== 'connected'}
                 />
@@ -416,7 +427,16 @@ export function InboxWorkspace({
                 </button>
               </form>
               {selectedConversation.transportStatus !== 'connected' && (
-                <small>Nenhuma ação nesta tela simula envio real.</small>
+                <>
+                  {selectedLead.whatsapp ? (
+                    <button type="button" onClick={() => { void activateWhatsApp(); }}>
+                      Ativar WhatsApp
+                    </button>
+                  ) : (
+                    <small>Este lead não possui WhatsApp válido para iniciar o atendimento.</small>
+                  )}
+                  <small>Nenhuma ação nesta tela simula envio real.</small>
+                </>
               )}
             </div>
           </>
