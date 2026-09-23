@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useMemo, useState } from 'react';
+import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from 'react';
 import {
   UnavailableInboxAutomationPort,
 } from '../crm/contracts';
@@ -60,6 +60,7 @@ export function InboxWorkspace({
     () => Object.fromEntries(agentSelectionMemory),
   );
   const [feedback, setFeedback] = useState('');
+  const [mediaBusy, setMediaBusy] = useState(false);
   const [automationStatus, setAutomationStatus] = useState<ConversationAutomationStatus>({
     salesBot: 'unavailable',
     aiAgent: 'unavailable',
@@ -243,6 +244,41 @@ export function InboxWorkspace({
       setFeedback(error instanceof Error ? error.message : 'Nenhuma mensagem foi enviada.');
     }
   };
+  const submitMedia = async (event: ChangeEvent<HTMLInputElement>) => {
+    const input = event.currentTarget;
+    const file = input.files?.[0];
+    if (!file || !selectedConversation) return;
+
+    const type = mediaTypeFromMime(file.type);
+    if (!type) {
+      setFeedback('Formato de arquivo não suportado pela Inbox.');
+      input.value = '';
+      return;
+    }
+
+    setMediaBusy(true);
+    try {
+      const attachment = await inboxService.uploadAttachment({
+        name: file.name,
+        mimeType: file.type || 'application/octet-stream',
+        size: file.size,
+        body: file,
+      });
+      await inboxService.sendMessage({
+        conversationId: selectedConversation.id,
+        type,
+        attachment,
+      });
+      refresh();
+      setFeedback('Mídia enviada pelo transporte conectado.');
+    } catch (error) {
+      setFeedback(error instanceof Error ? error.message : 'Não foi possível enviar a mídia.');
+    } finally {
+      setMediaBusy(false);
+      input.value = '';
+    }
+  };
+
 
   const updateStage = (stageId: string) => {
     if (!selectedLead || !stageId) return;
@@ -398,7 +434,13 @@ export function InboxWorkspace({
                   >
                     <span>{message.type}</span>
                     {message.text && <p>{message.text}</p>}
-                    {message.attachment?.name && <strong>{message.attachment.name}</strong>}
+                    {message.attachment?.url ? (
+                      <a href={message.attachment.url} target="_blank" rel="noreferrer">
+                        {message.attachment.name || 'Abrir arquivo'}
+                      </a>
+                    ) : message.attachment?.name ? (
+                      <strong>{message.attachment.name}</strong>
+                    ) : null}
                     <small>{new Date(message.createdAt).toLocaleString('pt-BR')}</small>
                   </article>
                 ))
@@ -422,10 +464,19 @@ export function InboxWorkspace({
                   }
                   disabled={selectedConversation.transportStatus !== 'connected'}
                 />
-                <button type="submit" disabled={selectedConversation.transportStatus !== 'connected'}>
+                <button type="submit" disabled={selectedConversation.transportStatus !== 'connected' || mediaBusy}>
                   Enviar
                 </button>
               </form>
+              <label>
+                <span>{mediaBusy ? 'Enviando mídia...' : 'Anexar mídia'}</span>
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,audio/ogg,audio/mpeg,audio/mp4,video/mp4,application/pdf,application/octet-stream"
+                  disabled={selectedConversation.transportStatus !== 'connected' || mediaBusy}
+                  onChange={(event) => { void submitMedia(event); }}
+                />
+              </label>
               {selectedConversation.transportStatus !== 'connected' && (
                 <>
                   {selectedLead.whatsapp ? (
@@ -739,6 +790,14 @@ function EmptyState({ title, description }: { title: string; description: string
       <p>{description}</p>
     </div>
   );
+}
+
+function mediaTypeFromMime(mimeType: string): Exclude<MessageType, 'text' | 'form'> | null {
+  if (mimeType.startsWith('image/')) return 'image';
+  if (mimeType.startsWith('audio/')) return 'audio';
+  if (mimeType === 'video/mp4') return 'video';
+  if (mimeType === 'application/pdf' || mimeType === 'application/octet-stream') return 'document';
+  return null;
 }
 
 function messageTypeLabel(type: MessageType): string {
