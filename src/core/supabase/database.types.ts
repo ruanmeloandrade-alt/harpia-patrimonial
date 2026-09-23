@@ -965,6 +965,7 @@ export type Database = {
         }
         Returns: Json
       }
+      admin_mark_stale_whatsapp_connector: { Args: never; Returns: number }
       admin_prepare_whatsapp_conversation: {
         Args: { p_conversation_id: string }
         Returns: Json
