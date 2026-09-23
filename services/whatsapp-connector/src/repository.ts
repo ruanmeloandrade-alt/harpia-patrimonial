@@ -297,6 +297,7 @@ export async function uploadInboundMedia(input: {
   fileName?: string;
 }) {
   const date = new Date();
+  const normalizedMimeType = input.mimeType.split(';')[0]?.trim().toLowerCase() || 'application/octet-stream';
   const safeName = (input.fileName || 'media')
     .replace(/[^a-zA-Z0-9._-]+/g, '_')
     .slice(-120);
@@ -310,7 +311,7 @@ export async function uploadInboundMedia(input: {
   const { error } = await db.storage
     .from('inbox-media')
     .upload(path, input.bytes, {
-      contentType: input.mimeType,
+      contentType: normalizedMimeType,
       upsert: false,
     });
 
@@ -320,7 +321,7 @@ export async function uploadInboundMedia(input: {
     storageBucket: 'inbox-media',
     storagePath: path,
     size: input.bytes.length,
-    mimeType: input.mimeType,
+    mimeType: normalizedMimeType,
   };
 }
 
