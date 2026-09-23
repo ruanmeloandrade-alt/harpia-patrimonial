@@ -130,12 +130,15 @@ Deno.serve(async (req: Request) => {
 
     const type = String(body.type || 'text').trim();
     const text = typeof body.text === 'string' ? body.text : undefined;
+    const attachment = body.attachment && typeof body.attachment === 'object' && !Array.isArray(body.attachment)
+      ? body.attachment as Record<string, unknown>
+      : undefined;
 
     if (!['text', 'audio', 'image', 'video', 'document', 'form'].includes(type)) {
       return respond(400, { ok: false, message: 'Tipo de mensagem inválido.' });
     }
 
-    const result = await callConnector({ conversationId, type, text });
+    const result = await callConnector({ conversationId, type, text, attachment });
     return respond(result.status, result.payload);
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Falha ao operar o transporte WhatsApp.';
