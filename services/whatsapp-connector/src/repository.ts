@@ -313,6 +313,39 @@ export async function uploadInboundMedia(input: {
   };
 }
 
+export async function downloadOutboundMedia(input: {
+  storageBucket: string;
+  storagePath: string;
+  mimeType?: string;
+  name?: string;
+}) {
+  if (input.storageBucket !== 'inbox-media') {
+    throw new Error('Bucket de mídia não autorizado.');
+  }
+  if (!input.storagePath.startsWith('outbound/')) {
+    throw new Error('Caminho de mídia de saída inválido.');
+  }
+
+  const { data, error } = await db.storage
+    .from(input.storageBucket)
+    .download(input.storagePath);
+
+  if (error || !data) {
+    throw new Error(error?.message || 'Mídia de saída não encontrada.');
+  }
+
+  const bytes = Buffer.from(await data.arrayBuffer());
+  if (bytes.length === 0 || bytes.length > 25 * 1024 * 1024) {
+    throw new Error('Mídia de saída vazia ou acima de 25 MB.');
+  }
+
+  return {
+    bytes,
+    mimeType: input.mimeType || data.type || 'application/octet-stream',
+    fileName: input.name || input.storagePath.split('/').pop() || 'arquivo',
+  };
+}
+
 export async function getConversationDestination(conversationId: string) {
   const { data, error } = await db
     .from('inbox_conversations')
