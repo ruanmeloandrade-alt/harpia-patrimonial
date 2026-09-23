@@ -285,6 +285,21 @@ export function PlatformRuntimeProvider({ children }: PropsWithChildren) {
         { event: 'UPDATE', schema: 'public', table: 'platform_module_state' },
         () => { void installOperationalRuntime(false); },
       )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'inbox_conversations' },
+        () => { void installOperationalRuntime(false); },
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'inbox_messages' },
+        () => { void installOperationalRuntime(false); },
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'inbox_message_attachments' },
+        () => { void installOperationalRuntime(false); },
+      )
       .subscribe();
 
     return () => {
