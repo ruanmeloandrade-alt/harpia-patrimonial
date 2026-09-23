@@ -83,6 +83,8 @@ function attachmentFromRow(row: AttachmentRow | undefined): MessageAttachment | 
     mimeType: row.mime_type ?? undefined,
     url: row.url ?? undefined,
     size: row.size_bytes ?? undefined,
+    storageBucket: row.storage_bucket ?? undefined,
+    storagePath: row.storage_path ?? undefined,
   };
 }
 
@@ -159,6 +161,8 @@ function attachmentToRow(message: InboxMessage) {
     name: message.attachment.name ?? null,
     mime_type: message.attachment.mimeType ?? null,
     url: message.attachment.url ?? null,
+    storage_bucket: message.attachment.storageBucket ?? null,
+    storage_path: message.attachment.storagePath ?? null,
     size_bytes: message.attachment.size ?? null,
   };
 }
