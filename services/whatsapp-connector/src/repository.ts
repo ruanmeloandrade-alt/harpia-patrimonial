@@ -116,9 +116,21 @@ export async function setConnectionStatus(
 
 export async function heartbeat() {
   const now = new Date().toISOString();
-  await setConnectionStatus('connected', {
+  const connectionId = await setConnectionStatus('connected', {
     lastHealthAt: now,
   });
+
+  const { error } = await db
+    .from('inbox_channel_accounts')
+    .update({
+      status: 'connected',
+      last_heartbeat_at: now,
+      updated_at: now,
+    })
+    .eq('connection_id', connectionId)
+    .eq('provider', 'whatsapp_web');
+
+  if (error) throw error;
 }
 
 export async function recordIntegrationEvent(input: {
