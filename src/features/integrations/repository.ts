@@ -63,9 +63,18 @@ export async function loadIntegrations(): Promise<IntegrationConfig[]> {
     const connection = latestByProvider.get(item.id);
     if (!connection) return { ...item, status: 'not_connected' };
 
+    const healthAgeMs = connection.last_health_at
+      ? Date.now() - new Date(connection.last_health_at).getTime()
+      : Number.POSITIVE_INFINITY;
+    const effectiveStatus = item.id === 'whatsapp'
+      && connection.status === 'connected'
+      && healthAgeMs > 120_000
+      ? 'degraded'
+      : connection.status;
+
     return {
       ...item,
-      status: connection.status,
+      status: effectiveStatus,
       externalAccountId: connection.external_account_id ?? undefined,
       accountLabel: connection.account_label ?? undefined,
       connectedAt: connection.connected_at ?? undefined,
