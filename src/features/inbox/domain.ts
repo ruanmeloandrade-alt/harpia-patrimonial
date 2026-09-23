@@ -22,6 +22,15 @@ export interface MessageAttachment {
   mimeType?: string;
   url?: string;
   size?: number;
+  storageBucket?: string;
+  storagePath?: string;
+}
+
+export interface MessageAttachmentUpload {
+  name: string;
+  mimeType: string;
+  size: number;
+  body: Blob;
 }
 
 export interface InboxMessage {
@@ -63,6 +72,7 @@ export interface OutgoingTransportMessage {
 
 export interface InboxTransportPort {
   prepareConversation?(conversationId: CrmId): Promise<{ externalThreadId?: string }>;
+  uploadAttachment?(input: MessageAttachmentUpload): Promise<MessageAttachment>;
   send(message: OutgoingTransportMessage): Promise<{ externalMessageId: string; sentAt?: IsoDateTime }>;
 }
 
