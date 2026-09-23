@@ -112,6 +112,18 @@ async function handleRequest(request: IncomingMessage, response: ServerResponse)
     const conversationId = String(body.conversationId || '').trim();
     const type = String(body.type || 'text') as 'text' | 'audio' | 'image' | 'video' | 'document' | 'form';
     const text = typeof body.text === 'string' ? body.text : undefined;
+    const rawAttachment = body.attachment && typeof body.attachment === 'object' && !Array.isArray(body.attachment)
+      ? body.attachment as Record<string, unknown>
+      : undefined;
+    const attachment = rawAttachment
+      ? {
+        name: typeof rawAttachment.name === 'string' ? rawAttachment.name : undefined,
+        mimeType: typeof rawAttachment.mimeType === 'string' ? rawAttachment.mimeType : undefined,
+        size: typeof rawAttachment.size === 'number' ? rawAttachment.size : undefined,
+        storageBucket: typeof rawAttachment.storageBucket === 'string' ? rawAttachment.storageBucket : undefined,
+        storagePath: typeof rawAttachment.storagePath === 'string' ? rawAttachment.storagePath : undefined,
+      }
+      : undefined;
 
     if (!conversationId) {
       sendJson(response, 400, { ok: false, message: 'conversationId é obrigatório.' });
@@ -122,6 +134,7 @@ async function handleRequest(request: IncomingMessage, response: ServerResponse)
       conversationId,
       type,
       text,
+      attachment,
     });
 
     sendJson(response, 200, {
