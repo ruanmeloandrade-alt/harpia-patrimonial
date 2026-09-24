@@ -311,21 +311,33 @@ export async function getSessionChannelAccountId(sessionId: string) {
 }
 
 export async function getConversationSessionId(conversationId: string) {
-  const { data, error } = await db
+  const { data: conversation, error: conversationError } = await db
     .from('inbox_conversations')
-    .select('channel_account_id,inbox_channel_accounts!inner(connection_id,integration_connections!inner(external_account_id))')
+    .select('channel_account_id')
     .eq('id', conversationId)
     .maybeSingle();
 
-  if (error) throw error;
+  if (conversationError) throw conversationError;
+  if (!conversation?.channel_account_id) return undefined;
 
-  const account = data?.inbox_channel_accounts as unknown as {
-    integration_connections?: { external_account_id?: string | null } | null;
-  } | null;
+  const { data: account, error: accountError } = await db
+    .from('inbox_channel_accounts')
+    .select('connection_id')
+    .eq('id', conversation.channel_account_id)
+    .maybeSingle();
 
-  return account?.integration_connections?.external_account_id
-    ? String(account.integration_connections.external_account_id)
-    : undefined;
+  if (accountError) throw accountError;
+  if (!account?.connection_id) return undefined;
+
+  const { data: connection, error: connectionError } = await db
+    .from('integration_connections')
+    .select('external_account_id')
+    .eq('id', account.connection_id)
+    .eq('provider', 'whatsapp')
+    .maybeSingle();
+
+  if (connectionError) throw connectionError;
+  return connection?.external_account_id ? String(connection.external_account_id) : undefined;
 }
 
 export async function ingestIncomingMessage(sessionId: string, input: IncomingMessageInput) {
