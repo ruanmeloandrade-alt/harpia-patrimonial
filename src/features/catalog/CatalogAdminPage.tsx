@@ -1,4 +1,5 @@
 import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from 'react';
+import { formatCurrency } from '../settings/regional-runtime';
 import { CATALOG_CHANGED_EVENT, LocalCatalogRepository, type CatalogRepository } from './catalogRepository';
 import type { CatalogMediaStorage } from './catalogMediaStorage';
 import {
@@ -85,11 +86,7 @@ function splitList(value: string) {
 }
 
 function money(value: number | null) {
-  if (value === null) return 'Sob consulta';
-  return new Intl.NumberFormat('pt-BR', {
-    style: 'currency',
-    currency: 'BRL',
-  }).format(value);
+  return value === null ? '—' : formatCurrency(value);
 }
 
 function discountedPrice(item: Pick<CatalogItem, 'price' | 'discountType' | 'discountValue'>) {
