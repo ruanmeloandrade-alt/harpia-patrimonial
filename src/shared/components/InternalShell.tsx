@@ -36,20 +36,7 @@ const links: NavItem[] = [
       PERMISSIONS.AI_MANAGE,
     ],
   },
-  {
-    href: '/interno/configuracoes',
-    label: 'Configurações',
-    permissions: [
-      PERMISSIONS.SETTINGS_VIEW,
-      PERMISSIONS.SETTINGS_MANAGE,
-      PERMISSIONS.USERS_VIEW,
-      PERMISSIONS.USERS_MANAGE,
-      PERMISSIONS.ROLES_VIEW,
-      PERMISSIONS.ROLES_MANAGE,
-      PERMISSIONS.INTEGRATIONS_VIEW,
-      PERMISSIONS.INTEGRATIONS_MANAGE,
-    ],
-  },
+  { href: '/interno/configuracoes', label: 'Configurações' },
 ];
 
 export function InternalShell({ children }: PropsWithChildren) {
