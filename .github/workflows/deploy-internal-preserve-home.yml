@@ -49,6 +49,9 @@ jobs:
           set -euo pipefail
 
           rm -rf /tmp/harpia-pages/assets
+          rm -rf /tmp/harpia-pages/interno
+          rm -rf /tmp/harpia-pages/entrar /tmp/harpia-pages/cadastro /tmp/harpia-pages/recuperar-senha
+          rm -rf /tmp/harpia-pages/nova-senha /tmp/harpia-pages/conta /tmp/harpia-pages/cliente
           cp -R dist/assets /tmp/harpia-pages/assets
 
           cp dist/index.html /tmp/harpia-pages/404.html
