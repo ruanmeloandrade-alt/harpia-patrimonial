@@ -189,3 +189,34 @@ Continua marcado como NÃO VERIFICADO:
 - validação visual final desktop/mobile.
 
 O shell disponível não possui checkout do repositório e não resolve GitHub/registry npm, impedindo build local neste ambiente.
+
+
+---
+
+## Ajustes de Configurações por usuário — 24/09/2026
+
+🟢 **INTEGRADO NA MAIN E PUBLICADO VISUALMENTE**
+
+- PR #15 mergeada na `main`.
+- Tema e modo compacto agora são preferências individuais por funcionário.
+- Moeda, fuso, idioma e formatos continuam globais.
+- `user_preferences` criado com RLS por usuário.
+- Horário de atendimento configurável por dia da semana.
+- Aba Automações removida de Configurações.
+- `user_notifications` criado com RLS e Realtime.
+- Notificações conectadas a novo lead, nova mensagem inbound, falha de automação e falha de integração.
+- Front interno possui sino, popup, som e opção de notificação do navegador.
+- `admin-user` v3 ACTIVE com criação de conta + grupos + overrides em uma única operação e rollback de falha.
+- `ai-credential-vault` v3 ACTIVE com identificação de OpenAI, Anthropic/Claude e Google Gemini e listagem de modelos do provedor.
+- Campo manual de modelo e observações removidos da configuração de IA.
+- Security Advisor: 0 lints.
+- Ambiente publicado usa Auth real no login.
+- Setup único da primeira conta Administrador publicado e protegido por token + condição de banco vazio.
+- JavaScript de `login/index.html`, `setup-admin/index.html` e `interno/index.html` validado sintaticamente.
+
+### Limitações de validação
+
+- Ainda não foi executado `npm run typecheck` ou `npm run build` em checkout local completo.
+- Não foi criado usuário fictício para QA. O Auth permanece vazio até a ativação da primeira conta real.
+- O fluxo de notificação está estruturalmente conectado e publicado, mas entrega a um usuário real só poderá ser observada depois da primeira conta interna existir.
+- A inspeção real de uma chave de IA depende de uma chave fornecida pela operação; nenhuma chave foi inventada para QA.
