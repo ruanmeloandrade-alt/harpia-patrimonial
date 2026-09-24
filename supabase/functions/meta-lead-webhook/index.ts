@@ -71,9 +71,9 @@ function normalizeContact(fieldData: LeadField[]) {
   };
 }
 
-async function graphLead(leadgenId: string, token: string) {
-  const url = new URL(`https://graph.facebook.com/${graphVersion()}/${encodeURIComponent(leadgenId)}`);
-  url.searchParams.set('fields', 'id,created_time,form_id,ad_id,adset_id,campaign_id,is_organic,platform,field_data');
+async function graphGetObject(objectId: string, fields: string, token: string) {
+  const url = new URL(`https://graph.facebook.com/${graphVersion()}/${encodeURIComponent(objectId)}`);
+  url.searchParams.set('fields', fields);
   url.searchParams.set('access_token', token);
 
   const response = await fetch(url, {
@@ -94,6 +94,19 @@ async function graphLead(leadgenId: string, token: string) {
   }
 
   return payload;
+}
+
+async function graphLead(leadgenId: string, token: string) {
+  return graphGetObject(leadgenId, 'id,created_time,form_id,ad_id,field_data', token);
+}
+
+async function graphAttribution(adId: string, token: string) {
+  if (!adId) return {} as Json;
+  try {
+    return await graphGetObject(adId, 'id,adset_id,campaign_id', token);
+  } catch {
+    return {} as Json;
+  }
 }
 
 async function triggerAutomationWorker(supabaseUrl: string, serverKey: string) {
@@ -137,6 +150,24 @@ async function processWebhook(payload: Json, supabaseUrl: string, serverKey: str
       const leadgenId = String(value.leadgen_id || '').trim();
       const formId = String(value.form_id || '').trim();
       if (!leadgenId) continue;
+
+      const { data: existingReceipt } = await admin
+        .from('meta_lead_receipts')
+        .select('crm_lead_id,status')
+        .eq('leadgen_id', leadgenId)
+        .maybeSingle();
+
+      if (existingReceipt?.crm_lead_id || existingReceipt?.status === 'ingested') {
+        await admin.from('integration_events').insert({
+          connection_id: connection?.id ?? null,
+          provider: 'meta',
+          event_type: 'lead.duplicate',
+          external_id: leadgenId,
+          success: true,
+          metadata: { pageId, formId, crmLeadId: existingReceipt.crm_lead_id ?? null },
+        });
+        continue;
+      }
 
       const selectedForms = Array.isArray((connection?.metadata as Json | null)?.form_ids)
         ? ((connection?.metadata as Json).form_ids as unknown[]).map(String)
@@ -206,6 +237,8 @@ async function processWebhook(payload: Json, supabaseUrl: string, serverKey: str
         const fieldData = Array.isArray(lead.field_data) ? lead.field_data as LeadField[] : [];
         const contact = normalizeContact(fieldData);
         const createdTime = typeof lead.created_time === 'string' ? lead.created_time : null;
+        const adId = lead.ad_id ? String(lead.ad_id) : String(value.ad_id || '').trim();
+        const attribution = await graphAttribution(adId, String(token));
 
         const { data: crmLeadId, error: ingestError } = await admin.rpc('admin_ingest_meta_lead', {
           p_leadgen_id: leadgenId,
@@ -215,11 +248,11 @@ async function processWebhook(payload: Json, supabaseUrl: string, serverKey: str
           p_email: contact.email || null,
           p_whatsapp: contact.whatsapp || null,
           p_created_time: createdTime,
-          p_ad_id: lead.ad_id ? String(lead.ad_id) : null,
-          p_adset_id: lead.adset_id ? String(lead.adset_id) : null,
-          p_campaign_id: lead.campaign_id ? String(lead.campaign_id) : null,
+          p_ad_id: adId || null,
+          p_adset_id: attribution.adset_id ? String(attribution.adset_id) : null,
+          p_campaign_id: attribution.campaign_id ? String(attribution.campaign_id) : null,
           p_field_data: fieldData,
-          p_raw_lead: lead,
+          p_raw_lead: { ...lead, attribution },
         });
 
         if (ingestError) throw ingestError;
