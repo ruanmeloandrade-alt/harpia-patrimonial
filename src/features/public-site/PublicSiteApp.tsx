@@ -427,6 +427,130 @@ function PropertyGrid({ items, loading, error, onOpen, onRetry, onFavorite, isFa
   return <div className="property-grid">{items.map((item) => { const cover = item.media.find((media) => media.type === 'image'); const saved = isFavorite(item.id); return <article className="property-card" key={item.id}><div className="property-media">{cover ? <img src={cover.url} alt={cover.alt ?? item.title} loading="lazy" /> : <span>Imagem não disponível</span>}<button className="favorite-button" type="button" aria-pressed={saved} aria-label={saved ? 'Remover dos favoritos' : 'Salvar imóvel'} onClick={() => onFavorite(item)}>{saved ? '♥' : '♡'}</button></div><div className="property-body"><small>{item.propertyType} · {item.purpose}</small><h3>{item.title}</h3><p>{item.location}, {item.city}</p><strong>{formatCurrency(item.price)}</strong><div className="property-meta">{item.privateAreaM2 ? <span>{item.privateAreaM2} m²</span> : null}{item.bedrooms ? <span>{item.bedrooms} quartos</span> : null}{item.parkingSpaces ? <span>{item.parkingSpaces} vagas</span> : null}<span>{item.status === 'sold' ? 'Vendido' : 'Publicado'}</span></div><button className="text-button" type="button" onClick={() => onOpen(item.slug)}>Ver detalhes <span>→</span></button></div></article>; })}</div>;
 }
 
+function ProductCatalogPage({ items, loading, error, onOpen, onRetry }: { items: PublicCatalogItem[]; loading: boolean; error: string; onOpen: (slug: string) => void; onRetry: () => void; }) {
+  return (
+    <main className="section-shell catalog-page">
+      <div className="page-intro">
+        <p className="section-kicker">Produtos</p>
+        <h1>Produtos disponíveis</h1>
+        <p className="section-lead">Somente produtos marcados como visíveis na área interna aparecem aqui.</p>
+      </div>
+      <div className="catalog-toolbar" aria-live="polite">
+        <span>{loading ? 'Atualizando produtos...' : `${items.length} ${items.length === 1 ? 'produto' : 'produtos'}`}</span>
+      </div>
+      <ProductGrid items={items} loading={loading} error={error} onOpen={onOpen} onRetry={onRetry} />
+    </main>
+  );
+}
+
+function ProductGrid({ items, loading, error, onOpen, onRetry }: { items: PublicCatalogItem[]; loading: boolean; error: string; onOpen: (slug: string) => void; onRetry: () => void; }) {
+  if (loading) return <div className="loading-state">Carregando produtos...</div>;
+  if (error) return <div className="error-state"><strong>Não foi possível carregar os produtos.</strong><span>{error}</span><button className="secondary-button" type="button" onClick={onRetry}>Tentar novamente</button></div>;
+  if (items.length === 0) return <div className="empty-state"><strong>Nenhum produto disponível.</strong><p>Os produtos aparecem aqui quando forem marcados como visíveis na área interna.</p></div>;
+
+  return (
+    <div className="property-grid">
+      {items.map((item) => {
+        const cover = item.media.find((media) => media.type === 'image');
+        const finalPrice = publicFinalPrice(item);
+        const hasDiscount = item.price !== null && finalPrice !== item.price;
+        return (
+          <article className="property-card" key={item.id}>
+            <div className="property-media">
+              {cover ? <img src={cover.url} alt={cover.alt ?? item.title} loading="lazy" /> : <span>Imagem não disponível</span>}
+            </div>
+            <div className="property-body">
+              <small>Produto</small>
+              <h3>{item.title}</h3>
+              {item.description ? <p>{item.description}</p> : null}
+              {hasDiscount ? <small style={{ textDecoration: 'line-through' }}>{formatCurrency(item.price)}</small> : null}
+              <strong>{formatCurrency(finalPrice)}</strong>
+              {item.tags?.length ? <div className="property-meta">{item.tags.slice(0, 4).map((tag) => <span key={tag}>{tag}</span>)}</div> : null}
+              <button className="text-button" type="button" onClick={() => onOpen(item.slug)}>Ver produto <span>→</span></button>
+            </div>
+          </article>
+        );
+      })}
+    </div>
+  );
+}
+
+function ProductDetail({ slug, catalog, onBack, onService }: { slug: string; catalog: PublicCatalogReader; onBack: () => void; onService: (item: PublicCatalogItem) => void | Promise<boolean>; }) {
+  const [item, setItem] = useState<PublicCatalogItem | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [revision, setRevision] = useState(0);
+
+  useEffect(() => {
+    let active = true;
+    setLoading(true);
+    setError('');
+    catalog.getPublishedBySlug(slug)
+      .then((result) => {
+        if (!active) return;
+        setItem(result && result.itemType !== 'property' ? result : null);
+      })
+      .catch(() => { if (active) setError('Não foi possível carregar este produto.'); })
+      .finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, [catalog, revision, slug]);
+
+  if (loading) return <main className="section-shell"><div className="loading-state">Carregando produto...</div></main>;
+  if (error) return <main className="section-shell"><div className="error-state"><strong>Não foi possível carregar este produto.</strong><span>{error}</span><button className="secondary-button" type="button" onClick={() => setRevision((value) => value + 1)}>Tentar novamente</button><button className="text-button" type="button" onClick={onBack}>Voltar aos produtos</button></div></main>;
+  if (!item) return <main className="section-shell"><div className="empty-state"><strong>Produto não encontrado ou não publicado.</strong><p>Somente produtos marcados como visíveis aparecem no site.</p><button className="secondary-button" type="button" onClick={onBack}>Voltar aos produtos</button></div></main>;
+
+  const images = item.media.filter((media) => media.type === 'image');
+  const videos = item.media.filter((media) => media.type === 'video');
+  const finalPrice = publicFinalPrice(item);
+  const hasDiscount = item.price !== null && finalPrice !== item.price;
+
+  return (
+    <main className="section-shell property-detail">
+      <button className="text-button" type="button" onClick={onBack}>← Voltar aos produtos</button>
+      <div className="detail-hero">
+        <div className="detail-copy">
+          <p className="section-kicker">Produto</p>
+          <h1>{item.title}</h1>
+          {hasDiscount ? <small style={{ textDecoration: 'line-through' }}>{formatCurrency(item.price)}</small> : null}
+          <strong className="detail-price">{formatCurrency(finalPrice)}</strong>
+          {item.tags?.length ? <div className="feature-list">{item.tags.map((tag) => <span key={tag}>{tag}</span>)}</div> : null}
+          <div className="hero-actions">
+            <button className="primary-button" type="button" onClick={() => void onService(item)}>Quero saber mais</button>
+          </div>
+        </div>
+        <div className="detail-cover">
+          {images[0] ? <img src={images[0].url} alt={images[0].alt ?? item.title} /> : <span>Imagem não disponível</span>}
+        </div>
+      </div>
+
+      <div className="detail-grid">
+        <article>
+          <p className="section-kicker">Sobre o produto</p>
+          <h2>Descrição</h2>
+          <p>{item.description || 'Descrição ainda não cadastrada.'}</p>
+        </article>
+        <aside className="detail-facts">
+          <strong>Informações</strong>
+          {item.code ? <span>Código: {item.code}</span> : null}
+          <span>Status: Disponível</span>
+        </aside>
+      </div>
+
+      {images.length > 1 && (
+        <div className="detail-gallery">
+          {images.slice(1).map((image) => <img loading="lazy" key={image.url} src={image.url} alt={image.alt ?? item.title} />)}
+        </div>
+      )}
+
+      {videos.length > 0 && (
+        <div className="video-list">
+          {videos.map((video) => <video key={video.url} controls preload="metadata" src={video.url} />)}
+        </div>
+      )}
+    </main>
+  );
+}
+
 function PropertyDetail({ slug, catalog, isFavorite, onBack, onNavigate, onFavorite, onService }: { slug: string; catalog: PublicCatalogReader; isFavorite: (id: string) => boolean; onBack: () => void; onNavigate: (path: string) => void; onFavorite: (item: PublicCatalogItem) => void | Promise<void>; onService: (item: PublicCatalogItem) => void | Promise<boolean>; }) {
   const [item, setItem] = useState<PublicCatalogItem | null>(null);
   const [loading, setLoading] = useState(true);
