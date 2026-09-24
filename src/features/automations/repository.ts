@@ -1,7 +1,14 @@
 import { listAIAgents } from '../ai-agents/repository';
 import { listSalesBots } from '../salesbot/repository';
 import { createF05Id, readStoredList, writeStoredList } from './f05Storage';
-import type { AutomationAction, AutomationDefinition, AutomationStatus } from './types';
+import type {
+  AutomationAction,
+  AutomationDefinition,
+  AutomationStatus,
+  PipelineAutomationMeta,
+  PipelineTriggerAction,
+  PipelineTriggerEvent,
+} from './types';
 import { validateAutomation } from './validation';
 
 const STORAGE_KEY = 'harpia:f05:automations';
@@ -139,4 +146,114 @@ export function moveAutomationAction(id: string, actionId: string, direction: -1
   const actions = [...current.actions];
   [actions[index], actions[target]] = [actions[target], actions[index]];
   return updateAutomation(id, { actions });
+}
+
+
+function pipelineTriggerDefinition(input: PipelineAutomationMeta): AutomationDefinition {
+  const timestamp = now();
+  const conditions: AutomationDefinition['trigger']['conditions'] = [];
+
+  if (input.pipelineId) conditions.push({ field: 'pipelineId', operator: 'equals', value: input.pipelineId });
+
+  let event: AutomationDefinition['trigger']['event'] = 'lead.created';
+  if (input.event === 'enter') {
+    event = 'lead.stage_changed';
+    if (input.stageId) conditions.push({ field: 'stageId', operator: 'equals', value: input.stageId });
+  } else if (input.event === 'leave') {
+    event = 'lead.stage_changed';
+    if (input.stageId) conditions.push({ field: 'previousStageId', operator: 'equals', value: input.stageId });
+  } else if (input.event === 'created') {
+    event = 'lead.created';
+  } else if (input.event === 'time') {
+    event = 'lead.inactivity';
+    if (input.stageId) conditions.push({ field: 'stageId', operator: 'equals', value: input.stageId });
+  } else if (input.event === 'tag_added') {
+    event = 'lead.tag_added';
+    if (input.value) conditions.push({ field: 'tagId', operator: 'equals', value: input.value });
+  } else if (input.event === 'field_changed') {
+    event = 'lead.field_changed';
+    if (input.value) conditions.push({ field: 'fieldId', operator: 'equals', value: input.value });
+  } else {
+    event = 'custom.event';
+    conditions.push({ field: 'kind', operator: 'equals', value: input.event });
+    if (input.stageId) conditions.push({ field: 'stageId', operator: 'equals', value: input.stageId });
+  }
+
+  let action: AutomationAction;
+  if (input.action === 'move_stage') {
+    action = { id: createF05Id('action'), type: 'move_stage', config: { stageId: input.targetStageId ?? '' } };
+  } else if (input.action === 'salesbot') {
+    action = { id: createF05Id('action'), type: 'start_salesbot', config: { botId: input.resourceId ?? '' } };
+  } else {
+    action = { id: createF05Id('action'), type: 'invoke_ai', config: { agentId: input.resourceId ?? '' } };
+  }
+
+  return {
+    id: createF05Id('automation'),
+    name: `Gatilho do funil ${input.pipelineId}`,
+    description: '',
+    status: 'active',
+    origin: 'pipeline',
+    pipeline: { ...input },
+    trigger: { event, conditions },
+    actions: [action],
+    createdAt: timestamp,
+    updatedAt: timestamp,
+  };
+}
+
+export function listPipelineAutomations(pipelineId: string): AutomationDefinition[] {
+  return listAutomations()
+    .filter((item) => item.origin === 'pipeline' && item.pipeline?.pipelineId === pipelineId)
+    .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+}
+
+export function createPipelineAutomation(input: {
+  pipelineId: string;
+  event: PipelineTriggerEvent;
+  stageId?: string;
+  value?: string;
+  action: PipelineTriggerAction;
+  targetStageId?: string;
+  resourceId?: string;
+}): AutomationDefinition {
+  const normalized: PipelineAutomationMeta = {
+    pipelineId: input.pipelineId,
+    event: input.event,
+    stageId: input.stageId?.trim() || undefined,
+    value: input.value?.trim() || undefined,
+    action: input.action,
+    targetStageId: input.targetStageId?.trim() || undefined,
+    resourceId: input.resourceId?.trim() || undefined,
+  };
+
+  if (!normalized.pipelineId) throw new Error('Selecione um funil.');
+  if (normalized.event === 'time' && !/^\d+\s*(m|min|h|d|dia|dias|hora|horas)$/i.test(normalized.value ?? '')) {
+    throw new Error('Informe o tempo como 30m, 2h ou 3d.');
+  }
+  if (normalized.action === 'move_stage' && !normalized.targetStageId) {
+    throw new Error('Selecione a etapa destino.');
+  }
+  if ((normalized.action === 'salesbot' || normalized.action === 'ai') && !normalized.resourceId) {
+    throw new Error(normalized.action === 'salesbot' ? 'Selecione o SalesBot.' : 'Selecione o Agente IA.');
+  }
+
+  const item = pipelineTriggerDefinition(normalized);
+  writeStoredList(STORAGE_KEY, [item, ...listAutomations()]);
+  return item;
+}
+
+export function deletePipelineAutomation(id: string): void {
+  const items = listAutomations();
+  const current = items.find((item) => item.id === id);
+  if (!current || current.origin !== 'pipeline') throw new Error('Gatilho não encontrado.');
+  writeStoredList(STORAGE_KEY, items.filter((item) => item.id !== id));
+}
+
+export function deletePipelineAutomationsForPipeline(pipelineId: string): void {
+  const items = listAutomations();
+  writeStoredList(
+    STORAGE_KEY,
+    items.filter((item) => !(item.origin === 'pipeline' && item.pipeline?.pipelineId === pipelineId)),
+  );
 }
