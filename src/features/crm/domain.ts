@@ -5,7 +5,9 @@ export type InterestType = 'property' | 'product' | 'service' | 'other';
 export type CustomFieldType =
   | 'text'
   | 'number'
+  | 'currency'
   | 'date'
+  | 'datetime'
   | 'boolean'
   | 'select'
   | 'multiselect';
