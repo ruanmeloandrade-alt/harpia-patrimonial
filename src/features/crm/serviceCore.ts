@@ -249,6 +249,17 @@ export class CrmService {
       interest: lead.interest ?? null,
       pipelineId: lead.pipelineId ?? null,
       stageId: lead.stageId ?? null,
+      assigneeId: lead.assigneeId ?? null,
+      lead: {
+        id: lead.id,
+        name: lead.name,
+        email: lead.email ?? null,
+        whatsapp: lead.whatsapp ?? null,
+        source: lead.source ?? null,
+        assigneeId: lead.assigneeId ?? null,
+        pipelineId: lead.pipelineId ?? null,
+        stageId: lead.stageId ?? null,
+      },
     });
     return lead;
   }
@@ -292,6 +303,18 @@ export class CrmService {
       previousStageId,
       stageId: stage.id,
       pipelineId: stage.pipelineId,
+      source: lead.source ?? null,
+      assigneeId: lead.assigneeId ?? null,
+      lead: {
+        id: lead.id,
+        name: lead.name,
+        email: lead.email ?? null,
+        whatsapp: lead.whatsapp ?? null,
+        source: lead.source ?? null,
+        assigneeId: lead.assigneeId ?? null,
+        pipelineId: lead.pipelineId ?? null,
+        stageId: lead.stageId ?? null,
+      },
     });
     return lead;
   }
@@ -359,6 +382,18 @@ export class CrmService {
       tagId,
       pipelineId: lead.pipelineId ?? null,
       stageId: lead.stageId ?? null,
+      source: lead.source ?? null,
+      assigneeId: lead.assigneeId ?? null,
+      lead: {
+        id: lead.id,
+        name: lead.name,
+        email: lead.email ?? null,
+        whatsapp: lead.whatsapp ?? null,
+        source: lead.source ?? null,
+        assigneeId: lead.assigneeId ?? null,
+        pipelineId: lead.pipelineId ?? null,
+        stageId: lead.stageId ?? null,
+      },
     });
     return lead;
   }
@@ -411,6 +446,18 @@ export class CrmService {
       value,
       pipelineId: lead.pipelineId ?? null,
       stageId: lead.stageId ?? null,
+      source: lead.source ?? null,
+      assigneeId: lead.assigneeId ?? null,
+      lead: {
+        id: lead.id,
+        name: lead.name,
+        email: lead.email ?? null,
+        whatsapp: lead.whatsapp ?? null,
+        source: lead.source ?? null,
+        assigneeId: lead.assigneeId ?? null,
+        pipelineId: lead.pipelineId ?? null,
+        stageId: lead.stageId ?? null,
+      },
     });
     return lead;
   }
