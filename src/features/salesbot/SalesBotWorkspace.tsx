@@ -6,6 +6,7 @@ import {
   createSalesBotConfirmed,
   deleteSalesBot,
   duplicateSalesBot,
+  importSalesBot,
   insertSalesBotBlockAfter,
   listSalesBots,
   setSalesBotStatus,
@@ -63,6 +64,25 @@ function blockSummary(block: SalesBotBlock) {
   }
   if (block.type === 'finish') return 'Finaliza a execução';
   return SALESBOT_BLOCK_CATALOG.find((item) => item.type === block.type)?.description || block.label;
+}
+
+function exportSalesBot(bot: SalesBotDefinition) {
+  const payload = {
+    format: 'harpia-salesbot',
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    ...bot,
+  };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+  const href = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  const safeName = bot.name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'salesbot';
+  link.href = href;
+  link.download = `${safeName}.harpiabot.json`;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(href);
 }
 
 function BlockConfigEditor({
@@ -186,7 +206,6 @@ export function SalesBotWorkspace({ canManage = false }: { canManage?: boolean }
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [selectedBlockIds, setSelectedBlockIds] = useState<Set<string>>(new Set());
   const [pendingConnection, setPendingConnection] = useState<{ from: string; branch: 'next' | 'false' } | null>(null);
-  const [newName, setNewName] = useState('');
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
@@ -199,6 +218,7 @@ export function SalesBotWorkspace({ canManage = false }: { canManage?: boolean }
     latest: Record<string, { x: number; y: number }>;
   } | null>(null);
   const canvasRef = useRef<HTMLDivElement | null>(null);
+  const importInputRef = useRef<HTMLInputElement | null>(null);
 
   const selected = useMemo(() => bots.find((bot) => bot.id === selectedId) ?? null, [bots, selectedId]);
   const selectedBlockId = selectedBlockIds.size === 1 ? [...selectedBlockIds][0] : null;
@@ -256,18 +276,31 @@ export function SalesBotWorkspace({ canManage = false }: { canManage?: boolean }
   };
 
   const create = async () => {
-    const name = newName.trim();
-    if (!name || !canManage || creating) return;
+    if (!canManage || creating) return;
     setCreating(true);
     try {
-      const bot = await createSalesBotConfirmed({ name });
-      setNewName('');
+      const bot = await createSalesBotConfirmed({ name: 'Novo SalesBot' });
       refresh(bot.id);
       openBuilder(bot.id);
     } catch (createError) {
       setError(errorMessage(createError, 'Não foi possível criar o SalesBot.'));
     } finally {
       setCreating(false);
+    }
+  };
+
+  const importFile = async (file: File) => {
+    if (!canManage) return;
+    try {
+      const parsed = JSON.parse(await file.text());
+      const fallbackName = file.name.replace(/\.(harpiabot\.)?json$/i, '').trim() || 'SalesBot importado';
+      const bot = await importSalesBot(parsed, fallbackName);
+      setError('');
+      setNotice('SalesBot importado.');
+      refresh(bot.id);
+      openBuilder(bot.id);
+    } catch (importError) {
+      setError(errorMessage(importError, 'Não foi possível importar este SalesBot.'));
     }
   };
 
@@ -476,18 +509,35 @@ export function SalesBotWorkspace({ canManage = false }: { canManage?: boolean }
 
   if (mode === 'library') {
     return <section className="f05-module sb-library-view">
-      <header className="f05-module__header"><div><span className="f05-kicker">SalesBot</span><h2>SalesBots</h2><p>Abra um bot para editar o fluxo ou crie um novo.</p></div><span className="f05-count">{bots.length} bot{bots.length === 1 ? '' : 's'}</span></header>
+      <header className="f05-module__header">
+        <div><span className="f05-kicker">SalesBot</span><h2>SalesBots</h2><p>Abra um bot para editar o fluxo ou crie um novo.</p></div>
+        <div className="sb-library-head-actions">
+          <span className="f05-count">{bots.length} bot{bots.length === 1 ? '' : 's'}</span>
+          {canManage ? <button type="button" className="secondary" onClick={() => importInputRef.current?.click()}>Importar</button> : null}
+          {canManage ? <button type="button" onClick={() => void create()} disabled={creating} aria-busy={creating}>{creating ? 'Criando...' : '+ Novo SalesBot'}</button> : null}
+          <input
+            ref={importInputRef}
+            type="file"
+            accept=".json,.harpiabot.json,application/json"
+            hidden
+            onChange={(event) => {
+              const file = event.currentTarget.files?.[0];
+              event.currentTarget.value = '';
+              if (file) void importFile(file);
+            }}
+          />
+        </div>
+      </header>
       {!canManage ? <div className="f05-readonly-note">Modo leitura: sua permissão permite visualizar SalesBots, mas não alterá-los.</div> : null}
-      {canManage ? <div className="sb-library-create"><input value={newName} onChange={(event) => setNewName(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') void create(); }} placeholder="Nome do novo SalesBot"/><button type="button" onClick={() => void create()} disabled={!newName.trim() || creating} aria-busy={creating}>{creating ? 'Criando...' : '+ Novo SalesBot'}</button></div> : null}
       {error ? <div className="f05-alert">{error}</div> : null}
-      <div className="sb-library-list">{bots.length === 0 ? <div className="f05-empty f05-empty--large">Nenhum SalesBot criado.</div> : bots.map((bot) => <article className="sb-library-card" key={bot.id}><div><strong>{bot.name}</strong><span>{bot.blocks.length} blocos · {bot.status}</span></div><div className="sb-library-actions"><button type="button" onClick={() => openBuilder(bot.id)}>Editar</button>{canManage ? <button type="button" className="secondary" onClick={() => { try { const copy = duplicateSalesBot(bot.id); refresh(copy.id); } catch (duplicateError) { setError(errorMessage(duplicateError, 'Não foi possível duplicar o SalesBot.')); } }}>Duplicar</button> : null}{canManage ? <button type="button" className="danger" onClick={() => { if (!window.confirm('Excluir este SalesBot?')) return; try { deleteSalesBot(bot.id); refresh(); } catch (deleteError) { setError(errorMessage(deleteError, 'Não foi possível excluir o SalesBot.')); } }}>Excluir</button> : null}</div></article>)}</div>
+      <div className="sb-library-list">{bots.length === 0 ? <div className="f05-empty f05-empty--large">Nenhum SalesBot criado.</div> : bots.map((bot) => <article className="sb-library-card" key={bot.id}><div><strong>{bot.name}</strong><span>{bot.blocks.length} blocos · {bot.status}</span></div><div className="sb-library-actions"><button type="button" onClick={() => openBuilder(bot.id)}>Editar</button><button type="button" className="secondary" onClick={() => exportSalesBot(bot)}>Exportar</button>{canManage ? <button type="button" className="secondary" onClick={() => { try { const copy = duplicateSalesBot(bot.id); refresh(copy.id); } catch (duplicateError) { setError(errorMessage(duplicateError, 'Não foi possível duplicar o SalesBot.')); } }}>Duplicar</button> : null}{canManage ? <button type="button" className="danger" onClick={() => { if (!window.confirm('Excluir este SalesBot?')) return; try { deleteSalesBot(bot.id); refresh(); } catch (deleteError) { setError(errorMessage(deleteError, 'Não foi possível excluir o SalesBot.')); } }}>Excluir</button> : null}</div></article>)}</div>
     </section>;
   }
 
   return <section id="salesbotBuilder" className="f05-module sb-builder-view">
     <header className="sb-builder-head">
       <div className="sb-builder-left"><button type="button" className="secondary" onClick={() => { setMode('library'); setSelectedBlockIds(new Set()); setPendingConnection(null); }}>← SalesBots</button><div><span className="sb-eyebrow">CONSTRUTOR</span><input className="sb-name-input" disabled={!canManage || !selected} value={selected?.name ?? ''} onChange={(event) => patchSelected({ name: event.target.value })}/><span className="sb-save-state">Persistência compartilhada ativa</span></div></div>
-      <div className="sb-builder-actions"><button type="button" className="secondary" onClick={undo} disabled={!canManage || historyRef.current.length === 0}>Desfazer</button><button type="button" className="secondary" onClick={centerSelected}>Centralizar</button><button type="button" className="secondary" onClick={toggleFullscreen}>Expandir tela</button>{selected && canManage ? <button type="button" onClick={() => { try { setSalesBotStatus(selected.id, selected.status === 'active' ? 'paused' : 'active'); refresh(selected.id); } catch (statusError) { setError(errorMessage(statusError, 'Não foi possível alterar o status.')); } }}>{selected.status === 'active' ? 'Pausar' : 'Ativar'}</button> : null}</div>
+      <div className="sb-builder-actions">{selected ? <button type="button" className="secondary" onClick={() => exportSalesBot(selected)}>Exportar</button> : null}<button type="button" className="secondary" onClick={undo} disabled={!canManage || historyRef.current.length === 0}>Desfazer</button><button type="button" className="secondary" onClick={centerSelected}>Centralizar</button><button type="button" className="secondary" onClick={toggleFullscreen}>Expandir tela</button>{selected && canManage ? <button type="button" onClick={() => { try { setSalesBotStatus(selected.id, selected.status === 'active' ? 'paused' : 'active'); refresh(selected.id); } catch (statusError) { setError(errorMessage(statusError, 'Não foi possível alterar o status.')); } }}>{selected.status === 'active' ? 'Pausar' : 'Ativar'}</button> : null}</div>
     </header>
 
     {error ? <div className="f05-alert">{error}</div> : null}
