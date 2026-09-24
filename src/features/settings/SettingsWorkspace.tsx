@@ -23,6 +23,7 @@ import {
   type UserPreferences,
   updateUserPreferences,
 } from './user-preferences-service';
+import { applyRuntimeRegionalPreferences, formatRuntimeCurrency, formatRuntimeDateTime } from './runtime-preferences';
 import './settings-workspace.css';
 
 export type SettingsTab =
@@ -194,6 +195,21 @@ export function SettingsWorkspace({ credentialVault, initialTab = 'preferences' 
         theme: String(form.get('theme') || 'system') as UserPreferences['theme'],
         compact_mode: bool(form, 'compactMode'),
       }, 'Suas preferências foram atualizadas.');
+
+      if (canManageSettings && settings) {
+        await saveOrganizationPatch({
+          appearance: {
+            primaryColor: String(form.get('primaryColor') || preferences.appearance.primaryColor),
+          },
+          regional: {
+            locale: String(form.get('locale') || preferences.regional.locale),
+            currency: String(form.get('currency') || preferences.regional.currency),
+            timezone: String(form.get('timezone') || preferences.regional.timezone),
+            dateFormat: String(form.get('dateFormat') || preferences.regional.dateFormat),
+            timeFormat: String(form.get('timeFormat') || preferences.regional.timeFormat) as '24h' | '12h',
+          },
+        }, 'Preferências pessoais e globais atualizadas.');
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Não foi possível salvar as preferências.');
     } finally {
@@ -404,8 +420,116 @@ export function SettingsWorkspace({ credentialVault, initialTab = 'preferences' 
                 </label>
               </div>
 
-              <div className="settings-inline-note">Tema e densidade visual são preferências individuais desta conta. Configurações institucionais não podem ser alteradas aqui.</div>
-              <SaveButton saving={saving} canManage={Boolean(userId)} label="Salvar minhas preferências" />
+              {canViewSettings && settings ? (
+                <>
+                  <div className="settings-subtitle">Configurações globais da empresa</div>
+                  <div className="form-grid">
+                    <label className="field">
+                      <span>Idioma</span>
+                      <select
+                        name="locale"
+                        defaultValue={preferences.regional.locale}
+                        disabled={!canManageSettings}
+                        onChange={(event) => {
+                          applyRuntimeRegionalPreferences({ ...preferences.regional, locale: event.target.value });
+                          setSettings({ ...settings, preferences: mergeOrganizationPreferences(settings.preferences, { regional: { locale: event.target.value } }) });
+                        }}
+                      >
+                        <option value="pt-BR">Português Brasil</option>
+                        <option value="pt-PT">Português Portugal</option>
+                        <option value="en-US">English</option>
+                      </select>
+                    </label>
+                    <label className="field">
+                      <span>Moeda</span>
+                      <select
+                        name="currency"
+                        defaultValue={preferences.regional.currency}
+                        disabled={!canManageSettings}
+                        onChange={(event) => {
+                          applyRuntimeRegionalPreferences({ ...preferences.regional, currency: event.target.value });
+                          setSettings({ ...settings, preferences: mergeOrganizationPreferences(settings.preferences, { regional: { currency: event.target.value } }) });
+                        }}
+                      >
+                        <option value="BRL">Real brasileiro (BRL)</option>
+                        <option value="EUR">Euro (EUR)</option>
+                        <option value="USD">Dólar americano (USD)</option>
+                      </select>
+                    </label>
+                    <label className="field">
+                      <span>Fuso horário</span>
+                      <select
+                        name="timezone"
+                        defaultValue={preferences.regional.timezone}
+                        disabled={!canManageSettings}
+                        onChange={(event) => {
+                          applyRuntimeRegionalPreferences({ ...preferences.regional, timezone: event.target.value });
+                          setSettings({ ...settings, preferences: mergeOrganizationPreferences(settings.preferences, { regional: { timezone: event.target.value } }) });
+                        }}
+                      >
+                        <option value="America/Sao_Paulo">Brasília / São Paulo</option>
+                        <option value="America/Manaus">Manaus</option>
+                        <option value="America/Rio_Branco">Rio Branco</option>
+                        <option value="Europe/Lisbon">Lisboa</option>
+                        <option value="UTC">UTC</option>
+                      </select>
+                    </label>
+                    <label className="field">
+                      <span>Formato de data</span>
+                      <select
+                        name="dateFormat"
+                        defaultValue={preferences.regional.dateFormat}
+                        disabled={!canManageSettings}
+                        onChange={(event) => {
+                          applyRuntimeRegionalPreferences({ ...preferences.regional, dateFormat: event.target.value });
+                          setSettings({ ...settings, preferences: mergeOrganizationPreferences(settings.preferences, { regional: { dateFormat: event.target.value } }) });
+                        }}
+                      >
+                        <option value="dd/MM/yyyy">DD/MM/AAAA</option>
+                        <option value="MM/dd/yyyy">MM/DD/AAAA</option>
+                        <option value="yyyy-MM-dd">AAAA-MM-DD</option>
+                      </select>
+                    </label>
+                    <label className="field">
+                      <span>Formato de hora</span>
+                      <select
+                        name="timeFormat"
+                        defaultValue={preferences.regional.timeFormat}
+                        disabled={!canManageSettings}
+                        onChange={(event) => {
+                          const timeFormat = event.target.value as '24h' | '12h';
+                          applyRuntimeRegionalPreferences({ ...preferences.regional, timeFormat });
+                          setSettings({ ...settings, preferences: mergeOrganizationPreferences(settings.preferences, { regional: { timeFormat } }) });
+                        }}
+                      >
+                        <option value="24h">24 horas</option>
+                        <option value="12h">12 horas</option>
+                      </select>
+                    </label>
+                    <label className="field">
+                      <span>Cor institucional</span>
+                      <input
+                        name="primaryColor"
+                        type="color"
+                        defaultValue={preferences.appearance.primaryColor}
+                        disabled={!canManageSettings}
+                        onChange={(event) => {
+                          document.documentElement.style.setProperty('--brand-accent', event.target.value);
+                          document.documentElement.style.setProperty('--gold', event.target.value);
+                          setSettings({ ...settings, preferences: mergeOrganizationPreferences(settings.preferences, { appearance: { primaryColor: event.target.value } }) });
+                        }}
+                      />
+                      <small className="muted">Global da empresa. Só usuários com permissão de configurações podem alterar.</small>
+                    </label>
+                  </div>
+
+                  <div className="settings-regional-preview">
+                    <div><span>Data e hora</span><strong>{formatRuntimeDateTime(new Date())}</strong></div>
+                    <div><span>Exemplo monetário</span><strong>{formatRuntimeCurrency(123456.78)}</strong></div>
+                  </div>
+                </>
+              ) : null}
+              <SaveButton saving={saving} canManage={Boolean(userId)} label={canManageSettings ? 'Salvar preferências' : 'Salvar minhas preferências'} />
             </>
           )}
         </form>

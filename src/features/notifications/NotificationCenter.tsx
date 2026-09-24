@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useAuth } from '../../core/auth/AuthProvider';
 import { useAppRouter } from '../../core/router/router';
 import { getUserPreferences, type UserPreferences } from '../settings/user-preferences-service';
+import { formatRuntimeDateTime } from '../settings/runtime-preferences';
 import {
   listUnreadNotifications,
   markNotificationRead,
@@ -118,7 +119,7 @@ export function NotificationCenter() {
               <button type="button" className="notification-center__item" key={item.id} onClick={() => void openNotification(item)}>
                 <strong>{item.title}</strong>
                 <span>{item.body}</span>
-                <small>{new Date(item.created_at).toLocaleString('pt-BR')}</small>
+                <small>{formatRuntimeDateTime(item.created_at)}</small>
               </button>
             ))}
           </div>

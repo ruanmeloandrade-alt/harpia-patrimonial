@@ -1,5 +1,6 @@
 import { requireSupabase } from '../../../core/supabase/client';
 import type { Json } from '../../../core/supabase/database.types';
+import { applyRuntimeRegionalPreferences } from '../runtime-preferences';
 
 export type TimeFormatPreference = '24h' | '12h';
 export type BusinessWeekday = 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday' | 'sunday';
@@ -240,13 +241,9 @@ export function applyOrganizationRegionalPreferences(preferences: OrganizationPr
   if (typeof document === 'undefined') return;
   const normalized = normalizeOrganizationPreferences(preferences);
   const root = document.documentElement;
-  root.dataset.currency = normalized.regional.currency;
-  root.dataset.timezone = normalized.regional.timezone;
-  root.dataset.dateFormat = normalized.regional.dateFormat;
-  root.dataset.timeFormat = normalized.regional.timeFormat;
-  root.lang = normalized.regional.locale;
-  root.style.setProperty('--brand-accent', '#b49a63');
-  root.style.setProperty('--gold', '#b49a63');
+  applyRuntimeRegionalPreferences(normalized.regional);
+  root.style.setProperty('--brand-accent', normalized.appearance.primaryColor);
+  root.style.setProperty('--gold', normalized.appearance.primaryColor);
 }
 
 export const applyOrganizationPreferences = applyOrganizationRegionalPreferences;

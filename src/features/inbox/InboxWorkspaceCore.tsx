@@ -12,6 +12,7 @@ import type { AssigneeOption } from '../crm/CrmWorkspace';
 import { BrowserInboxRepository } from './repository';
 import { InboxService } from './service';
 import type { InboxConversation, InboxState, MessageType } from './domain';
+import { formatRuntimeDateTime, formatRuntimeTime } from '../settings/runtime-preferences';
 import styles from './inbox.module.css';
 
 export interface AutomationOption {
@@ -513,7 +514,7 @@ export function InboxWorkspace({
                 <dt>Origem</dt><dd>{selectedLead.source || 'Não informada'}</dd>
                 <dt>Interesse</dt><dd>{selectedLead.interest?.label || 'Não informado'}</dd>
                 <dt>Página</dt><dd>{selectedLead.sourcePage || selectedLead.sourceAction || 'Não informada'}</dd>
-                <dt>Entrada</dt><dd>{selectedLead.sourceOccurredAt ? new Date(selectedLead.sourceOccurredAt).toLocaleString('pt-BR') : 'Não informada'}</dd>
+                <dt>Entrada</dt><dd>{selectedLead.sourceOccurredAt ? formatRuntimeDateTime(selectedLead.sourceOccurredAt) : 'Não informada'}</dd>
               </dl>
             </section>
 
@@ -530,7 +531,7 @@ export function InboxWorkspace({
               {leadTasks.filter((task) => task.status === 'pending').slice(0, 3).map((task) => (
                 <div className={styles.task} key={task.id}>
                   <strong>{task.title}</strong>
-                  <span>{task.dueAt ? new Date(task.dueAt).toLocaleString('pt-BR') : 'Sem prazo'}</span>
+                  <span>{task.dueAt ? formatRuntimeDateTime(task.dueAt) : 'Sem prazo'}</span>
                 </div>
               ))}
             </section>
@@ -636,7 +637,7 @@ export function InboxWorkspace({
                     ) : null}
                     <footer>
                       <span>{messageTypeLabel(message.type)}</span>
-                      <small>{new Date(message.createdAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</small>
+                      <small>{formatRuntimeTime(message.createdAt)}</small>
                     </footer>
                   </article>
                 ))
@@ -867,7 +868,7 @@ function ConversationButton({
       <span className={styles.conversationCopy}>
         <span className={styles.conversationTopline}>
           <strong>{leadName || 'Lead não encontrado'}</strong>
-          <small>{conversation.lastMessageAt ? new Date(conversation.lastMessageAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : ''}</small>
+          <small>{conversation.lastMessageAt ? formatRuntimeTime(conversation.lastMessageAt) : ''}</small>
         </span>
         <span className={styles.conversationPreview}>{preview || contact || conversation.channel}</span>
         <span className={styles.conversationMeta}>

@@ -13,6 +13,7 @@ import type {
   CatalogMedia,
   ProductCatalog,
 } from './types';
+import { formatRuntimeCurrency } from '../settings/runtime-preferences';
 import './catalog.css';
 
 export interface CatalogAccess {
@@ -86,10 +87,7 @@ function splitList(value: string) {
 
 function money(value: number | null) {
   if (value === null) return 'Sob consulta';
-  return new Intl.NumberFormat('pt-BR', {
-    style: 'currency',
-    currency: 'BRL',
-  }).format(value);
+  return formatRuntimeCurrency(value);
 }
 
 function discountedPrice(item: Pick<CatalogItem, 'price' | 'discountType' | 'discountValue'>) {

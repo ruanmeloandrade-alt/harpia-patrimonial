@@ -18,6 +18,7 @@ import { CrmIntegrityError, CrmService } from './service';
 import { AppLink } from '../../core/router/router';
 import type { CatalogRepository } from '../catalog/catalogRepository';
 import { LeadProductsPanel } from './LeadProductsPanel';
+import { formatRuntimeDateTime } from '../settings/runtime-preferences';
 import styles from './crm.module.css';
 
 export interface AssigneeOption {
@@ -658,7 +659,7 @@ function LeadDetailsPanel({
               <li key={task.id}>
                 <div>
                   <strong>{task.title}</strong>
-                  <span>{task.dueAt ? new Date(task.dueAt).toLocaleString('pt-BR') : 'Sem prazo'}</span>
+                  <span>{task.dueAt ? formatRuntimeDateTime(task.dueAt) : 'Sem prazo'}</span>
                   {task.notes && <span>{task.notes}</span>}
                 </div>
                 <select value={task.status} onChange={(event) => safeRun(() => service.updateTaskStatus(task.id, event.target.value as typeof task.status), 'Tarefa atualizada.')}>
@@ -681,7 +682,7 @@ function LeadDetailsPanel({
             {history.map((entry) => (
               <li key={entry.id}>
                 <strong>{entry.description}</strong>
-                <span>{new Date(entry.createdAt).toLocaleString('pt-BR')}</span>
+                <span>{formatRuntimeDateTime(entry.createdAt)}</span>
               </li>
             ))}
           </ol>
