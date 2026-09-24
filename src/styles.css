@@ -177,3 +177,35 @@ th { color: var(--muted); font-size: 10px; text-transform: uppercase; letter-spa
   .permission-override-row { align-items: flex-start; flex-direction: column; }
   .permission-override-row select { width: 100%; }
 }
+
+
+button,
+[role="button"],
+a.panel,
+.setting-card {
+  transition: transform 120ms ease, box-shadow 180ms ease, background-color 180ms ease, color 180ms ease, opacity 180ms ease;
+}
+
+button:not(:disabled):active,
+[role="button"]:active,
+a.panel:active,
+.setting-card:active {
+  transform: translateY(1px) scale(.98);
+}
+
+button:not(:disabled):focus-visible,
+[role="button"]:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+
+button[aria-busy="true"] {
+  opacity: .68;
+  pointer-events: none;
+}
+
+@keyframes harpia-button-press {
+  0% { transform: scale(1); }
+  45% { transform: scale(.97); }
+  100% { transform: scale(1); }
+}
