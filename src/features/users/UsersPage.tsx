@@ -79,21 +79,27 @@ export function UsersPage({ embedded = false }: { embedded?: boolean }) {
       setError(null);
       setNotice(null);
 
+      const permissionOverrides = canAssignGroups
+        ? Object.entries(createOverrides)
+          .filter(([, effect]) => effect !== 'inherit')
+          .map(([permissionId, effect]) => ({ permissionId, effect: effect as PermissionEffect }))
+        : [];
+
       const result = await createInternalUser({
         fullName: String(form.get('fullName') || ''),
         email: String(form.get('email') || ''),
         whatsapp: String(form.get('whatsapp') || ''),
         password: String(form.get('password') || ''),
+        groupIds: canAssignGroups ? [...createGroups] : [],
+        permissionOverrides,
       });
 
       let accessWarning = '';
-      if (canAssignGroups) {
+      if (canAssignGroups && !result.accessApplied) {
         try {
           await replaceUserGroups(result.userId, [...createGroups]);
-          for (const [permissionId, effect] of Object.entries(createOverrides)) {
-            if (effect !== 'inherit') {
-              await setUserPermissionOverride(result.userId, permissionId, effect);
-            }
+          for (const { permissionId, effect } of permissionOverrides) {
+            await setUserPermissionOverride(result.userId, permissionId, effect);
           }
         } catch (accessError) {
           accessWarning = accessError instanceof Error
