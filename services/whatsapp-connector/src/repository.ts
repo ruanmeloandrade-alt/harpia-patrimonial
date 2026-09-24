@@ -1,5 +1,4 @@
 import { randomUUID } from 'node:crypto';
-import { config } from './config.js';
 import { db } from './db.js';
 
 export type ConnectorStatus =
@@ -15,7 +14,7 @@ export type IncomingMessageInput = {
   threadId: string;
   phone: string;
   displayName?: string;
-  type: 'text' | 'audio' | 'image' | 'video' | 'document' | 'form';
+  type: 'text' | 'audio' | 'image' | 'video' | 'document';
   text?: string;
   receivedAt: string;
   attachment?: {
@@ -40,20 +39,20 @@ type ConnectionPatch = {
   metadata?: Record<string, unknown>;
 };
 
-async function getConnection() {
+async function getConnection(sessionId: string) {
   const { data, error } = await db
     .from('integration_connections')
-    .select('id,status,metadata,revision')
+    .select('id,status,metadata,revision,external_account_id,account_label,connected_at,last_health_at,last_event_at,last_error_at,last_error_code')
     .eq('provider', 'whatsapp')
-    .eq('external_account_id', config.sessionId)
+    .eq('external_account_id', sessionId)
     .maybeSingle();
 
   if (error) throw error;
   return data;
 }
 
-async function ensureConnection() {
-  const existing = await getConnection();
+export async function ensureConnection(sessionId: string) {
+  const existing = await getConnection(sessionId);
   if (existing) return existing;
 
   const now = new Date().toISOString();
@@ -62,27 +61,39 @@ async function ensureConnection() {
     .insert({
       provider: 'whatsapp',
       status: 'not_connected',
-      external_account_id: config.sessionId,
+      external_account_id: sessionId,
       account_label: 'WhatsApp Web',
       metadata: {
         transport: 'whatsapp_web',
-        sessionId: config.sessionId,
+        sessionId,
       },
       created_at: now,
       updated_at: now,
     })
-    .select('id,status,metadata')
+    .select('id,status,metadata,revision,external_account_id,account_label,connected_at,last_health_at,last_event_at,last_error_at,last_error_code')
     .single();
 
   if (error) throw error;
   return data;
 }
 
+export async function listWhatsAppSessions() {
+  const { data, error } = await db
+    .from('integration_connections')
+    .select('id,status,metadata,external_account_id,account_label,connected_at,last_health_at,last_event_at,last_error_at,last_error_code,updated_at')
+    .eq('provider', 'whatsapp')
+    .order('created_at', { ascending: true });
+
+  if (error) throw error;
+  return data ?? [];
+}
+
 export async function setConnectionStatus(
+  sessionId: string,
   status: ConnectorStatus,
   patch: ConnectionPatch = {},
 ) {
-  const connection = await ensureConnection();
+  const connection = await ensureConnection(sessionId);
   const now = new Date().toISOString();
 
   const metadata = {
@@ -91,7 +102,7 @@ export async function setConnectionStatus(
       : {}),
     ...(patch.metadata ?? {}),
     transport: 'whatsapp_web',
-    sessionId: config.sessionId,
+    sessionId,
   };
 
   const patchValue = <K extends keyof ConnectionPatch>(key: K): ConnectionPatch[K] | undefined => (
@@ -125,43 +136,54 @@ export async function setConnectionStatus(
     updated_at: now,
   };
 
-  const { error: channelError } = await db
+  const { data: channelAccounts, error: channelReadError } = await db
     .from('inbox_channel_accounts')
-    .update(channelUpdate)
+    .select('id')
     .eq('connection_id', connection.id)
     .eq('provider', 'whatsapp_web');
 
-  if (channelError) throw channelError;
+  if (channelReadError) throw channelReadError;
 
-  const conversationStatus = status === 'connected'
-    ? 'connected'
-    : status === 'degraded' || status === 'error'
-      ? 'error'
-      : 'not_connected';
+  const accountIds = (channelAccounts ?? []).map((item) => String(item.id));
 
-  const { error: conversationError } = await db
-    .from('inbox_conversations')
-    .update({
-      transport_status: conversationStatus,
-      updated_at: now,
-    })
-    .eq('provider', 'whatsapp_web');
+  if (accountIds.length > 0) {
+    const { error: channelError } = await db
+      .from('inbox_channel_accounts')
+      .update(channelUpdate)
+      .in('id', accountIds);
 
-  if (conversationError) throw conversationError;
+    if (channelError) throw channelError;
 
-  return connection.id as string;
+    const conversationStatus = status === 'connected'
+      ? 'connected'
+      : status === 'degraded' || status === 'error'
+        ? 'error'
+        : 'not_connected';
+
+    const { error: conversationError } = await db
+      .from('inbox_conversations')
+      .update({
+        transport_status: conversationStatus,
+        updated_at: now,
+      })
+      .in('channel_account_id', accountIds);
+
+    if (conversationError) throw conversationError;
+  }
+
+  return String(connection.id);
 }
 
-export async function heartbeat() {
+export async function heartbeat(sessionId: string) {
   const now = new Date().toISOString();
-  await setConnectionStatus('connected', {
+  await setConnectionStatus(sessionId, 'connected', {
     lastHealthAt: now,
     lastErrorAt: null,
     lastErrorCode: null,
   });
 }
 
-export async function recordIntegrationEvent(input: {
+export async function recordIntegrationEvent(sessionId: string, input: {
   eventType: string;
   success: boolean;
   externalId?: string;
@@ -170,7 +192,7 @@ export async function recordIntegrationEvent(input: {
   latencyMs?: number;
   metadata?: Record<string, unknown>;
 }) {
-  const connection = await ensureConnection();
+  const connection = await ensureConnection(sessionId);
   const occurredAt = new Date().toISOString();
 
   const { error } = await db
@@ -185,13 +207,17 @@ export async function recordIntegrationEvent(input: {
       latency_ms: input.latencyMs ?? null,
       error_code: input.errorCode ?? null,
       error_message: input.errorMessage?.slice(0, 1000) ?? null,
-      metadata: input.metadata ?? {},
+      metadata: {
+        ...(input.metadata ?? {}),
+        sessionId,
+      },
       occurred_at: occurredAt,
     });
 
   if (error) throw error;
 
   await setConnectionStatus(
+    sessionId,
     input.success ? 'connected' : 'degraded',
     input.success
       ? {
@@ -207,12 +233,12 @@ export async function recordIntegrationEvent(input: {
   );
 }
 
-export async function upsertChannelAccount(input: {
+export async function upsertChannelAccount(sessionId: string, input: {
   phoneNumber: string;
   displayName?: string;
   connectorVersion?: string;
 }) {
-  const connection = await ensureConnection();
+  const connection = await ensureConnection(sessionId);
   const externalAccountId = input.phoneNumber.replace(/\D/g, '');
   const now = new Date().toISOString();
 
@@ -231,17 +257,18 @@ export async function upsertChannelAccount(input: {
       .update({
         connection_id: connection.id,
         channel: 'whatsapp',
-        phone_number: input.phoneNumber,
+        phone_number: externalAccountId,
         display_name: input.displayName ?? null,
         status: 'connected',
         last_heartbeat_at: now,
         last_event_at: now,
         connector_version: input.connectorVersion ?? null,
+        metadata: { sessionId },
         updated_at: now,
       })
       .eq('id', existing.id);
     if (error) throw error;
-    return existing.id as string;
+    return String(existing.id);
   }
 
   const { data, error } = await db
@@ -251,13 +278,13 @@ export async function upsertChannelAccount(input: {
       channel: 'whatsapp',
       provider: 'whatsapp_web',
       external_account_id: externalAccountId,
-      phone_number: input.phoneNumber,
+      phone_number: externalAccountId,
       display_name: input.displayName ?? null,
       status: 'connected',
       last_heartbeat_at: now,
       last_event_at: now,
       connector_version: input.connectorVersion ?? null,
-      metadata: {},
+      metadata: { sessionId },
       created_at: now,
       updated_at: now,
     })
@@ -265,10 +292,46 @@ export async function upsertChannelAccount(input: {
     .single();
 
   if (error) throw error;
-  return data.id as string;
+  return String(data.id);
 }
 
-export async function ingestIncomingMessage(input: IncomingMessageInput) {
+export async function getSessionChannelAccountId(sessionId: string) {
+  const connection = await ensureConnection(sessionId);
+  const { data, error } = await db
+    .from('inbox_channel_accounts')
+    .select('id')
+    .eq('connection_id', connection.id)
+    .eq('provider', 'whatsapp_web')
+    .order('updated_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) throw error;
+  return data?.id ? String(data.id) : undefined;
+}
+
+export async function getConversationSessionId(conversationId: string) {
+  const { data, error } = await db
+    .from('inbox_conversations')
+    .select('channel_account_id,inbox_channel_accounts!inner(connection_id,integration_connections!inner(external_account_id))')
+    .eq('id', conversationId)
+    .maybeSingle();
+
+  if (error) throw error;
+
+  const account = data?.inbox_channel_accounts as unknown as {
+    integration_connections?: { external_account_id?: string | null } | null;
+  } | null;
+
+  return account?.integration_connections?.external_account_id
+    ? String(account.integration_connections.external_account_id)
+    : undefined;
+}
+
+export async function ingestIncomingMessage(sessionId: string, input: IncomingMessageInput) {
+  const channelAccountId = await getSessionChannelAccountId(sessionId);
+  if (!channelAccountId) throw new Error('Conta WhatsApp da sessão não encontrada.');
+
   const { data, error } = await db.rpc('admin_ingest_whatsapp_message', {
     p_external_message_id: input.externalMessageId,
     p_thread_id: input.threadId,
@@ -278,7 +341,11 @@ export async function ingestIncomingMessage(input: IncomingMessageInput) {
     p_text: input.text ?? null,
     p_received_at: input.receivedAt,
     p_attachment: input.attachment ?? null,
-    p_metadata: input.metadata ?? {},
+    p_metadata: {
+      ...(input.metadata ?? {}),
+      sessionId,
+    },
+    p_channel_account_id: channelAccountId,
   });
 
   if (error) throw error;
@@ -290,7 +357,7 @@ export async function ingestIncomingMessage(input: IncomingMessageInput) {
   };
 }
 
-export async function uploadInboundMedia(input: {
+export async function uploadInboundMedia(sessionId: string, input: {
   externalMessageId: string;
   bytes: Buffer;
   mimeType: string;
@@ -302,7 +369,7 @@ export async function uploadInboundMedia(input: {
     .replace(/[^a-zA-Z0-9._-]+/g, '_')
     .slice(-120);
   const path = [
-    config.sessionId,
+    sessionId,
     String(date.getUTCFullYear()),
     String(date.getUTCMonth() + 1).padStart(2, '0'),
     `${input.externalMessageId}-${randomUUID()}-${safeName}`,
@@ -358,17 +425,29 @@ export async function downloadOutboundMedia(input: {
   };
 }
 
-export async function getConversationDestination(conversationId: string) {
+export async function getConversationDestination(sessionId: string, conversationId: string) {
+  const connection = await ensureConnection(sessionId);
   const { data, error } = await db
     .from('inbox_conversations')
-    .select('external_thread_id,provider')
+    .select('external_thread_id,provider,channel_account_id')
     .eq('id', conversationId)
     .single();
 
   if (error) throw error;
-  if (data.provider !== 'whatsapp_web' || !data.external_thread_id) {
-    throw new Error('Conversa não pertence ao transporte WhatsApp Web.');
+  if (data.provider !== 'whatsapp_web' || !data.external_thread_id || !data.channel_account_id) {
+    throw new Error('Conversa não pertence a uma conta WhatsApp conectada.');
   }
+
+  const { data: account, error: accountError } = await db
+    .from('inbox_channel_accounts')
+    .select('id')
+    .eq('id', data.channel_account_id)
+    .eq('connection_id', connection.id)
+    .eq('provider', 'whatsapp_web')
+    .maybeSingle();
+
+  if (accountError) throw accountError;
+  if (!account) throw new Error('Esta conversa está vinculada a outra conta WhatsApp.');
 
   return String(data.external_thread_id);
 }
