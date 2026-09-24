@@ -37,7 +37,7 @@ export async function setInternalUserActive(userId: string, isActive: boolean) {
   if (error) throw error;
 }
 
-export async function createInternalUser(input: { fullName: string; email: string; whatsapp?: string; password: string; groupId?: string }) {
+export async function createInternalUser(input: { fullName: string; email: string; whatsapp?: string; password: string; groupId?: string; groupIds?: string[]; permissionOverrides?: Array<{ permissionId: string; effect: PermissionEffect }> }) {
   const supabase = requireSupabase();
   const { data: sessionData } = await supabase.auth.getSession();
   const token = sessionData.session?.access_token;
@@ -45,7 +45,7 @@ export async function createInternalUser(input: { fullName: string; email: strin
   const { data, error } = await supabase.functions.invoke('admin-user', { body: input, headers: { Authorization: `Bearer ${token}` } });
   if (error) throw error;
   if (!data?.ok) throw new Error(data?.message || 'Não foi possível criar o usuário.');
-  return data as { ok: true; userId: string; warning?: string };
+  return data as { ok: true; userId: string; warning?: string; accessApplied?: boolean };
 }
 
 export async function getUserGroupIds(userId: string) {
