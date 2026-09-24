@@ -64,14 +64,14 @@ function normalizeCustomFieldValue(
 ): CustomFieldValue {
   if (value === null) return null;
 
-  if (field.type === 'text' || field.type === 'date') {
+  if (field.type === 'text' || field.type === 'date' || field.type === 'datetime') {
     if (typeof value !== 'string') {
       throw new CrmIntegrityError(`O campo “${field.name}” exige um valor de texto.`);
     }
     return value;
   }
 
-  if (field.type === 'number') {
+  if (field.type === 'number' || field.type === 'currency') {
     if (typeof value !== 'number' || !Number.isFinite(value)) {
       throw new CrmIntegrityError(`O campo “${field.name}” exige um número válido.`);
     }
