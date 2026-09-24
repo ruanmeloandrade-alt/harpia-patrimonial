@@ -126,6 +126,7 @@ export type CrmEventType =
   | 'lead.tag_added'
   | 'lead.tag_removed'
   | 'lead.custom_field_changed'
+  | 'lead.field_changed'
   | 'lead.task_created'
   | 'lead.task_updated'
   | 'lead.inactivity_detected';
