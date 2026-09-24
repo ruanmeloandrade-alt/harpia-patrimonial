@@ -156,7 +156,7 @@ function pipelineTriggerDefinition(input: PipelineAutomationMeta): AutomationDef
   if (input.pipelineId) conditions.push({ field: 'pipelineId', operator: 'equals', value: input.pipelineId });
 
   let event: AutomationDefinition['trigger']['event'] = 'lead.created';
-  if (input.event === 'enter') {
+  if (input.event === 'enter' || input.event === 'created_or_moved') {
     event = 'lead.stage_changed';
     if (input.stageId) conditions.push({ field: 'stageId', operator: 'equals', value: input.stageId });
   } else if (input.event === 'leave') {
@@ -228,6 +228,7 @@ export function createPipelineAutomation(input: {
   };
 
   if (!normalized.pipelineId) throw new Error('Selecione um funil.');
+  if (!normalized.stageId) throw new Error('Selecione a etapa do gatilho.');
   if (normalized.event === 'time' && !/^\d+\s*(m|min|h|d|dia|dias|hora|horas)$/i.test(normalized.value ?? '')) {
     throw new Error('Informe o tempo como 30m, 2h ou 3d.');
   }
@@ -248,6 +249,62 @@ export function deletePipelineAutomation(id: string): void {
   const current = items.find((item) => item.id === id);
   if (!current || current.origin !== 'pipeline') throw new Error('Gatilho não encontrado.');
   writeStoredList(STORAGE_KEY, items.filter((item) => item.id !== id));
+}
+
+export function updatePipelineAutomation(id: string, input: {
+  pipelineId: string;
+  event: PipelineTriggerEvent;
+  stageId?: string;
+  value?: string;
+  action: PipelineTriggerAction;
+  targetStageId?: string;
+  resourceId?: string;
+}): AutomationDefinition {
+  const items = listAutomations();
+  const current = items.find((item) => item.id === id);
+  if (!current || current.origin !== 'pipeline') throw new Error('Gatilho não encontrado.');
+
+  const normalized: PipelineAutomationMeta = {
+    pipelineId: input.pipelineId,
+    event: input.event,
+    stageId: input.stageId?.trim() || undefined,
+    value: input.value?.trim() || undefined,
+    action: input.action,
+    targetStageId: input.targetStageId?.trim() || undefined,
+    resourceId: input.resourceId?.trim() || undefined,
+  };
+
+  if (!normalized.pipelineId || !normalized.stageId) throw new Error('Selecione a etapa do gatilho.');
+  if (normalized.event === 'time' && !/^\d+\s*(m|min|h|d|dia|dias|hora|horas)$/i.test(normalized.value ?? '')) {
+    throw new Error('Informe o tempo como 30m, 2h ou 3d.');
+  }
+  if (normalized.action === 'move_stage' && !normalized.targetStageId) {
+    throw new Error('Selecione a etapa destino.');
+  }
+  if ((normalized.action === 'salesbot' || normalized.action === 'ai') && !normalized.resourceId) {
+    throw new Error(normalized.action === 'salesbot' ? 'Selecione o SalesBot.' : 'Selecione o Agente IA.');
+  }
+
+  const rebuilt = pipelineTriggerDefinition(normalized);
+  const updated: AutomationDefinition = {
+    ...rebuilt,
+    id: current.id,
+    createdAt: current.createdAt,
+    status: current.status,
+    updatedAt: now(),
+  };
+  writeStoredList(STORAGE_KEY, items.map((item) => item.id === id ? updated : item));
+  return updated;
+}
+
+export function deletePipelineAutomationsForStage(stageId: string): void {
+  const items = listAutomations();
+  writeStoredList(
+    STORAGE_KEY,
+    items.filter((item) => !(item.origin === 'pipeline' && (
+      item.pipeline?.stageId === stageId || item.pipeline?.targetStageId === stageId
+    ))),
+  );
 }
 
 export function deletePipelineAutomationsForPipeline(pipelineId: string): void {
