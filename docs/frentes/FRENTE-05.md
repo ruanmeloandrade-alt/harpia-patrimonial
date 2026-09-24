@@ -228,3 +228,29 @@ A falta da integração real de WhatsApp/Meta não bloqueia a conclusão estrutu
 - Integrações preparadas:
 - Riscos conhecidos:
 - Instruções para o chat de integração:
+
+
+## Handoff adicional: Cérebro autenticado e feedback de ação, 24/09/2026
+
+- Status: **PARCIAL / EM ANDAMENTO** até QA autenticado em navegador.
+- Branch: `work/ai-brain-upload-feedback-20260924`.
+- Escopo: fechar upload real do Cérebro, retirar a ponte estática e tornar ações visíveis ao usuário.
+- Código principal:
+  - `src/features/ai-agents/brainRepository.ts`
+  - `src/features/ai-agents/AIAgentsWorkspace.tsx`
+  - `src/features/ai-agents/repository.ts`
+  - `src/features/ai-agents/runtime.ts`
+  - `src/features/automations/front05.css`
+  - `src/styles.css`
+  - `supabase/schema/ai_brain.sql`
+  - `supabase/functions/ai-brain-process-source/index.ts`
+  - `supabase/functions/ai-brain-static-bridge/index.ts`
+- Produção visual: `gh-pages/interno/index.html` usa sessão real, RLS, Storage privado e processador autenticado.
+- Segurança: token fixo removido da página publicada; ponte temporária desativada no Supabase.
+- Integração IA: provedor/modelo configurado em Integrações é resolvido automaticamente pelos agentes.
+- Contexto: Cérebro e fontes prontas entram no runtime do agente.
+- UX: botões possuem resposta visual de clique; operações assíncronas do Cérebro mostram carregamento e sucesso.
+- Alteração compartilhada: `src/styles.css` foi alterado apenas para feedback visual global solicitado pelo usuário e reconciliado com o hotfix mais recente da Frente01.
+- Testes executados: sintaxe JS da página estática; conferência de RLS, bucket, Edge Functions e remoção da ponte estática da página.
+- NÃO VERIFICADO: build/typecheck completo e E2E autenticado de upload em navegador.
+- Próximo passo: integrar a branch na `main`, conferir Security Advisor e testar upload com a primeira conta interna real.
