@@ -22,6 +22,11 @@ export interface SalesBotBlock {
   type: SalesBotBlockType;
   label: string;
   config: Record<string, SalesBotBlockConfigValue>;
+  x?: number;
+  y?: number;
+  nextBlockId?: string | null;
+  falseNextBlockId?: string | null;
+  routes?: Record<string, string | null>;
 }
 
 export interface SalesBotDefinition {
