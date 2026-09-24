@@ -1,5 +1,6 @@
 import { requireSupabase } from '../../core/supabase/client';
 import type { PermissionEffect } from '../permissions/permission-service';
+import { normalizeWhatsAppNumber } from '../../shared/phone';
 
 export type InternalUserRow = {
   id: string;
@@ -25,7 +26,7 @@ export async function updateInternalUser(userId: string, input: { fullName: stri
   const supabase = requireSupabase();
   const { error } = await supabase
     .from('user_profiles')
-    .update({ full_name: fullName, whatsapp: input.whatsapp?.trim() || null })
+.update({ full_name: fullName, whatsapp: normalizeWhatsAppNumber(input.whatsapp) ?? null })
     .eq('id', userId)
     .eq('account_type', 'internal');
   if (error) throw error;
@@ -38,11 +39,12 @@ export async function setInternalUserActive(userId: string, isActive: boolean) {
 }
 
 export async function createInternalUser(input: { fullName: string; email: string; whatsapp?: string; password: string; groupId?: string }) {
+  const normalizedInput = { ...input, whatsapp: normalizeWhatsAppNumber(input.whatsapp) };
   const supabase = requireSupabase();
   const { data: sessionData } = await supabase.auth.getSession();
   const token = sessionData.session?.access_token;
   if (!token) throw new Error('Sessão interna inválida.');
-  const { data, error } = await supabase.functions.invoke('admin-user', { body: input, headers: { Authorization: `Bearer ${token}` } });
+  const { data, error } = await supabase.functions.invoke('admin-user', { body: normalizedInput, headers: { Authorization: `Bearer ${token}` } });
   if (error) throw error;
   if (!data?.ok) throw new Error(data?.message || 'Não foi possível criar o usuário.');
   return data as { ok: true; userId: string; warning?: string };
