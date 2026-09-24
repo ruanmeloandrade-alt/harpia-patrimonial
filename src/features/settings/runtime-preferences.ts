@@ -156,7 +156,6 @@ const EN: Record<string, string> = {
   'Selecione um lead': 'Select a lead',
   'Abrir conversa': 'Open conversation',
   'Iniciar': 'Start',
-  'Pausar': 'Pause',
   'Acesso restrito': 'Restricted access',
   'Sem desconto': 'No discount',
   'Percentual': 'Percentage',
