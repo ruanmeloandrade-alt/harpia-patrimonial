@@ -1,4 +1,5 @@
 import { FormEvent, useEffect, useMemo, useState } from 'react';
+import { formatCurrency } from '../settings/regional-runtime';
 import type { CatalogRepository } from '../catalog/catalogRepository';
 import { listProductCatalogs } from '../catalog/productCatalogRepository';
 import type { CatalogItem, ProductCatalog } from '../catalog/types';
@@ -28,8 +29,7 @@ const relationshipLabel: Record<LeadProductRelationship, string> = {
 };
 
 function money(value: number | null | undefined) {
-  if (value === null || value === undefined) return 'Sob consulta';
-  return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
+  return formatCurrency(value);
 }
 
 function finalPrice(
