@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useMemo } from 'react';
 import { PersistenceErrorNotice } from '../crm/PersistenceErrorNotice';
 import {
   createPermissionedInboxAutomationPort,
@@ -61,41 +61,6 @@ export function InboxWorkspace({
     [aiAgentManage, props.automationPort, salesBotManage],
   );
 
-  const previousRuntimeRef = useRef({
-    crmService,
-    inboxService,
-    automationPort,
-  });
-  const [runtimeRevision, setRuntimeRevision] = useState(0);
-
-  useEffect(() => {
-    const previous = previousRuntimeRef.current;
-    if (
-      previous.crmService === crmService
-      && previous.inboxService === inboxService
-      && previous.automationPort === automationPort
-    ) {
-      return;
-    }
-
-    const crmContentChanged = previous.crmService !== crmService
-      && JSON.stringify(previous.crmService.snapshot()) !== JSON.stringify(crmService.snapshot());
-    const inboxContentChanged = previous.inboxService !== inboxService
-      && JSON.stringify(previous.inboxService.snapshot()) !== JSON.stringify(inboxService.snapshot());
-
-    previousRuntimeRef.current = {
-      crmService,
-      inboxService,
-      automationPort,
-    };
-
-    // Troca de permissão/port ou eco realtime com o mesmo conteúdo não deve
-    // fechar a conversa selecionada. Remount somente quando os dados mudam.
-    if (crmContentChanged || inboxContentChanged) {
-      setRuntimeRevision((value) => value + 1);
-    }
-  }, [automationPort, crmService, inboxService]);
-
   return (
     <>
       {(fullyReadOnly || !inboxManage || !crmManage || !salesBotManage || !aiAgentManage) && (
@@ -117,7 +82,6 @@ export function InboxWorkspace({
       )}
       <PersistenceErrorNotice modules={['crm', 'inbox']} />
       <InboxWorkspaceCore
-        key={`inbox-runtime-${runtimeRevision}`}
         {...props}
         crmService={crmService}
         inboxService={inboxService}
