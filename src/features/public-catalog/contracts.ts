@@ -9,6 +9,8 @@ export interface PublicCatalogMedia {
 export interface PublicCatalogItem {
   id: string;
   slug: string;
+  itemType: 'property' | 'product' | 'service';
+  catalogId?: string | null;
   code?: string;
   title: string;
   propertyType: string;
@@ -16,6 +18,9 @@ export interface PublicCatalogItem {
   city: string;
   location: string;
   price: number | null;
+  discountType?: 'percentage' | 'fixed';
+  discountValue?: number;
+  tags?: string[];
   isLaunch: boolean;
   status: PublicCatalogStatus;
   description?: string;
@@ -35,6 +40,7 @@ export interface PublicCatalogItem {
 }
 
 export interface PublicCatalogFilters {
+  itemType?: 'property' | 'product' | 'service';
   purpose?: string;
   city?: string;
   location?: string;
