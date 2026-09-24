@@ -209,7 +209,7 @@ export class WhatsAppConnector {
           ),
         },
         logger: logger.child({ module: 'baileys' }) as never,
-        browser: Browsers.ubuntu('Harpia Patrimonial'),
+        browser: Browsers.macOS('Desktop'),
         markOnlineOnConnect: false,
         syncFullHistory: true,
         shouldSyncHistoryMessage: () => true,
