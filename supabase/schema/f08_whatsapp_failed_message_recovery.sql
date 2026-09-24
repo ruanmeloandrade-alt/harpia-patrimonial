@@ -56,34 +56,83 @@ begin
           and r.external_id = e.external_id
       ) < 2
   ),
-  identities as (
+  contact_keys as (
     select a.updated_at,
-           regexp_replace(
-             regexp_replace(a.state_key, '^identity-key:', ''),
-             '_.*$', ''
-           ) as lid
+      case
+        when a.state_key ~ '^identity-key:[0-9]+_' then
+          regexp_replace(regexp_replace(a.state_key,'^identity-key:',''),'_.*
+end;
+$function$;
+
+revoke all on function public.admin_list_whatsapp_recovery_candidates(text,timestamptz,integer)
+  from public, anon, authenticated;
+grant execute on function public.admin_list_whatsapp_recovery_candidates(text,timestamptz,integer)
+  to service_role;
+,'')
+        when a.state_key ~ '^session:[0-9]+_' then
+          regexp_replace(regexp_replace(a.state_key,'^session:',''),'_.*
+end;
+$function$;
+
+revoke all on function public.admin_list_whatsapp_recovery_candidates(text,timestamptz,integer)
+  from public, anon, authenticated;
+grant execute on function public.admin_list_whatsapp_recovery_candidates(text,timestamptz,integer)
+  to service_role;
+,'')
+        when a.state_key ~ '^tctoken:[0-9]+@lid
+end;
+$function$;
+
+revoke all on function public.admin_list_whatsapp_recovery_candidates(text,timestamptz,integer)
+  from public, anon, authenticated;
+grant execute on function public.admin_list_whatsapp_recovery_candidates(text,timestamptz,integer)
+  to service_role;
+ then
+          regexp_replace(regexp_replace(a.state_key,'^tctoken:',''),'@lid
+end;
+$function$;
+
+revoke all on function public.admin_list_whatsapp_recovery_candidates(text,timestamptz,integer)
+  from public, anon, authenticated;
+grant execute on function public.admin_list_whatsapp_recovery_candidates(text,timestamptz,integer)
+  to service_role;
+,'')
+        else null
+      end as lid
     from private.whatsapp_auth_state a
-    where a.session_id = p_session_id
-      and a.state_key like 'identity-key:%'
+    where a.session_id=p_session_id
+      and (
+        a.state_key like 'identity-key:%'
+        or a.state_key like 'session:%'
+        or a.state_key like 'tctoken:%@lid'
+      )
   )
   select
     f.external_id,
     f.occurred_at,
-    i.lid,
-    i.updated_at,
-    round(extract(epoch from (f.occurred_at - i.updated_at))::numeric, 3)
+    k.lid,
+    k.updated_at,
+    round(extract(epoch from (f.occurred_at-k.updated_at))::numeric,3)
   from failed f
   join lateral (
-    select x.lid, x.updated_at
-    from identities x
-    where x.updated_at <= f.occurred_at
-      and x.updated_at >= f.occurred_at - interval '5 seconds'
-    order by f.occurred_at - x.updated_at asc
+    select x.lid,x.updated_at
+    from contact_keys x
+    where x.lid ~ '^[0-9]+
+end;
+$function$;
+
+revoke all on function public.admin_list_whatsapp_recovery_candidates(text,timestamptz,integer)
+  from public, anon, authenticated;
+grant execute on function public.admin_list_whatsapp_recovery_candidates(text,timestamptz,integer)
+  to service_role;
+
+      and x.updated_at <= f.occurred_at
+      and x.updated_at >= f.occurred_at - interval '6 seconds'
+    order by f.occurred_at-x.updated_at asc
     limit 1
-  ) i on true
-  where i.lid ~ '^[0-9]+$'
+  ) k on true
   order by f.occurred_at asc
-  limit greatest(1, least(coalesce(p_limit, 25), 50));
+  limit greatest(1,least(coalesce(p_limit,25),50));
 end;
 $function$;
 
