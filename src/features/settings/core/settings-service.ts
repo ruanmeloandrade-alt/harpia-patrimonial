@@ -265,6 +265,7 @@ export function applyOrganizationPreferences(preferences: OrganizationPreference
   root.dataset.timeFormat = normalized.regional.timeFormat;
   root.lang = normalized.regional.locale;
   root.style.setProperty('--brand-accent', normalized.appearance.primaryColor);
+  root.style.setProperty('--gold', normalized.appearance.primaryColor);
 }
 
 export async function getOrganizationSettings() {
