@@ -9,12 +9,16 @@ const now = () => new Date().toISOString();
 const readyProvider = () => listAIProviderProfiles()
   .find((item) => item.status === 'ready' && item.apiKeyConfigured && item.secretRef);
 
-const isProviderReady = (agent: AIAgentDefinition) => {
-  const profile = agent.providerProfileId
-    ? listAIProviderProfiles().find((item) => item.id === agent.providerProfileId)
-    : readyProvider();
-  return Boolean(profile && profile.status === 'ready' && profile.apiKeyConfigured && profile.secretRef);
+const providerForAgent = (agent: AIAgentDefinition) => {
+  const profiles = listAIProviderProfiles();
+  const selected = agent.providerProfileId
+    ? profiles.find((item) => item.id === agent.providerProfileId)
+    : undefined;
+  if (selected && selected.status === 'ready' && selected.apiKeyConfigured && selected.secretRef) return selected;
+  return profiles.find((item) => item.status === 'ready' && item.apiKeyConfigured && item.secretRef);
 };
+
+const isProviderReady = (agent: AIAgentDefinition) => Boolean(providerForAgent(agent));
 
 export function listAIAgents(): AIAgentDefinition[] {
   return readStoredList<AIAgentDefinition>(STORAGE_KEY)
@@ -79,6 +83,6 @@ export function setAIAgentStatus(id: string, status: AIAgentStatus): AIAgentDefi
   if (status === 'active' && !isProviderReady(agent)) {
     throw new Error('Configure uma chave de IA pronta em Integrações antes de ativar o agente.');
   }
-  const providerProfileId = agent.providerProfileId || readyProvider()?.id || '';
+  const providerProfileId = providerForAgent(agent)?.id ?? readyProvider()?.id ?? '';
   return updateAIAgent(id, { status, providerProfileId });
 }
