@@ -445,9 +445,10 @@ export function CrmWorkspace({
 
                     <label>
                       Etapa
-                      <select value={triggerStageId} onChange={(event) => setTriggerStageId(event.target.value)}>
-                        <option value="">Funil inteiro</option>
-                        {stages.map((stage) => <option key={stage.id} value={stage.id}>{stage.name}</option>)}
+                      <select value={triggerStageId || stages[0]?.id || ''} onChange={(event) => setTriggerStageId(event.target.value)} disabled={stages.length === 0}>
+                        {stages.length === 0
+                          ? <option value="">Nenhuma etapa criada</option>
+                          : stages.map((stage) => <option key={stage.id} value={stage.id}>{stage.name}</option>)}
                       </select>
                     </label>
 
