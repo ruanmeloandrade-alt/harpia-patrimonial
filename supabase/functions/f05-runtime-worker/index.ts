@@ -328,6 +328,28 @@ Deno.serve(async (req) => {
     } catch (error) { const reason = error instanceof Error ? error.message : 'Falha inesperada no runtime server-side.'; try { await persist({ status: 'failed', finishedAt: nowIso(), runtimeContext: undefined, error: reason, action: reason }); } catch {} return { status: 'rejected', executionId: execution.id, reason }; }
   }
 
+  async function pauseSalesBotExecutions(runtimeLeadId: string | undefined): Promise<Result> {
+    if (!runtimeLeadId) return { status: 'rejected', reason: 'Lead obrigatório para pausar SalesBots.' };
+    const executions = await loadList<Execution>(EXEC_KEY);
+    let affected = 0;
+    const executionIds: string[] = [];
+    const updated = executions.map((execution) => {
+      if (execution.leadId !== runtimeLeadId) return execution;
+      if (execution.status !== 'running') return execution;
+      affected += 1;
+      executionIds.push(execution.id);
+      return {
+        ...execution,
+        status: 'paused' as const,
+        resumeMode: 'retry_current' as const,
+        resumeAt: undefined,
+        action: 'SalesBot pausado pela automação da pipeline.',
+      };
+    });
+    if (affected > 0) await saveList(EXEC_KEY, updated);
+    return { status: 'accepted', data: { affected, executionIds, leadId: runtimeLeadId } };
+  }
+
   async function pauseAgentExecutions(runtimeLeadId: string | undefined, agentId?: string): Promise<Result> {
     if (!runtimeLeadId) return { status: 'rejected', reason: 'Lead obrigatório para pausar o Agente IA.' };
     const executions = await loadList<Execution>(EXEC_KEY);
@@ -382,6 +404,9 @@ Deno.serve(async (req) => {
         ...(leadId ? { leadId } : {}),
         ...(conversationId ? { conversationId } : {}),
       }));
+    }
+    if (action === 'pause_salesbot') {
+      return respond(await pauseSalesBotExecutions(leadId));
     }
     if (action === 'pause_ai') {
       return respond(await pauseAgentExecutions(leadId, text(body.agentId) || undefined));
