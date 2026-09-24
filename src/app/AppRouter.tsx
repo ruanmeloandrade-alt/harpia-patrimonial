@@ -25,7 +25,8 @@ import {
 } from './IntegratedInternalModules';
 
 export function AppRouter() {
-  const { pathname } = useAppRouter();
+  const { pathname: rawPathname } = useAppRouter();
+  const pathname = rawPathname !== '/' ? rawPathname.replace(/\/+$/, '') : '/';
 
   if (pathname === '/entrar') return <LoginPage />;
   if (pathname === '/cadastro') {
