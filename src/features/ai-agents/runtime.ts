@@ -18,7 +18,12 @@ const buildInstructions = (agent: ReturnType<typeof listAIAgents>[number]) =>
     agent.context ? `Contexto-base:\n${agent.context}` : '',
   ].filter(Boolean).join('\n\n');
 
-export function createAIAgentCommandPort(runtime: AIModelRuntimePort = unconfiguredAIModelRuntime): AIAgentCommandPort {
+export type AIAgentContextProvider = () => Promise<Record<string, unknown>> | Record<string, unknown>;
+
+export function createAIAgentCommandPort(
+  runtime: AIModelRuntimePort = unconfiguredAIModelRuntime,
+  contextProvider?: AIAgentContextProvider,
+): AIAgentCommandPort {
   return {
     async invoke(input): Promise<AutomationCommandResult> {
       const agent = listAIAgents().find((item) => item.id === input.agentId);
@@ -40,12 +45,16 @@ export function createAIAgentCommandPort(runtime: AIModelRuntimePort = unconfigu
       });
 
       try {
+        const systemContext = contextProvider ? await contextProvider() : {};
         const result = await runtime.invoke({
           executionId: execution.id,
           profile,
           instructions: buildInstructions(agent),
           input: input.input,
-          context: input.context,
+          context: {
+            system: systemContext,
+            execution: input.context ?? {},
+          },
         });
 
         if (result.status === 'completed') {
