@@ -7,8 +7,42 @@ import { validateSalesBot } from './validation';
 const STORAGE_KEY = 'harpia:f05:salesbots';
 const now = () => new Date().toISOString();
 
+const makeStartBlock = (): SalesBotBlock => ({
+  id: createF05Id('block'),
+  type: 'trigger',
+  label: 'Iniciar SalesBot',
+  config: { event: 'manual' },
+});
+
+const normalizeBot = (bot: SalesBotDefinition): SalesBotDefinition => {
+  const startIndex = bot.blocks.findIndex((block) => block.type === 'trigger');
+  if (startIndex === 0) {
+    const start = bot.blocks[0];
+    if (start.label === 'Iniciar SalesBot' && start.config.event) return bot;
+    return {
+      ...bot,
+      blocks: [{ ...start, label: 'Iniciar SalesBot', config: { ...start.config, event: start.config.event || 'manual' } }, ...bot.blocks.slice(1)],
+    };
+  }
+  if (startIndex > 0) {
+    const start = bot.blocks[startIndex];
+    return {
+      ...bot,
+      blocks: [
+        { ...start, label: 'Iniciar SalesBot', config: { ...start.config, event: start.config.event || 'manual' } },
+        ...bot.blocks.filter((_, index) => index !== startIndex),
+      ],
+    };
+  }
+  return { ...bot, blocks: [makeStartBlock(), ...bot.blocks] };
+};
+
 export function listSalesBots(): SalesBotDefinition[] {
-  return readStoredList<SalesBotDefinition>(STORAGE_KEY).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+  const stored = readStoredList<SalesBotDefinition>(STORAGE_KEY);
+  const normalized = stored.map(normalizeBot);
+  const changed = normalized.some((bot, index) => JSON.stringify(bot.blocks) !== JSON.stringify(stored[index]?.blocks));
+  if (changed) writeStoredList(STORAGE_KEY, normalized);
+  return normalized.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
 }
 
 export function getSalesBot(id: string): SalesBotDefinition | undefined {
@@ -87,7 +121,7 @@ export function createSalesBot(input: { name: string; description?: string }): S
     name: input.name.trim(),
     description: input.description?.trim() ?? '',
     status: 'draft',
-    blocks: [],
+    blocks: [makeStartBlock()],
     createdAt: timestamp,
     updatedAt: timestamp,
   };
@@ -102,7 +136,7 @@ export function updateSalesBot(
   const items = listSalesBots();
   const current = items.find((item) => item.id === id);
   if (!current) throw new Error('SalesBot não encontrado.');
-  let updated: SalesBotDefinition = { ...current, ...patch, updatedAt: now() };
+  let updated: SalesBotDefinition = normalizeBot({ ...current, ...patch, updatedAt: now() });
 
   if (current.status === 'active' && patch.status === undefined && validateSalesBotForActivation(updated).length > 0) {
     updated = { ...updated, status: 'paused' };
@@ -162,6 +196,26 @@ export function addSalesBotBlock(id: string, block: Omit<SalesBotBlock, 'id'>): 
   return updateSalesBot(id, { blocks: [...current.blocks, { ...block, id: createF05Id('block') }] });
 }
 
+export function insertSalesBotBlockAfter(id: string, afterBlockId: string, block: Omit<SalesBotBlock, 'id'>): SalesBotDefinition {
+  const current = getSalesBot(id);
+  if (!current) throw new Error('SalesBot não encontrado.');
+  const afterIndex = current.blocks.findIndex((item) => item.id === afterBlockId);
+  if (afterIndex < 0) throw new Error('Bloco de origem não encontrado.');
+  const nextBlock = { ...block, id: createF05Id('block') };
+  const blocks = [...current.blocks];
+  blocks.splice(afterIndex + 1, 0, nextBlock);
+  return updateSalesBot(id, { blocks });
+}
+
+export function duplicateSalesBotBlock(id: string, blockId: string): SalesBotDefinition {
+  const current = getSalesBot(id);
+  if (!current) throw new Error('SalesBot não encontrado.');
+  const block = current.blocks.find((item) => item.id === blockId);
+  if (!block) throw new Error('Bloco não encontrado.');
+  if (block.type === 'trigger') return current;
+  return insertSalesBotBlockAfter(id, blockId, { type: block.type, label: block.label, config: { ...block.config } });
+}
+
 export function updateSalesBotBlock(
   id: string,
   blockId: string,
@@ -179,7 +233,10 @@ export function updateSalesBotBlock(
 export function removeSalesBotBlock(id: string, blockId: string): SalesBotDefinition {
   const current = getSalesBot(id);
   if (!current) throw new Error('SalesBot não encontrado.');
-  return updateSalesBot(id, { blocks: current.blocks.filter((block) => block.id !== blockId) });
+  const block = current.blocks.find((item) => item.id === blockId);
+  if (!block) throw new Error('Bloco não encontrado.');
+  if (block.type === 'trigger') return current;
+  return updateSalesBot(id, { blocks: current.blocks.filter((item) => item.id !== blockId) });
 }
 
 export function moveSalesBotBlock(id: string, blockId: string, direction: -1 | 1): SalesBotDefinition {
@@ -187,7 +244,7 @@ export function moveSalesBotBlock(id: string, blockId: string, direction: -1 | 1
   if (!current) throw new Error('SalesBot não encontrado.');
   const index = current.blocks.findIndex((block) => block.id === blockId);
   const target = index + direction;
-  if (index < 0 || target < 0 || target >= current.blocks.length) return current;
+  if (index <= 0 || target <= 0 || target >= current.blocks.length) return current;
   const blocks = [...current.blocks];
   [blocks[index], blocks[target]] = [blocks[target], blocks[index]];
   return updateSalesBot(id, { blocks });
