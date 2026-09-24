@@ -150,9 +150,9 @@ A partir daqui o trabalho deve priorizar:
 
 ## Central de Configurações — 24/09/2026
 
-🟠 **EM INTEGRAÇÃO / PUBLICAÇÃO**
+🟢 **IMPLEMENTADA, INTEGRADA E PUBLICADA VISUALMENTE**
 
-Implementado na branch `work/settings-complete-20260924-r2`:
+Implementado e mergeado na `main` pela PR #11. A versão visual correspondente também foi publicada na `gh-pages`:
 
 - central única de Configurações;
 - Geral completo;
@@ -171,7 +171,17 @@ Implementado na branch `work/settings-complete-20260924-r2`:
 - aplicação global de tema e modo compacto;
 - smoke transacional do JSON de preferências executado com rollback, sem alterar dados reais.
 
-Validação ainda marcada como NÃO VERIFICADO:
+Validação concluída nesta entrega:
+
+- [x] branch reconciliada com alterações concorrentes de Produtos/CRM;
+- [x] PR #11 mergeada na `main`;
+- [x] persistência JSON validada no Supabase com rollback;
+- [x] página estática publicada contém todas as áreas de Configurações;
+- [x] JavaScript da página publicada validado sintaticamente;
+- [x] usuário fictício removido da área publicada;
+- [x] navegação separada de Usuários/Permissões/Integrações removida da apresentação.
+
+Continua marcado como NÃO VERIFICADO:
 
 - `npm run typecheck`;
 - `npm run build`;
