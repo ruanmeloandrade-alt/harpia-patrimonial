@@ -23,9 +23,6 @@ import { LeadProductsPanel } from './LeadProductsPanel';
 import { PipelineTriggerPicker } from './PipelineTriggerPicker';
 import { PipelineTriggerConfigPanel } from './PipelineTriggerConfigPanel';
 import {
-  findPipelineActionCatalogItem,
-  isWebhookPipelineAction,
-  pipelineActionCatalog,
   pipelineActionLabel,
   type PipelineActionCatalogItem,
 } from '../automations/pipelineActionCatalog';
