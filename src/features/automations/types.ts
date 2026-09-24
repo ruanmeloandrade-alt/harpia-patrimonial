@@ -4,6 +4,7 @@ export type AutomationStatus = 'draft' | 'active' | 'paused';
 
 export type PipelineTriggerEvent =
   | 'enter'
+  | 'created_or_moved'
   | 'leave'
   | 'created'
   | 'time'
