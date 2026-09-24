@@ -53,12 +53,18 @@ export interface IncomingTransportMessage {
   receivedAt?: IsoDateTime;
 }
 
+export interface InteractiveMessageButton {
+  id: string;
+  label: string;
+}
+
 export interface OutgoingTransportMessage {
   conversationId: CrmId;
   type: MessageType;
   text?: string;
   attachment?: MessageAttachment;
   formPayload?: Record<string, unknown>;
+  buttons?: InteractiveMessageButton[];
 }
 
 export interface InboxTransportPort {
