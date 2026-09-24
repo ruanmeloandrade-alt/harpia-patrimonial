@@ -172,7 +172,6 @@ export class WhatsAppConnector {
         browser: Browsers.ubuntu('Harpia Patrimonial'),
         markOnlineOnConnect: false,
         syncFullHistory: false,
-        shouldSyncHistoryMessage: () => false,
         generateHighQualityLinkPreview: false,
       });
 
