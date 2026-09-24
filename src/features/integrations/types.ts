@@ -1,4 +1,4 @@
-export type IntegrationKind = 'ai' | 'whatsapp' | 'meta' | 'email' | 'sms' | 'analytics' | 'tag_manager' | 'api';
+export type IntegrationKind = 'ai' | 'whatsapp' | 'meta' | 'google_calendar' | 'email' | 'sms' | 'analytics' | 'tag_manager' | 'api';
 
 export type OperationalIntegrationStatus =
   | 'not_connected'
@@ -46,6 +46,12 @@ export const INTEGRATION_DEFAULTS: IntegrationConfig[] = [
     label: 'Meta Lead Ads',
     status: 'not_connected',
     notes: 'O status será derivado da conexão real e do health do backend.',
+  },
+  {
+    id: 'google_calendar',
+    label: 'Google Calendar + Meet',
+    status: 'not_connected',
+    notes: 'Agenda operacional preparada para criar eventos, convidados e Google Meet assim que o OAuth do Google for concluído.',
   },
   {
     id: 'email',
