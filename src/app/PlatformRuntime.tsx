@@ -254,6 +254,7 @@ export function PlatformRuntimeProvider({ children }: PropsWithChildren) {
             leadId?: string;
             conversationId?: string;
             config: Record<string, unknown>;
+            context: Record<string, unknown>;
           }) => {
             try {
               const leadId = input.leadId;
