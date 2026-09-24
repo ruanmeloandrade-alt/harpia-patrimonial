@@ -111,6 +111,7 @@ export function PipelineTriggerConfigPanel({
   const [conditionOpen, setConditionOpen] = useState(
     Boolean(triggerActionConfig.conditionField || triggerActionConfig.conditionValue),
   );
+  const [activeMenuOpen, setActiveMenuOpen] = useState(false);
 
   useLayoutEffect(() => {
     const update = () => {
@@ -631,16 +632,44 @@ export function PipelineTriggerConfigPanel({
               </p>
             ) : null}
 
-            <label className={styles.triggerActiveSelect}>
-              <select
-                value={triggerActionConfig.activeMode ?? 'always'}
-                onChange={(event) => onConfigChange('activeMode', event.target.value)}
+            <div className={styles.triggerActiveSelect}>
+              <button
+                type="button"
+                className={styles.triggerActiveButton}
+                onClick={() => setActiveMenuOpen((value) => !value)}
+                aria-expanded={activeMenuOpen}
               >
-                <option value="always">Ativo: sempre</option>
-                <option value="business_hours">Ativo: apenas em horário comercial</option>
-                <option value="custom">Ativo: personalizado</option>
-              </select>
-            </label>
+                <span>
+                  {triggerActionConfig.activeMode === 'business_hours'
+                    ? 'Ativo: apenas em horário comercial'
+                    : triggerActionConfig.activeMode === 'custom'
+                      ? 'Ativo: personalizado'
+                      : 'Ativo: sempre'}
+                </span>
+                <b>⌄</b>
+              </button>
+              {activeMenuOpen ? (
+                <div className={styles.triggerActiveMenu}>
+                  {[
+                    ['always', 'sempre'],
+                    ['business_hours', 'apenas em horário comercial'],
+                    ['custom', 'personalizado'],
+                  ].map(([value, label]) => (
+                    <button
+                      key={value}
+                      type="button"
+                      className={(triggerActionConfig.activeMode ?? 'always') === value ? styles.triggerActiveMenuSelected : undefined}
+                      onClick={() => {
+                        onConfigChange('activeMode', value);
+                        setActiveMenuOpen(false);
+                      }}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              ) : null}
+            </div>
 
             {isMessagingAction ? (
               <div className={styles.triggerToggleRow}>
