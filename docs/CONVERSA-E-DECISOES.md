@@ -589,3 +589,20 @@ Se encontrar conflito entre implementação existente e documentação, deve:
 2. preservar o trabalho já válido;
 3. não inventar regra operacional;
 4. registrar no GitHub qualquer nova decisão confirmada pelo usuário.
+
+
+---
+
+# 27. Central de Configurações
+
+Decisão consolidada em 24/09/2026:
+
+- Configurações passa a ser o centro único de administração da plataforma.
+- Usuários, funções, grupos e permissões não ficam mais como páginas soltas no menu principal.
+- Ao cadastrar um usuário interno, o administrador já pode definir grupos e exceções individuais de permissão no mesmo fluxo.
+- A rota antiga de Usuários, Permissões e Integrações permanece apenas por compatibilidade, abrindo a aba correspondente dentro de Configurações.
+- Preferências do sistema devem ser persistidas e aplicadas de verdade, incluindo tema claro/escuro/sistema, idioma, moeda, fuso horário, formato de data, formato de hora, cor de destaque e modo compacto.
+- Configurações também concentra CRM e atendimento, automações, notificações, segurança, dados e privacidade e informações de sistema.
+- Integrações deve exibir WhatsApp e provedores de IA atuais, além de Meta, Gmail/Workspace, SMS, Google Analytics, Google Tag Manager e APIs futuras.
+- Meta, Gmail/Workspace, SMS, Analytics, Tag Manager e o módulo Marketing permanecem identificados como segunda fase quando ainda não estiverem operacionais.
+- Nenhuma preferência que dependa de enforcement de backend pode ser apresentada como ativa apenas porque foi salva na interface. A UI deve deixar explícito quando a configuração está apenas preparada para consumo posterior pelo módulo correspondente.
