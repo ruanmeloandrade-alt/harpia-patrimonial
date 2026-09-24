@@ -989,3 +989,22 @@
   background: rgba(255,255,255,.58);
   color: #32483d;
 }
+
+
+.whatsappWebButton {
+  min-height: 30px;
+  border: 1px solid #1f7a45;
+  border-radius: 8px;
+  background: #1f7a45;
+  color: #fff;
+  padding: 6px 10px;
+  font: inherit;
+  font-size: 9px;
+  font-weight: 850;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.whatsappWebButton:hover {
+  filter: brightness(.96);
+}
