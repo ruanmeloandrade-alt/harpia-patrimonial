@@ -567,11 +567,13 @@ export function SalesBotWorkspace({
   const [draftPositions, setDraftPositions] = useState<Record<string,{x:number;y:number}>>({});
   const [catalogs, setCatalogs] = useState<ProductCatalog[]>([]);
   const [catalogItems, setCatalogItems] = useState<CatalogItem[]>([]);
+  const [isCanvasPanning, setIsCanvasPanning] = useState(false);
   const historyRef = useRef<SalesBotBlock[][]>([]);
   const redoRef = useRef<SalesBotBlock[][]>([]);
   const dragRef = useRef<{ startX:number; startY:number; initial:Record<string,{x:number;y:number}>; latest:Record<string,{x:number;y:number}> }|null>(null);
   const canvasRef = useRef<HTMLDivElement|null>(null);
   const stageRef = useRef<HTMLDivElement|null>(null);
+  const suppressCanvasClickRef = useRef(false);
   const importInputRef = useRef<HTMLInputElement|null>(null);
   const [, setHistoryRevision] = useState(0);
 
@@ -821,42 +823,90 @@ export function SalesBotWorkspace({
   };
 
   const canvasPointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
-    if (!selected || !canManage || !(event.ctrlKey || event.metaKey)) return;
+    if (!selected || event.button !== 0) return;
     if (event.target !== stageRef.current && !(event.target as HTMLElement).classList.contains('sb-canvas-stage')) return;
-    event.preventDefault();
+
     const canvas = canvasRef.current;
     const stage = stageRef.current;
     if (!canvas || !stage) return;
-    const rect = canvas.getBoundingClientRect();
-    const startX = event.clientX-rect.left+canvas.scrollLeft;
-    const startY = event.clientY-rect.top+canvas.scrollTop;
-    const box = document.createElement('div');
-    box.className = 'sb-selection-box';
-    stage.appendChild(box);
+
+    event.preventDefault();
+
+    if (event.ctrlKey || event.metaKey) {
+      if (!canManage) return;
+      const rect = canvas.getBoundingClientRect();
+      const startX = event.clientX-rect.left+canvas.scrollLeft;
+      const startY = event.clientY-rect.top+canvas.scrollTop;
+      const box = document.createElement('div');
+      box.className = 'sb-selection-box';
+      stage.appendChild(box);
+
+      const move = (moveEvent:PointerEvent) => {
+        const currentX = moveEvent.clientX-rect.left+canvas.scrollLeft;
+        const currentY = moveEvent.clientY-rect.top+canvas.scrollTop;
+        const left=Math.min(startX,currentX), top=Math.min(startY,currentY);
+        const width=Math.abs(currentX-startX), height=Math.abs(currentY-startY);
+        Object.assign(box.style,{ left:`${left}px`,top:`${top}px`,width:`${width}px`,height:`${height}px` });
+      };
+      const cleanup = () => {
+        document.removeEventListener('pointermove',move);
+        document.removeEventListener('pointerup',up);
+        document.removeEventListener('pointercancel',cancel);
+      };
+      const up = (upEvent:PointerEvent) => {
+        cleanup();
+        const endX=upEvent.clientX-rect.left+canvas.scrollLeft;
+        const endY=upEvent.clientY-rect.top+canvas.scrollTop;
+        const left=Math.min(startX,endX), right=Math.max(startX,endX), top=Math.min(startY,endY), bottom=Math.max(startY,endY);
+        const ids=selected.blocks.filter((block,index) => {
+          if (block.type === 'trigger') return false;
+          const pos=positions.get(block.id) ?? blockPosition(block,index);
+          return pos.x<right && pos.x+NODE_WIDTH>left && pos.y<bottom && pos.y+DEFAULT_NODE_HEIGHT>top;
+        }).map((block) => block.id);
+        setSelectedBlockIds(new Set(ids));
+        box.remove();
+      };
+      const cancel = () => {
+        cleanup();
+        box.remove();
+      };
+      document.addEventListener('pointermove',move);
+      document.addEventListener('pointerup',up);
+      document.addEventListener('pointercancel',cancel);
+      return;
+    }
+
+    const startClientX = event.clientX;
+    const startClientY = event.clientY;
+    const startScrollLeft = canvas.scrollLeft;
+    const startScrollTop = canvas.scrollTop;
+    let moved = false;
+    setIsCanvasPanning(true);
 
     const move = (moveEvent:PointerEvent) => {
-      const currentX = moveEvent.clientX-rect.left+canvas.scrollLeft;
-      const currentY = moveEvent.clientY-rect.top+canvas.scrollTop;
-      const left=Math.min(startX,currentX), top=Math.min(startY,currentY);
-      const width=Math.abs(currentX-startX), height=Math.abs(currentY-startY);
-      Object.assign(box.style,{ left:`${left}px`,top:`${top}px`,width:`${width}px`,height:`${height}px` });
+      const dx = moveEvent.clientX-startClientX;
+      const dy = moveEvent.clientY-startClientY;
+      if (!moved && Math.hypot(dx,dy) > 3) moved = true;
+      if (moved) suppressCanvasClickRef.current = true;
+      canvas.scrollLeft = startScrollLeft-dx;
+      canvas.scrollTop = startScrollTop-dy;
     };
-    const up = (upEvent:PointerEvent) => {
+    const cleanup = () => {
       document.removeEventListener('pointermove',move);
       document.removeEventListener('pointerup',up);
-      const endX=upEvent.clientX-rect.left+canvas.scrollLeft;
-      const endY=upEvent.clientY-rect.top+canvas.scrollTop;
-      const left=Math.min(startX,endX), right=Math.max(startX,endX), top=Math.min(startY,endY), bottom=Math.max(startY,endY);
-      const ids=selected.blocks.filter((block,index) => {
-        if (block.type === 'trigger') return false;
-        const pos=positions.get(block.id) ?? blockPosition(block,index);
-        return pos.x<right && pos.x+NODE_WIDTH>left && pos.y<bottom && pos.y+DEFAULT_NODE_HEIGHT>top;
-      }).map((block) => block.id);
-      setSelectedBlockIds(new Set(ids));
-      box.remove();
+      document.removeEventListener('pointercancel',up);
+      setIsCanvasPanning(false);
+      if (moved) {
+        window.setTimeout(() => {
+          suppressCanvasClickRef.current = false;
+        },0);
+      }
     };
+    const up = () => cleanup();
+
     document.addEventListener('pointermove',move);
     document.addEventListener('pointerup',up);
+    document.addEventListener('pointercancel',up);
   };
 
   const autoArrange = () => {
@@ -959,8 +1009,8 @@ export function SalesBotWorkspace({
     {!selected?<div className="f05-empty f05-empty--large">SalesBot não encontrado.</div>:<>
       <div className={`f05-validation ${validationIssues.length===0?'f05-validation--ok':''}`}><strong>{validationIssues.length===0?'Fluxo válido':`${validationIssues.length} pendência(s)`}</strong><span>{validationIssues[0]??'O SalesBot pode ser ativado.'}</span></div>
       <div className="sb-canvas-frame">
-        <div className="sb-canvas-area" ref={canvasRef}>
-          <div className="sb-canvas-stage" ref={stageRef} style={{width:CANVAS_WIDTH,height:CANVAS_HEIGHT}} onPointerDown={canvasPointerDown} onClick={(event)=>{if(event.target===stageRef.current){setSelectedBlockIds(new Set());setPicker(null);}}}>
+        <div className={`sb-canvas-area ${isCanvasPanning?'is-panning':''}`} ref={canvasRef}>
+          <div className="sb-canvas-stage" ref={stageRef} style={{width:CANVAS_WIDTH,height:CANVAS_HEIGHT}} onPointerDown={canvasPointerDown} onClick={(event)=>{if(suppressCanvasClickRef.current)return;if(event.target===stageRef.current){setSelectedBlockIds(new Set());setPicker(null);}}}>
             <CanvasConnections blocks={selected.blocks} positions={positions}/>
             {selected.blocks.map((block,index)=>{
               const pos=positions.get(block.id)??blockPosition(block,index);
@@ -1001,7 +1051,7 @@ export function SalesBotWorkspace({
           </div>
         </div>
       </div>
-      <div className="sb-builder-hint">Arraste os blocos pelo cabeçalho. Ctrl + arrastar seleciona vários. Ctrl + D duplica. Ctrl + Z desfaz. Ctrl + Shift + Z ou Ctrl + Y refaz.</div>
+      <div className="sb-builder-hint">Arraste o plano de fundo para mover a tela. Arraste o cabeçalho do bloco para mover o bloco. Ctrl + arrastar no fundo seleciona vários. Ctrl + D duplica. Ctrl + Z desfaz. Ctrl + Shift + Z ou Ctrl + Y refaz.</div>
     </>}
   </section>;
 }
