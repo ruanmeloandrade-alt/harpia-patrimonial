@@ -13,8 +13,9 @@
 .sb-builder-tools{justify-content:flex-end}
 .sb-notice{margin:0 0 10px;padding:8px 11px;border-radius:9px;background:#edf5ef;border:1px solid #c8dfcc;color:#315f3c;font-size:10px}
 .sb-canvas-frame{position:relative;width:100%;min-width:0}
-.sb-canvas-area{position:relative;width:100%;height:calc(100vh - 300px);min-height:610px;overflow:auto;border:1px solid #d9e0da;border-radius:16px;background-color:#f7f9f6;background-image:radial-gradient(#cbd4cc 1px,transparent 1px);background-size:20px 20px;scrollbar-color:#8a938c transparent}
-.sb-canvas-stage{position:relative}
+.sb-canvas-area{position:relative;width:100%;height:calc(100vh - 300px);min-height:610px;overflow:auto;border:1px solid #d9e0da;border-radius:16px;background-color:#f7f9f6;background-image:radial-gradient(#cbd4cc 1px,transparent 1px);background-size:20px 20px;scrollbar-color:#8a938c transparent;cursor:grab;overscroll-behavior:contain}
+.sb-canvas-area.is-panning{cursor:grabbing;scroll-behavior:auto}
+.sb-canvas-stage{position:relative;touch-action:none}
 .sb-connections{position:absolute;inset:0;pointer-events:none;overflow:visible;z-index:1}
 .sb-connections marker path{fill:#70877c}
 .sb-connections marker#sbArrow-yes path{fill:#4f8d63}
