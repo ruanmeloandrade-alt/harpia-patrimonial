@@ -30,6 +30,7 @@ interface PublicExperienceProps {
 const navigation = [
   { label: 'Início', path: '/' },
   { label: 'Imóveis', path: '/imoveis' },
+  { label: 'Produtos', path: '/produtos' },
   { label: 'Sobre', path: '/sobre' },
   { label: 'Investimentos', path: '/investimentos' },
   { label: 'Leilões', path: '/leiloes' },
@@ -46,6 +47,10 @@ const routeMetadata: Record<string, { title: string; description: string }> = {
   '/imoveis': {
     title: 'Imóveis | Hárpia Patrimonial & Co.',
     description: 'Consulte os imóveis e oportunidades publicados no catálogo da Hárpia Patrimonial & Co.',
+  },
+  '/produtos': {
+    title: 'Produtos | Hárpia Patrimonial & Co.',
+    description: 'Consulte os produtos publicados pela Hárpia Patrimonial & Co.',
   },
   '/sobre': {
     title: 'Sobre | Hárpia Patrimonial & Co.',
@@ -87,6 +92,12 @@ function metadataForPath(path: string) {
     return {
       title: 'Detalhe do imóvel | Hárpia Patrimonial & Co.',
       description: 'Consulte os detalhes de um imóvel publicado no catálogo da Hárpia Patrimonial & Co.',
+    };
+  }
+  if (path.startsWith('/produtos/')) {
+    return {
+      title: 'Detalhe do produto | Hárpia Patrimonial & Co.',
+      description: 'Consulte fotos, vídeos, descrição e informações de um produto publicado pela Hárpia.',
     };
   }
   return {
@@ -186,7 +197,8 @@ export default function PublicExperience(props: PublicExperienceProps) {
   }, [contactBusy, mobileOpen, pendingConversion]);
 
   const currentLabel = useMemo(
-    () => navigation.find((item) => item.path === path)?.label ?? (path.startsWith('/imoveis/') ? 'Imóvel' : 'Menu'),
+    () => navigation.find((item) => item.path === path)?.label
+      ?? (path.startsWith('/imoveis/') ? 'Imóvel' : path.startsWith('/produtos/') ? 'Produto' : 'Menu'),
     [path],
   );
 
