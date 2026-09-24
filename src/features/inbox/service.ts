@@ -96,8 +96,8 @@ export class InboxService {
 
   async sendMessage(input: OutgoingTransportMessage): Promise<InboxMessage> {
     const conversation = this.requireConversation(input.conversationId);
-    if (conversation.transportStatus !== 'connected' || !this.transport) {
-      throw new InboxIntegrityError('Canal não conectado. Nenhuma mensagem foi enviada.');
+    if (!this.transport) {
+      throw new InboxIntegrityError('Transporte WhatsApp indisponível. Nenhuma mensagem foi enviada.');
     }
 
     this.validateMessage(input.type, input.text, input.attachment, input.formPayload);
@@ -120,6 +120,7 @@ export class InboxService {
       pending.deliveryStatus = 'sent';
       pending.externalMessageId = result.externalMessageId;
       const sentAt = result.sentAt ?? nowIso();
+      conversation.transportStatus = 'connected';
       conversation.lastMessageAt = sentAt;
       conversation.updatedAt = sentAt;
       this.persist();
