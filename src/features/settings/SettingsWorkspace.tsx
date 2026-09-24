@@ -121,6 +121,9 @@ export function SettingsWorkspace({ credentialVault, initialTab = 'general' }: S
   }, [canViewSettings]);
 
   const preferences = normalizeOrganizationPreferences(settings?.preferences);
+  const preferenceDataTabs: SettingsTab[] = ['preferences', 'crm', 'automations', 'notifications', 'security', 'privacy', 'marketing'];
+  const preferenceDataLoading = canViewSettings && preferenceDataTabs.includes(activeTab) && loading;
+  const preferenceDataUnavailable = canViewSettings && preferenceDataTabs.includes(activeTab) && !loading && !settings;
 
   async function savePatch(patch: OrganizationPreferences, successMessage: string) {
     if (!settings || !canManageSettings) return;
@@ -286,10 +289,12 @@ export function SettingsWorkspace({ credentialVault, initialTab = 'general' }: S
 
       {error ? <div className="alert alert-error">{error}</div> : null}
       {notice ? <div className="alert alert-success">{notice}</div> : null}
+      {preferenceDataLoading ? <section className="panel"><div className="empty-state">Carregando preferências...</div></section> : null}
+      {preferenceDataUnavailable ? <section className="panel"><div className="empty-state"><strong>Preferências indisponíveis.</strong><span>Não foi possível carregar a configuração da organização.</span></div></section> : null}
 
       {activeTab === 'general' && <CoreSettingsPage embedded />}
 
-      {activeTab === 'preferences' && (
+      {activeTab === 'preferences' && settings && (
         <form className="panel settings-section" onSubmit={submitPreferences}>
           <div className="section-heading">
             <div><h2>Aparência e regionalização</h2><p className="muted">Defina como a plataforma deve ser exibida e formatar informações.</p></div>
@@ -330,7 +335,7 @@ export function SettingsWorkspace({ credentialVault, initialTab = 'general' }: S
         </section>
       )}
 
-      {activeTab === 'crm' && (
+      {activeTab === 'crm' && settings && (
         <form className="panel settings-section" onSubmit={submitCrm}>
           <div className="section-heading"><div><h2>CRM e atendimento</h2><p className="muted">Preferências globais para entrada, distribuição e tratamento de oportunidades.</p></div></div>
           <div className="form-grid">
@@ -346,7 +351,7 @@ export function SettingsWorkspace({ credentialVault, initialTab = 'general' }: S
         </form>
       )}
 
-      {activeTab === 'automations' && (
+      {activeTab === 'automations' && settings && (
         <form className="panel settings-section" onSubmit={submitAutomations}>
           <div className="section-heading"><div><h2>Automações</h2><p className="muted">Parâmetros globais para SalesBot, Automatize e execuções automáticas.</p></div></div>
           <div className="form-grid">
@@ -361,7 +366,7 @@ export function SettingsWorkspace({ credentialVault, initialTab = 'general' }: S
         </form>
       )}
 
-      {activeTab === 'notifications' && (
+      {activeTab === 'notifications' && settings && (
         <form className="panel settings-section" onSubmit={submitNotifications}>
           <div className="section-heading"><div><h2>Notificações</h2><p className="muted">Escolha canais e eventos que merecem aviso para a equipe.</p></div></div>
           <div className="settings-subtitle">Canais</div>
@@ -382,7 +387,7 @@ export function SettingsWorkspace({ credentialVault, initialTab = 'general' }: S
         </form>
       )}
 
-      {activeTab === 'security' && (
+      {activeTab === 'security' && settings && (
         <form className="panel settings-section" onSubmit={submitSecurity}>
           <div className="section-heading"><div><h2>Segurança</h2><p className="muted">Políticas administrativas para sessão, senha e auditoria.</p></div></div>
           <div className="form-grid">
@@ -397,7 +402,7 @@ export function SettingsWorkspace({ credentialVault, initialTab = 'general' }: S
         </form>
       )}
 
-      {activeTab === 'privacy' && (
+      {activeTab === 'privacy' && settings && (
         <form className="panel settings-section" onSubmit={submitPrivacy}>
           <div className="section-heading"><div><h2>Dados e privacidade</h2><p className="muted">Regras administrativas de retenção, exportação e proteção de dados.</p></div></div>
           <div className="form-grid">
@@ -411,7 +416,7 @@ export function SettingsWorkspace({ credentialVault, initialTab = 'general' }: S
         </form>
       )}
 
-      {activeTab === 'marketing' && (
+      {activeTab === 'marketing' && settings && (
         <form className="panel settings-section" onSubmit={submitMarketing}>
           <div className="section-heading"><div><div className="settings-heading-with-badge"><h2>Marketing</h2><PhaseTwoBadge /></div><p className="muted">Defaults preparatórios para tracking e campanhas. O módulo operacional permanece reservado para a segunda fase.</p></div></div>
           <div className="form-grid">
