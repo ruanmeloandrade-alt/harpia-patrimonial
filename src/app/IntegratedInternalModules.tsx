@@ -106,7 +106,7 @@ export function IntegratedInbox() {
 }
 
 function Front05Shell({ children }: { children: ReactNode }) {
-  return <div className="f05-shell"><div className="f05-shell__intro"><div><span className="f05-kicker">Hárpia Patrimonial</span><h1>Automação inteligente</h1><p>Configuração operacional sem dados fictícios e sem envio externo enquanto os canais não estiverem conectados.</p></div><div className="f05-readiness"><span>WhatsApp Web</span><strong>Status em Integrações</strong><span>Meta Lead Ads</span><strong>Status em Integrações</strong></div></div>{children}</div>;
+  return <div className="f05-shell"><div className="f05-shell__intro"><div><span className="f05-kicker">Hárpia Patrimonial</span><h1>Automação inteligente</h1><p>Configuração operacional sem dados fictícios e sem envio externo enquanto os canais não estiverem conectados.</p></div><div className="f05-readiness"><span>WhatsApp Web</span><strong>Status em Integrações</strong><span>Meta Lead Ads</span><strong>Segunda fase</strong></div></div>{children}</div>;
 }
 
 function Front05Module({ children }: { children: ReactNode }) {
