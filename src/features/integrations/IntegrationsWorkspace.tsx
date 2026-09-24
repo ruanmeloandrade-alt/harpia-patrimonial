@@ -23,6 +23,7 @@ const STATUS_LABELS = {
 interface IntegrationsWorkspaceProps {
   credentialVault?: AICredentialVaultPort;
   canManage?: boolean;
+  showAIProviders?: boolean;
 }
 
 function formatDate(value?: string) {
@@ -35,7 +36,7 @@ function formatDate(value?: string) {
   }).format(date);
 }
 
-export function IntegrationsWorkspace({ credentialVault, canManage = false }: IntegrationsWorkspaceProps) {
+export function IntegrationsWorkspace({ credentialVault, canManage = false, showAIProviders = true }: IntegrationsWorkspaceProps) {
   const [items, setItems] = useState(() => listIntegrations());
   const [loadError, setLoadError] = useState('');
 
@@ -66,9 +67,9 @@ export function IntegrationsWorkspace({ credentialVault, canManage = false }: In
       </div>
     </header>
 
-    <AIProvidersWorkspace credentialVault={credentialVault} canManage={canManage} />
+    {showAIProviders ? <AIProvidersWorkspace credentialVault={credentialVault} canManage={canManage} /> : null}
 
-    <div className="f05-divider" />
+    {showAIProviders ? <div className="f05-divider" /> : null}
     <div className="f05-subheader">
       <div>
         <span className="f05-kicker">Demais integrações</span>
