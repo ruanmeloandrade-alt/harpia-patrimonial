@@ -68,6 +68,7 @@ export function IntegratedCrm() {
             assignees={runtime.assignees}
             canManage={auth.hasPermission(PERMISSIONS.CRM_MANAGE)}
             catalogRepository={runtime.catalogRepository}
+            inboxService={runtime.inboxService ?? undefined}
           />
         )
         : <FullPageState title="CRM indisponível" description="A persistência compartilhada não foi carregada." />}
