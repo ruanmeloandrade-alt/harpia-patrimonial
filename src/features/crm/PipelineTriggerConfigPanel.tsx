@@ -558,7 +558,7 @@ export function PipelineTriggerConfigPanel({
           className={styles.triggerConditionAdd}
           onClick={() => setConditionOpen((value) => !value)}
         >
-          ＋ {conditionOpen ? 'Ocultar condição' : 'Adicionar uma condição'}
+          + {conditionOpen ? 'Ocultar condição' : 'Adicionar uma condição'}
         </button>
 
         {conditionOpen ? (
