@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { formatDateTime } from '../settings/regional-runtime';
 import { useF05StorageListener } from '../automations/useF05StorageListener';
 import type { AICredentialVaultPort } from './aiCredentialPort';
 import {
@@ -27,13 +28,7 @@ interface IntegrationsWorkspaceProps {
 }
 
 function formatDate(value?: string) {
-  if (!value) return 'Sem registro';
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return 'Sem registro';
-  return new Intl.DateTimeFormat('pt-BR', {
-    dateStyle: 'short',
-    timeStyle: 'short',
-  }).format(date);
+  return value ? formatDateTime(value) : '—';
 }
 
 export function IntegrationsWorkspace({ credentialVault, canManage = false, showAIProviders = true }: IntegrationsWorkspaceProps) {
