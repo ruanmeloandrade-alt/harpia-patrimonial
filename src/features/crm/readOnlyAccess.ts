@@ -6,6 +6,7 @@ export const READ_ONLY_MESSAGE = 'Seu acesso é somente leitura. Esta ação exi
 
 const CRM_READ_METHODS = new Set([
   'snapshot',
+  'waitForPersistence',
   'subscribeEvents',
   'getStages',
   'getLeadHistory',
