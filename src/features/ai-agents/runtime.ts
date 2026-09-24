@@ -44,13 +44,13 @@ export function createAIAgentCommandPort(runtime: AIModelRuntimePort = unconfigu
       if (!agent) return { status: 'rejected', reason: 'Agente IA não encontrado.' };
       if (agent.status !== 'active') return { status: 'rejected', reason: 'Agente IA precisa estar ativo.' };
       const profiles = listAIProviderProfiles();
-      const profile = (agent.providerProfileId
+      const selectedProfile = agent.providerProfileId
         ? profiles.find((item) => item.id === agent.providerProfileId)
-        : undefined) ?? profiles.find((item) => item.status === 'ready' && item.apiKeyConfigured && item.secretRef);
+        : undefined;
+      const profile = selectedProfile?.status === 'ready' && selectedProfile.apiKeyConfigured && selectedProfile.secretRef
+        ? selectedProfile
+        : profiles.find((item) => item.status === 'ready' && item.apiKeyConfigured && item.secretRef);
       if (!profile) return { status: 'not_configured', reason: 'Configure uma chave de IA em Integrações.' };
-      if (profile.status !== 'ready' || !profile.apiKeyConfigured || !profile.secretRef) {
-        return { status: 'not_configured', reason: 'Perfil de provedor/modelo ainda não possui credencial segura pronta.' };
-      }
 
       const execution = startAIAgentExecution({
         agentId: agent.id,
