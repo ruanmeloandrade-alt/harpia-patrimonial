@@ -5,6 +5,9 @@ export type CrmAutomationEventType =
   | 'lead.tag_added'
   | 'lead.tag_removed'
   | 'lead.inactivity'
+  | 'lead.stage_elapsed'
+  | 'salesbot.completed'
+  | 'salesbot.failed'
   | 'task.due'
   | 'custom.event';
 
