@@ -29,6 +29,10 @@ type MetaControlResult = {
   ok: boolean;
   message?: string;
   graphVersion?: string;
+  webhookCallback?: string;
+  verifyToken?: string;
+  appConfigured?: boolean;
+  appId?: string | null;
   connectionId?: string;
   disconnected?: boolean;
   page?: MetaPageSummary;
@@ -57,6 +61,14 @@ async function invokeMeta(body: Record<string, unknown>): Promise<MetaControlRes
 
 export async function loadMetaStatus() {
   return invokeMeta({ action: 'status' });
+}
+
+export async function configureMetaApp(appId: string, appSecret: string) {
+  return invokeMeta({
+    action: 'configure_app',
+    appId: appId.trim(),
+    appSecret: appSecret.trim(),
+  });
 }
 
 export async function inspectMetaPage(pageId: string, pageAccessToken: string) {
