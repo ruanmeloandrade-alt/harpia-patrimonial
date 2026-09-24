@@ -226,6 +226,15 @@ export function InboxWorkspace({
     }
   };
 
+  const copyMessage = async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setFeedback('Mensagem copiada.');
+    } catch {
+      setFeedback('Não foi possível copiar a mensagem.');
+    }
+  };
+
   const submitText = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!selectedConversation) return;
@@ -655,7 +664,18 @@ export function InboxWorkspace({
                     key={message.id}
                     className={message.direction === 'outbound' ? styles.outboundMessage : styles.inboundMessage}
                   >
-                    {message.text && <p>{message.text}</p>}
+                    {message.text && (
+                      <>
+                        <p>{message.text}</p>
+                        <button
+                          type="button"
+                          className={styles.copyMessage}
+                          onClick={() => { void copyMessage(message.text ?? ''); }}
+                        >
+                          Copiar
+                        </button>
+                      </>
+                    )}
                     {message.attachment?.url ? (
                       <a href={message.attachment.url} target="_blank" rel="noreferrer">
                         {message.attachment.name || 'Abrir arquivo'}
