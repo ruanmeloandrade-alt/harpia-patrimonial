@@ -18,8 +18,6 @@ const providerForAgent = (agent: AIAgentDefinition) => {
   return profiles.find((item) => item.status === 'ready' && item.apiKeyConfigured && item.secretRef);
 };
 
-const isProviderReady = (agent: AIAgentDefinition) => Boolean(providerForAgent(agent));
-
 export function listAIAgents(): AIAgentDefinition[] {
   return readStoredList<AIAgentDefinition>(STORAGE_KEY)
     .map((agent) => ({ ...agent, providerProfileId: agent.providerProfileId ?? '' }))
@@ -52,10 +50,6 @@ export function updateAIAgent(id: string, patch: Partial<Omit<AIAgentDefinition,
   if (!current) throw new Error('Agente IA não encontrado.');
   let updated: AIAgentDefinition = { ...current, ...patch, updatedAt: now() };
 
-  if (current.status === 'active' && patch.status === undefined && !isProviderReady(updated)) {
-    updated = { ...updated, status: 'paused' };
-  }
-
   if (current.status === 'active' && updated.status !== 'active') {
     const activeReferences = findActiveAIAgentReferences(id);
     if (activeReferences.length > 0) {
@@ -80,9 +74,6 @@ export function deleteAIAgent(id: string): void {
 export function setAIAgentStatus(id: string, status: AIAgentStatus): AIAgentDefinition {
   const agent = listAIAgents().find((item) => item.id === id);
   if (!agent) throw new Error('Agente IA não encontrado.');
-  if (status === 'active' && !isProviderReady(agent)) {
-    throw new Error('Configure uma chave de IA pronta em Integrações antes de ativar o agente.');
-  }
   const providerProfileId = providerForAgent(agent)?.id ?? readyProvider()?.id ?? '';
   return updateAIAgent(id, { status, providerProfileId });
 }

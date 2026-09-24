@@ -3,7 +3,7 @@ import { listAIAgents } from '../ai-agents/repository';
 import { useF05StorageListener } from '../automations/useF05StorageListener';
 import { SALESBOT_BLOCK_CATALOG } from './blockCatalog';
 import {
-  createSalesBot,
+  createSalesBotConfirmed,
   deleteSalesBot,
   duplicateSalesBot,
   duplicateSalesBotBlock,
@@ -117,6 +117,7 @@ export function SalesBotWorkspace({ canManage = false }: { canManage?: boolean }
   const [selectedBlockId, setSelectedBlockId] = useState<string | null>(null);
   const [pickerAfterId, setPickerAfterId] = useState<string | null>(null);
   const [newName, setNewName] = useState('');
+  const [creating, setCreating] = useState(false);
   const [error, setError] = useState('');
   const selected = useMemo(() => bots.find((bot) => bot.id === selectedId) ?? null, [bots, selectedId]);
   const validationIssues = useMemo(() => selected ? validateSalesBotForActivation(selected) : [], [selected, bots]);
@@ -141,15 +142,21 @@ export function SalesBotWorkspace({ canManage = false }: { canManage?: boolean }
     setError('');
     setMode('builder');
   };
-  const create = () => {
+  const create = async () => {
     const name = newName.trim();
-    if (!name || !canManage) return;
+    if (!name || !canManage || creating) return;
+    setCreating(true);
     try {
-      const bot = createSalesBot({ name });
+      const bot = await createSalesBotConfirmed({ name });
       setNewName('');
+      setError('');
       refresh(bot.id);
       openBuilder(bot.id);
-    } catch (error) { setError(errorMessage(error, 'Não foi possível criar o SalesBot.')); }
+    } catch (error) {
+      setError(errorMessage(error, 'Não foi possível criar o SalesBot.'));
+    } finally {
+      setCreating(false);
+    }
   };
   const patchSelected = (patch: Partial<Pick<SalesBotDefinition, 'name' | 'description'>>) => {
     if (!selected || !canManage) return;
@@ -197,7 +204,7 @@ export function SalesBotWorkspace({ canManage = false }: { canManage?: boolean }
     return <section className="f05-module sb-library-view">
       <header className="f05-module__header"><div><span className="f05-kicker">SalesBot</span><h2>SalesBots</h2><p>Abra um bot para editar o fluxo ou crie um novo.</p></div><span className="f05-count">{bots.length} bot{bots.length === 1 ? '' : 's'}</span></header>
       {!canManage ? <div className="f05-readonly-note">Modo leitura: sua permissão permite visualizar SalesBots, mas não alterá-los.</div> : null}
-      {canManage ? <div className="sb-library-create"><input value={newName} onChange={(e) => setNewName(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') create(); }} placeholder="Nome do novo SalesBot"/><button type="button" onClick={create} disabled={!newName.trim()}>+ Novo SalesBot</button></div> : null}
+      {canManage ? <div className="sb-library-create"><input value={newName} onChange={(e) => setNewName(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') void create(); }} placeholder="Nome do novo SalesBot"/><button type="button" onClick={() => void create()} disabled={!newName.trim() || creating} aria-busy={creating}>{creating ? 'Criando...' : '+ Novo SalesBot'}</button></div> : null}
       {error && <div className="f05-alert">{error}</div>}
       <div className="sb-library-list">{bots.length === 0 ? <div className="f05-empty f05-empty--large">Nenhum SalesBot criado.</div> : bots.map((bot) => <article className="sb-library-card" key={bot.id}><div><strong>{bot.name}</strong><span>{bot.blocks.length} blocos · {bot.status}</span></div><div className="sb-library-actions"><button type="button" onClick={() => openBuilder(bot.id)}>Editar</button>{canManage ? <button type="button" className="secondary" onClick={() => { try { const copy = duplicateSalesBot(bot.id); refresh(copy.id); } catch (error) { setError(errorMessage(error, 'Não foi possível duplicar o SalesBot.')); } }}>Duplicar</button> : null}</div></article>)}</div>
     </section>;
