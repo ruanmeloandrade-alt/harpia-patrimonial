@@ -220,3 +220,43 @@ O shell disponível não possui checkout do repositório e não resolve GitHub/r
 - Não foi criado usuário fictício para QA. O Auth permanece vazio até a ativação da primeira conta real.
 - O fluxo de notificação está estruturalmente conectado e publicado, mas entrega a um usuário real só poderá ser observada depois da primeira conta interna existir.
 - A inspeção real de uma chave de IA depende de uma chave fornecida pela operação; nenhuma chave foi inventada para QA.
+
+
+## Continuidade Agentes IA: Cérebro, upload autenticado e feedback visual, 24/09/2026
+
+🟠 **IMPLEMENTAÇÃO CONCLUÍDA, AGUARDANDO QA AUTENTICADO EM NAVEGADOR**
+
+- Cérebro integrado à base React oficial em `src/features/ai-agents/**`.
+- Contexto geral e fontes adicionais passam a usar `ai_brain_config` e `ai_brain_sources`.
+- Upload aceita TXT, PDF, JPG, PNG e WEBP, com limite de 10 MB.
+- PDF e imagem são enviados ao bucket privado `ai-brain` usando a sessão autenticada do usuário.
+- PDF e imagem chamam `ai-brain-process-source`, que permanece protegido por JWT e permissão `ai.manage`.
+- Runtime dos agentes inclui automaticamente o contexto do Cérebro e fontes processadas.
+- Agentes usam automaticamente uma configuração de IA pronta em Integrações, sem exigir seleção de provedor em cada agente.
+- Página publicada em `gh-pages/interno/index.html` deixou de usar token fixo para o Cérebro e passou a usar a sessão interna real, RLS, Storage privado e Edge Function autenticada.
+- `ai-brain-static-bridge` foi desativada no Supabase, versão 2, `verify_jwt=true`, retornando HTTP 410 para chamadas antigas.
+- Estrutura do Cérebro, RLS e Storage foi versionada em `supabase/schema/ai_brain.sql`.
+- `ai-brain-process-source` e a ponte desativada foram versionadas em `supabase/functions/**`.
+- Botões da base React receberam resposta visual mínima ao clique, foco visível, estado ocupado e estado de sucesso.
+- A tela de Cérebro possui estados reais de `Salvando...`, `Salvo ✓`, envio, registro, processamento e conclusão.
+- O CSS global foi reconciliado com o hotfix `cf84513b0e75ae1ca7211b8aeb0c0cb897672c7e`, preservando as mudanças concorrentes de preferências e tema.
+
+### Validação executada
+
+- [x] JavaScript da página publicada validado sintaticamente.
+- [x] Página publicada sem referência a `AI_BRIDGE_TOKEN` ou `ai-brain-static-bridge`.
+- [x] Fluxo publicado contém chamada autenticada ao `ai-brain-process-source`.
+- [x] Feedback visual global dos botões confirmado na página publicada.
+- [x] Bucket `ai-brain` confirmado privado, 10 MB e MIME types restritos.
+- [x] RLS de `ai_brain_config`, `ai_brain_sources` e `storage.objects` conferida.
+- [x] `ai-brain-process-source` ACTIVE com `verify_jwt=true`.
+- [x] `ai-brain-static-bridge` ACTIVE v2 somente como endpoint desativado, com `verify_jwt=true`.
+
+### Ainda não verificado
+
+- [ ] Upload real de PDF e imagem pela UI com uma conta interna real.
+- [ ] Extração completa observada pelo navegador até o status `ready`.
+- [ ] `npm run typecheck` e `npm run build` em checkout completo.
+- [ ] QA visual final desktop/mobile da base React compilada.
+
+Motivo dos itens não verificados: este ambiente não possui checkout completo do repositório e não resolve GitHub/registry via shell. Não foi criada conta fictícia para contornar autenticação.
