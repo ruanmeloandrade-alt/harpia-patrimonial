@@ -328,6 +328,27 @@ Deno.serve(async (req) => {
     } catch (error) { const reason = error instanceof Error ? error.message : 'Falha inesperada no runtime server-side.'; try { await persist({ status: 'failed', finishedAt: nowIso(), runtimeContext: undefined, error: reason, action: reason }); } catch {} return { status: 'rejected', executionId: execution.id, reason }; }
   }
 
+  async function pauseAgentExecutions(runtimeLeadId: string | undefined, agentId?: string): Promise<Result> {
+    if (!runtimeLeadId) return { status: 'rejected', reason: 'Lead obrigatório para pausar o Agente IA.' };
+    const executions = await loadList<Execution>(EXEC_KEY);
+    let affected = 0;
+    const updated = executions.map((execution) => {
+      if (execution.leadId !== runtimeLeadId) return execution;
+      if (agentId && execution.aiAgentId !== agentId) return execution;
+      if (execution.status !== 'running') return execution;
+      affected += 1;
+      return {
+        ...execution,
+        status: 'paused' as const,
+        resumeMode: 'retry_current' as const,
+        resumeAt: undefined,
+        action: 'Agente IA pausado pela automação da pipeline.',
+      };
+    });
+    if (affected > 0) await saveList(EXEC_KEY, updated);
+    return { status: 'accepted', data: { affected, agentId: agentId || null, leadId: runtimeLeadId } };
+  }
+
   async function invokeAgent(agentId: string, inputContext: Json): Promise<Result> {
     const result = await invokeAgentCore(agentId, inputContext);
     if (result.status === 'accepted') {
@@ -361,6 +382,9 @@ Deno.serve(async (req) => {
         ...(leadId ? { leadId } : {}),
         ...(conversationId ? { conversationId } : {}),
       }));
+    }
+    if (action === 'pause_ai') {
+      return respond(await pauseAgentExecutions(leadId, text(body.agentId) || undefined));
     }
     return respond({ status: 'rejected', reason: 'Ação server-side F05 não suportada.' }, 400);
   } catch (error) {
