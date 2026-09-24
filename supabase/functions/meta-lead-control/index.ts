@@ -12,6 +12,7 @@ const headers = {
 type Json = Record<string, unknown>;
 type MetaForm = { id: string; name?: string; status?: string };
 type MetaPage = { id: string; name?: string };
+type MetaAppConfig = { app_id?: string; app_secret?: string; webhook_verify_token?: string };
 
 function respond(status: number, payload: unknown) {
   return new Response(JSON.stringify(payload), { status, headers });
@@ -64,11 +65,18 @@ async function requirePermission(authorization: string, permission: 'integration
   );
 }
 
-async function graphGet(path: string, token: string) {
+async function graphRequest(
+  path: string,
+  token: string,
+  method: 'GET' | 'POST' | 'DELETE' = 'GET',
+  params: Record<string, string> = {},
+) {
   const url = new URL(`https://graph.facebook.com/${graphVersion()}/${path.replace(/^\/+/, '')}`);
   url.searchParams.set('access_token', token);
+  for (const [key, value] of Object.entries(params)) url.searchParams.set(key, value);
 
   const response = await fetch(url, {
+    method,
     headers: { Accept: 'application/json' },
     signal: AbortSignal.timeout(15_000),
   });
@@ -86,8 +94,8 @@ async function graphGet(path: string, token: string) {
 
 async function inspectPage(pageId: string, token: string) {
   const [pagePayload, formsPayload] = await Promise.all([
-    graphGet(`${encodeURIComponent(pageId)}?fields=id,name`, token),
-    graphGet(`${encodeURIComponent(pageId)}/leadgen_forms?fields=id,name,status&limit=100`, token),
+    graphRequest(pageId, token, 'GET', { fields: 'id,name' }),
+    graphRequest(`${pageId}/leadgen_forms`, token, 'GET', { fields: 'id,name,status', limit: '100' }),
   ]);
 
   const page = pagePayload as unknown as MetaPage;
@@ -101,6 +109,28 @@ async function inspectPage(pageId: string, token: string) {
   return { page, forms };
 }
 
+async function subscribeLeadgen(pageId: string, token: string) {
+  const payload = await graphRequest(
+    `${pageId}/subscribed_apps`,
+    token,
+    'POST',
+    { subscribed_fields: 'leadgen' },
+  );
+  if (payload.success !== true) throw new Error('A Meta não confirmou a inscrição do webhook leadgen nesta Página.');
+}
+
+async function unsubscribeLeadgen(pageId: string, token: string) {
+  const payload = await graphRequest(`${pageId}/subscribed_apps`, token, 'DELETE');
+  return payload.success === true;
+}
+
+async function resolveAppConfig(admin: ReturnType<typeof createClient>) {
+  const { data, error } = await admin.rpc('admin_resolve_meta_app_config');
+  if (error) throw error;
+  const row = Array.isArray(data) ? data[0] : data;
+  return (row && typeof row === 'object' ? row : null) as MetaAppConfig | null;
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers });
   if (req.method !== 'POST') return respond(405, { ok: false, message: 'Método não permitido.' });
@@ -111,7 +141,7 @@ Deno.serve(async (req: Request) => {
   const body = await req.json().catch(() => ({})) as Json;
   const action = String(body.action || '');
 
-  if (!['status', 'inspect', 'connect', 'disconnect'].includes(action)) {
+  if (!['status', 'configure_app', 'inspect', 'connect', 'disconnect'].includes(action)) {
     return respond(400, { ok: false, message: 'Ação inválida.' });
   }
 
@@ -127,26 +157,78 @@ Deno.serve(async (req: Request) => {
   const admin = createClient(supabaseUrl, serverKey, {
     auth: { autoRefreshToken: false, persistSession: false },
   });
+  const webhookCallback = `${supabaseUrl}/functions/v1/meta-lead-webhook`;
 
   try {
     if (action === 'status') {
-      const { data, error } = await admin
-        .from('integration_connections')
-        .select('id,status,external_account_id,account_label,connected_at,last_health_at,last_event_at,last_error_at,last_error_code,metadata,updated_at')
-        .eq('provider', 'meta')
-        .order('updated_at', { ascending: false });
+      const [{ data, error }, appConfig] = await Promise.all([
+        admin
+          .from('integration_connections')
+          .select('id,status,external_account_id,account_label,connected_at,last_health_at,last_event_at,last_error_at,last_error_code,metadata,updated_at')
+          .eq('provider', 'meta')
+          .order('updated_at', { ascending: false }),
+        resolveAppConfig(admin),
+      ]);
 
       if (error) throw error;
-      return respond(200, { ok: true, graphVersion: graphVersion(), connections: data ?? [] });
+      return respond(200, {
+        ok: true,
+        graphVersion: graphVersion(),
+        webhookCallback,
+        appConfigured: Boolean(appConfig?.app_id && appConfig?.app_secret && appConfig?.webhook_verify_token),
+        appId: appConfig?.app_id || null,
+        connections: data ?? [],
+      });
+    }
+
+    if (action === 'configure_app') {
+      const appId = String(body.appId || '').trim();
+      const appSecret = String(body.appSecret || '').trim();
+      if (!appId || !appSecret) {
+        return respond(400, { ok: false, message: 'App ID e App Secret da Meta são obrigatórios.' });
+      }
+
+      const { data, error } = await admin.rpc('admin_store_meta_app_config', {
+        p_app_id: appId,
+        p_app_secret: appSecret,
+      });
+      if (error || !data) throw error || new Error('Não foi possível salvar a configuração do App Meta.');
+
+      const config = data as Json;
+      return respond(200, {
+        ok: true,
+        appId: String(config.appId || appId),
+        verifyToken: String(config.verifyToken || ''),
+        webhookCallback,
+        graphVersion: graphVersion(),
+      });
     }
 
     const pageId = String(body.pageId || '').trim();
     if (!pageId) return respond(400, { ok: false, message: 'ID da Página Meta obrigatório.' });
 
     if (action === 'disconnect') {
+      let unsubscribed = false;
+      let warning = '';
+
+      const { data: token } = await admin.rpc('admin_resolve_meta_page_token', { p_page_id: pageId });
+      if (token) {
+        try {
+          unsubscribed = await unsubscribeLeadgen(pageId, String(token));
+        } catch (error) {
+          warning = error instanceof Error ? error.message : 'Não foi possível remover a inscrição na Meta.';
+        }
+      }
+
       const { data, error } = await admin.rpc('admin_disconnect_meta_page', { p_page_id: pageId });
       if (error) throw error;
-      return respond(200, { ok: true, disconnected: Boolean(data) });
+
+      return respond(200, {
+        ok: true,
+        disconnected: Boolean(data),
+        unsubscribed,
+        ...(warning ? { warning } : {}),
+      });
     }
 
     const pageAccessToken = String(body.pageAccessToken || '').trim();
@@ -157,6 +239,14 @@ Deno.serve(async (req: Request) => {
     const inspected = await inspectPage(pageId, pageAccessToken);
     if (action === 'inspect') {
       return respond(200, { ok: true, graphVersion: graphVersion(), ...inspected });
+    }
+
+    const appConfig = await resolveAppConfig(admin);
+    if (!appConfig?.app_id || !appConfig?.app_secret || !appConfig?.webhook_verify_token) {
+      return respond(409, {
+        ok: false,
+        message: 'Configure primeiro o App ID e o App Secret da Meta para habilitar o webhook assinado.',
+      });
     }
 
     const requestedIds = Array.isArray(body.formIds)
@@ -174,6 +264,9 @@ Deno.serve(async (req: Request) => {
     }
 
     const formIds = requestedIds.length ? requestedIds : inspected.forms.map((form) => form.id);
+
+    await subscribeLeadgen(pageId, pageAccessToken);
+
     const { data: connectionId, error } = await admin.rpc('admin_store_meta_page_token', {
       p_page_id: pageId,
       p_page_name: inspected.page.name || null,
@@ -191,6 +284,7 @@ Deno.serve(async (req: Request) => {
       page: inspected.page,
       forms: inspected.forms,
       selectedFormIds: formIds,
+      subscribedField: 'leadgen',
     });
   } catch (error) {
     return respond(502, {
