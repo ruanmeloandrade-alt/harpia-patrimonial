@@ -99,6 +99,11 @@ export function SettingsWorkspace({ credentialVault, initialTab = 'general' }: S
 
   useEffect(() => {
     let cancelled = false;
+    if (!canViewSettings) {
+      setLoading(false);
+      return () => { cancelled = true; };
+    }
+
     getOrganizationSettings()
       .then((value) => {
         if (cancelled) return;
@@ -111,8 +116,9 @@ export function SettingsWorkspace({ credentialVault, initialTab = 'general' }: S
       .finally(() => {
         if (!cancelled) setLoading(false);
       });
+
     return () => { cancelled = true; };
-  }, []);
+  }, [canViewSettings]);
 
   const preferences = normalizeOrganizationPreferences(settings?.preferences);
 
@@ -255,7 +261,7 @@ export function SettingsWorkspace({ credentialVault, initialTab = 'general' }: S
         </div>
         <div className="settings-summary">
           <span>Preferências</span>
-          <strong>{loading ? 'Carregando' : 'Sincronizadas'}</strong>
+          <strong>{canViewSettings ? (loading ? 'Carregando' : 'Sincronizadas') : 'Acesso por módulo'}</strong>
           <small>Persistência em organization_settings.</small>
         </div>
       </header>
