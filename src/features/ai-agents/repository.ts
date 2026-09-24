@@ -6,9 +6,13 @@ import type { AIAgentDefinition, AIAgentStatus } from './types';
 const STORAGE_KEY = 'harpia:f05:ai-agents';
 const now = () => new Date().toISOString();
 
+const readyProvider = () => listAIProviderProfiles()
+  .find((item) => item.status === 'ready' && item.apiKeyConfigured && item.secretRef);
+
 const isProviderReady = (agent: AIAgentDefinition) => {
-  if (!agent.providerProfileId) return false;
-  const profile = listAIProviderProfiles().find((item) => item.id === agent.providerProfileId);
+  const profile = agent.providerProfileId
+    ? listAIProviderProfiles().find((item) => item.id === agent.providerProfileId)
+    : readyProvider();
   return Boolean(profile && profile.status === 'ready' && profile.apiKeyConfigured && profile.secretRef);
 };
 
@@ -29,7 +33,7 @@ export function createAIAgent(name: string): AIAgentDefinition {
     context: '',
     accessScopes: [],
     activationPoints: [],
-    providerProfileId: '',
+    providerProfileId: readyProvider()?.id ?? '',
     status: 'draft',
     createdAt: timestamp,
     updatedAt: timestamp,
@@ -73,7 +77,8 @@ export function setAIAgentStatus(id: string, status: AIAgentStatus): AIAgentDefi
   const agent = listAIAgents().find((item) => item.id === id);
   if (!agent) throw new Error('Agente IA não encontrado.');
   if (status === 'active' && !isProviderReady(agent)) {
-    throw new Error('O perfil de provedor IA precisa estar pronto e com chave API segura configurada.');
+    throw new Error('Configure uma chave de IA pronta em Integrações antes de ativar o agente.');
   }
-  return updateAIAgent(id, { status });
+  const providerProfileId = agent.providerProfileId || readyProvider()?.id || '';
+  return updateAIAgent(id, { status, providerProfileId });
 }
