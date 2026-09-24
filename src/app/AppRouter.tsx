@@ -18,7 +18,6 @@ import {
   IntegratedDashboard,
   IntegratedExecutionLogs,
   IntegratedInbox,
-  IntegratedIntegrations,
   IntegratedMarketing,
   IntegratedSalesBot,
   IntegratedSettings,
