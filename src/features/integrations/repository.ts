@@ -8,7 +8,7 @@ import {
 } from './types';
 
 const STORAGE_KEY = 'harpia:f05:integrations';
-const BACKEND_PROVIDERS = new Set<IntegrationKind>(['whatsapp', 'meta']);
+const BACKEND_PROVIDERS = new Set<IntegrationKind>(['whatsapp', 'meta', 'google_calendar']);
 
 type IntegrationConnectionRow = {
   provider: string;
@@ -48,7 +48,7 @@ export async function loadIntegrations(): Promise<IntegrationConfig[]> {
   const { data, error } = await supabase
     .from('integration_connections')
     .select('provider,status,external_account_id,account_label,connected_at,last_health_at,last_event_at,last_error_at,last_error_code,updated_at')
-    .in('provider', ['whatsapp', 'meta'])
+    .in('provider', ['whatsapp', 'meta', 'google_calendar'])
     .order('updated_at', { ascending: false });
 
   if (error) throw error;

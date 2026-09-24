@@ -11,6 +11,8 @@ export const PERMISSIONS = {
   CATALOG_PUBLISH: 'catalog.publish',
   CRM_VIEW: 'crm.view',
   CRM_MANAGE: 'crm.manage',
+  CALENDAR_VIEW: 'calendar.view',
+  CALENDAR_MANAGE: 'calendar.manage',
   INBOX_VIEW: 'inbox.view',
   INBOX_MANAGE: 'inbox.manage',
   AUTOMATIONS_VIEW: 'automations.view',

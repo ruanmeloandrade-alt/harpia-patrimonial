@@ -13,6 +13,7 @@ import { ingestPublicLead } from './integrations/publicLeadIngest';
 import {
   IntegratedAIAgents,
   IntegratedAutomations,
+  IntegratedCalendar,
   IntegratedCatalog,
   IntegratedCrm,
   IntegratedDashboard,
@@ -69,6 +70,10 @@ export function AppRouter() {
       page = <IntegratedCrm />;
       permission = undefined;
       permissions = [PERMISSIONS.CRM_VIEW, PERMISSIONS.CRM_MANAGE];
+    } else if (pathname === '/interno/calendario') {
+      page = <IntegratedCalendar />;
+      permission = undefined;
+      permissions = [PERMISSIONS.CALENDAR_VIEW, PERMISSIONS.CALENDAR_MANAGE];
     } else if (pathname === '/interno/inbox') {
       page = <IntegratedInbox />;
       permission = undefined;
