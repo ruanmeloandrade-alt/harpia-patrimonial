@@ -30,6 +30,7 @@ interface CatalogRow {
   id: string;
   code: string;
   name: string;
+  item_type: CatalogItem['itemType'];
   kind: CatalogItem['kind'];
   parent_id: string | null;
   typology: string | null;
@@ -40,6 +41,9 @@ interface CatalogRow {
   condominium: string | null;
   address: string | null;
   price: number | null;
+  discount_type: CatalogItem['discountType'] | null;
+  discount_value: number | null;
+  tags: string[] | null;
   is_launch: boolean;
   features: string[] | null;
   lifestyle_tags: string[] | null;
@@ -85,6 +89,7 @@ function fromRow(row: CatalogRow): CatalogItem {
     id: row.id,
     code: row.code,
     name: row.name,
+    itemType: row.item_type ?? 'property',
     kind: row.kind,
     parentId: row.parent_id ?? undefined,
     typology: row.typology ?? undefined,
@@ -97,6 +102,9 @@ function fromRow(row: CatalogRow): CatalogItem {
       address: row.address ?? undefined,
     },
     price: row.price,
+    discountType: row.discount_type ?? undefined,
+    discountValue: row.discount_value ?? undefined,
+    tags: row.tags ?? [],
     isLaunch: row.is_launch,
     features: row.features ?? [],
     lifestyleTags: row.lifestyle_tags ?? [],
@@ -115,17 +123,21 @@ function draftPayload(input: CatalogItemDraft) {
   return {
     code: input.code.trim(),
     name: input.name.trim(),
-    kind: input.kind,
-    parent_id: input.kind === 'unit' ? input.parentId ?? null : null,
-    typology: input.kind === 'unit' ? input.typology?.trim() || null : null,
-    purpose: input.purpose,
+    item_type: input.itemType,
+    kind: input.itemType === 'property' ? input.kind : 'standalone',
+    parent_id: input.itemType === 'property' && input.kind === 'unit' ? input.parentId ?? null : null,
+    typology: input.itemType === 'property' && input.kind === 'unit' ? input.typology?.trim() || null : null,
+    purpose: input.itemType === 'property' ? input.purpose : 'sale',
     description: input.description,
     city: input.location.city.trim(),
     neighborhood: input.location.neighborhood.trim(),
     condominium: input.location.condominium?.trim() || null,
     address: input.location.address?.trim() || null,
     price: input.price,
-    is_launch: input.isLaunch,
+    discount_type: input.discountType ?? null,
+    discount_value: input.discountValue ?? null,
+    tags: input.tags,
+    is_launch: input.itemType === 'property' ? input.isLaunch : false,
     features: input.features,
     lifestyle_tags: input.lifestyleTags,
     developer: input.developer?.trim() || null,
@@ -136,10 +148,15 @@ function draftPayload(input: CatalogItemDraft) {
 function validateDraft(input: CatalogItemDraft) {
   if (!input.code.trim()) throw new Error('Informe um código para o item.');
   if (!input.name.trim()) throw new Error('Informe um nome para o item.');
-  if (!input.location.city.trim()) throw new Error('Informe a cidade do item.');
+  if (input.itemType === 'property' && !input.location.city.trim()) throw new Error('Informe a cidade do imóvel.');
   if (input.price !== null && input.price < 0) throw new Error('O preço não pode ser negativo.');
-  if (input.kind === 'unit' && !input.parentId) throw new Error('Selecione o empreendimento desta unidade.');
-  if (input.kind === 'unit' && !input.typology?.trim()) throw new Error('Informe a tipologia desta unidade.');
+  if (input.discountValue !== undefined && input.discountValue < 0) throw new Error('O desconto não pode ser negativo.');
+  if (input.discountType === 'percentage' && (input.discountValue ?? 0) > 100) throw new Error('O desconto percentual não pode ultrapassar 100%.');
+  if ((input.discountType && input.discountValue === undefined) || (!input.discountType && input.discountValue !== undefined)) {
+    throw new Error('Informe o tipo e o valor do desconto.');
+  }
+  if (input.itemType === 'property' && input.kind === 'unit' && !input.parentId) throw new Error('Selecione o empreendimento desta unidade.');
+  if (input.itemType === 'property' && input.kind === 'unit' && !input.typology?.trim()) throw new Error('Informe a tipologia desta unidade.');
   assertCatalogMedia(input.media);
 }
 
@@ -149,6 +166,7 @@ function applyLocalQuery(items: CatalogItem[], query: CatalogQuery) {
     .filter((item) => query.includeDeleted || !item.deletedAt)
     .filter((item) => !query.status || item.status === query.status)
     .filter((item) => !query.kind || item.kind === query.kind)
+    .filter((item) => !query.itemType || item.itemType === query.itemType)
     .filter((item) => {
       if (!search) return true;
       return [
@@ -159,6 +177,7 @@ function applyLocalQuery(items: CatalogItem[], query: CatalogQuery) {
         item.location.neighborhood,
         item.location.condominium,
         item.developer,
+        ...item.tags,
       ]
         .filter(Boolean)
         .join(' ')
@@ -187,6 +206,7 @@ export class SupabaseCatalogRepository implements CatalogRepository {
     if (!query.includeDeleted) builder = builder.is('deleted_at', null);
     if (query.status) builder = builder.eq('status', query.status);
     if (query.kind) builder = builder.eq('kind', query.kind);
+    if (query.itemType) builder = builder.eq('item_type', query.itemType);
     const result = await builder as SupabaseResultLike<CatalogRow[]>;
 
     if (result.error) fail(result.error, 'Não foi possível carregar o catálogo.');
@@ -226,6 +246,7 @@ export class SupabaseCatalogRepository implements CatalogRepository {
     const merged: CatalogItemDraft = {
       code: input.code ?? current.code,
       name: input.name ?? current.name,
+      itemType: input.itemType ?? current.itemType,
       kind: input.kind ?? current.kind,
       parentId: input.parentId ?? current.parentId,
       typology: input.typology ?? current.typology,
@@ -233,13 +254,26 @@ export class SupabaseCatalogRepository implements CatalogRepository {
       description: input.description ?? current.description,
       location: input.location ?? current.location,
       price: input.price === undefined ? current.price : input.price,
+      discountType: input.discountType === undefined ? current.discountType : input.discountType,
+      discountValue: input.discountValue === undefined ? current.discountValue : input.discountValue,
+      tags: input.tags ?? current.tags,
       isLaunch: input.isLaunch ?? current.isLaunch,
       features: input.features ?? current.features,
       lifestyleTags: input.lifestyleTags ?? current.lifestyleTags,
       developer: input.developer ?? current.developer,
       media: input.media ?? current.media,
     };
-    if (merged.kind !== 'unit') {
+    if (merged.itemType !== 'property') {
+      merged.kind = 'standalone';
+      merged.parentId = undefined;
+      merged.typology = undefined;
+      merged.purpose = 'sale';
+      merged.location = { city: '', neighborhood: '' };
+      merged.isLaunch = false;
+      merged.features = [];
+      merged.lifestyleTags = [];
+      merged.developer = undefined;
+    } else if (merged.kind !== 'unit') {
       merged.parentId = undefined;
       merged.typology = undefined;
     }
@@ -301,7 +335,8 @@ export class SupabaseCatalogRepository implements CatalogRepository {
 
     return this.create({
       code,
-      name: `${source.name} — cópia`,
+      name: `${source.name} - cópia`,
+      itemType: source.itemType,
       kind: source.kind,
       parentId: source.parentId,
       typology: source.typology,
@@ -309,6 +344,9 @@ export class SupabaseCatalogRepository implements CatalogRepository {
       description: source.description,
       location: source.location,
       price: source.price,
+      discountType: source.discountType,
+      discountValue: source.discountValue,
+      tags: [...source.tags],
       isLaunch: source.isLaunch,
       features: [...source.features],
       lifestyleTags: [...source.lifestyleTags],
