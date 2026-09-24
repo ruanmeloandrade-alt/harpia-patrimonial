@@ -144,3 +144,38 @@ A partir daqui o trabalho deve priorizar:
 - INTEGRADA ESTRUTURALMENTE: módulos encaixados sem afirmar testes ainda não executados.
 - FINALIZADA NO ESCOPO: implementação e QA executáveis da frente concluídos.
 - LIBERADA PARA PRÓXIMA FASE: QA estrutural suficiente para avançar, mantendo explicitamente como `NÃO VERIFICADO` o que só pode ser confirmado no fluxo visual/integrado final.
+
+
+---
+
+## Central de Configurações — 24/09/2026
+
+🟠 **EM INTEGRAÇÃO / PUBLICAÇÃO**
+
+Implementado na branch `work/settings-complete-20260924-r2`:
+
+- central única de Configurações;
+- Geral completo;
+- Preferências com tema, idioma, moeda, fuso, data/hora, cor e modo compacto;
+- Usuários + funções + grupos + permissões no mesmo fluxo;
+- definição de acessos já no cadastro de usuário;
+- Integrações com WhatsApp, IA e catálogo de integrações de segunda fase;
+- CRM e atendimento;
+- Automações;
+- Notificações;
+- Segurança;
+- Dados e privacidade;
+- Marketing como segunda fase;
+- Sistema;
+- persistência em `organization_settings.preferences`;
+- aplicação global de tema e modo compacto;
+- smoke transacional do JSON de preferências executado com rollback, sem alterar dados reais.
+
+Validação ainda marcada como NÃO VERIFICADO:
+
+- `npm run typecheck`;
+- `npm run build`;
+- navegação autenticada completa em navegador;
+- validação visual final desktop/mobile.
+
+O shell disponível não possui checkout do repositório e não resolve GitHub/registry npm, impedindo build local neste ambiente.
