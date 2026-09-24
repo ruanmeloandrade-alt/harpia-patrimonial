@@ -10,7 +10,7 @@ type AutomationDefinition = {
   origin?: 'manual' | 'pipeline';
   pipeline?: {
     pipelineId?: string;
-    event?: 'enter' | 'created_or_moved' | 'leave' | 'created' | 'time' | 'salesbot_done' | 'salesbot_failed' | 'ai_done' | 'tag_added' | 'field_changed';
+    event?: 'enter' | 'created_or_moved' | 'leave' | 'created' | 'time' | 'salesbot_done' | 'salesbot_failed' | 'ai_done' | 'tag_added' | 'field_changed' | 'inbound_webhook';
     stageId?: string;
     value?: string;
     action?: string;
@@ -33,6 +33,7 @@ type OutboxEvent = {
 const headers = { 'Content-Type': 'application/json' };
 const AUTOMATIONS_KEY = 'harpia:f05:automations';
 const CRM_ACTIONS = new Set(['create_task', 'move_stage', 'update_field', 'add_tag', 'remove_tag', 'assign_owner']);
+const EXTENDED_CRM_ACTIONS = new Set(['duplicate_lead', 'complete_tasks', 'delete_tasks', 'replace_tags', 'delete_lead', 'internal_message', 'generate_form', 'delete_files', 'link_product']);
 const respond = (body: Json, status = 200) => new Response(JSON.stringify(body), { status, headers });
 
 function namedKey(envName: string): string | undefined {
@@ -94,6 +95,12 @@ function matchesPipeline(definition: AutomationDefinition, event: OutboxEvent, s
     return event.event_type === 'lead.field_changed'
       && stageId === meta.stageId
       && (!meta.value || String(getPath(source, 'fieldId') ?? '') === meta.value);
+  }
+  if (meta.event === 'inbound_webhook') {
+    return event.event_type === 'custom.event'
+      && kind === 'inbound_webhook'
+      && (!meta.stageId || stageId === meta.stageId)
+      && (!meta.value || String(getPath(source, 'token') ?? '') === meta.value);
   }
   return false;
 }
@@ -324,7 +331,7 @@ async function enqueueDuePipelineTimeEvents(
 async function callF05Runtime(
   supabaseUrl: string,
   serverKey: string,
-  action: 'start_salesbot' | 'invoke_ai',
+  action: 'start_salesbot' | 'invoke_ai' | 'pause_ai',
   payload: Json,
 ): Promise<ActionResult> {
   try {
@@ -424,6 +431,16 @@ Deno.serve(async (req) => {
                 });
                 result = error ? { status: 'rejected', reason: error.message } : { status: 'accepted', data: data && typeof data === 'object' ? data as Json : {} };
               }
+            } else if (EXTENDED_CRM_ACTIONS.has(action.type)) {
+              if (!event.lead_id) result = { status: 'rejected', reason: 'Evento não possui lead para ação de CRM.' };
+              else {
+                const { data, error } = await db.rpc('admin_apply_crm_extended_automation_action', {
+                  p_lead_id: event.lead_id,
+                  p_action_type: action.type,
+                  p_config: action.config ?? {},
+                });
+                result = error ? { status: 'rejected', reason: error.message } : { status: 'accepted', data: data && typeof data === 'object' ? data as Json : {} };
+              }
             } else if (action.type === 'webhook') {
               result = await executeWebhook(action, event);
             } else if (action.type === 'start_salesbot') {
@@ -449,6 +466,15 @@ Deno.serve(async (req) => {
                       leadId: event.lead_id,
                       conversationId: event.conversation_id,
                     },
+                  });
+            } else if (action.type === 'pause_ai') {
+              result = !event.lead_id
+                ? { status: 'rejected', reason: 'Evento não possui lead para pausar IA.' }
+                : await callF05Runtime(supabaseUrl, serverKey, 'pause_ai', {
+                    agentId: String(action.config?.agentId ?? '').trim() || undefined,
+                    leadId: event.lead_id,
+                    conversationId: event.conversation_id,
+                    context: event.payload ?? {},
                   });
             } else {
               result = { status: 'rejected', reason: `Ação ${action.type} não suportada pelo worker.` };
