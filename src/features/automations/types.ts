@@ -13,6 +13,10 @@ export type PipelineTriggerEvent =
   | 'ai_done'
   | 'tag_added'
   | 'field_changed'
+  | 'assignee_changed'
+  | 'hours_before_datetime'
+  | 'daily_time'
+  | 'specific_datetime'
   | 'inbound_webhook';
 
 export type PipelineTriggerAction =
