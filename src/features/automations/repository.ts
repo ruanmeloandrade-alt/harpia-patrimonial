@@ -149,6 +149,80 @@ export function moveAutomationAction(id: string, actionId: string, direction: -1
 }
 
 
+function pipelineActionDefinition(input: PipelineAutomationMeta): AutomationAction {
+  const config = input.actionConfig ?? {};
+  const make = (type: AutomationAction['type'], actionConfig: AutomationAction['config']): AutomationAction => ({
+    id: createF05Id('action'),
+    type,
+    config: actionConfig,
+  });
+
+  if (input.action === 'move_stage') return make('move_stage', { stageId: input.targetStageId ?? '' });
+  if (input.action === 'salesbot') return make('start_salesbot', { botId: input.resourceId ?? '' });
+  if (input.action === 'ai') return make('invoke_ai', { agentId: input.resourceId ?? '' });
+  if (input.action === 'pause_ai') return make('pause_ai', { agentId: input.resourceId ?? '' });
+  if (input.action === 'create_task') return make('create_task', { title: String(config.title ?? ''), dueAt: String(config.dueAt ?? '') });
+  if (input.action === 'duplicate_lead') return make('duplicate_lead', { stageId: String(config.stageId ?? '') });
+  if (input.action === 'complete_tasks') return make('complete_tasks', { title: String(config.title ?? '') });
+  if (input.action === 'delete_tasks') return make('delete_tasks', { title: String(config.title ?? '') });
+  if (input.action === 'tags') {
+    const operation = String(config.operation ?? 'add');
+    const tagId = String(config.tagId ?? '');
+    if (operation === 'remove') return make('remove_tag', { tagId });
+    if (operation === 'replace') return make('replace_tags', { tagId });
+    return make('add_tag', { tagId });
+  }
+  if (input.action === 'assign_owner') return make('assign_owner', { userId: String(config.userId ?? '') });
+  if (input.action === 'update_field') return make('update_field', { fieldId: String(config.fieldId ?? ''), value: config.value ?? '' });
+  if (input.action === 'delete_lead') return make('delete_lead', {});
+  if (input.action === 'internal_message') return make('internal_message', { message: String(config.message ?? '') });
+  if (input.action === 'generate_form') return make('generate_form', { title: String(config.title ?? ''), fields: String(config.fields ?? '') });
+  if (input.action === 'delete_files') return make('delete_files', { classification: String(config.classification ?? '') });
+  if (input.action === 'link_product') return make('link_product', {
+    catalogItemId: String(config.catalogItemId ?? ''),
+    relationship: String(config.relationship ?? 'interest'),
+    quantity: Number(config.quantity ?? 1),
+  });
+
+  return make('webhook', {
+    url: String(config.url ?? ''),
+    method: String(config.method ?? 'POST'),
+    preset: input.action,
+  });
+}
+
+function validatePipelineAutomationMeta(input: PipelineAutomationMeta): void {
+  const config = input.actionConfig ?? {};
+  if (!input.pipelineId || !input.stageId) throw new Error('Selecione a etapa do gatilho.');
+  if (input.event === 'time' && !/^\d+\s*(m|min|h|d|dia|dias|hora|horas)$/i.test(input.value ?? '')) {
+    throw new Error('Informe o tempo como 30m, 2h ou 3d.');
+  }
+  if (input.event === 'inbound_webhook' && !String(input.value ?? '').trim()) throw new Error('Token do webhook de entrada não foi gerado.');
+  if (input.action === 'move_stage' && !input.targetStageId) throw new Error('Selecione a etapa destino.');
+  if ((input.action === 'salesbot' || input.action === 'ai') && !input.resourceId) {
+    throw new Error(input.action === 'salesbot' ? 'Selecione o SalesBot.' : 'Selecione o Agente IA.');
+  }
+  if (input.action === 'create_task' && !String(config.title ?? '').trim()) throw new Error('Informe o título da tarefa.');
+  if (input.action === 'tags' && !String(config.tagId ?? '').trim()) throw new Error('Selecione a tag.');
+  if (input.action === 'assign_owner' && !String(config.userId ?? '').trim()) throw new Error('Selecione o usuário responsável.');
+  if (input.action === 'update_field' && !String(config.fieldId ?? '').trim()) throw new Error('Selecione o campo que será alterado.');
+  if (input.action === 'internal_message' && !String(config.message ?? '').trim()) throw new Error('Digite a mensagem interna.');
+  if (input.action === 'generate_form' && !String(config.title ?? '').trim()) throw new Error('Informe o nome do formulário.');
+  if (input.action === 'link_product' && !String(config.catalogItemId ?? '').trim()) throw new Error('Selecione o produto.');
+  if ([
+    'meta_ads',
+    'webhook_won',
+    'webhook_lost',
+    'webhook_remarketing',
+    'webhook_meeting',
+    'webhook_charge',
+    'webhook_qualified',
+    'webhook',
+  ].includes(input.action) && !String(config.url ?? '').trim()) {
+    throw new Error('Informe a URL HTTPS do webhook.');
+  }
+}
+
 function pipelineTriggerDefinition(input: PipelineAutomationMeta): AutomationDefinition {
   const timestamp = now();
   const conditions: AutomationDefinition['trigger']['conditions'] = [];
@@ -173,19 +247,14 @@ function pipelineTriggerDefinition(input: PipelineAutomationMeta): AutomationDef
   } else if (input.event === 'field_changed') {
     event = 'lead.field_changed';
     if (input.value) conditions.push({ field: 'fieldId', operator: 'equals', value: input.value });
+  } else if (input.event === 'inbound_webhook') {
+    event = 'custom.event';
+    conditions.push({ field: 'kind', operator: 'equals', value: 'inbound_webhook' });
+    if (input.value) conditions.push({ field: 'token', operator: 'equals', value: input.value });
   } else {
     event = 'custom.event';
     conditions.push({ field: 'kind', operator: 'equals', value: input.event });
     if (input.stageId) conditions.push({ field: 'stageId', operator: 'equals', value: input.stageId });
-  }
-
-  let action: AutomationAction;
-  if (input.action === 'move_stage') {
-    action = { id: createF05Id('action'), type: 'move_stage', config: { stageId: input.targetStageId ?? '' } };
-  } else if (input.action === 'salesbot') {
-    action = { id: createF05Id('action'), type: 'start_salesbot', config: { botId: input.resourceId ?? '' } };
-  } else {
-    action = { id: createF05Id('action'), type: 'invoke_ai', config: { agentId: input.resourceId ?? '' } };
   }
 
   return {
@@ -194,9 +263,9 @@ function pipelineTriggerDefinition(input: PipelineAutomationMeta): AutomationDef
     description: '',
     status: 'active',
     origin: 'pipeline',
-    pipeline: { ...input },
+    pipeline: { ...input, actionConfig: { ...(input.actionConfig ?? {}) } },
     trigger: { event, conditions },
-    actions: [action],
+    actions: [pipelineActionDefinition(input)],
     createdAt: timestamp,
     updatedAt: timestamp,
   };
@@ -216,6 +285,7 @@ export function createPipelineAutomation(input: {
   action: PipelineTriggerAction;
   targetStageId?: string;
   resourceId?: string;
+  actionConfig?: Record<string, string | number | boolean | null>;
 }): AutomationDefinition {
   const normalized: PipelineAutomationMeta = {
     pipelineId: input.pipelineId,
@@ -225,19 +295,10 @@ export function createPipelineAutomation(input: {
     action: input.action,
     targetStageId: input.targetStageId?.trim() || undefined,
     resourceId: input.resourceId?.trim() || undefined,
+    actionConfig: { ...(input.actionConfig ?? {}) },
   };
 
-  if (!normalized.pipelineId) throw new Error('Selecione um funil.');
-  if (!normalized.stageId) throw new Error('Selecione a etapa do gatilho.');
-  if (normalized.event === 'time' && !/^\d+\s*(m|min|h|d|dia|dias|hora|horas)$/i.test(normalized.value ?? '')) {
-    throw new Error('Informe o tempo como 30m, 2h ou 3d.');
-  }
-  if (normalized.action === 'move_stage' && !normalized.targetStageId) {
-    throw new Error('Selecione a etapa destino.');
-  }
-  if ((normalized.action === 'salesbot' || normalized.action === 'ai') && !normalized.resourceId) {
-    throw new Error(normalized.action === 'salesbot' ? 'Selecione o SalesBot.' : 'Selecione o Agente IA.');
-  }
+  validatePipelineAutomationMeta(normalized);
 
   const item = pipelineTriggerDefinition(normalized);
   writeStoredList(STORAGE_KEY, [item, ...listAutomations()]);
@@ -259,6 +320,7 @@ export function updatePipelineAutomation(id: string, input: {
   action: PipelineTriggerAction;
   targetStageId?: string;
   resourceId?: string;
+  actionConfig?: Record<string, string | number | boolean | null>;
 }): AutomationDefinition {
   const items = listAutomations();
   const current = items.find((item) => item.id === id);
@@ -272,18 +334,10 @@ export function updatePipelineAutomation(id: string, input: {
     action: input.action,
     targetStageId: input.targetStageId?.trim() || undefined,
     resourceId: input.resourceId?.trim() || undefined,
+    actionConfig: { ...(input.actionConfig ?? {}) },
   };
 
-  if (!normalized.pipelineId || !normalized.stageId) throw new Error('Selecione a etapa do gatilho.');
-  if (normalized.event === 'time' && !/^\d+\s*(m|min|h|d|dia|dias|hora|horas)$/i.test(normalized.value ?? '')) {
-    throw new Error('Informe o tempo como 30m, 2h ou 3d.');
-  }
-  if (normalized.action === 'move_stage' && !normalized.targetStageId) {
-    throw new Error('Selecione a etapa destino.');
-  }
-  if ((normalized.action === 'salesbot' || normalized.action === 'ai') && !normalized.resourceId) {
-    throw new Error(normalized.action === 'salesbot' ? 'Selecione o SalesBot.' : 'Selecione o Agente IA.');
-  }
+  validatePipelineAutomationMeta(normalized);
 
   const rebuilt = pipelineTriggerDefinition(normalized);
   const updated: AutomationDefinition = {
