@@ -12,7 +12,7 @@ import {
   updateGroup,
 } from './permission-service';
 
-export function PermissionsPage() {
+export function PermissionsPage({ embedded = false }: { embedded?: boolean }) {
   const auth = useAuth();
   const canManage = auth.hasPermission('roles.manage');
   const [groups, setGroups] = useState<PermissionGroup[]>([]);
@@ -125,7 +125,7 @@ export function PermissionsPage() {
   }, {}), [permissions]);
 
   return (
-    <div className="workspace-page">
+    <div className={embedded ? "workspace-page settings-embedded-page settings-role-editor" : "workspace-page"}>
       <header className="page-heading">
         <div><p className="eyebrow dark">ACESSOS</p><h1>Funções e permissões</h1><p className="muted">Crie grupos de acesso sem limitar a operação a cargos fixos. Depois, ajuste exceções diretamente no usuário.</p></div>
         {canManage ? <button className="button button-dark" onClick={() => setShowForm((value) => !value)}>{showForm ? 'Cancelar' : 'Novo grupo'}</button> : null}

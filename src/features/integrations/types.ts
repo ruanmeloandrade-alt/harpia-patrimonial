@@ -1,4 +1,4 @@
-export type IntegrationKind = 'ai' | 'whatsapp' | 'meta' | 'email' | 'api';
+export type IntegrationKind = 'ai' | 'whatsapp' | 'meta' | 'email' | 'sms' | 'analytics' | 'tag_manager' | 'api';
 
 export type OperationalIntegrationStatus =
   | 'not_connected'
@@ -49,9 +49,27 @@ export const INTEGRATION_DEFAULTS: IntegrationConfig[] = [
   },
   {
     id: 'email',
-    label: 'E-mail',
+    label: 'Gmail / Google Workspace',
     status: 'future',
-    notes: 'Estrutura preparada; conexão planejada para fase posterior.',
+    notes: 'Estrutura preparada para e-mail operacional e campanhas. Ativação prevista para a segunda fase.',
+  },
+  {
+    id: 'sms',
+    label: 'SMS',
+    status: 'future',
+    notes: 'Gateway de SMS será definido e conectado na segunda fase.',
+  },
+  {
+    id: 'analytics',
+    label: 'Google Analytics',
+    status: 'future',
+    notes: 'Mensuração de páginas e conversões será ativada na segunda fase.',
+  },
+  {
+    id: 'tag_manager',
+    label: 'Google Tag Manager',
+    status: 'future',
+    notes: 'Containers, tags e eventos serão conectados na segunda fase.',
   },
   {
     id: 'api',

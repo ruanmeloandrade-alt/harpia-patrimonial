@@ -15,7 +15,7 @@ import {
 
 type OverrideMap = Record<string, PermissionEffect | 'inherit'>;
 
-export function UsersPage() {
+export function UsersPage({ embedded = false }: { embedded?: boolean }) {
   const auth = useAuth();
   const canManageUsers = auth.hasPermission('users.manage');
   const canManageRoles = auth.hasPermission('roles.manage');
@@ -32,6 +32,8 @@ export function UsersPage() {
   const [selectedUser, setSelectedUser] = useState<InternalUserRow | null>(null);
   const [selectedGroups, setSelectedGroups] = useState<Set<string>>(new Set());
   const [overrides, setOverrides] = useState<OverrideMap>({});
+  const [createGroups, setCreateGroups] = useState<Set<string>>(new Set());
+  const [createOverrides, setCreateOverrides] = useState<OverrideMap>({});
   const [accessLoading, setAccessLoading] = useState(false);
   const selectedUserIsSelf = Boolean(selectedUser && selectedUser.id === auth.user?.id);
 
@@ -51,7 +53,7 @@ export function UsersPage() {
   }
 
   useEffect(() => {
-    load();
+    void load();
   }, []);
 
   async function openAccess(user: InternalUserRow) {
@@ -76,16 +78,35 @@ export function UsersPage() {
       setSaving(true);
       setError(null);
       setNotice(null);
+
       const result = await createInternalUser({
         fullName: String(form.get('fullName') || ''),
         email: String(form.get('email') || ''),
         whatsapp: String(form.get('whatsapp') || ''),
         password: String(form.get('password') || ''),
-        groupId: canAssignGroups ? String(form.get('groupId') || '') || undefined : undefined,
       });
+
+      let accessWarning = '';
+      if (canAssignGroups) {
+        try {
+          await replaceUserGroups(result.userId, [...createGroups]);
+          for (const [permissionId, effect] of Object.entries(createOverrides)) {
+            if (effect !== 'inherit') {
+              await setUserPermissionOverride(result.userId, permissionId, effect);
+            }
+          }
+        } catch (accessError) {
+          accessWarning = accessError instanceof Error
+            ? ` Usuário criado, mas os acessos iniciais precisam ser revisados: ${accessError.message}`
+            : ' Usuário criado, mas os acessos iniciais precisam ser revisados.';
+        }
+      }
+
       event.currentTarget.reset();
+      setCreateGroups(new Set());
+      setCreateOverrides({});
       setShowForm(false);
-      setNotice(result.warning || 'Usuário interno criado com sucesso.');
+      setNotice(`${result.warning || 'Usuário interno criado com sucesso.'}${accessWarning}`);
       await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Não foi possível criar o usuário.');
@@ -151,40 +172,237 @@ export function UsersPage() {
   }, {}), [permissions]);
 
   return (
-    <div className="workspace-page">
+    <div className={embedded ? 'workspace-page settings-embedded-page' : 'workspace-page'}>
       <header className="page-heading">
-        <div><p className="eyebrow dark">EQUIPE</p><h1>Usuários</h1><p className="muted">Cadastre a equipe e controle acessos por grupo, com exceções individuais quando necessário.</p></div>
-        {canManageUsers ? <button className="button button-dark" onClick={() => setShowForm((value) => !value)}>{showForm ? 'Cancelar' : 'Adicionar usuário'}</button> : null}
+        <div>
+          <p className="eyebrow dark">EQUIPE</p>
+          <h1>Usuários e acessos</h1>
+          <p className="muted">Cadastre a equipe, defina grupos e ajuste permissões individuais no mesmo fluxo.</p>
+        </div>
+        {canManageUsers ? (
+          <button
+            className="button button-dark"
+            onClick={() => {
+              setShowForm((value) => !value);
+              setCreateGroups(new Set());
+              setCreateOverrides({});
+            }}
+          >
+            {showForm ? 'Cancelar' : 'Adicionar usuário'}
+          </button>
+        ) : null}
       </header>
 
-      {showForm ? <form className="panel form-panel" onSubmit={submit}>
-        <div className="section-heading"><div><h2>Novo usuário interno</h2><p className="muted">Nenhuma pessoa é cadastrada automaticamente; os dados reais entram somente quando forem fornecidos.</p></div></div>
-        <div className="form-grid">
-          <label className="field"><span>Nome completo</span><input name="fullName" required /></label>
-          <label className="field"><span>E-mail</span><input name="email" type="email" required /></label>
-          <label className="field"><span>WhatsApp</span><input name="whatsapp" type="tel" /></label>
-          <label className="field"><span>Senha inicial</span><input name="password" type="password" minLength={8} required /></label>
-          {canAssignGroups ? <label className="field field-wide"><span>Grupo inicial (opcional)</span><select name="groupId" defaultValue=""><option value="">Sem grupo inicial</option>{groups.filter((group) => group.is_active).map((group) => <option value={group.id} key={group.id}>{group.name}</option>)}</select></label> : null}
-        </div>
-        <div className="form-actions"><button className="button button-primary" disabled={saving}>{saving ? 'Criando...' : 'Criar usuário'}</button></div>
-      </form> : null}
+      {showForm ? (
+        <form className="panel form-panel" onSubmit={submit}>
+          <div className="section-heading">
+            <div>
+              <h2>Novo usuário interno</h2>
+              <p className="muted">Cadastre a pessoa e já defina o acesso inicial antes de concluir.</p>
+            </div>
+          </div>
 
-      {editingUser ? <form className="panel form-panel" onSubmit={saveUserEdit}>
-        <div className="section-heading"><div><p className="eyebrow dark">EDITAR USUÁRIO</p><h2>{editingUser.full_name}</h2><p className="muted">Atualize os dados operacionais. Grupos e permissões permanecem no editor de acessos.</p></div><button type="button" className="text-button" onClick={() => setEditingUser(null)}>Cancelar</button></div>
-        <div className="form-grid">
-          <label className="field"><span>Nome completo</span><input name="fullName" defaultValue={editingUser.full_name} required /></label>
-          <label className="field"><span>WhatsApp</span><input name="whatsapp" type="tel" defaultValue={editingUser.whatsapp || ''} /></label>
-        </div>
-        <div className="form-actions"><button className="button button-primary" disabled={saving}>{saving ? 'Salvando...' : 'Salvar alterações'}</button></div>
-      </form> : null}
+          <div className="form-grid">
+            <label className="field"><span>Nome completo</span><input name="fullName" required /></label>
+            <label className="field"><span>E-mail</span><input name="email" type="email" required /></label>
+            <label className="field"><span>WhatsApp</span><input name="whatsapp" type="tel" /></label>
+            <label className="field"><span>Senha inicial</span><input name="password" type="password" minLength={8} required /></label>
+          </div>
 
-      {error ? <div className="alert alert-error">{error}</div> : null}{notice ? <div className="alert alert-success">{notice}</div> : null}
+          {canAssignGroups ? (
+            <>
+              <div className="access-section">
+                <h3>Funções e grupos iniciais</h3>
+                <p className="muted">O usuário pode participar de mais de um grupo. A base de acesso vem destes grupos.</p>
+                <div className="check-grid">
+                  {groups.filter((group) => group.is_active).map((group) => (
+                    <label className="check-card" key={group.id}>
+                      <input
+                        type="checkbox"
+                        checked={createGroups.has(group.id)}
+                        onChange={(event) => setCreateGroups((current) => {
+                          const next = new Set(current);
+                          if (event.target.checked) next.add(group.id);
+                          else next.delete(group.id);
+                          return next;
+                        })}
+                      />
+                      <span><strong>{group.name}</strong><small>{group.description || group.slug}</small></span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              <div className="access-section">
+                <h3>Permissões individuais iniciais</h3>
+                <p className="muted">Use herança sempre que o grupo já resolver o acesso. Só crie exceção quando realmente precisar.</p>
+                <div className="permission-modules">
+                  {Object.entries(permissionsByModule).map(([module, items]) => (
+                    <div className="permission-module" key={module}>
+                      <strong>{module}</strong>
+                      {items.map((permission) => (
+                        <div className="permission-override-row" key={permission.id}>
+                          <div><span>{permission.label}</span><code>{permission.key}</code></div>
+                          <select
+                            aria-label={`Permissão inicial ${permission.label}`}
+                            value={createOverrides[permission.id] || 'inherit'}
+                            onChange={(event) => setCreateOverrides((current) => ({
+                              ...current,
+                              [permission.id]: event.target.value as PermissionEffect | 'inherit',
+                            }))}
+                          >
+                            <option value="inherit">Herdar do grupo</option>
+                            <option value="allow">Permitir</option>
+                            <option value="deny">Negar</option>
+                          </select>
+                        </div>
+                      ))}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </>
+          ) : (
+            <div className="settings-inline-note">Você pode criar usuários, mas precisa da permissão de gestão de funções para definir grupos e exceções de acesso.</div>
+          )}
+
+          <div className="form-actions"><button className="button button-primary" disabled={saving}>{saving ? 'Criando...' : 'Criar usuário e aplicar acessos'}</button></div>
+        </form>
+      ) : null}
+
+      {editingUser ? (
+        <form className="panel form-panel" onSubmit={saveUserEdit}>
+          <div className="section-heading">
+            <div>
+              <p className="eyebrow dark">EDITAR USUÁRIO</p>
+              <h2>{editingUser.full_name}</h2>
+              <p className="muted">Atualize os dados da pessoa. Grupos e permissões ficam logo abaixo no editor de acessos.</p>
+            </div>
+            <button type="button" className="text-button" onClick={() => setEditingUser(null)}>Cancelar</button>
+          </div>
+          <div className="form-grid">
+            <label className="field"><span>Nome completo</span><input name="fullName" defaultValue={editingUser.full_name} required /></label>
+            <label className="field"><span>WhatsApp</span><input name="whatsapp" type="tel" defaultValue={editingUser.whatsapp || ''} /></label>
+          </div>
+          <div className="form-actions"><button className="button button-primary" disabled={saving}>{saving ? 'Salvando...' : 'Salvar alterações'}</button></div>
+        </form>
+      ) : null}
+
+      {error ? <div className="alert alert-error">{error}</div> : null}
+      {notice ? <div className="alert alert-success">{notice}</div> : null}
 
       <section className="panel">
-        {loading ? <div className="empty-state"><strong>Carregando equipe...</strong></div> : users.length === 0 ? <div className="empty-state"><strong>Nenhum funcionário cadastrado.</strong><span>A plataforma começa vazia. Cadastre a equipe quando recebermos os dados reais.</span></div> : <div className="table-wrap"><table><thead><tr><th>Nome</th><th>WhatsApp</th><th>Status</th><th></th></tr></thead><tbody>{users.map((item) => <tr key={item.id}><td><strong>{item.full_name}</strong></td><td>{item.whatsapp || '—'}</td><td><span className={item.is_active ? 'status success' : 'status neutral'}>{item.is_active ? 'Ativo' : 'Inativo'}</span></td><td className="align-right">{canManageUsers ? <button className="text-button" onClick={() => setEditingUser(item)}>Editar</button> : null}<button className="text-button" onClick={() => openAccess(item)}>Acessos</button>{canManageUsers && item.id !== auth.user?.id ? <button className="text-button" onClick={async () => { try { await setInternalUserActive(item.id, !item.is_active); await load(); } catch (err) { setError(err instanceof Error ? err.message : 'Não foi possível alterar o status.'); } }}>{item.is_active ? 'Desativar' : 'Ativar'}</button> : item.id === auth.user?.id ? <span className="status neutral">Sua conta</span> : null}</td></tr>)}</tbody></table></div>}
+        {loading ? (
+          <div className="empty-state"><strong>Carregando equipe...</strong></div>
+        ) : users.length === 0 ? (
+          <div className="empty-state"><strong>Nenhum funcionário cadastrado.</strong><span>Cadastre a equipe quando os dados reais estiverem disponíveis.</span></div>
+        ) : (
+          <div className="table-wrap">
+            <table>
+              <thead><tr><th>Nome</th><th>WhatsApp</th><th>Status</th><th></th></tr></thead>
+              <tbody>
+                {users.map((item) => (
+                  <tr key={item.id}>
+                    <td><strong>{item.full_name}</strong></td>
+                    <td>{item.whatsapp || 'Não informado'}</td>
+                    <td><span className={item.is_active ? 'status success' : 'status neutral'}>{item.is_active ? 'Ativo' : 'Inativo'}</span></td>
+                    <td className="align-right">
+                      {canManageUsers ? <button className="text-button" onClick={() => setEditingUser(item)}>Editar</button> : null}
+                      <button className="text-button" onClick={() => openAccess(item)}>Acessos</button>
+                      {canManageUsers && item.id !== auth.user?.id ? (
+                        <button
+                          className="text-button"
+                          onClick={async () => {
+                            try {
+                              await setInternalUserActive(item.id, !item.is_active);
+                              await load();
+                            } catch (err) {
+                              setError(err instanceof Error ? err.message : 'Não foi possível alterar o status.');
+                            }
+                          }}
+                        >
+                          {item.is_active ? 'Desativar' : 'Ativar'}
+                        </button>
+                      ) : item.id === auth.user?.id ? <span className="status neutral">Sua conta</span> : null}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </section>
 
-      {selectedUser ? <section className="panel access-editor"><div className="section-heading"><div><p className="eyebrow dark">ACESSOS DE USUÁRIO</p><h2>{selectedUser.full_name}</h2><p className="muted">Grupos fornecem a base. Exceções individuais prevalecem sobre o grupo.</p></div><button className="text-button" onClick={() => setSelectedUser(null)}>Fechar</button></div>{selectedUserIsSelf ? <div className="alert">Por segurança, grupos e exceções da própria conta são somente leitura. Outro administrador deve alterar esses acessos.</div> : null}{accessLoading ? <div className="empty-state">Carregando acessos...</div> : <><div className="access-section"><h3>Grupos</h3><div className="check-grid">{groups.map((group) => <label className="check-card" key={group.id}><input type="checkbox" checked={selectedGroups.has(group.id)} disabled={!canAssignGroups || selectedUserIsSelf} onChange={(event) => setSelectedGroups((current) => { const next = new Set(current); if (event.target.checked) next.add(group.id); else next.delete(group.id); return next; })} /><span><strong>{group.name}</strong><small>{group.description || group.slug}</small></span></label>)}</div>{canAssignGroups && !selectedUserIsSelf ? <div className="form-actions"><button className="button button-dark" onClick={saveGroups} disabled={saving}>Salvar grupos</button></div> : null}</div><div className="access-section"><h3>Exceções individuais</h3><p className="muted">Use “Herdar do grupo” sempre que não houver uma exceção real.</p><div className="permission-modules">{Object.entries(permissionsByModule).map(([module, items]) => <div className="permission-module" key={module}><strong>{module}</strong>{items.map((permission) => <div className="permission-override-row" key={permission.id}><div><span>{permission.label}</span><code>{permission.key}</code></div><select aria-label={`Permissão ${permission.label}`} value={overrides[permission.id] || 'inherit'} disabled={!canAssignGroups || selectedUserIsSelf} onChange={(event) => changeOverride(permission.id, event.target.value as PermissionEffect | 'inherit')}><option value="inherit">Herdar do grupo</option><option value="allow">Permitir</option><option value="deny">Negar</option></select></div>)}</div>)}</div></div></>}</section> : null}
+      {selectedUser ? (
+        <section className="panel access-editor">
+          <div className="section-heading">
+            <div>
+              <p className="eyebrow dark">ACESSOS DO USUÁRIO</p>
+              <h2>{selectedUser.full_name}</h2>
+              <p className="muted">Grupos fornecem a base. Exceções individuais prevalecem sobre o grupo.</p>
+            </div>
+            <button className="text-button" onClick={() => setSelectedUser(null)}>Fechar</button>
+          </div>
+
+          {selectedUserIsSelf ? <div className="alert">Por segurança, grupos e exceções da própria conta são somente leitura. Outro administrador deve alterar esses acessos.</div> : null}
+
+          {accessLoading ? (
+            <div className="empty-state">Carregando acessos...</div>
+          ) : (
+            <>
+              <div className="access-section">
+                <h3>Funções e grupos</h3>
+                <div className="check-grid">
+                  {groups.map((group) => (
+                    <label className="check-card" key={group.id}>
+                      <input
+                        type="checkbox"
+                        checked={selectedGroups.has(group.id)}
+                        disabled={!canAssignGroups || selectedUserIsSelf}
+                        onChange={(event) => setSelectedGroups((current) => {
+                          const next = new Set(current);
+                          if (event.target.checked) next.add(group.id);
+                          else next.delete(group.id);
+                          return next;
+                        })}
+                      />
+                      <span><strong>{group.name}</strong><small>{group.description || group.slug}</small></span>
+                    </label>
+                  ))}
+                </div>
+                {canAssignGroups && !selectedUserIsSelf ? <div className="form-actions"><button className="button button-dark" onClick={saveGroups} disabled={saving}>Salvar grupos</button></div> : null}
+              </div>
+
+              <div className="access-section">
+                <h3>Exceções individuais</h3>
+                <p className="muted">Use “Herdar do grupo” sempre que não houver uma exceção real.</p>
+                <div className="permission-modules">
+                  {Object.entries(permissionsByModule).map(([module, items]) => (
+                    <div className="permission-module" key={module}>
+                      <strong>{module}</strong>
+                      {items.map((permission) => (
+                        <div className="permission-override-row" key={permission.id}>
+                          <div><span>{permission.label}</span><code>{permission.key}</code></div>
+                          <select
+                            aria-label={`Permissão ${permission.label}`}
+                            value={overrides[permission.id] || 'inherit'}
+                            disabled={!canAssignGroups || selectedUserIsSelf}
+                            onChange={(event) => changeOverride(permission.id, event.target.value as PermissionEffect | 'inherit')}
+                          >
+                            <option value="inherit">Herdar do grupo</option>
+                            <option value="allow">Permitir</option>
+                            <option value="deny">Negar</option>
+                          </select>
+                        </div>
+                      ))}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </>
+          )}
+        </section>
+      ) : null}
     </div>
   );
 }
