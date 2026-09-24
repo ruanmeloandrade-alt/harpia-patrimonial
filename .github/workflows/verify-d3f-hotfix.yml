@@ -1,0 +1,33 @@
+name: Verify d3f hotfix
+
+on:
+  push:
+    branches: [verify-hotfix-d3f-20260924]
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify required markers
+        run: |
+          grep -q 'renderInbox' interno/index.html
+          grep -q 'sbOpenBlockPicker' interno/index.html
+          grep -q 'editCatalog' interno/index.html
+          grep -q 'editProduct' interno/index.html
+          grep -q "String(e.key).toLowerCase()==='d'" interno/index.html
+      - name: Extract and validate inline JavaScript
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          html=Path('interno/index.html').read_text(encoding='utf-8')
+          scripts=re.findall(r'<script[^>]*>(.*?)</script>',html,re.S)
+          if not scripts:
+              raise SystemExit('no inline script')
+          Path('/tmp/harpia-inline.js').write_text('\n'.join(scripts),encoding='utf-8')
+          PY
+          node --check /tmp/harpia-inline.js
