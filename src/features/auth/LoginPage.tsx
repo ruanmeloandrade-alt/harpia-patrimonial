@@ -68,8 +68,8 @@ export function LoginPage({ internal = false }: { internal?: boolean }) {
 
         if (!sessionReady) throw new Error('Não foi possível abrir a sessão administrativa.');
 
-        const { error: claimError } = await (supabase as any).rpc('claim_first_admin', {
-          p_activation_code: activationCode.trim(),
+        const { error: claimError } = await supabase.functions.invoke('claim-first-admin', {
+          body: { activationCode: activationCode.trim() },
         });
         if (claimError) throw claimError;
 
