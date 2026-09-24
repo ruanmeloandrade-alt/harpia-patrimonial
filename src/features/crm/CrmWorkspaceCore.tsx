@@ -17,7 +17,16 @@ import { BrowserCrmRepository } from './repository';
 import { CrmIntegrityError, CrmService } from './service';
 import type { CatalogRepository } from '../catalog/catalogRepository';
 import { LeadProductsPanel } from './LeadProductsPanel';
-import { AutomationsWorkspace } from '../automations/AutomationsWorkspace';
+import { listSalesBots } from '../salesbot/repository';
+import { listAIAgents } from '../ai-agents/repository';
+import {
+  createPipelineAutomation,
+  deletePipelineAutomation,
+  deletePipelineAutomationsForPipeline,
+  listPipelineAutomations,
+} from '../automations/repository';
+import type { PipelineTriggerAction, PipelineTriggerEvent } from '../automations/types';
+import { useF05StorageListener } from '../automations/useF05StorageListener';
 import { formatRuntimeDateTime } from '../settings/runtime-preferences';
 import styles from './crm.module.css';
 
@@ -69,6 +78,15 @@ export function CrmWorkspace({
   const [automationOpen, setAutomationOpen] = useState(false);
   const [pipelineModalOpen, setPipelineModalOpen] = useState(false);
   const [leadModalOpen, setLeadModalOpen] = useState(false);
+  const [automationRevision, setAutomationRevision] = useState(0);
+  const [triggerEvent, setTriggerEvent] = useState<PipelineTriggerEvent>('enter');
+  const [triggerStageId, setTriggerStageId] = useState('');
+  const [triggerValue, setTriggerValue] = useState('');
+  const [triggerAction, setTriggerAction] = useState<PipelineTriggerAction>('move_stage');
+  const [triggerResourceId, setTriggerResourceId] = useState('');
+  const [triggerTargetStageId, setTriggerTargetStageId] = useState('');
+
+  useF05StorageListener(() => setAutomationRevision((value) => value + 1));
 
   const refresh = (message?: string) => {
     const snapshot = service.snapshot();
@@ -95,6 +113,12 @@ export function CrmWorkspace({
   const selectedPipeline = state.pipelines.find((pipeline) => pipeline.id === selectedPipelineId);
   const stages = selectedPipeline ? service.getStages(selectedPipeline.id) : [];
   const selectedLead = state.leads.find((lead) => lead.id === selectedLeadId);
+  const pipelineTriggers = useMemo(
+    () => selectedPipeline ? listPipelineAutomations(selectedPipeline.id) : [],
+    [selectedPipeline?.id, automationRevision],
+  );
+  const salesBots = useMemo(() => listSalesBots(), [automationRevision]);
+  const aiAgents = useMemo(() => listAIAgents(), [automationRevision]);
 
   const handleCreatePipeline = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -122,6 +146,43 @@ export function CrmWorkspace({
       refresh('Etapa criada.');
     } catch (error) {
       setFeedback(error instanceof Error ? error.message : 'Não foi possível criar a etapa.');
+    }
+  };
+
+  const handleAddTrigger = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!selectedPipeline || !canManage) return;
+
+    try {
+      createPipelineAutomation({
+        pipelineId: selectedPipeline.id,
+        event: triggerEvent,
+        stageId: triggerStageId || stages[0]?.id,
+        value: triggerValue,
+        action: triggerAction,
+        targetStageId: triggerTargetStageId,
+        resourceId: triggerResourceId,
+      });
+      setTriggerValue('');
+      setTriggerResourceId('');
+      setTriggerTargetStageId('');
+      setAutomationRevision((value) => value + 1);
+      setFeedback('Gatilho adicionado ao funil.');
+    } catch (error) {
+      setFeedback(error instanceof Error ? error.message : 'Não foi possível adicionar o gatilho.');
+    }
+  };
+
+  const removeTrigger = (id: string) => {
+    if (!canManage) return;
+    if (!window.confirm('Excluir este gatilho do funil?')) return;
+
+    try {
+      deletePipelineAutomation(id);
+      setAutomationRevision((value) => value + 1);
+      setFeedback('Gatilho excluído.');
+    } catch (error) {
+      setFeedback(error instanceof Error ? error.message : 'Não foi possível excluir o gatilho.');
     }
   };
 
@@ -193,6 +254,8 @@ export function CrmWorkspace({
     if (!window.confirm(`Excluir o funil “${selectedPipeline.name}”?`)) return;
     try {
       service.removePipeline(selectedPipeline.id);
+      deletePipelineAutomationsForPipeline(selectedPipeline.id);
+      setAutomationRevision((value) => value + 1);
       setSelectedLeadId(undefined);
       setAutomationOpen(false);
       refresh('Funil excluído.');
@@ -245,7 +308,6 @@ export function CrmWorkspace({
                 : state.pipelines.map((pipeline) => <option key={pipeline.id} value={pipeline.id}>{pipeline.name}</option>)}
             </select>
             <button className={styles.primaryAction} type="button" disabled={!canManage || !selectedPipeline} onClick={() => setLeadModalOpen(true)}>+ Novo lead</button>
-            <button type="button" disabled={!canManage} onClick={() => setPipelineModalOpen(true)}>+ Novo funil</button>
             <button
               type="button"
               className={automationOpen ? styles.automatizeActive : undefined}
@@ -311,7 +373,7 @@ export function CrmWorkspace({
                         <strong>{stage.name}</strong>
                         <span>{leads.length} lead{leads.length === 1 ? '' : 's'}</span>
                       </div>
-                      {canManage ? (
+                      {canManage && automationOpen ? (
                         <div className={styles.stageActions}>
                           <button type="button" onClick={() => renameStage(stage)} title="Renomear etapa">✎</button>
                           <button type="button" onClick={() => moveStage(stage, -1)} title="Mover para esquerda">←</button>
@@ -353,6 +415,7 @@ export function CrmWorkspace({
 
                 {canManage ? (
                   <div className={styles.crmAutomationTools}>
+                    <button type="button" onClick={() => setPipelineModalOpen(true)}>+ Novo funil</button>
                     <button type="button" onClick={duplicatePipeline}>Duplicar funil</button>
                     <button type="button" onClick={renamePipeline}>Editar funil</button>
                     <button type="button" className={styles.dangerAction} onClick={deletePipeline}>Excluir funil</button>
@@ -364,7 +427,142 @@ export function CrmWorkspace({
                 ) : null}
 
                 <div className={styles.automationBody}>
-                  <AutomationsWorkspace canManage={canManage} />
+                  <form className={styles.crmTriggerForm} onSubmit={handleAddTrigger}>
+                    <label>
+                      Gatilho
+                      <select value={triggerEvent} onChange={(event) => setTriggerEvent(event.target.value as PipelineTriggerEvent)}>
+                        <option value="enter">Lead entrar na etapa</option>
+                        <option value="leave">Lead sair da etapa</option>
+                        <option value="created">Lead criado no funil</option>
+                        <option value="time">Tempo na etapa</option>
+                        <option value="salesbot_done">SalesBot concluído</option>
+                        <option value="salesbot_failed">SalesBot falhou</option>
+                        <option value="ai_done">Agente IA concluído</option>
+                        <option value="tag_added">Tag adicionada</option>
+                        <option value="field_changed">Campo alterado</option>
+                      </select>
+                    </label>
+
+                    <label>
+                      Etapa
+                      <select value={triggerStageId || stages[0]?.id || ''} onChange={(event) => setTriggerStageId(event.target.value)} disabled={stages.length === 0}>
+                        {stages.length === 0
+                          ? <option value="">Nenhuma etapa criada</option>
+                          : stages.map((stage) => <option key={stage.id} value={stage.id}>{stage.name}</option>)}
+                      </select>
+                    </label>
+
+                    {['time', 'salesbot_done', 'salesbot_failed', 'tag_added', 'field_changed'].includes(triggerEvent) ? (
+                      <label>
+                        Tempo/condição
+                        <input
+                          value={triggerValue}
+                          onChange={(event) => setTriggerValue(event.target.value)}
+                          placeholder={
+                            triggerEvent === 'time'
+                              ? 'Ex.: 30m, 2h ou 3d'
+                              : triggerEvent.startsWith('salesbot_')
+                                ? 'ID ou nome do SalesBot, opcional'
+                                : triggerEvent === 'tag_added'
+                                  ? 'Tag, opcional'
+                                  : 'Campo, opcional'
+                          }
+                        />
+                      </label>
+                    ) : null}
+
+                    <label>
+                      Ação
+                      <select value={triggerAction} onChange={(event) => {
+                        setTriggerAction(event.target.value as PipelineTriggerAction);
+                        setTriggerResourceId('');
+                        setTriggerTargetStageId('');
+                      }}>
+                        <option value="move_stage">Mover para etapa</option>
+                        <option value="salesbot">Iniciar SalesBot</option>
+                        <option value="ai">Iniciar Agente IA</option>
+                      </select>
+                    </label>
+
+                    {triggerAction === 'move_stage' ? (
+                      <label>
+                        Etapa destino
+                        <select value={triggerTargetStageId} onChange={(event) => setTriggerTargetStageId(event.target.value)}>
+                          <option value="">Selecione</option>
+                          {stages.map((stage) => <option key={stage.id} value={stage.id}>{stage.name}</option>)}
+                        </select>
+                      </label>
+                    ) : null}
+
+                    {triggerAction === 'salesbot' ? (
+                      <label>
+                        SalesBot
+                        <select value={triggerResourceId} onChange={(event) => setTriggerResourceId(event.target.value)}>
+                          <option value="">Selecione</option>
+                          {salesBots.map((bot) => <option key={bot.id} value={bot.id}>{bot.name}{bot.status === 'active' ? '' : ' · inativo'}</option>)}
+                        </select>
+                      </label>
+                    ) : null}
+
+                    {triggerAction === 'ai' ? (
+                      <label>
+                        Agente IA
+                        <select value={triggerResourceId} onChange={(event) => setTriggerResourceId(event.target.value)}>
+                          <option value="">Selecione</option>
+                          {aiAgents.map((agent) => <option key={agent.id} value={agent.id}>{agent.name}{agent.status === 'active' ? '' : ' · inativo'}</option>)}
+                        </select>
+                      </label>
+                    ) : null}
+
+                    <button type="submit" disabled={!canManage}>Adicionar gatilho</button>
+                  </form>
+
+                  <div className={styles.crmTriggerList}>
+                    {pipelineTriggers.length === 0 ? (
+                      <div className={styles.crmTriggerEmpty}>Nenhum gatilho neste funil. Adicione o primeiro acima.</div>
+                    ) : pipelineTriggers.map((item) => {
+                      const meta = item.pipeline;
+                      const stageName = stages.find((stage) => stage.id === meta?.stageId)?.name ?? 'Funil inteiro';
+                      const targetStageName = stages.find((stage) => stage.id === meta?.targetStageId)?.name ?? '';
+                      const eventLabel: Record<PipelineTriggerEvent, string> = {
+                        enter: 'Lead entrou na etapa',
+                        leave: 'Lead saiu da etapa',
+                        created: 'Lead criado no funil',
+                        time: 'Tempo na etapa',
+                        salesbot_done: 'SalesBot concluído',
+                        salesbot_failed: 'SalesBot falhou',
+                        ai_done: 'Agente IA concluído',
+                        tag_added: 'Tag adicionada',
+                        field_changed: 'Campo alterado',
+                      };
+                      const actionLabel: Record<PipelineTriggerAction, string> = {
+                        move_stage: 'Mover para etapa',
+                        salesbot: 'Iniciar SalesBot',
+                        ai: 'Iniciar Agente IA',
+                      };
+                      const resourceName = meta?.action === 'salesbot'
+                        ? salesBots.find((bot) => bot.id === meta.resourceId)?.name
+                        : meta?.action === 'ai'
+                          ? aiAgents.find((agent) => agent.id === meta.resourceId)?.name
+                          : '';
+
+                      return (
+                        <article key={item.id} className={styles.crmTriggerRow}>
+                          <div>
+                            <strong>{meta ? eventLabel[meta.event] : 'Gatilho'}</strong>
+                            <small>{stageName}{meta?.value ? ` · ${meta.value}` : ''}</small>
+                          </div>
+                          <div>
+                            <strong>{meta ? actionLabel[meta.action] : 'Ação'}</strong>
+                            {meta?.action === 'move_stage' && targetStageName ? <small>→ {targetStageName}</small> : null}
+                            {resourceName ? <small>{resourceName}</small> : null}
+                          </div>
+                          <span className={styles.crmTriggerStatus}>{item.status === 'active' ? 'Ativo' : item.status}</span>
+                          {canManage ? <button type="button" onClick={() => removeTrigger(item.id)}>Excluir</button> : null}
+                        </article>
+                      );
+                    })}
+                  </div>
                 </div>
               </section>
             ) : null}
