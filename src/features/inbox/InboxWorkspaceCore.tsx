@@ -379,7 +379,7 @@ export function InboxWorkspace({
   });
 
   return (
-    <section className={styles.workspace} aria-label="Inbox Hárpia">
+    <section className={profileVisible ? styles.workspace : `${styles.workspace} ${styles.profileHidden}`} aria-label="Inbox Hárpia">
       {feedback && (
         <div className={styles.feedback} role="status">
           {feedback}
