@@ -1,5 +1,6 @@
 import { FormEvent, useEffect, useState } from 'react';
 import { useAuth } from '../../../core/auth/AuthProvider';
+import { requireSupabase } from '../../../core/supabase/client';
 import {
   getOrganizationSettings,
   mergeOrganizationPreferences,
@@ -17,6 +18,7 @@ export function CoreSettingsPage({ embedded = false }: { embedded?: boolean }) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
 
   useEffect(() => {
     getOrganizationSettings()
@@ -24,6 +26,67 @@ export function CoreSettingsPage({ embedded = false }: { embedded?: boolean }) {
       .catch((err) => setError(err instanceof Error ? err.message : 'Não foi possível carregar as configurações.'))
       .finally(() => setLoading(false));
   }, []);
+
+  async function uploadLogo(file: File) {
+    if (!canManage || !settings) return;
+    const allowed = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/svg+xml']);
+    if (!allowed.has(file.type)) {
+      setError('Use uma imagem JPG, PNG, WebP ou SVG.');
+      return;
+    }
+    if (file.size <= 0 || file.size > 5 * 1024 * 1024) {
+      setError('A logo precisa ter até 5 MB.');
+      return;
+    }
+
+    const extension = file.name.split('.').pop()?.toLowerCase().replace(/[^a-z0-9]/g, '') || 'png';
+    const path = `branding/company-logo-${Date.now()}.${extension}`;
+    const client = requireSupabase();
+
+    try {
+      setUploadingLogo(true);
+      setError(null);
+      setNotice(null);
+
+      const { error: uploadError } = await client.storage
+        .from('organization-assets')
+        .upload(path, file, { contentType: file.type, upsert: false });
+
+      if (uploadError) throw uploadError;
+
+      const { data } = client.storage.from('organization-assets').getPublicUrl(path);
+      const nextPreferences = mergeOrganizationPreferences(settings.preferences, {
+        appearance: { logoUrl: data.publicUrl },
+      });
+
+      await updateOrganizationPreferences(nextPreferences);
+      setSettings({ ...settings, preferences: nextPreferences });
+      setNotice('Logo atualizada.');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Não foi possível enviar a logo.');
+    } finally {
+      setUploadingLogo(false);
+    }
+  }
+
+  async function removeLogo() {
+    if (!canManage || !settings) return;
+    try {
+      setUploadingLogo(true);
+      setError(null);
+      setNotice(null);
+      const nextPreferences = mergeOrganizationPreferences(settings.preferences, {
+        appearance: { logoUrl: '' },
+      });
+      await updateOrganizationPreferences(nextPreferences);
+      setSettings({ ...settings, preferences: nextPreferences });
+      setNotice('Logo removida.');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Não foi possível remover a logo.');
+    } finally {
+      setUploadingLogo(false);
+    }
+  }
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -48,7 +111,7 @@ export function CoreSettingsPage({ embedded = false }: { embedded?: boolean }) {
         country: String(form.get('country') || '').trim() || 'Brasil',
       },
       appearance: {
-        logoUrl: String(form.get('logoUrl') || '').trim(),
+        logoUrl: normalizeOrganizationPreferences(settings.preferences).appearance.logoUrl,
       },
     });
 
@@ -120,7 +183,40 @@ export function CoreSettingsPage({ embedded = false }: { embedded?: boolean }) {
               <label className="field"><span>Estado</span><input name="state" maxLength={2} defaultValue={settings.state || ''} disabled={!canManage} /></label>
               <label className="field"><span>CEP</span><input name="postalCode" defaultValue={preferences.organization.postalCode} disabled={!canManage} /></label>
               <label className="field"><span>País</span><input name="country" defaultValue={preferences.organization.country} disabled={!canManage} /></label>
-              <label className="field field-wide"><span>URL da logo</span><input name="logoUrl" type="url" defaultValue={preferences.appearance.logoUrl} disabled={!canManage} placeholder="https://..." /><small className="muted">A logo pode ser substituída por upload de mídia quando o storage institucional for ativado.</small></label>
+              <div className="field field-wide">
+                <span>Logo da empresa</span>
+                {preferences.appearance.logoUrl ? (
+                  <div className="settings-logo-preview">
+                    <img src={preferences.appearance.logoUrl} alt="Logo atual da empresa" />
+                  </div>
+                ) : (
+                  <div className="settings-logo-empty">Nenhuma logo enviada.</div>
+                )}
+                {canManage ? (
+                  <div className="settings-logo-actions">
+                    <label className="button button-secondary">
+                      {uploadingLogo ? 'Enviando...' : preferences.appearance.logoUrl ? 'Substituir logo' : 'Enviar logo'}
+                      <input
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp,image/svg+xml"
+                        hidden
+                        disabled={uploadingLogo}
+                        onChange={(event) => {
+                          const file = event.target.files?.[0];
+                          event.currentTarget.value = '';
+                          if (file) void uploadLogo(file);
+                        }}
+                      />
+                    </label>
+                    {preferences.appearance.logoUrl ? (
+                      <button className="button button-ghost" type="button" disabled={uploadingLogo} onClick={() => void removeLogo()}>
+                        Remover logo
+                      </button>
+                    ) : null}
+                  </div>
+                ) : null}
+                <small className="muted">Selecione uma imagem JPG, PNG, WebP ou SVG de até 5 MB.</small>
+              </div>
             </div>
           </section>
 
