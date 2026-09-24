@@ -170,6 +170,40 @@ begin
     current_state := jsonb_set(current_state, '{history}', coalesce(current_state->'history','[]'::jsonb) || jsonb_build_array(history_entry), true);
     affected := 1;
 
+  elsif p_action_type = 'update_lead_field' then
+    requested_id := nullif(btrim(coalesce(p_config->>'fieldId','')), '');
+    if requested_id not in ('lead.name','lead.email','lead.whatsapp','lead.source','lead.notes') then
+      raise exception 'unsupported standard lead field';
+    end if;
+    if requested_id = 'lead.name' and nullif(btrim(coalesce(p_config->>'value','')), '') is null then
+      raise exception 'lead name cannot be blank';
+    end if;
+
+    if requested_id = 'lead.name' then
+      lead := jsonb_set(lead, '{name}', to_jsonb(coalesce(p_config->>'value','')), true);
+    elsif requested_id = 'lead.email' then
+      lead := jsonb_set(lead, '{email}', to_jsonb(coalesce(p_config->>'value','')), true);
+    elsif requested_id = 'lead.whatsapp' then
+      lead := jsonb_set(lead, '{whatsapp}', to_jsonb(coalesce(p_config->>'value','')), true);
+    elsif requested_id = 'lead.source' then
+      lead := jsonb_set(lead, '{source}', to_jsonb(coalesce(p_config->>'value','')), true);
+    elsif requested_id = 'lead.notes' then
+      lead := jsonb_set(lead, '{notes}', to_jsonb(coalesce(p_config->>'value','')), true);
+    end if;
+
+    lead := jsonb_set(lead, '{updatedAt}', to_jsonb(timestamp_text), true);
+    current_state := jsonb_set(current_state, array['leads', lead_index::text], lead, false);
+    history_entry := jsonb_build_object(
+      'id', 'history_' || gen_random_uuid()::text,
+      'leadId', p_lead_id,
+      'type', 'lead_updated',
+      'description', 'Campo padrão do lead alterado por automação.',
+      'metadata', jsonb_build_object('fieldId', requested_id, 'value', p_config->'value'),
+      'createdAt', timestamp_text
+    );
+    current_state := jsonb_set(current_state, '{history}', coalesce(current_state->'history','[]'::jsonb) || jsonb_build_array(history_entry), true);
+    affected := 1;
+
   elsif p_action_type = 'delete_lead' then
     select coalesce(jsonb_agg(item order by ordinality), '[]'::jsonb)
       into leads
@@ -280,7 +314,7 @@ begin
     raise exception 'unsupported extended crm automation action: %', p_action_type;
   end if;
 
-  if p_action_type in ('duplicate_lead','complete_tasks','delete_tasks','replace_tags','delete_lead') then
+  if p_action_type in ('duplicate_lead','complete_tasks','delete_tasks','replace_tags','update_lead_field','delete_lead') then
     update public.platform_module_state
     set state = current_state,
         revision = revision + 1,
