@@ -361,6 +361,43 @@ async function upsertRows(table: string, rows: Record<string, unknown>[]) {
   if (error) throw error;
 }
 
+async function mirrorLegacyCrmState(state: CrmState) {
+  const supabase = requireSupabase() as any;
+
+  const readRevision = async () => {
+    const { data, error } = await supabase
+      .from('platform_module_state')
+      .select('revision')
+      .eq('module', 'crm')
+      .single();
+    if (error) throw error;
+    return Number(data?.revision ?? 0);
+  };
+
+  let revision = await readRevision();
+  let { data, error } = await supabase.rpc('save_platform_module_state', {
+    p_module: 'crm',
+    p_state: state,
+    p_expected_revision: revision,
+  });
+  if (error) throw error;
+
+  if (data === null) {
+    revision = await readRevision();
+    const retry = await supabase.rpc('save_platform_module_state', {
+      p_module: 'crm',
+      p_state: state,
+      p_expected_revision: revision,
+    });
+    if (retry.error) throw retry.error;
+    data = retry.data;
+  }
+
+  if (data === null) {
+    throw new Error('O espelho legado do CRM mudou durante a sincronização.');
+  }
+}
+
 export class SupabaseNormalizedCrmRepository implements CrmRepository {
   private memory: CrmState;
   private base: CrmState;
@@ -496,6 +533,8 @@ export class SupabaseNormalizedCrmRepository implements CrmRepository {
         if (error) throw error;
       }
     }
+
+    await mirrorLegacyCrmState(pending);
 
     this.base = clone(pending);
     notifyCrmUpdated();
