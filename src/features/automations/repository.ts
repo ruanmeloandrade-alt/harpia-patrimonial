@@ -159,6 +159,7 @@ function pipelineActionDefinition(input: PipelineAutomationMeta): AutomationActi
 
   if (input.action === 'move_stage') return make('move_stage', { stageId: input.targetStageId ?? '' });
   if (input.action === 'salesbot') return make('start_salesbot', { botId: input.resourceId ?? '' });
+  if (input.action === 'pause_salesbot') return make('pause_salesbot', {});
   if (input.action === 'ai') return make('invoke_ai', { agentId: input.resourceId ?? '' });
   if (input.action === 'pause_ai') return make('pause_ai', { agentId: input.resourceId ?? '' });
   if (input.action === 'create_task') return make('create_task', { title: String(config.title ?? ''), dueAt: String(config.dueAt ?? '') });
