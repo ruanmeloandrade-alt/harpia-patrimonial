@@ -3,6 +3,7 @@ import {
   useMemo,
   useRef,
   useState,
+  type FormEvent,
   type MouseEvent as ReactMouseEvent,
   type PointerEvent as ReactPointerEvent,
 } from 'react';
@@ -10,7 +11,8 @@ import type { CatalogRepository } from '../catalog/catalogRepository';
 import { listProductCatalogs } from '../catalog/productCatalogRepository';
 import type { CatalogItem, ProductCatalog } from '../catalog/types';
 import type { AssigneeOption } from '../crm/CrmWorkspace';
-import type { CrmState } from '../crm/domain';
+import type { CrmState, CustomFieldType } from '../crm/domain';
+import type { CrmService } from '../crm/service';
 import { listAIAgents } from '../ai-agents/repository';
 import { useF05StorageListener } from '../automations/useF05StorageListener';
 import { SALESBOT_BLOCK_CATALOG } from './blockCatalog';
@@ -44,6 +46,7 @@ interface OutputDescriptor {
 interface SalesBotWorkspaceProps {
   canManage?: boolean;
   crmState?: CrmState | null;
+  crmService?: CrmService | null;
   assignees?: AssigneeOption[];
   catalogRepository?: CatalogRepository;
 }
@@ -233,6 +236,7 @@ function InlineEditor({
   block,
   botId,
   crmState,
+  crmService,
   assignees,
   catalogs,
   catalogItems,
@@ -243,6 +247,7 @@ function InlineEditor({
   block: SalesBotBlock;
   botId: string;
   crmState: CrmState | null;
+  crmService?: CrmService | null;
   assignees: AssigneeOption[];
   catalogs: ProductCatalog[];
   catalogItems: CatalogItem[];
@@ -267,6 +272,58 @@ function InlineEditor({
 
   const textValue = (key: string) => String(block.config[key] ?? '');
   const select = (key: string, value: string) => patch({ [key]: value });
+
+  const createTagFromBuilder = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!crmService) {
+      onError('O CRM ainda não está disponível para criar a tag.');
+      return;
+    }
+    const formElement = event.currentTarget;
+    const data = new FormData(formElement);
+    const name = String(data.get('tagName') ?? '').trim();
+    if (!name) return;
+
+    try {
+      const tag = crmService.createTag(name);
+      await crmService.waitForPersistence();
+      formElement.reset();
+      patch({ tagId: tag.id });
+      onError('');
+    } catch (error) {
+      onError(errorMessage(error, 'Não foi possível criar a tag.'));
+    }
+  };
+
+  const createFieldFromBuilder = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!crmService) {
+      onError('O CRM ainda não está disponível para criar o campo personalizado.');
+      return;
+    }
+    const formElement = event.currentTarget;
+    const data = new FormData(formElement);
+    const name = String(data.get('fieldName') ?? '').trim();
+    const type = String(data.get('fieldType') ?? 'text') as CustomFieldType;
+    const options = String(data.get('fieldOptions') ?? '')
+      .split(',')
+      .map((item) => item.trim())
+      .filter(Boolean);
+
+    try {
+      const created = crmService.createCustomField({
+        name,
+        type,
+        options: type === 'select' || type === 'multiselect' ? options : undefined,
+      });
+      await crmService.waitForPersistence();
+      formElement.reset();
+      patch({ fieldId: created.id, fieldValue: '' });
+      onError('');
+    } catch (error) {
+      onError(errorMessage(error, 'Não foi possível criar o campo personalizado.'));
+    }
+  };
 
   if (block.type === 'trigger') {
     return <div className="sb-inline-note">Bloco inicial fixo. Ele marca o início do fluxo e não pode ser excluído.</div>;
@@ -388,6 +445,7 @@ function InlineEditor({
     const field = (label: string, key: string, placeholder: string) => <label>{label}<input defaultValue={textValue(key)} placeholder={placeholder} onBlur={(event) => { if (event.currentTarget.value !== textValue(key)) patch({ [key]: event.currentTarget.value }); }}/></label>;
     const productsMode = textValue('productMode') || 'catalog';
     const selectedCatalog = textValue('catalogId');
+    const selectedFieldDefinition = crmState?.customFieldDefinitions.find((item) => item.id === textValue('fieldId'));
     const availableProducts = catalogItems.filter((item) => item.itemType === 'product' && !item.deletedAt && (productsMode === 'standalone' ? item.catalogId === null : item.catalogId === selectedCatalog));
     return <div className="sb-action-editor">
       <label>Ação
@@ -407,18 +465,75 @@ function InlineEditor({
         </select>
       </label> : null}
       {actionType === 'send_email' ? <div className="sb-inline-note"><b>Segunda fase.</b> A configuração de e-mail fica preservada, mas o envio só será ativado na fase de Marketing.</div> : null}
-      {actionType === 'update_field' ? <div className="sb-inline-grid sb-inline-grid--2"><label>Campo
-        <select value={textValue('fieldId')} onChange={(event) => patch({ fieldId: event.target.value })}>
-          <option value="">Selecione o campo</option>
-          {(crmState?.customFieldDefinitions ?? []).filter((item) => item.active).map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
-        </select>
-      </label>{field('Valor', 'fieldValue', 'Novo valor')}</div> : null}
-      {actionType === 'set_tag' ? <label>Tag
-        <select value={textValue('tagId')} onChange={(event) => patch({ tagId: event.target.value })}>
-          <option value="">Selecione a tag</option>
-          {(crmState?.tags ?? []).map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
-        </select>
-      </label> : null}
+      {actionType === 'update_field' ? <div className="sb-inline-grid">
+        <div className="sb-inline-grid sb-inline-grid--2">
+          <label>Campo
+            <select value={textValue('fieldId')} onChange={(event) => patch({ fieldId: event.target.value, fieldValue: '' })}>
+              <option value="">Selecione o campo</option>
+              {(crmState?.customFieldDefinitions ?? []).filter((item) => item.active).map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
+            </select>
+          </label>
+          <label>Valor
+            {selectedFieldDefinition?.type === 'boolean' ? (
+              <select value={textValue('fieldValue')} onChange={(event) => patch({ fieldValue: event.target.value })}>
+                <option value="">Selecione</option>
+                <option value="true">Sim</option>
+                <option value="false">Não</option>
+              </select>
+            ) : selectedFieldDefinition?.type === 'select' ? (
+              <select value={textValue('fieldValue')} onChange={(event) => patch({ fieldValue: event.target.value })}>
+                <option value="">Selecione</option>
+                {(selectedFieldDefinition.options ?? []).map((option) => <option key={option} value={option}>{option}</option>)}
+              </select>
+            ) : (
+              <input
+                type={selectedFieldDefinition?.type === 'number' || selectedFieldDefinition?.type === 'currency'
+                  ? 'number'
+                  : selectedFieldDefinition?.type === 'date'
+                    ? 'date'
+                    : selectedFieldDefinition?.type === 'datetime'
+                      ? 'datetime-local'
+                      : 'text'}
+                step={selectedFieldDefinition?.type === 'currency' ? '0.01' : undefined}
+                defaultValue={textValue('fieldValue')}
+                placeholder={selectedFieldDefinition?.type === 'multiselect' ? 'Opções separadas por vírgula' : 'Novo valor'}
+                onBlur={(event) => {
+                  if (event.currentTarget.value !== textValue('fieldValue')) patch({ fieldValue: event.currentTarget.value });
+                }}
+              />
+            )}
+          </label>
+        </div>
+        <form className="sb-inline-creator" onSubmit={createFieldFromBuilder}>
+          <strong>Criar campo personalizado aqui</strong>
+          <input name="fieldName" required placeholder="Nome do campo" />
+          <select name="fieldType" defaultValue="text">
+            <option value="text">Texto</option>
+            <option value="number">Número</option>
+            <option value="currency">Valor</option>
+            <option value="date">Data</option>
+            <option value="datetime">Data e hora</option>
+            <option value="boolean">Sim/Não</option>
+            <option value="select">Lista, uma opção</option>
+            <option value="multiselect">Lista, múltiplas opções</option>
+          </select>
+          <input name="fieldOptions" placeholder="Opções separadas por vírgula, se for lista" />
+          <button type="submit" className="secondary">+ Criar e usar este campo</button>
+        </form>
+      </div> : null}
+      {actionType === 'set_tag' ? <div className="sb-inline-grid">
+        <label>Tag
+          <select value={textValue('tagId')} onChange={(event) => patch({ tagId: event.target.value })}>
+            <option value="">Selecione a tag</option>
+            {(crmState?.tags ?? []).map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
+          </select>
+        </label>
+        <form className="sb-inline-creator sb-inline-creator--compact" onSubmit={createTagFromBuilder}>
+          <strong>Criar nova tag aqui</strong>
+          <input name="tagName" required placeholder="Nome da nova tag" />
+          <button type="submit" className="secondary">+ Criar e usar esta tag</button>
+        </form>
+      </div> : null}
       {actionType === 'complete_task' ? <label>Tarefa
         <select value={textValue('taskId')} onChange={(event) => patch({ taskId: event.target.value })}>
           <option value="">Selecione a tarefa</option>
@@ -553,6 +668,7 @@ function CanvasConnections({
 export function SalesBotWorkspace({
   canManage = false,
   crmState = null,
+  crmService = null,
   assignees = [],
   catalogRepository,
 }: SalesBotWorkspaceProps) {
@@ -578,6 +694,7 @@ export function SalesBotWorkspace({
   const [, setHistoryRevision] = useState(0);
 
   const selected = useMemo(() => bots.find((bot) => bot.id === selectedId) ?? null, [bots,selectedId]);
+  const liveCrmState = crmService?.snapshot() ?? crmState;
   const selectedBlockId = selectedBlockIds.size === 1 ? [...selectedBlockIds][0] : null;
   const positions = useMemo(() => {
     const map = new Map<string,{x:number;y:number}>();
@@ -1023,7 +1140,7 @@ export function SalesBotWorkspace({
                   <div><span className="sb-node-index">{isStart?'▶':index}</span><div><strong>{isStart?'Iniciar SalesBot':block.label}</strong><small>{blockSummary(block)}</small></div></div>
                   {isStart?<span className="sb-start-lock">PADRÃO</span>:canManage?<button type="button" className="icon danger" onClick={(event)=>{event.stopPropagation();deleteBlocks(new Set([block.id]));}}>×</button>:null}
                 </div>
-                {expanded?<div className="sb-free-node__config"><InlineEditor block={block} botId={selected.id} crmState={crmState} assignees={assignees} catalogs={catalogs} catalogItems={catalogItems} beforeChange={pushHistory} afterChange={()=>refresh(selected.id)} onError={setError}/></div>:null}
+                {expanded?<div className="sb-free-node__config"><InlineEditor block={block} botId={selected.id} crmState={liveCrmState} crmService={crmService} assignees={assignees} catalogs={catalogs} catalogItems={catalogItems} beforeChange={pushHistory} afterChange={()=>refresh(selected.id)} onError={setError}/></div>:null}
                 {outputs.length?<div className="sb-free-node__outputs">{outputs.map((output)=>{
                   const targetId=outputTarget(block,output.branch);
                   const target=selected.blocks.find((item)=>item.id===targetId);
