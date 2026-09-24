@@ -308,7 +308,7 @@ export function PlatformRuntimeProvider({ children }: PropsWithChildren) {
                 const fieldId = String(config.fieldId ?? '');
                 const definition = crm.snapshot().customFieldDefinitions.find((item) => item.id === fieldId);
                 let value: string | number | boolean | string[] | null = String(config.fieldValue ?? '');
-                if (definition?.type === 'number') {
+                if (definition?.type === 'number' || definition?.type === 'currency') {
                   const numeric = Number(value);
                   if (!Number.isFinite(numeric)) return rejected('Valor numérico inválido.');
                   value = numeric;
