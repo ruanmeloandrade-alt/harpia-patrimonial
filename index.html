@@ -47,11 +47,15 @@
   const money=v=>new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL',maximumFractionDigits:0}).format(Number(v||0));
   const esc=v=>String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
   const final=p=>{const base=Number(p.price||0),d=Number(p.discountValue||0);if(!p.discountType)return base;if(p.discountType==='percentage')return Math.max(0,base*(1-d/100));return Math.max(0,base-d)};
-  root.innerHTML=visible.map(p=>{const img=(p.images||[])[0];const f=final(p);return '<article class="card">'+
-    '<div class="photo" '+(img?'style="background-image:url(\''+esc(img)+'\')"':'')+'><span class="badge">PRODUTO</span></div>'+
+  root.innerHTML=visible.map(p=>{const img=(p.images||[])[0],imgKey=(p.imageKeys||[])[0];const f=final(p);return '<article class="card">'+
+    '<div class="photo" data-product-media-key="'+esc(imgKey||'')+'" '+(img?'style="background-image:url(\''+esc(img)+'\')"':'')+'><span class="badge">PRODUTO</span></div>'+
     '<div class="card-body"><div class="loc">'+esc((p.tags||[]).slice(0,2).join(' · ')||'Hárpia')+'</div><h3>'+esc(p.name)+'</h3>'+
     (p.description?'<div class="meta"><span>'+esc(p.description.slice(0,110))+(p.description.length>110?'...':'')+'</span></div>':'')+
-    '<div class="price-row"><span class="price">'+money(f)+'</span><span class="view">'+((p.videos||[]).length?'Foto e vídeo':'Ver produto')+' →</span></div></div></article>'}).join('');
+    '<div class="price-row"><span class="price">'+money(f)+'</span><span class="view">'+(((p.videos||[]).length||(p.videoKeys||[]).length)?'Foto e vídeo':'Ver produto')+' →</span></div></div></article>'}).join('');
+
+  function openMediaDb(){return new Promise((resolve,reject)=>{const req=indexedDB.open('harpia_product_media',1);req.onupgradeneeded=()=>{const db=req.result;if(!db.objectStoreNames.contains('files'))db.createObjectStore('files')};req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error)})}
+  async function getMedia(key){const db=await openMediaDb();const blob=await new Promise((resolve,reject)=>{const tx=db.transaction('files','readonly');const req=tx.objectStore('files').get(key);req.onsuccess=()=>resolve(req.result||null);req.onerror=()=>reject(req.error)});db.close();return blob}
+  Array.from(root.querySelectorAll('[data-product-media-key]')).forEach(async node=>{const key=node.dataset.productMediaKey;if(!key||node.style.backgroundImage)return;const blob=await getMedia(key).catch(()=>null);if(blob)node.style.backgroundImage='url("'+URL.createObjectURL(blob)+'")'});
 })();
 </script>
 </body>
