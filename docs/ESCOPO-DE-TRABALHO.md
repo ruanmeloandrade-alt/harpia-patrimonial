@@ -507,6 +507,19 @@ Preparar suporte para:
 
 Construir interface e lógica interna necessárias. Conexão real de WhatsApp fica para a etapa final.
 
+## 14.6. Pendências operacionais do WhatsApp
+
+Registrar para correção posterior, sem atuar agora:
+
+- envio de mensagem de texto está funcional, porém com latência acima do aceitável;
+- reduzir o tempo de envio para uma experiência praticamente instantânea no uso manual da Inbox;
+- medir e eliminar esperas desnecessárias entre clique em Enviar, passagem pelo backend, conector e confirmação do WhatsApp;
+- envio de áudio ainda não está funcional de ponta a ponta;
+- o sistema atualmente pode indicar áudio como enviado sem que o cliente efetivamente receba;
+- corrigir o fluxo de áudio para que gravação, upload, transporte, entrega e confirmação sejam reais;
+- não marcar áudio como enviado antes de existir confirmação válida do transporte;
+- validar texto e áudio em teste real com cliente antes de considerar o WhatsApp concluído.
+
 ---
 
 # 15. Usuários, funções e permissões
