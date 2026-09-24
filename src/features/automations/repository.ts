@@ -1,6 +1,6 @@
 import { listAIAgents } from '../ai-agents/repository';
 import { listSalesBots } from '../salesbot/repository';
-import { createF05Id, readStoredList, writeStoredList } from './f05Storage';
+import { createF05Id, readStoredList, writeStoredList, writeStoredListConfirmed } from './f05Storage';
 import type {
   AutomationAction,
   AutomationDefinition,
@@ -327,6 +327,34 @@ export function createPipelineAutomation(input: {
   return item;
 }
 
+export async function createPipelineAutomationConfirmed(input: {
+  pipelineId: string;
+  event: PipelineTriggerEvent;
+  stageId?: string;
+  value?: string;
+  action: PipelineTriggerAction;
+  targetStageId?: string;
+  resourceId?: string;
+  actionConfig?: Record<string, string | number | boolean | null>;
+}): Promise<AutomationDefinition> {
+  const normalized: PipelineAutomationMeta = {
+    pipelineId: input.pipelineId,
+    event: input.event,
+    stageId: input.stageId?.trim() || undefined,
+    value: input.value?.trim() || undefined,
+    action: input.action,
+    targetStageId: input.targetStageId?.trim() || undefined,
+    resourceId: input.resourceId?.trim() || undefined,
+    actionConfig: { ...(input.actionConfig ?? {}) },
+  };
+
+  validatePipelineAutomationMeta(normalized);
+
+  const item = pipelineTriggerDefinition(normalized);
+  await writeStoredListConfirmed(STORAGE_KEY, [item, ...listAutomations()]);
+  return item;
+}
+
 export function deletePipelineAutomation(id: string): void {
   const items = listAutomations();
   const current = items.find((item) => item.id === id);
@@ -370,6 +398,45 @@ export function updatePipelineAutomation(id: string, input: {
     updatedAt: now(),
   };
   writeStoredList(STORAGE_KEY, items.map((item) => item.id === id ? updated : item));
+  return updated;
+}
+
+export async function updatePipelineAutomationConfirmed(id: string, input: {
+  pipelineId: string;
+  event: PipelineTriggerEvent;
+  stageId?: string;
+  value?: string;
+  action: PipelineTriggerAction;
+  targetStageId?: string;
+  resourceId?: string;
+  actionConfig?: Record<string, string | number | boolean | null>;
+}): Promise<AutomationDefinition> {
+  const items = listAutomations();
+  const current = items.find((item) => item.id === id);
+  if (!current || current.origin !== 'pipeline') throw new Error('Gatilho não encontrado.');
+
+  const normalized: PipelineAutomationMeta = {
+    pipelineId: input.pipelineId,
+    event: input.event,
+    stageId: input.stageId?.trim() || undefined,
+    value: input.value?.trim() || undefined,
+    action: input.action,
+    targetStageId: input.targetStageId?.trim() || undefined,
+    resourceId: input.resourceId?.trim() || undefined,
+    actionConfig: { ...(input.actionConfig ?? {}) },
+  };
+
+  validatePipelineAutomationMeta(normalized);
+
+  const rebuilt = pipelineTriggerDefinition(normalized);
+  const updated: AutomationDefinition = {
+    ...rebuilt,
+    id: current.id,
+    createdAt: current.createdAt,
+    status: current.status,
+    updatedAt: now(),
+  };
+  await writeStoredListConfirmed(STORAGE_KEY, items.map((item) => item.id === id ? updated : item));
   return updated;
 }
 
