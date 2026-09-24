@@ -111,16 +111,7 @@ export function AppRouter() {
     } else if (pathname === '/interno/configuracoes') {
       page = <IntegratedSettings />;
       permission = undefined;
-      permissions = [
-        PERMISSIONS.SETTINGS_VIEW,
-        PERMISSIONS.SETTINGS_MANAGE,
-        PERMISSIONS.USERS_VIEW,
-        PERMISSIONS.USERS_MANAGE,
-        PERMISSIONS.ROLES_VIEW,
-        PERMISSIONS.ROLES_MANAGE,
-        PERMISSIONS.INTEGRATIONS_VIEW,
-        PERMISSIONS.INTEGRATIONS_MANAGE,
-      ];
+      permissions = undefined;
     } else if (pathname !== '/interno') {
       return <FullPageState title="Página não encontrada" actionHref="/interno" actionLabel="Voltar ao painel" />;
     }
