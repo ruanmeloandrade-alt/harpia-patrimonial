@@ -95,4 +95,8 @@ alter table public.catalog_items
   alter column item_type drop default;
 
 alter table public.catalog_items
-  alter column catalog_id set not null;
+  alter column catalog_id drop not null;
+
+create index if not exists catalog_items_standalone_idx
+  on public.catalog_items (created_at desc)
+  where deleted_at is null and catalog_id is null;
