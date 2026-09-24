@@ -1,3 +1,4 @@
+# Preserva a homepage estática original e atualiza somente a área interna.
 name: Deploy internal Hárpia preserving homepage
 
 on:
