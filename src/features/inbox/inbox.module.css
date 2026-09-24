@@ -191,19 +191,65 @@
   background: #f4f1eb;
 }
 
-.chatHeader > div {
+.chatHeader > div:first-child {
   display: grid;
   gap: 3px;
 }
 
+.chatStatusStack {
+  display: flex !important;
+  align-items: flex-end;
+  gap: 6px !important;
+}
+
+.interactionBadge,
 .transportBadge {
   padding: 7px 9px;
   border: 1px solid #d1cabf;
   border-radius: 999px;
+  font-size: 10px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.interactionBadge {
+  background: #eaf0df;
+  border-color: #d3dcba;
+  color: #405536;
+}
+
+.transportBadge {
   background: #f7f4ee;
   color: #6c756f;
-  font-size: 10px;
-  font-weight: 700;
+}
+
+.quickActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  padding: 9px 16px;
+  border-bottom: 1px solid #ded8ce;
+  background: rgba(255,255,255,.58);
+}
+
+.quickActions button {
+  min-height: 32px;
+  padding: 6px 10px;
+  border: 1px solid #d3cdc2;
+  border-radius: 9px;
+  background: white;
+  color: #33413b;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.quickActions button:first-child,
+.quickActions button:nth-child(2) {
+  border-color: #bfcaa0;
+  background: #eef3df;
+  color: #31472d;
 }
 
 .messageArea {
