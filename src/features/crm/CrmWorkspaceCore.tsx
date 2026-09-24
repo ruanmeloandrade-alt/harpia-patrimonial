@@ -15,6 +15,7 @@ import {
 } from './domain';
 import { BrowserCrmRepository } from './repository';
 import { CrmIntegrityError, CrmService } from './service';
+import { AppLink } from '../../core/router/router';
 import styles from './crm.module.css';
 
 export interface AssigneeOption {
@@ -80,6 +81,9 @@ export function CrmWorkspace({ service: injectedService, assignees = [] }: CrmWo
   const selectedPipeline = state.pipelines.find((pipeline) => pipeline.id === selectedPipelineId);
   const stages = selectedPipeline ? service.getStages(selectedPipeline.id) : [];
   const selectedLead = state.leads.find((lead) => lead.id === selectedLeadId);
+  const selectedPipelineLeads = selectedPipeline
+    ? state.leads.filter((lead) => lead.pipelineId === selectedPipeline.id)
+    : [];
 
   const handleCreatePipeline = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -151,6 +155,19 @@ export function CrmWorkspace({ service: injectedService, assignees = [] }: CrmWo
     const name = window.prompt('Novo nome do funil', selectedPipeline.name);
     if (name === null) return;
     run(() => service.renamePipeline(selectedPipeline.id, name), 'Funil renomeado.');
+  };
+
+  const duplicatePipeline = () => {
+    if (!selectedPipeline) return;
+    try {
+      const copy = service.createPipeline(`Cópia de ${selectedPipeline.name}`);
+      stages.forEach((stage) => service.createStage(copy.id, stage.name));
+      setSelectedPipelineId(copy.id);
+      setSelectedLeadId(undefined);
+      refresh('Funil duplicado com a mesma estrutura de etapas. Leads não foram copiados.');
+    } catch (error) {
+      setFeedback(error instanceof Error ? error.message : 'Não foi possível duplicar o funil.');
+    }
   };
 
   const renameStage = (stage: PipelineStage) => {
@@ -226,11 +243,21 @@ export function CrmWorkspace({ service: injectedService, assignees = [] }: CrmWo
       {selectedPipeline ? (
         <>
           <div className={styles.toolbar}>
-            <div>
-              <strong>{selectedPipeline.name}</strong>
-              <span>{selectedPipeline.active ? 'Ativo' : 'Desativado'}</span>
+            <div className={styles.toolbarTitle}>
+              <div>
+                <strong>{selectedPipeline.name}</strong>
+                <span className={selectedPipeline.active ? styles.statusActive : styles.statusPaused}>
+                  {selectedPipeline.active ? 'Ativo' : 'Desativado'}
+                </span>
+              </div>
+              <div className={styles.pipelineSummary} aria-label="Resumo do funil">
+                <span><strong>{stages.length}</strong> etapas</span>
+                <span><strong>{selectedPipelineLeads.length}</strong> leads</span>
+              </div>
             </div>
             <div className={styles.toolbarActions}>
+              <AppLink className={styles.automateLink} href="/interno/automatize">Automatize</AppLink>
+              <button type="button" onClick={duplicatePipeline}>Duplicar funil</button>
               <button type="button" onClick={renamePipeline}>Renomear</button>
               <button
                 type="button"
