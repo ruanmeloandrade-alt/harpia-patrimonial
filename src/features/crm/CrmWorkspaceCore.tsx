@@ -932,9 +932,18 @@ export function CrmWorkspace({
                     Campo
                     <select value={triggerActionConfig.fieldId ?? ''} onChange={(event) => setTriggerConfig('fieldId', event.target.value)} required>
                       <option value="">Selecione o campo</option>
+                      <optgroup label="Campos padrão">
+                        <option value="lead.name">Nome</option>
+                        <option value="lead.email">E-mail</option>
+                        <option value="lead.whatsapp">WhatsApp</option>
+                        <option value="lead.source">Origem</option>
+                        <option value="lead.notes">Observações</option>
+                      </optgroup>
+                      <optgroup label="Campos personalizados">
                       {state.customFieldDefinitions.filter((field) => field.active).map((field) => (
                         <option key={field.id} value={field.id}>{field.name}</option>
                       ))}
+                      </optgroup>
                     </select>
                   </label>
                   <label>
