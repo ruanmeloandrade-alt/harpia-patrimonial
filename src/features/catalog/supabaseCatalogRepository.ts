@@ -90,7 +90,7 @@ function fromRow(row: CatalogRow): CatalogItem {
     id: row.id,
     code: row.code,
     name: row.name,
-    catalogId: row.catalog_id ?? '',
+    catalogId: row.catalog_id ?? null,
     itemType: row.item_type ?? 'product',
     kind: row.kind,
     parentId: row.parent_id ?? undefined,
@@ -125,7 +125,7 @@ function draftPayload(input: CatalogItemDraft) {
   return {
     code: input.code.trim(),
     name: input.name.trim(),
-    catalog_id: input.catalogId,
+    catalog_id: input.catalogId ?? null,
     item_type: null,
     kind: input.itemType === 'property' ? input.kind : 'standalone',
     parent_id: input.itemType === 'property' && input.kind === 'unit' ? input.parentId ?? null : null,
@@ -149,8 +149,7 @@ function draftPayload(input: CatalogItemDraft) {
 }
 
 function validateDraft(input: CatalogItemDraft) {
-  if (!input.catalogId.trim()) throw new Error('Selecione o catálogo do produto.');
-  if (!input.code.trim()) throw new Error('Informe um código para o item.');
+   if (!input.code.trim()) throw new Error('Informe um código para o item.');
   if (!input.name.trim()) throw new Error('Informe um nome para o item.');
   if (input.itemType === 'property' && !input.location.city.trim()) throw new Error('Informe a cidade do imóvel.');
   if (input.price !== null && input.price < 0) throw new Error('O preço não pode ser negativo.');
@@ -211,7 +210,8 @@ export class SupabaseCatalogRepository implements CatalogRepository {
     if (query.status) builder = builder.eq('status', query.status);
     if (query.kind) builder = builder.eq('kind', query.kind);
     if (query.itemType) builder = builder.eq('item_type', query.itemType);
-    if (query.catalogId) builder = builder.eq('catalog_id', query.catalogId);
+    if (query.catalogId === null) builder = builder.is('catalog_id', null);
+    else if (query.catalogId) builder = builder.eq('catalog_id', query.catalogId);
     const result = await builder as SupabaseResultLike<CatalogRow[]>;
 
     if (result.error) fail(result.error, 'Não foi possível carregar o catálogo.');
