@@ -210,7 +210,7 @@ export function LeadProductsPanel({
                     <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'flex-start' }}>
                       <div>
                         <strong>{item?.name ?? association.catalogItemId}</strong>
-                        <div><small>{item ? (catalogNameById.get(item.catalogId) || 'Catálogo indisponível') : 'Item do catálogo'} · Qtd. {association.quantity}</small></div>
+                        <div><small>{item ? (item.catalogId ? (catalogNameById.get(item.catalogId) || 'Catálogo indisponível') : 'Produto avulso') : 'Item do catálogo'} · Qtd. {association.quantity}</small></div>
                         {item?.tags?.length ? <div className={styles.tagManager}>{item.tags.map((tag) => <span key={tag}>{tag}</span>)}</div> : null}
                       </div>
                       <div style={{ textAlign: 'right' }}>
@@ -254,7 +254,7 @@ export function LeadProductsPanel({
                 <option value="">Selecionar produto</option>
                 {availableItems.map((item) => (
                   <option key={item.id} value={item.id}>
-                    {catalogNameById.get(item.catalogId) || 'Catálogo'} | {item.name} | {money(finalPrice(item.price, item.discountType, item.discountValue))}
+                    {item.catalogId ? (catalogNameById.get(item.catalogId) || 'Catálogo') : 'Produto avulso'} | {item.name} | {money(finalPrice(item.price, item.discountType, item.discountValue))}
                   </option>
                 ))}
               </select>
