@@ -1,4 +1,4 @@
-import { createContext, PropsWithChildren, useContext, useEffect, useMemo, useState } from 'react';
+import { createContext, PropsWithChildren, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { useAuth } from '../core/auth/AuthProvider';
 import { PERMISSIONS } from '../core/auth/permissions';
 import { isSupabaseConfigured, supabase } from '../core/supabase/client';
@@ -22,6 +22,8 @@ import {
 } from '../features/dashboard/crmMetricsAdapter';
 import type { CommercialMetricsProvider } from '../features/dashboard/dashboardService';
 import { InboxService } from '../features/inbox/service';
+import { listSalesBotExecutions } from '../features/salesbot/executionRepository';
+import type { SalesBotCommandPort } from '../features/automations/contracts';
 import {
   createAIAgentCommandPort,
   createSalesBotCommandPort,
@@ -101,6 +103,7 @@ export function PlatformRuntimeProvider({ children }: PropsWithChildren) {
   const [f05Loading, setF05Loading] = useState(false);
   const [f05Error, setF05Error] = useState('');
   const [f05Revision, setF05Revision] = useState(0);
+  const salesBotCommandRef = useRef<SalesBotCommandPort | null>(null);
 
   const canUseInbox = auth.isInternalUser && (
     auth.hasPermission(PERMISSIONS.INBOX_VIEW)
@@ -383,6 +386,7 @@ export function PlatformRuntimeProvider({ children }: PropsWithChildren) {
           webhook: automationWebhook,
           action: salesBotActionPort,
         });
+        salesBotCommandRef.current = salesBotCommandPort;
         const automationDependencies = {
           ...unconfiguredAutomationEngineDependencies,
           salesbot: salesBotCommandPort,
@@ -433,6 +437,7 @@ export function PlatformRuntimeProvider({ children }: PropsWithChildren) {
       setCrmService(null);
       setInboxService(null);
       setInboxAutomationPort(null);
+      salesBotCommandRef.current = null;
       setCommercialMetricsProvider(null);
       setAssignees([]);
       setOperationalLoading(false);
@@ -497,7 +502,38 @@ export function PlatformRuntimeProvider({ children }: PropsWithChildren) {
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'inbox_messages' },
-        () => { void installOperationalRuntime(false); },
+        (payload: { eventType?: string; new?: Record<string, unknown> }) => {
+          const row = payload.new ?? {};
+          if (payload.eventType === 'INSERT' && row.direction === 'inbound') {
+            const conversationId = String(row.conversation_id ?? '');
+            const message = String(row.text_content ?? '');
+            const formPayload = row.form_payload && typeof row.form_payload === 'object' && !Array.isArray(row.form_payload)
+              ? row.form_payload as Record<string, unknown>
+              : {};
+            const port = salesBotCommandRef.current;
+            if (port && conversationId) {
+              const paused = listSalesBotExecutions().filter((execution) =>
+                execution.status === 'paused' && execution.conversationId === conversationId
+              );
+              paused.forEach((execution) => {
+                void port.resume({
+                  executionId: execution.id,
+                  context: {
+                    message,
+                    text: message,
+                    salesBotEvent: 'message_received',
+                    ...(formPayload.buttonId ? { buttonId: formPayload.buttonId } : {}),
+                    inbound: {
+                      text: message,
+                      ...formPayload,
+                    },
+                  },
+                });
+              });
+            }
+          }
+          void installOperationalRuntime(false);
+        },
       )
       .on(
         'postgres_changes',
