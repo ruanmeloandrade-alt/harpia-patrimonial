@@ -23,7 +23,9 @@ import {
   createPipelineAutomation,
   deletePipelineAutomation,
   deletePipelineAutomationsForPipeline,
+  deletePipelineAutomationsForStage,
   listPipelineAutomations,
+  updatePipelineAutomation,
 } from '../automations/repository';
 import type { PipelineTriggerAction, PipelineTriggerEvent } from '../automations/types';
 import { useF05StorageListener } from '../automations/useF05StorageListener';
@@ -79,9 +81,12 @@ export function CrmWorkspace({
   const [pipelineModalOpen, setPipelineModalOpen] = useState(false);
   const [leadModalOpen, setLeadModalOpen] = useState(false);
   const [automationRevision, setAutomationRevision] = useState(0);
-  const [triggerEvent, setTriggerEvent] = useState<PipelineTriggerEvent>('enter');
-  const [triggerStageId, setTriggerStageId] = useState('');
+  const [triggerModalStageId, setTriggerModalStageId] = useState('');
+  const [editingTriggerId, setEditingTriggerId] = useState('');
+  const [triggerEvent, setTriggerEvent] = useState<PipelineTriggerEvent>('created_or_moved');
   const [triggerValue, setTriggerValue] = useState('');
+  const [triggerDurationAmount, setTriggerDurationAmount] = useState('30');
+  const [triggerDurationUnit, setTriggerDurationUnit] = useState<'m' | 'h' | 'd'>('m');
   const [triggerAction, setTriggerAction] = useState<PipelineTriggerAction>('move_stage');
   const [triggerResourceId, setTriggerResourceId] = useState('');
   const [triggerTargetStageId, setTriggerTargetStageId] = useState('');
@@ -149,27 +154,54 @@ export function CrmWorkspace({
     }
   };
 
+  const openTriggerModal = (stageId: string, triggerId?: string) => {
+    const current = triggerId ? pipelineTriggers.find((item) => item.id === triggerId) : undefined;
+    const meta = current?.pipeline;
+
+    setTriggerModalStageId(stageId);
+    setEditingTriggerId(current?.id ?? '');
+    setTriggerEvent(meta?.event ?? 'created_or_moved');
+    setTriggerAction(meta?.action ?? 'move_stage');
+    setTriggerResourceId(meta?.resourceId ?? '');
+    setTriggerTargetStageId(meta?.targetStageId ?? '');
+    setTriggerValue(meta?.event === 'time' ? '' : meta?.value ?? '');
+
+    const duration = meta?.event === 'time' ? String(meta.value ?? '30m').match(/^(\d+)\s*([mhd])/i) : null;
+    setTriggerDurationAmount(duration?.[1] ?? '30');
+    setTriggerDurationUnit((duration?.[2]?.toLowerCase() as 'm' | 'h' | 'd') ?? 'm');
+  };
+
+  const closeTriggerModal = () => {
+    setTriggerModalStageId('');
+    setEditingTriggerId('');
+  };
+
   const handleAddTrigger = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!selectedPipeline || !canManage) return;
+    if (!selectedPipeline || !canManage || !triggerModalStageId) return;
+
+    const value = triggerEvent === 'time'
+      ? `${Math.max(1, Number(triggerDurationAmount) || 1)}${triggerDurationUnit}`
+      : triggerValue;
+
+    const input = {
+      pipelineId: selectedPipeline.id,
+      event: triggerEvent,
+      stageId: triggerModalStageId,
+      value,
+      action: triggerAction,
+      targetStageId: triggerTargetStageId,
+      resourceId: triggerResourceId,
+    };
 
     try {
-      createPipelineAutomation({
-        pipelineId: selectedPipeline.id,
-        event: triggerEvent,
-        stageId: triggerStageId || stages[0]?.id,
-        value: triggerValue,
-        action: triggerAction,
-        targetStageId: triggerTargetStageId,
-        resourceId: triggerResourceId,
-      });
-      setTriggerValue('');
-      setTriggerResourceId('');
-      setTriggerTargetStageId('');
+      if (editingTriggerId) updatePipelineAutomation(editingTriggerId, input);
+      else createPipelineAutomation(input);
       setAutomationRevision((value) => value + 1);
-      setFeedback('Gatilho adicionado ao funil.');
+      setFeedback(editingTriggerId ? 'Gatilho atualizado.' : 'Gatilho adicionado à etapa.');
+      closeTriggerModal();
     } catch (error) {
-      setFeedback(error instanceof Error ? error.message : 'Não foi possível adicionar o gatilho.');
+      setFeedback(error instanceof Error ? error.message : 'Não foi possível salvar o gatilho.');
     }
   };
 
@@ -275,7 +307,14 @@ export function CrmWorkspace({
       `Remover a etapa “${stage.name}”? A exclusão só será permitida se não houver leads nela.`,
     );
     if (!confirmed) return;
-    run(() => service.removeStage(stage.id), 'Etapa removida.');
+    try {
+      service.removeStage(stage.id);
+      deletePipelineAutomationsForStage(stage.id);
+      setAutomationRevision((value) => value + 1);
+      refresh('Etapa removida.');
+    } catch (error) {
+      setFeedback(error instanceof Error ? error.message : 'Não foi possível remover a etapa.');
+    }
   };
 
   const handleDrop = (event: ReactDragEvent<HTMLDivElement>, stageId: CrmId) => {
