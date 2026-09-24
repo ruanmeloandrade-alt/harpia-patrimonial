@@ -66,5 +66,8 @@ export async function updateUserPreferences(userId: string, patch: Partial<UserP
     .upsert({ user_id: userId, ...next, updated_at: new Date().toISOString() }, { onConflict: 'user_id' });
   if (error) throw error;
   applyUserAppearance(next);
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('harpia:user-preferences-updated', { detail: next }));
+  }
   return next;
 }
