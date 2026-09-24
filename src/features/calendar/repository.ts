@@ -13,6 +13,7 @@ export interface CalendarItem {
   endAt: string;
   allDay: boolean;
   assigneeId?: string;
+  assigneeLabel?: string;
   leadId?: string;
   guestEmails: string[];
   location?: string;
@@ -36,6 +37,7 @@ export interface CalendarItemInput {
   startAt: string;
   endAt: string;
   assigneeId?: string;
+  assigneeLabel?: string;
   guestEmails?: string[];
   location?: string;
   syncToGoogle?: boolean;
@@ -59,6 +61,7 @@ function mapItem(row: any): CalendarItem {
     endAt: row.end_at,
     allDay: row.all_day,
     assigneeId: row.assignee_id ?? undefined,
+    assigneeLabel: row.assignee_label ?? undefined,
     leadId: row.lead_id ?? undefined,
     guestEmails: row.guest_emails ?? [],
     location: row.location ?? undefined,
@@ -100,6 +103,7 @@ export async function createCalendarItem(input: CalendarItemInput): Promise<Cale
       start_at: input.startAt,
       end_at: input.endAt,
       assignee_id: input.assigneeId || null,
+      assignee_label: input.assigneeLabel?.trim() || null,
       guest_emails: input.guestEmails ?? [],
       location: input.location?.trim() || null,
       status: 'open',
