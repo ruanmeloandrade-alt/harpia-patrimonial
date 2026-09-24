@@ -5,17 +5,28 @@ export type SalesBotBlockType =
   | 'condition'
   | 'delay'
   | 'message'
+  | 'reaction'
+  | 'internal_comment'
+  | 'action'
+  | 'validation'
   | 'ai_agent'
+  | 'distribution'
+  | 'finish'
+  | 'chain_flow'
   | 'move_stage'
   | 'assign_owner'
   | 'create_task'
   | 'update_field'
   | 'tag'
-  | 'webhook'
-  | 'finish'
-  | 'chain_flow';
+  | 'webhook';
 
-export type SalesBotBlockConfigValue = string | number | boolean | string[] | null;
+export type SalesBotBlockConfigValue =
+  | string
+  | number
+  | boolean
+  | null
+  | SalesBotBlockConfigValue[]
+  | { [key: string]: SalesBotBlockConfigValue };
 
 export interface SalesBotBlock {
   id: string;
@@ -47,24 +58,13 @@ export interface SalesBotExecutionLog {
   botId: string;
   leadId?: string;
   conversationId?: string;
-  /**
-   * Contexto operacional necessário para retomar uma execução pausada.
-   * É removido ao concluir/falhar e nunca deve conter chave de provedor,
-   * prompt persistido ou resposta de IA.
-   */
   runtimeContext?: Record<string, unknown>;
   startedAt: string;
   finishedAt?: string;
   status: SalesBotExecutionStatus;
   currentBlockId?: string;
   resumeMode?: SalesBotResumeMode;
-  /** Horário absoluto em que uma pausa por delay fica elegível para retomada durável. */
   resumeAt?: string;
-  /**
-   * Lease curto usado para impedir que duas sessões retomem a mesma execução
-   * simultaneamente. Se a sessão que obteve o lease morrer antes de executar,
-   * o lease expira e a execução volta a ficar elegível.
-   */
   resumeClaimToken?: string;
   resumeClaimedUntil?: string;
   error?: string;
