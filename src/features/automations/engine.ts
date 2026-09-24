@@ -71,7 +71,63 @@ function canonicalEventSource(event: CrmAutomationEvent): Record<string, unknown
   };
 }
 
+function matchesPipelineDefinition(definition: AutomationDefinition, event: CrmAutomationEvent): boolean {
+  const meta = definition.pipeline;
+  if (!meta || definition.status !== 'active') return false;
+  const source = canonicalEventSource(event);
+  const pipelineId = String(getPath(source, 'pipelineId') ?? '');
+  const stageId = String(getPath(source, 'stageId') ?? '');
+  const previousStageId = String(getPath(source, 'previousStageId') ?? '');
+  const kind = String(getPath(source, 'kind') ?? getPath(source, 'sourceEventType') ?? '');
+  const automationId = String(getPath(source, 'automationId') ?? '');
+  const duration = String(getPath(source, 'duration') ?? getPath(source, 'threshold') ?? '');
+
+  if (meta.pipelineId && pipelineId !== meta.pipelineId) return false;
+
+  if (meta.event === 'enter') {
+    return event.type === 'lead.stage_changed' && stageId === meta.stageId;
+  }
+  if (meta.event === 'created_or_moved') {
+    return (event.type === 'lead.created' || event.type === 'lead.stage_changed') && stageId === meta.stageId;
+  }
+  if (meta.event === 'leave') {
+    return event.type === 'lead.stage_changed' && previousStageId === meta.stageId;
+  }
+  if (meta.event === 'created') {
+    return event.type === 'lead.created' && (!meta.stageId || stageId === meta.stageId);
+  }
+  if (meta.event === 'time') {
+    if (event.type !== 'lead.inactivity' || stageId !== meta.stageId) return false;
+    if (automationId) return automationId === definition.id;
+    if (duration) return duration === String(meta.value ?? '');
+    return false;
+  }
+  if (meta.event === 'salesbot_done' || meta.event === 'salesbot_failed' || meta.event === 'ai_done') {
+    if (event.type !== 'custom.event' || kind !== meta.event) return false;
+    if (meta.stageId && stageId !== meta.stageId) return false;
+    if (!meta.value) return true;
+    const resourceId = meta.event.startsWith('salesbot_')
+      ? String(getPath(source, 'botId') ?? '')
+      : String(getPath(source, 'agentId') ?? '');
+    return resourceId === meta.value;
+  }
+  if (meta.event === 'tag_added') {
+    return event.type === 'lead.tag_added'
+      && stageId === meta.stageId
+      && (!meta.value || String(getPath(source, 'tagId') ?? '') === meta.value);
+  }
+  if (meta.event === 'field_changed') {
+    return event.type === 'lead.field_changed'
+      && stageId === meta.stageId
+      && (!meta.value || String(getPath(source, 'fieldId') ?? '') === meta.value);
+  }
+  return false;
+}
+
 function matchesDefinition(definition: AutomationDefinition, event: CrmAutomationEvent): boolean {
+  if (definition.origin === 'pipeline' && definition.pipeline) {
+    return matchesPipelineDefinition(definition, event);
+  }
   if (definition.status !== 'active' || definition.trigger.event !== event.type) return false;
   const source = canonicalEventSource(event);
 
@@ -91,6 +147,43 @@ function matchesDefinition(definition: AutomationDefinition, event: CrmAutomatio
 
 const configString = (action: AutomationAction, key: string) => String(action.config[key] ?? '').trim();
 const webhookMethod = (action: AutomationAction) => (configString(action, 'method') || 'POST').toUpperCase();
+
+function automationFollowupEvent(
+  action: AutomationAction,
+  result: AutomationCommandResult,
+  sourceEvent: CrmAutomationEvent,
+): CrmAutomationEvent | null {
+  const basePayload = { ...sourceEvent.payload };
+  const runtimeStatus = String(result.data?.runtimeStatus ?? '');
+
+  let kind = '';
+  let resource: Record<string, unknown> = {};
+  if (action.type === 'start_salesbot') {
+    if (result.status === 'accepted' && runtimeStatus === 'completed') kind = 'salesbot_done';
+    else if (result.status === 'rejected') kind = 'salesbot_failed';
+    else return null;
+    resource = { botId: configString(action, 'botId'), executionId: result.executionId };
+  } else if (action.type === 'invoke_ai' && result.status === 'accepted') {
+    kind = 'ai_done';
+    resource = { agentId: configString(action, 'agentId'), executionId: result.executionId };
+  } else {
+    return null;
+  }
+
+  const cryptoApi = globalThis.crypto;
+  const suffix = cryptoApi?.randomUUID
+    ? cryptoApi.randomUUID()
+    : `${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+
+  return {
+    id: `automation_followup_${suffix}`,
+    type: 'custom.event',
+    occurredAt: new Date().toISOString(),
+    leadId: sourceEvent.leadId,
+    conversationId: sourceEvent.conversationId,
+    payload: { ...basePayload, ...resource, kind },
+  };
+}
 
 async function executeAction(
   action: AutomationAction,
@@ -141,6 +234,7 @@ async function executeAction(
 export async function processCrmAutomationEvent(
   event: CrmAutomationEvent,
   deps: AutomationEngineDependencies = unconfiguredAutomationEngineDependencies,
+  depth = 0,
 ): Promise<AutomationExecutionReport[]> {
   const reports: AutomationExecutionReport[] = [];
 
@@ -157,6 +251,12 @@ export async function processCrmAutomationEvent(
       for (const action of definition.actions) {
         const result = await executeAction(action, event, deps);
         report.actions.push({ actionId: action.id, type: action.type, result });
+
+        if (depth < 8) {
+          const followup = automationFollowupEvent(action, result, event);
+          if (followup) await processCrmAutomationEvent(followup, deps, depth + 1);
+        }
+
         if (result.status !== 'accepted') break;
       }
     }

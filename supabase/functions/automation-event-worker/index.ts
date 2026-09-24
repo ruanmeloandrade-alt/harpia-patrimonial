@@ -7,6 +7,16 @@ type AutomationDefinition = {
   id: string;
   name?: string;
   status: string;
+  origin?: 'manual' | 'pipeline';
+  pipeline?: {
+    pipelineId?: string;
+    event?: 'enter' | 'created_or_moved' | 'leave' | 'created' | 'time' | 'salesbot_done' | 'salesbot_failed' | 'ai_done' | 'tag_added' | 'field_changed';
+    stageId?: string;
+    value?: string;
+    action?: string;
+    targetStageId?: string;
+    resourceId?: string;
+  };
   trigger?: { event?: string; conditions?: Array<{ field?: string; operator?: string; value?: unknown }> };
   actions?: AutomationAction[];
 };
@@ -43,8 +53,52 @@ function getPath(source: Json, path: string): unknown {
   }, source);
 }
 
+function matchesPipeline(definition: AutomationDefinition, event: OutboxEvent, source: Json): boolean {
+  const meta = definition.pipeline;
+  if (!meta || definition.status !== 'active') return false;
+  const pipelineId = String(getPath(source, 'pipelineId') ?? '');
+  const stageId = String(getPath(source, 'stageId') ?? '');
+  const previousStageId = String(getPath(source, 'previousStageId') ?? '');
+  const kind = String(getPath(source, 'kind') ?? getPath(source, 'sourceEventType') ?? '');
+  const automationId = String(getPath(source, 'automationId') ?? '');
+  const duration = String(getPath(source, 'duration') ?? getPath(source, 'threshold') ?? '');
+
+  if (meta.pipelineId && pipelineId !== meta.pipelineId) return false;
+  if (meta.event === 'enter') return event.event_type === 'lead.stage_changed' && stageId === meta.stageId;
+  if (meta.event === 'created_or_moved') {
+    return (event.event_type === 'lead.created' || event.event_type === 'lead.stage_changed') && stageId === meta.stageId;
+  }
+  if (meta.event === 'leave') return event.event_type === 'lead.stage_changed' && previousStageId === meta.stageId;
+  if (meta.event === 'created') return event.event_type === 'lead.created' && (!meta.stageId || stageId === meta.stageId);
+  if (meta.event === 'time') {
+    if (event.event_type !== 'lead.inactivity' || stageId !== meta.stageId) return false;
+    if (automationId) return automationId === definition.id;
+    if (duration) return duration === String(meta.value ?? '');
+    return false;
+  }
+  if (meta.event === 'salesbot_done' || meta.event === 'salesbot_failed' || meta.event === 'ai_done') {
+    if (event.event_type !== 'custom.event' || kind !== meta.event) return false;
+    if (meta.stageId && stageId !== meta.stageId) return false;
+    if (!meta.value) return true;
+    const resourceId = meta.event.startsWith('salesbot_')
+      ? String(getPath(source, 'botId') ?? '')
+      : String(getPath(source, 'agentId') ?? '');
+    return resourceId === meta.value;
+  }
+  if (meta.event === 'tag_added') {
+    return event.event_type === 'lead.tag_added'
+      && stageId === meta.stageId
+      && (!meta.value || String(getPath(source, 'tagId') ?? '') === meta.value);
+  }
+  if (meta.event === 'field_changed') {
+    return event.event_type === 'lead.field_changed'
+      && stageId === meta.stageId
+      && (!meta.value || String(getPath(source, 'fieldId') ?? '') === meta.value);
+  }
+  return false;
+}
+
 function matches(definition: AutomationDefinition, event: OutboxEvent): boolean {
-  if (definition.status !== 'active' || definition.trigger?.event !== event.event_type) return false;
   const payload = event.payload && typeof event.payload === 'object' ? event.payload : {};
   const source: Json = {
     ...payload,
@@ -55,6 +109,9 @@ function matches(definition: AutomationDefinition, event: OutboxEvent): boolean 
     conversationId: event.conversation_id,
     payload,
   };
+  if (definition.origin === 'pipeline' && definition.pipeline) return matchesPipeline(definition, event, source);
+  if (definition.status !== 'active' || definition.trigger?.event !== event.event_type) return false;
+
   return (definition.trigger?.conditions ?? []).every((condition) => {
     const actual = getPath(source, String(condition.field ?? ''));
     const operator = String(condition.operator ?? '');
@@ -178,6 +235,92 @@ async function executeWebhook(action: AutomationAction, event: OutboxEvent): Pro
   }
 }
 
+function pipelineDurationMs(raw: string): number | null {
+  const match = raw.trim().match(/^(\d+)\s*(m|min|h|d|dia|dias|hora|horas)$/i);
+  if (!match) return null;
+  const amount = Number(match[1]);
+  const unit = match[2].toLowerCase();
+  const factor = unit === 'm' || unit === 'min'
+    ? 60_000
+    : unit === 'h' || unit === 'hora' || unit === 'horas'
+      ? 3_600_000
+      : 86_400_000;
+  const total = amount * factor;
+  return Number.isSafeInteger(total) && total > 0 ? total : null;
+}
+
+async function enqueueDuePipelineTimeEvents(
+  db: ReturnType<typeof createClient>,
+  automations: AutomationDefinition[],
+): Promise<number> {
+  const definitions = automations.filter((definition) => (
+    definition.status === 'active'
+    && definition.origin === 'pipeline'
+    && definition.pipeline?.event === 'time'
+    && definition.pipeline.pipelineId
+    && definition.pipeline.stageId
+    && pipelineDurationMs(String(definition.pipeline.value ?? ''))
+  ));
+  if (!definitions.length) return 0;
+
+  const { data: crmRow, error: crmError } = await db
+    .from('platform_module_state')
+    .select('state')
+    .eq('module', 'crm')
+    .maybeSingle();
+  if (crmError) throw crmError;
+
+  const state = crmRow?.state && typeof crmRow.state === 'object' ? crmRow.state as Json : {};
+  const leads = Array.isArray(state.leads) ? state.leads as Json[] : [];
+  const history = Array.isArray(state.history) ? state.history as Json[] : [];
+  let enqueued = 0;
+  const now = Date.now();
+
+  for (const definition of definitions) {
+    const meta = definition.pipeline!;
+    const duration = pipelineDurationMs(String(meta.value ?? ''));
+    if (!duration) continue;
+
+    for (const lead of leads) {
+      if (String(lead.pipelineId ?? '') !== meta.pipelineId || String(lead.stageId ?? '') !== meta.stageId) continue;
+      const leadId = String(lead.id ?? '').trim();
+      if (!leadId) continue;
+
+      const stageHistory = history
+        .filter((entry) => (
+          String(entry.leadId ?? '') === leadId
+          && String(entry.type ?? '') === 'stage_changed'
+          && String((entry.metadata as Json | undefined)?.stageId ?? '') === meta.stageId
+        ))
+        .sort((a, b) => String(b.createdAt ?? '').localeCompare(String(a.createdAt ?? '')));
+      const stageSince = String(stageHistory[0]?.createdAt ?? lead.createdAt ?? lead.updatedAt ?? '').trim();
+      const stageSinceMs = Date.parse(stageSince);
+      if (!stageSince || !Number.isFinite(stageSinceMs) || now < stageSinceMs + duration) continue;
+
+      const payload = {
+        automationId: definition.id,
+        pipelineId: meta.pipelineId,
+        stageId: meta.stageId,
+        duration: String(meta.value ?? ''),
+        stageSince,
+        dueAt: new Date(stageSinceMs + duration).toISOString(),
+      };
+      const { error } = await db.from('automation_event_outbox').insert({
+        event_type: 'lead.inactivity',
+        lead_id: leadId,
+        payload,
+      });
+      if (!error) {
+        enqueued += 1;
+        continue;
+      }
+      if (error.code !== '23505') throw error;
+    }
+  }
+
+  return enqueued;
+}
+
 async function callF05Runtime(
   supabaseUrl: string,
   serverKey: string,
@@ -218,12 +361,30 @@ Deno.serve(async (req) => {
   const supabaseUrl = Deno.env.get('SUPABASE_URL');
   const serverKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || namedKey('SUPABASE_SECRET_KEYS');
   if (!supabaseUrl || !serverKey) return respond({ ok: false, message: 'Configuração interna incompleta.' }, 503);
-  if (req.headers.get('Authorization') !== `Bearer ${serverKey}`) return respond({ ok: false, message: 'Não autorizado.' }, 401);
 
   const db = createClient(supabaseUrl, serverKey, { auth: { persistSession: false, autoRefreshToken: false } });
+  const serviceAuthorized = req.headers.get('Authorization') === `Bearer ${serverKey}`;
+  let schedulerAuthorized = false;
+  const schedulerToken = req.headers.get('x-f05-scheduler-token') ?? '';
+  if (!serviceAuthorized && schedulerToken) {
+    const { data: validToken, error: tokenError } = await db.rpc('admin_validate_f05_scheduler_token', { p_token: schedulerToken });
+    schedulerAuthorized = !tokenError && validToken === true;
+  }
+  if (!serviceAuthorized && !schedulerAuthorized) return respond({ ok: false, message: 'Não autorizado.' }, 401);
+
   const { data: storageRow, error: storageError } = await db.from('f05_shared_storage').select('value').eq('storage_key', AUTOMATIONS_KEY).maybeSingle();
   if (storageError) return respond({ ok: false, message: storageError.message }, 500);
   const automations = Array.isArray(storageRow?.value) ? storageRow.value as AutomationDefinition[] : [];
+
+  let timeEventsEnqueued = 0;
+  try {
+    timeEventsEnqueued = await enqueueDuePipelineTimeEvents(db, automations);
+  } catch (error) {
+    return respond({
+      ok: false,
+      message: error instanceof Error ? error.message : 'Falha ao avaliar gatilhos de tempo da pipeline.',
+    }, 500);
+  }
 
   let processed = 0;
   let failed = 0;
@@ -333,5 +494,5 @@ Deno.serve(async (req) => {
     }
   }
 
-  return respond({ ok: failed === 0, processed, failed, matched, truncated, failures: failures.slice(0, 10) }, failed ? 207 : 200);
+  return respond({ ok: failed === 0, processed, failed, matched, timeEventsEnqueued, truncated, failures: failures.slice(0, 10) }, failed ? 207 : 200);
 });
