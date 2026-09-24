@@ -17,6 +17,7 @@ import {
   getConversationDestination,
   heartbeat,
   ingestIncomingMessage,
+  listWhatsAppRecoveryCandidates,
   recordIntegrationEvent,
   setConnectionStatus,
   uploadInboundMedia,
@@ -474,6 +475,9 @@ export class WhatsAppConnector {
         });
 
         this.startHeartbeat();
+        setTimeout(() => {
+          void this.recoverFailedInboundMessages(socket, generation);
+        }, 1500);
       }
 
       if (update.connection === 'close') {
@@ -770,6 +774,55 @@ export class WhatsAppConnector {
         duplicate: result.duplicate,
       },
     });
+  }
+
+  private async recoverFailedInboundMessages(socket: Socket, generation: number) {
+    if (generation !== this.socketGeneration || this.status !== 'connected') return;
+
+    let candidates: Awaited<ReturnType<typeof listWhatsAppRecoveryCandidates>> = [];
+    try {
+      candidates = await listWhatsAppRecoveryCandidates(this.sessionId);
+    } catch (error) {
+      logger.warn({ error }, 'Não foi possível listar candidatos para recuperação de mensagens.');
+      return;
+    }
+
+    for (const candidate of candidates) {
+      if (generation !== this.socketGeneration || this.status !== 'connected') return;
+
+      const lidJid = `${candidate.lid}@lid`;
+      try {
+        const pnJid = await resolvePnJid(socket, lidJid);
+        const requestId = await socket.requestPlaceholderResend({
+          remoteJid: lidJid,
+          id: candidate.externalMessageId,
+          fromMe: false,
+        });
+
+        await recordIntegrationEvent(this.sessionId, {
+          eventType: 'message_recovery_requested',
+          success: true,
+          externalId: candidate.externalMessageId,
+          metadata: {
+            lid: candidate.lid,
+            pnJid: pnJid ?? null,
+            phone: pnJid ? phoneFromPnJid(pnJid) : null,
+            requestId: requestId ?? null,
+            failedAt: candidate.failedAt ?? null,
+            identityUpdatedAt: candidate.identityUpdatedAt ?? null,
+            secondsAfterIdentity: candidate.secondsAfterIdentity,
+          },
+        });
+      } catch (error) {
+        logger.warn({
+          error,
+          externalMessageId: candidate.externalMessageId,
+          lid: candidate.lid,
+        }, 'Falha ao solicitar reenvio de mensagem antiga.');
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, 350));
+    }
   }
 
   private startHeartbeat() {
