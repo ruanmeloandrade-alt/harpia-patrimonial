@@ -9,6 +9,7 @@ type NavItem = {
   label: string;
   permission?: string;
   permissions?: string[];
+  phaseTwo?: boolean;
 };
 
 const links: NavItem[] = [
@@ -19,6 +20,7 @@ const links: NavItem[] = [
   { href: '/interno/salesbot', label: 'SalesBot', permissions: [PERMISSIONS.SALESBOT_VIEW, PERMISSIONS.SALESBOT_MANAGE] },
   { href: '/interno/automatize', label: 'Automatize', permissions: [PERMISSIONS.AUTOMATIONS_VIEW, PERMISSIONS.AUTOMATIONS_MANAGE] },
   { href: '/interno/agentes-ia', label: 'Agentes IA', permissions: [PERMISSIONS.AI_VIEW, PERMISSIONS.AI_MANAGE] },
+  { href: '/interno/marketing', label: 'Marketing', phaseTwo: true },
   {
     href: '/interno/execucoes',
     label: 'Execuções',
@@ -90,7 +92,8 @@ export function InternalShell({ children }: PropsWithChildren) {
               className={pathname === item.href ? 'nav-link active' : 'nav-link'}
               onClick={() => setMobileOpen(false)}
             >
-              {item.label}
+              <span>{item.label}</span>
+              {item.phaseTwo ? <span className="nav-phase-badge">2ª fase</span> : null}
             </AppLink>
           ))}
         </nav>
