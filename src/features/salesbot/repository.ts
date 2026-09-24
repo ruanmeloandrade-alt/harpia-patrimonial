@@ -211,12 +211,20 @@ export function duplicateSalesBot(id: string): SalesBotDefinition {
   const source = getSalesBot(id);
   if (!source) throw new Error('SalesBot não encontrado.');
   const timestamp = now();
+  const idMap = new Map(source.blocks.map((block) => [block.id, createF05Id('block')]));
   const copy: SalesBotDefinition = {
     ...source,
     id: createF05Id('bot'),
-    name: `${source.name} — cópia`,
+    name: `${source.name} cópia`,
     status: 'draft',
-    blocks: source.blocks.map((block) => ({ ...block, id: createF05Id('block'), config: { ...block.config } })),
+    blocks: source.blocks.map((block) => ({
+      ...block,
+      id: idMap.get(block.id)!,
+      config: { ...block.config },
+      nextBlockId: block.nextBlockId ? idMap.get(block.nextBlockId) ?? null : null,
+      falseNextBlockId: block.falseNextBlockId ? idMap.get(block.falseNextBlockId) ?? null : null,
+      routes: Object.fromEntries(Object.entries(block.routes ?? {}).map(([key, target]) => [key, target ? idMap.get(target) ?? null : null])),
+    })),
     createdAt: timestamp,
     updatedAt: timestamp,
   };
