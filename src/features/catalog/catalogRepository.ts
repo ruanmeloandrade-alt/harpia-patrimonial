@@ -97,7 +97,8 @@ export class LocalCatalogRepository implements CatalogRepository {
       if (!Array.isArray(parsed)) return [];
       return parsed.map((item) => ({
         ...item,
-        itemType: item.itemType ?? 'property',
+        catalogId: item.catalogId ?? '',
+        itemType: item.itemType ?? 'product',
         discountType: item.discountType ?? undefined,
         discountValue: item.discountValue ?? undefined,
         tags: Array.isArray(item.tags) ? item.tags : [],
@@ -130,6 +131,7 @@ export class LocalCatalogRepository implements CatalogRepository {
     const name = normalizeText(input.name);
     const city = normalizeText(input.location.city);
 
+    if (!input.catalogId.trim()) throw new Error('Selecione o catálogo do produto.');
     if (!code) throw new Error('Informe um código para o item.');
     if (!name) throw new Error('Informe um nome para o item.');
     if (input.itemType === 'property' && !city) throw new Error('Informe a cidade do imóvel.');
@@ -166,6 +168,7 @@ export class LocalCatalogRepository implements CatalogRepository {
       .filter((item) => !query.status || item.status === query.status)
       .filter((item) => !query.kind || item.kind === query.kind)
       .filter((item) => !query.itemType || item.itemType === query.itemType)
+      .filter((item) => !query.catalogId || item.catalogId === query.catalogId)
       .filter((item) => {
         if (!search) return true;
         const haystack = [
@@ -195,7 +198,8 @@ export class LocalCatalogRepository implements CatalogRepository {
   async create(input: CatalogItemDraft) {
     const normalized: CatalogItemDraft = {
       ...clone(input),
-      itemType: input.itemType ?? 'property',
+      catalogId: input.catalogId,
+      itemType: input.itemType ?? 'product',
       tags: Array.isArray(input.tags) ? input.tags : [],
       kind: input.itemType === 'property' ? input.kind : 'standalone',
       purpose: input.itemType === 'property' ? input.purpose : 'sale',
@@ -232,6 +236,7 @@ export class LocalCatalogRepository implements CatalogRepository {
     const merged: CatalogItemDraft = {
       code: input.code ?? current.code,
       name: input.name ?? current.name,
+      catalogId: input.catalogId ?? current.catalogId,
       itemType: input.itemType ?? current.itemType,
       kind: input.kind ?? current.kind,
       parentId: input.parentId ?? current.parentId,
