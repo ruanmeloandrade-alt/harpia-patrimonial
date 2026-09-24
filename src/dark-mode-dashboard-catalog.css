@@ -1,0 +1,213 @@
+/* Ajustes especificos de dark mode para Dashboard e Produtos/Catalogos.
+   Carregado depois dos estilos dos modulos para neutralizar cores claras fixas. */
+
+[data-theme="dark"] .f03-dashboard {
+  --dash-ink: #f3f5f2;
+  --dash-muted: #a8b0aa;
+  --dash-line: #354039;
+  --dash-panel: #191f1b;
+  --dash-soft: #202720;
+  --dash-deep: #0a0f0c;
+  --dash-accent: #768c70;
+  --dash-gold: #cbb073;
+  background: var(--paper) !important;
+  color: var(--dash-ink) !important;
+}
+
+[data-theme="dark"] .f03-dashboard :is(
+  .f03-metric-card,
+  .f03-dashboard-panel,
+  .f03-commercial-summary > div,
+  .f03-inventory-status > div,
+  .f03-pipeline-step,
+  .f03-kpi-empty,
+  .f03-kpi-modal,
+  .f03-kpi-options label,
+  .f03-empty-visual
+) {
+  background: var(--dash-panel) !important;
+  color: var(--dash-ink) !important;
+  border-color: var(--dash-line) !important;
+  box-shadow: none !important;
+}
+
+[data-theme="dark"] .f03-dashboard :is(
+  .f03-metric-card--accent,
+  .f03-inventory-total,
+  .f03-customize-button
+) {
+  background: #0a0f0c !important;
+  color: #fff !important;
+  border-color: #273129 !important;
+}
+
+[data-theme="dark"] .f03-dashboard :is(
+  .f03-source-pill,
+  .f03-source-pill.connected,
+  .f03-panel-badge,
+  .f03-dashboard-notice
+) {
+  background: #202720 !important;
+  color: #d4c28f !important;
+  border-color: var(--dash-line) !important;
+}
+
+[data-theme="dark"] .f03-dashboard :is(
+  .f03-panel-heading h2,
+  .f03-panel-heading h3,
+  .f03-commercial-summary strong,
+  .f03-inventory-status strong,
+  .f03-distribution__label strong,
+  .f03-distribution__label span,
+  .f03-action-row span,
+  .f03-kpi-modal__head h2,
+  .f03-kpi-options strong
+) {
+  color: var(--dash-ink) !important;
+}
+
+[data-theme="dark"] .f03-dashboard :is(
+  .f03-dashboard-header p,
+  .f03-panel-heading p,
+  .f03-commercial-summary span,
+  .f03-inventory-status span,
+  .f03-kpi-empty span,
+  .f03-kpi-options small,
+  .f03-empty-visual p
+) {
+  color: var(--dash-muted) !important;
+}
+
+[data-theme="dark"] .f03-dashboard .f03-pipeline-visual,
+[data-theme="dark"] .f03-dashboard .f03-action-row {
+  border-color: var(--dash-line) !important;
+}
+
+[data-theme="dark"] .f03-dashboard .f03-distribution__track {
+  background: #2a332c !important;
+}
+
+[data-theme="dark"] .f03-dashboard .f03-distribution__track span {
+  background: linear-gradient(90deg, #70866a, #9aaa7e) !important;
+}
+
+[data-theme="dark"] .f03-dashboard .f03-customize-button.secondary,
+[data-theme="dark"] .f03-dashboard .f03-kpi-modal__close {
+  background: #202720 !important;
+  color: var(--dash-ink) !important;
+  border-color: var(--dash-line) !important;
+}
+
+[data-theme="dark"] .f03-dashboard .f03-kpi-options label.selected {
+  background: #283229 !important;
+  border-color: #71856f !important;
+}
+
+[data-theme="dark"] .f03-dashboard .f03-metric-card__top i {
+  background: #73896f !important;
+  box-shadow: 0 0 0 5px rgba(115,137,111,.14) !important;
+}
+
+[data-theme="dark"] .f03-dashboard .f03-empty-visual__art span {
+  background: #3b483e !important;
+}
+
+[data-theme="dark"] .f03-dashboard .f03-empty-visual__art span:nth-child(3) {
+  background: #657963 !important;
+}
+
+/* Produtos e catalogos */
+[data-theme="dark"] .f03-shell {
+  --f03-ink: #f3f5f2;
+  --f03-muted: #a8b0aa;
+  --f03-line: #354039;
+  --f03-panel: #191f1b;
+  --f03-soft: #202720;
+  --f03-accent: #809576;
+  --f03-accent-2: #cbb073;
+  background: var(--paper) !important;
+  color: var(--f03-ink) !important;
+}
+
+[data-theme="dark"] .f03-shell :is(
+  .f03-card,
+  .f03-form,
+  .f03-toolbar,
+  .f03-item,
+  .f03-media-box,
+  .f03-empty
+) {
+  background: var(--f03-panel) !important;
+  color: var(--f03-ink) !important;
+  border-color: var(--f03-line) !important;
+  box-shadow: none !important;
+}
+
+[data-theme="dark"] .f03-shell :is(
+  .f03-form input,
+  .f03-form select,
+  .f03-form textarea,
+  .f03-toolbar input,
+  .f03-toolbar select
+) {
+  background: #111611 !important;
+  color: var(--f03-ink) !important;
+  border-color: var(--f03-line) !important;
+}
+
+[data-theme="dark"] .f03-shell .f03-form label,
+[data-theme="dark"] .f03-shell .f03-item-top h3,
+[data-theme="dark"] .f03-shell .f03-item-top > strong {
+  color: var(--f03-ink) !important;
+}
+
+[data-theme="dark"] .f03-shell :is(
+  .f03-header p,
+  .f03-media-box p,
+  .f03-item-top p,
+  .f03-item-meta,
+  .f03-empty p
+) {
+  color: var(--f03-muted) !important;
+}
+
+[data-theme="dark"] .f03-shell .f03-button-ghost,
+[data-theme="dark"] .f03-shell .f03-badge-muted,
+[data-theme="dark"] .f03-shell .status-draft {
+  background: #283029 !important;
+  color: #c8d0c9 !important;
+}
+
+[data-theme="dark"] .f03-shell .status-published,
+[data-theme="dark"] .f03-shell .f03-alert-success {
+  background: #203629 !important;
+  color: #9ed8ad !important;
+}
+
+[data-theme="dark"] .f03-shell .status-paused {
+  background: #3a311d !important;
+  color: #e2c77c !important;
+}
+
+[data-theme="dark"] .f03-shell .status-sold {
+  background: #202d40 !important;
+  color: #a9c4ef !important;
+}
+
+[data-theme="dark"] .f03-shell .f03-button-danger,
+[data-theme="dark"] .f03-shell .f03-alert-error {
+  background: #3a2220 !important;
+  color: #f0a59c !important;
+}
+
+[data-theme="dark"] .f03-shell .f03-empty-icon {
+  background: #263028 !important;
+  color: #a9bb9e !important;
+}
+
+[data-theme="dark"] .f03-shell .f03-header-metric,
+[data-theme="dark"] .f03-shell .f03-button-primary {
+  background: #0a0f0c !important;
+  color: #fff !important;
+  border-color: #273129 !important;
+}
