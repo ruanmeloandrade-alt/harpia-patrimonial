@@ -1,0 +1,88 @@
+name: Deploy integrated Hárpia
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: harpia-production
+  cancel-in-progress: true
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    env:
+      VITE_SUPABASE_URL: https://desxomqvtjaymwwxivwq.supabase.co
+      VITE_SUPABASE_PUBLISHABLE_KEY: sb_publishable_wWUVxjkMDMXLOrzE0y3Y_w_k9jXf88B
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.12.0
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Build
+        run: npm run build
+
+      - name: Prepare Pages output
+        run: |
+          printf '%s\n' 'harpiapatrimonial.com' > dist/CNAME
+          touch dist/.nojekyll
+          cp dist/index.html dist/404.html
+
+          routes=(
+            interno
+            interno/entrar
+            interno/catalogo
+            interno/crm
+            interno/calendario
+            interno/inbox
+            interno/salesbot
+            interno/automatize
+            interno/agentes-ia
+            interno/execucoes
+            interno/marketing
+            interno/integracoes
+            interno/usuarios
+            interno/permissoes
+            interno/configuracoes
+            entrar
+            cadastro
+            recuperar-senha
+            nova-senha
+            conta
+            cliente
+          )
+
+          for route in "${routes[@]}"; do
+            mkdir -p "dist/${route}"
+            cp dist/index.html "dist/${route}/index.html"
+          done
+
+      - name: Publish gh-pages
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          cd dist
+          git init
+          git checkout -b gh-pages
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .
+          git commit -m "deploy: integrated Hárpia ${GITHUB_SHA}"
+          git remote add origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git push --force origin gh-pages
