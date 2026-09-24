@@ -107,7 +107,10 @@ export class PublicCatalogService {
   constructor(private readonly repository: CatalogRepository) {}
 
   private async publishedItems() {
-    return filterPublicEligibleCatalogItems(await this.repository.list({ status: 'published' }));
+    const published = await this.repository.list({ status: 'published' });
+    return filterPublicEligibleCatalogItems(
+      published.filter((item) => item.itemType === 'property'),
+    );
   }
 
   async list(filters: PublicCatalogFilters = {}): Promise<PublicCatalogItem[]> {
