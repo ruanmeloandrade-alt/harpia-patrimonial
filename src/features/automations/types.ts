@@ -58,6 +58,7 @@ export type AutomationActionType =
   | 'create_task'
   | 'move_stage'
   | 'update_field'
+  | 'update_lead_field'
   | 'add_tag'
   | 'remove_tag'
   | 'assign_owner'
