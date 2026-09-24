@@ -103,13 +103,20 @@ function isPipelineActiveNow(meta: NonNullable<AutomationDefinition['pipeline']>
 function matchesPipeline(definition: AutomationDefinition, event: OutboxEvent, source: Json, preferences: Json): boolean {
   const meta = definition.pipeline;
   if (!meta || definition.status !== 'active') return false;
-  if (!isPipelineActiveNow(meta, preferences)) return false;
   const pipelineId = String(getPath(source, 'pipelineId') ?? '');
   const stageId = String(getPath(source, 'stageId') ?? '');
   const previousStageId = String(getPath(source, 'previousStageId') ?? '');
   const kind = String(getPath(source, 'kind') ?? getPath(source, 'sourceEventType') ?? '');
   const automationId = String(getPath(source, 'automationId') ?? '');
   const duration = String(getPath(source, 'duration') ?? getPath(source, 'threshold') ?? '');
+
+  if (kind === 'apply_existing') {
+    return automationId === definition.id
+      && (!meta.pipelineId || pipelineId === meta.pipelineId)
+      && (!meta.stageId || stageId === meta.stageId);
+  }
+
+  if (!isPipelineActiveNow(meta, preferences)) return false;
 
   if (meta.pipelineId && pipelineId !== meta.pipelineId) return false;
 
