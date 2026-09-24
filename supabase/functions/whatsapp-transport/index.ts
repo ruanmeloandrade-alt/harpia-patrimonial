@@ -71,6 +71,26 @@ function serviceClient() {
   });
 }
 
+async function prepareConversation(conversationId: string) {
+  const admin = serviceClient();
+  const { data, error } = await admin.rpc('admin_prepare_whatsapp_conversation', {
+    p_conversation_id: conversationId,
+  });
+
+  if (error) {
+    const normalized = error.message.includes('not healthy')
+      ? 'O WhatsApp não está conectado ou o heartbeat está desatualizado.'
+      : error.message.includes('valid whatsapp')
+        ? 'O lead não possui um WhatsApp válido.'
+        : error.message.includes('already linked')
+          ? 'Este número já está vinculado a outra conversa.'
+          : error.message;
+    throw new Error(normalized);
+  }
+
+  return (data ?? {}) as Record<string, unknown>;
+}
+
 async function callConnector(path: '/v1/send' | '/v1/group', payload: Record<string, unknown>) {
   const baseUrl = (Deno.env.get('WHATSAPP_CONNECTOR_URL')?.trim() || DEFAULT_CONNECTOR_URL).replace(/\/+$/, '');
   const token = Deno.env.get('WHATSAPP_CONNECTOR_TOKEN')?.trim() || await derivedControlToken();
@@ -118,24 +138,15 @@ Deno.serve(async (req: Request) => {
 
   try {
     if (action === 'prepare') {
-      const admin = serviceClient();
-      const { data, error } = await admin.rpc('admin_prepare_whatsapp_conversation', {
-        p_conversation_id: conversationId,
-      });
-
-      if (error) {
-        const normalized = error.message.includes('not healthy')
-          ? 'O WhatsApp não está conectado ou o heartbeat está desatualizado.'
-          : error.message.includes('valid whatsapp')
-            ? 'O lead não possui um WhatsApp válido.'
-            : error.message.includes('already linked')
-              ? 'Este número já está vinculado a outra conversa.'
-              : error.message;
-
-        return respond(409, { ok: false, message: normalized });
+      try {
+        const data = await prepareConversation(conversationId);
+        return respond(200, { ok: true, ...data });
+      } catch (error) {
+        return respond(409, {
+          ok: false,
+          message: error instanceof Error ? error.message : 'Não foi possível preparar a conversa no WhatsApp.',
+        });
       }
-
-      return respond(200, { ok: true, ...((data ?? {}) as Record<string, unknown>) });
     }
 
     if (action === 'group') {
@@ -148,6 +159,11 @@ Deno.serve(async (req: Request) => {
     if (action !== 'send') {
       return respond(400, { ok: false, message: 'Ação inválida.' });
     }
+
+    // Prepara/vincula a conversa e valida a saúde da conexão no mesmo request
+    // usado para enviar. Assim o browser não precisa fazer duas invocações
+    // autenticadas consecutivas antes de cada mensagem.
+    await prepareConversation(conversationId);
 
     const type = String(body.type || 'text').trim();
     const text = typeof body.text === 'string' ? body.text : undefined;
