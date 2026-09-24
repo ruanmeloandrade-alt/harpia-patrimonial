@@ -1,5 +1,5 @@
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
-import { timingSafeEqual } from 'node:crypto';
+import { createHash, timingSafeEqual } from 'node:crypto';
 import { config } from './config.js';
 import { WhatsAppConnector } from './connector.js';
 import { logger } from './logger.js';
@@ -20,14 +20,26 @@ function sendJson(
   response.end(JSON.stringify(payload));
 }
 
+function derivedControlToken() {
+  return createHash('sha256')
+    .update(`harpia-whatsapp-control-v1:${config.supabaseServiceRoleKey}`)
+    .digest('base64url');
+}
+
+function constantTimeMatch(candidateValue: string, expectedValue: string) {
+  const candidate = Buffer.from(candidateValue);
+  const expected = Buffer.from(expectedValue);
+  return candidate.length === expected.length && timingSafeEqual(candidate, expected);
+}
+
 function safeTokenMatch(received: string | undefined) {
   if (!received) return false;
   const prefix = 'Bearer ';
   if (!received.startsWith(prefix)) return false;
 
-  const candidate = Buffer.from(received.slice(prefix.length));
-  const expected = Buffer.from(config.controlToken);
-  return candidate.length === expected.length && timingSafeEqual(candidate, expected);
+  const candidate = received.slice(prefix.length);
+  return constantTimeMatch(candidate, config.controlToken)
+    || constantTimeMatch(candidate, derivedControlToken());
 }
 
 async function readJson(request: IncomingMessage, maxBytes = 128 * 1024) {
