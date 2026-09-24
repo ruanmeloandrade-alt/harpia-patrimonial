@@ -71,7 +71,63 @@ function canonicalEventSource(event: CrmAutomationEvent): Record<string, unknown
   };
 }
 
+function matchesPipelineDefinition(definition: AutomationDefinition, event: CrmAutomationEvent): boolean {
+  const meta = definition.pipeline;
+  if (!meta || definition.status !== 'active') return false;
+  const source = canonicalEventSource(event);
+  const pipelineId = String(getPath(source, 'pipelineId') ?? '');
+  const stageId = String(getPath(source, 'stageId') ?? '');
+  const previousStageId = String(getPath(source, 'previousStageId') ?? '');
+  const kind = String(getPath(source, 'kind') ?? getPath(source, 'sourceEventType') ?? '');
+  const automationId = String(getPath(source, 'automationId') ?? '');
+  const duration = String(getPath(source, 'duration') ?? getPath(source, 'threshold') ?? '');
+
+  if (meta.pipelineId && pipelineId !== meta.pipelineId) return false;
+
+  if (meta.event === 'enter') {
+    return event.type === 'lead.stage_changed' && stageId === meta.stageId;
+  }
+  if (meta.event === 'created_or_moved') {
+    return (event.type === 'lead.created' || event.type === 'lead.stage_changed') && stageId === meta.stageId;
+  }
+  if (meta.event === 'leave') {
+    return event.type === 'lead.stage_changed' && previousStageId === meta.stageId;
+  }
+  if (meta.event === 'created') {
+    return event.type === 'lead.created' && (!meta.stageId || stageId === meta.stageId);
+  }
+  if (meta.event === 'time') {
+    if (event.type !== 'lead.inactivity' || stageId !== meta.stageId) return false;
+    if (automationId) return automationId === definition.id;
+    if (duration) return duration === String(meta.value ?? '');
+    return false;
+  }
+  if (meta.event === 'salesbot_done' || meta.event === 'salesbot_failed' || meta.event === 'ai_done') {
+    if (event.type !== 'custom.event' || kind !== meta.event) return false;
+    if (meta.stageId && stageId !== meta.stageId) return false;
+    if (!meta.value) return true;
+    const resourceId = meta.event.startsWith('salesbot_')
+      ? String(getPath(source, 'botId') ?? '')
+      : String(getPath(source, 'agentId') ?? '');
+    return resourceId === meta.value;
+  }
+  if (meta.event === 'tag_added') {
+    return event.type === 'lead.tag_added'
+      && stageId === meta.stageId
+      && (!meta.value || String(getPath(source, 'tagId') ?? '') === meta.value);
+  }
+  if (meta.event === 'field_changed') {
+    return event.type === 'lead.field_changed'
+      && stageId === meta.stageId
+      && (!meta.value || String(getPath(source, 'fieldId') ?? '') === meta.value);
+  }
+  return false;
+}
+
 function matchesDefinition(definition: AutomationDefinition, event: CrmAutomationEvent): boolean {
+  if (definition.origin === 'pipeline' && definition.pipeline) {
+    return matchesPipelineDefinition(definition, event);
+  }
   if (definition.status !== 'active' || definition.trigger.event !== event.type) return false;
   const source = canonicalEventSource(event);
 
