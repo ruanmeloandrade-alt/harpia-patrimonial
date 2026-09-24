@@ -129,7 +129,7 @@ function convertLegacySalesBots(items: unknown[]) {
     if (!id || !name || rawBlocks.length === 0) return [];
 
     const byId = new Map(rawBlocks.map((block) => [nonEmptyString(block.id), block]));
-    let current = byId.get(nonEmptyString(legacy.startBlockId))
+    let current: LegacySalesBotBlock | undefined = byId.get(nonEmptyString(legacy.startBlockId))
       ?? rawBlocks.find((block) => block.kind === 'inicio')
       ?? rawBlocks[0];
 
