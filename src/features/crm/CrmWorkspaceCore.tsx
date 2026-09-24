@@ -26,6 +26,7 @@ import {
   listPipelineAutomations,
 } from '../automations/repository';
 import type { PipelineTriggerAction, PipelineTriggerEvent } from '../automations/types';
+import { useF05StorageListener } from '../automations/useF05StorageListener';
 import { formatRuntimeDateTime } from '../settings/runtime-preferences';
 import styles from './crm.module.css';
 
@@ -84,6 +85,8 @@ export function CrmWorkspace({
   const [triggerAction, setTriggerAction] = useState<PipelineTriggerAction>('move_stage');
   const [triggerResourceId, setTriggerResourceId] = useState('');
   const [triggerTargetStageId, setTriggerTargetStageId] = useState('');
+
+  useF05StorageListener(() => setAutomationRevision((value) => value + 1));
 
   const refresh = (message?: string) => {
     const snapshot = service.snapshot();
