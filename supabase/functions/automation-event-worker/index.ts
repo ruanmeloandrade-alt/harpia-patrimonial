@@ -55,9 +55,55 @@ function getPath(source: Json, path: string): unknown {
   }, source);
 }
 
-function matchesPipeline(definition: AutomationDefinition, event: OutboxEvent, source: Json): boolean {
+function isPipelineActiveNow(meta: NonNullable<AutomationDefinition['pipeline']>, preferences: Json): boolean {
+  const config = meta.actionConfig ?? {};
+  const mode = String(config.activeMode ?? 'always');
+  if (mode !== 'business_hours') return true;
+
+  const regional = preferences.regional && typeof preferences.regional === 'object'
+    ? preferences.regional as Json
+    : {};
+  const crm = preferences.crm && typeof preferences.crm === 'object'
+    ? preferences.crm as Json
+    : {};
+  const businessHours = crm.businessHours && typeof crm.businessHours === 'object'
+    ? crm.businessHours as Json
+    : {};
+  const timeZone = String(regional.timezone ?? 'America/Sao_Paulo');
+
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone,
+    weekday: 'long',
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+  }).formatToParts(new Date());
+  const weekday = String(parts.find((part) => part.type === 'weekday')?.value ?? '').toLowerCase();
+  const hour = Number(parts.find((part) => part.type === 'hour')?.value ?? 0);
+  const minute = Number(parts.find((part) => part.type === 'minute')?.value ?? 0);
+  const today = businessHours[weekday] && typeof businessHours[weekday] === 'object'
+    ? businessHours[weekday] as Json
+    : null;
+
+  if (!today || today.enabled !== true) return false;
+  const start = String(today.start ?? '');
+  const end = String(today.end ?? '');
+  const parse = (value: string) => {
+    const match = value.match(/^(\d{2}):(\d{2})$/);
+    if (!match) return null;
+    return Number(match[1]) * 60 + Number(match[2]);
+  };
+  const startMinutes = parse(start);
+  const endMinutes = parse(end);
+  if (startMinutes === null || endMinutes === null) return false;
+  const currentMinutes = hour * 60 + minute;
+  return currentMinutes >= startMinutes && currentMinutes <= endMinutes;
+}
+
+function matchesPipeline(definition: AutomationDefinition, event: OutboxEvent, source: Json, preferences: Json): boolean {
   const meta = definition.pipeline;
   if (!meta || definition.status !== 'active') return false;
+  if (!isPipelineActiveNow(meta, preferences)) return false;
   const pipelineId = String(getPath(source, 'pipelineId') ?? '');
   const stageId = String(getPath(source, 'stageId') ?? '');
   const previousStageId = String(getPath(source, 'previousStageId') ?? '');
@@ -133,7 +179,7 @@ function matchesPipeline(definition: AutomationDefinition, event: OutboxEvent, s
   return false;
 }
 
-function matches(definition: AutomationDefinition, event: OutboxEvent): boolean {
+function matches(definition: AutomationDefinition, event: OutboxEvent, preferences: Json): boolean {
   const payload = event.payload && typeof event.payload === 'object' ? event.payload : {};
   const source: Json = {
     ...payload,
@@ -144,7 +190,7 @@ function matches(definition: AutomationDefinition, event: OutboxEvent): boolean 
     conversationId: event.conversation_id,
     payload,
   };
-  if (definition.origin === 'pipeline' && definition.pipeline) return matchesPipeline(definition, event, source);
+  if (definition.origin === 'pipeline' && definition.pipeline) return matchesPipeline(definition, event, source, preferences);
   if (definition.status !== 'active' || definition.trigger?.event !== event.event_type) return false;
 
   return (definition.trigger?.conditions ?? []).every((condition) => {
@@ -545,9 +591,16 @@ Deno.serve(async (req) => {
   }
   if (!serviceAuthorized && !schedulerAuthorized) return respond({ ok: false, message: 'Não autorizado.' }, 401);
 
-  const { data: storageRow, error: storageError } = await db.from('f05_shared_storage').select('value').eq('storage_key', AUTOMATIONS_KEY).maybeSingle();
+  const [{ data: storageRow, error: storageError }, { data: settingsRow, error: settingsError }] = await Promise.all([
+    db.from('f05_shared_storage').select('value').eq('storage_key', AUTOMATIONS_KEY).maybeSingle(),
+    db.from('organization_settings').select('preferences').eq('id', 1).maybeSingle(),
+  ]);
   if (storageError) return respond({ ok: false, message: storageError.message }, 500);
+  if (settingsError) return respond({ ok: false, message: settingsError.message }, 500);
   const automations = Array.isArray(storageRow?.value) ? storageRow.value as AutomationDefinition[] : [];
+  const preferences = settingsRow?.preferences && typeof settingsRow.preferences === 'object'
+    ? settingsRow.preferences as Json
+    : {};
 
   let timeEventsEnqueued = 0;
   try {
@@ -580,7 +633,7 @@ Deno.serve(async (req) => {
         const accepted = new Set((priorRuns ?? []).filter((row) => row.status === 'accepted').map((row) => `${row.automation_id}::${row.action_id}`));
 
         for (const definition of automations) {
-          if (!matches(definition, event)) continue;
+          if (!matches(definition, event, preferences)) continue;
           matched += 1;
           for (const action of definition.actions ?? []) {
             const actionKey = `${definition.id}::${action.id}`;
