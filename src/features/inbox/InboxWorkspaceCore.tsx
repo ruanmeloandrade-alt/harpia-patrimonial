@@ -534,6 +534,32 @@ export function InboxWorkspace({
                 </div>
               ))}
             </section>
+
+            <section className={styles.contextSection}>
+              <details className={styles.automationPanel}>
+                <summary>Automação do atendimento</summary>
+                <div className={styles.automationGrid}>
+                  <AutomationControl
+                    label="SalesBot"
+                    status={automationStatus.salesBot}
+                    options={salesBots}
+                    selectedId={selectedBotId}
+                    onSelectedIdChange={setSelectedBotId}
+                    onStart={() => void startSalesBot()}
+                    onPause={() => void pauseSalesBot()}
+                  />
+                  <AutomationControl
+                    label="Agente IA"
+                    status={automationStatus.aiAgent}
+                    options={aiAgents}
+                    selectedId={selectedAgentId}
+                    onSelectedIdChange={setSelectedAgentId}
+                    onStart={() => void startAiAgent()}
+                    onPause={() => void pauseAiAgent()}
+                  />
+                </div>
+              </details>
+            </section>
           </>
         ) : (
           <>
@@ -900,16 +926,6 @@ function AutomationControl({
         <button type="button" onClick={onStart} disabled={!selectedId || running}>Iniciar</button>
         <button type="button" onClick={onPause} disabled={!running}>Pausar</button>
       </div>
-    </div>
-  );
-}
-
-function EmptyState({ title, description }: { title: string; description: string }) {
-  return (
-    <div className={styles.emptyState}>
-      <span>◌</span>
-      <strong>{title}</strong>
-      <p>{description}</p>
     </div>
   );
 }
