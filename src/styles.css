@@ -24,6 +24,27 @@ button:not(:disabled):active { transform: translateY(1px) scale(.975); filter: b
 button:focus-visible { outline: 3px solid rgba(180,154,99,.32); outline-offset: 2px; }
 button[aria-busy="true"] { cursor: progress; opacity: .72; }
 button.is-success, .button.is-success { background: var(--success) !important; border-color: var(--success) !important; color: white !important; box-shadow: 0 0 0 4px rgba(63,107,77,.12) !important; }
+.ui-clicked { animation: harpia-action-feedback .4s ease; }
+.ui-clicked-positive { animation: harpia-action-feedback-positive .4s ease; }
+.ui-clicked-danger { animation: harpia-action-feedback-danger .4s ease; }
+@keyframes harpia-action-feedback {
+  0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(180,154,99,0); }
+  35% { transform: translateY(1px) scale(.96); box-shadow: 0 0 0 5px rgba(180,154,99,.22); }
+  100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(180,154,99,0); }
+}
+@keyframes harpia-action-feedback-positive {
+  0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(63,107,77,0); }
+  35% { transform: translateY(1px) scale(.96); box-shadow: 0 0 0 5px rgba(63,107,77,.24); }
+  100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(63,107,77,0); }
+}
+@keyframes harpia-action-feedback-danger {
+  0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(157,63,53,0); }
+  35% { transform: translateY(1px) scale(.96); box-shadow: 0 0 0 5px rgba(157,63,53,.22); }
+  100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(157,63,53,0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ui-clicked, .ui-clicked-positive, .ui-clicked-danger { animation-duration: .01ms; }
+}
 button:disabled { cursor: not-allowed; opacity: .55; }
 h1, h2, h3, p { margin-top: 0; }
 h1, h2 { letter-spacing: -.035em; }
