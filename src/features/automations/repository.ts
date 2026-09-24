@@ -202,6 +202,16 @@ function validatePipelineAutomationMeta(input: PipelineAutomationMeta): void {
   if (input.event === 'time' && !/^\d+\s*(m|min|h|d|dia|dias|hora|horas)$/i.test(input.value ?? '')) {
     throw new Error('Informe o tempo como 30m, 2h ou 3d.');
   }
+  if (input.event === 'hours_before_datetime') {
+    if (!String(config.scheduleFieldId ?? '').trim()) throw new Error('Selecione o campo de data/hora.');
+    if (!(Number(config.scheduleHours ?? 0) > 0)) throw new Error('Informe quantas horas antes o gatilho deve executar.');
+  }
+  if (input.event === 'daily_time' && !/^\d{2}:\d{2}$/.test(String(config.scheduleTime ?? ''))) {
+    throw new Error('Informe o horário fixo do gatilho.');
+  }
+  if (input.event === 'specific_datetime' && !String(config.scheduleDateTime ?? '').trim()) {
+    throw new Error('Informe a data e hora do gatilho.');
+  }
   if (input.event === 'inbound_webhook' && !String(input.value ?? '').trim()) throw new Error('Token do webhook de entrada não foi gerado.');
   if (input.action === 'move_stage' && !input.targetStageId) throw new Error('Selecione a etapa destino.');
   if ((input.action === 'salesbot' || input.action === 'ai') && !input.resourceId) {
@@ -252,6 +262,13 @@ function pipelineTriggerDefinition(input: PipelineAutomationMeta): AutomationDef
   } else if (input.event === 'field_changed') {
     event = 'lead.field_changed';
     if (input.value) conditions.push({ field: 'fieldId', operator: 'equals', value: input.value });
+  } else if (input.event === 'assignee_changed') {
+    event = 'lead.assignee_changed';
+    if (input.stageId) conditions.push({ field: 'stageId', operator: 'equals', value: input.stageId });
+  } else if (input.event === 'hours_before_datetime' || input.event === 'daily_time' || input.event === 'specific_datetime') {
+    event = 'custom.event';
+    conditions.push({ field: 'kind', operator: 'equals', value: input.event });
+    if (input.stageId) conditions.push({ field: 'stageId', operator: 'equals', value: input.stageId });
   } else if (input.event === 'inbound_webhook') {
     event = 'custom.event';
     conditions.push({ field: 'kind', operator: 'equals', value: 'inbound_webhook' });
