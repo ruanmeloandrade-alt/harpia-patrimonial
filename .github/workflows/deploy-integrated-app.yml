@@ -44,6 +44,35 @@ jobs:
           touch dist/.nojekyll
           cp dist/index.html dist/404.html
 
+          routes=(
+            interno
+            interno/entrar
+            interno/catalogo
+            interno/crm
+            interno/calendario
+            interno/inbox
+            interno/salesbot
+            interno/automatize
+            interno/agentes-ia
+            interno/execucoes
+            interno/marketing
+            interno/integracoes
+            interno/usuarios
+            interno/permissoes
+            interno/configuracoes
+            entrar
+            cadastro
+            recuperar-senha
+            nova-senha
+            conta
+            cliente
+          )
+
+          for route in "${routes[@]}"; do
+            mkdir -p "dist/${route}"
+            cp dist/index.html "dist/${route}/index.html"
+          done
+
       - name: Publish gh-pages
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
