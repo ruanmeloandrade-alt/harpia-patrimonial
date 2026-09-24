@@ -67,6 +67,7 @@ export function InboxWorkspace({
   );
   const [feedback, setFeedback] = useState('');
   const [mediaBusy, setMediaBusy] = useState(false);
+  const [textBusy, setTextBusy] = useState(false);
   const [conversationQuery, setConversationQuery] = useState('');
   const [profileVisible, setProfileVisible] = useState(true);
   const [automationPicker, setAutomationPicker] = useState<'salesbot' | 'agent' | null>(null);
@@ -263,20 +264,31 @@ export function InboxWorkspace({
 
   const submitText = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!selectedConversation) return;
-    const form = new FormData(event.currentTarget);
-    const text = String(form.get('message') ?? '');
+    if (!selectedConversation || textBusy) return;
+    const formElement = event.currentTarget;
+    const form = new FormData(formElement);
+    const text = String(form.get('message') ?? '').trim();
+    if (!text) {
+      setFeedback('Digite uma mensagem.');
+      return;
+    }
+
+    setTextBusy(true);
+    setFeedback('Enviando mensagem...');
     try {
       await inboxService.sendMessage({
         conversationId: selectedConversation.id,
         type: 'text',
         text,
       });
-      event.currentTarget.reset();
+      formElement.reset();
       refresh();
-      setFeedback('Mensagem enviada pelo transporte conectado.');
+      setFeedback('Mensagem enviada pelo WhatsApp.');
     } catch (error) {
+      refresh();
       setFeedback(error instanceof Error ? error.message : 'Nenhuma mensagem foi enviada.');
+    } finally {
+      setTextBusy(false);
     }
   };
   const submitMedia = async (event: ChangeEvent<HTMLInputElement>) => {
@@ -831,7 +843,7 @@ export function InboxWorkspace({
                   rows={2}
                   placeholder="Digite uma mensagem…"
                 />
-                <button type="submit" disabled={mediaBusy}>Enviar</button>
+                <button type="submit" disabled={mediaBusy || textBusy}>{textBusy ? 'Enviando...' : 'Enviar'}</button>
               </form>
 
             </div>
