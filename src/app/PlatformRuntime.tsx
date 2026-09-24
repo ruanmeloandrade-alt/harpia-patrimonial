@@ -32,6 +32,7 @@ import { resetF05SharedStorage } from '../features/automations/f05Storage';
 import { SupabaseAICredentialVault } from './integrations/supabaseAICredentialVault';
 import { SupabaseAIModelRuntime } from './integrations/supabaseAIModelRuntime';
 import { SupabaseAutomationWebhook } from './integrations/supabaseAutomationWebhook';
+import { SupabaseWhatsAppTransport } from './integrations/supabaseWhatsAppTransport';
 import { SupabaseFavoritesStore } from './integrations/supabaseFavoritesStore';
 import { loadInternalAssignees } from './integrations/internalAssignees';
 import { salesBotConditionEvaluator } from './integrations/salesBotConditionEvaluator';
@@ -83,6 +84,7 @@ export function PlatformRuntimeProvider({ children }: PropsWithChildren) {
   const credentialVault = useMemo(() => new SupabaseAICredentialVault(), []);
   const aiModelRuntime = useMemo(() => new SupabaseAIModelRuntime(), []);
   const automationWebhook = useMemo(() => new SupabaseAutomationWebhook(), []);
+  const whatsappTransport = useMemo(() => new SupabaseWhatsAppTransport(), []);
 
   useEffect(() => () => catalogRuntime?.dispose(), [catalogRuntime]);
 
@@ -208,7 +210,7 @@ export function PlatformRuntimeProvider({ children }: PropsWithChildren) {
         unsubscribeEvents?.();
 
         const crm = new CrmService(crmRepository);
-        const inbox = inboxRepository ? new InboxService(inboxRepository) : null;
+        const inbox = inboxRepository ? new InboxService(inboxRepository, whatsappTransport) : null;
         const waitForCrmPersistence = () => crmRepository.waitForLastSave?.() ?? Promise.resolve();
         const crmActions = createFront05CrmActionPort(crm, waitForCrmPersistence);
         const aiCommandPort = createAIAgentCommandPort(aiModelRuntime);
@@ -347,7 +349,7 @@ export function PlatformRuntimeProvider({ children }: PropsWithChildren) {
       unsubscribeEvents?.();
       if (channel) void supabase?.removeChannel(channel);
     };
-  }, [aiModelRuntime, auth.user?.id, automationWebhook, canUseCrm, canUseInbox, catalogRepository, f05Revision]);
+  }, [aiModelRuntime, auth.user?.id, automationWebhook, canUseCrm, canUseInbox, catalogRepository, f05Revision, whatsappTransport]);
 
   const value = useMemo<PlatformRuntimeValue>(() => ({
     catalogRepository,
