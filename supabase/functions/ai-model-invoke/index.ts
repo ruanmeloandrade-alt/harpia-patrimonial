@@ -179,7 +179,8 @@ function providerRequest(profile: ProviderProfile, apiKey: string, instructions:
 
   if (profile.provider === 'google_gemini') {
     const base = normalizeBase(profile.baseUrl || 'https://generativelanguage.googleapis.com');
-    const endpoint = base.endsWith('/interactions') ? base : base.endsWith('/v1beta') ? `${base}/interactions` : `${base}/v1beta/interactions`;
+    const model = profile.model.replace(/^models\//, '');
+    const endpoint = `${base}/v1beta/models/${encodeURIComponent(model)}:generateContent`;
     const composedInput = instructions.trim() ? `${instructions.trim()}\n\n${input}` : input;
     return {
       url: assertSafeExternalUrl(endpoint),
@@ -187,7 +188,7 @@ function providerRequest(profile: ProviderProfile, apiKey: string, instructions:
         ...safeFetchInit(),
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
-        body: JSON.stringify({ model: profile.model, input: composedInput }),
+        body: JSON.stringify({ contents: [{ role: 'user', parts: [{ text: composedInput }] }] }),
       },
     };
   }
@@ -220,14 +221,13 @@ function extractText(provider: ProviderKind, raw: any): string {
       : '';
   }
   if (provider === 'google_gemini') {
-    if (typeof raw?.output_text === 'string') return raw.output_text;
-    if (Array.isArray(raw?.outputs)) {
-      return raw.outputs.map((item: any) => item?.text ?? item?.content?.text).filter((value: unknown) => typeof value === 'string').join('\n');
-    }
-    if (Array.isArray(raw?.steps)) {
-      return raw.steps.flatMap((step: any) => step?.content ?? []).map((item: any) => item?.text).filter((value: unknown) => typeof value === 'string').join('\n');
-    }
-    return '';
+    return Array.isArray(raw?.candidates)
+      ? raw.candidates
+        .flatMap((candidate: any) => candidate?.content?.parts ?? [])
+        .map((part: any) => part?.text)
+        .filter((value: unknown) => typeof value === 'string')
+        .join('\n')
+      : '';
   }
   const custom = raw?.output_text ?? raw?.text ?? raw?.output ?? raw?.message?.content ?? '';
   return typeof custom === 'string' ? custom : '';
@@ -266,9 +266,12 @@ Deno.serve(async (req) => {
   const body = await req.json().catch(() => ({}));
   const profileId = String(body.profileId || '').trim();
   const instructions = String(body.instructions || '');
-  const explicitInput = String(body.input || '');
+  const explicitInput = String(body.input || '').trim();
   const context = body.context && typeof body.context === 'object' ? body.context : {};
-  const input = explicitInput.trim() || JSON.stringify(context);
+  const contextText = JSON.stringify(context);
+  const input = explicitInput
+    ? `${explicitInput}\n\nCONTEXTO DISPONÍVEL NO SISTEMA:\n${contextText}`
+    : contextText;
 
   if (!profileId) return response({ status: 'failed', reason: 'Perfil IA obrigatório.' }, 400);
   if (!input.trim()) return response({ status: 'failed', reason: 'Entrada do agente IA obrigatória.' }, 400);
