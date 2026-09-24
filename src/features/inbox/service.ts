@@ -94,6 +94,27 @@ export class InboxService {
     return message;
   }
 
+  addInternalNote(conversationId: CrmId, text: string): InboxMessage {
+    const conversation = this.requireConversation(conversationId);
+    const cleanText = text.trim();
+    if (!cleanText) throw new InboxIntegrityError('Escreva o comentário interno.');
+
+    const createdAt = nowIso();
+    const note: InboxMessage = {
+      id: createCrmId('message'),
+      conversationId: conversation.id,
+      direction: 'outbound',
+      type: 'internal_note',
+      text: cleanText,
+      deliveryStatus: 'sent',
+      createdAt,
+    };
+    this.state.messages.push(note);
+    conversation.updatedAt = createdAt;
+    this.persist();
+    return note;
+  }
+
   async sendMessage(input: OutgoingTransportMessage): Promise<InboxMessage> {
     const conversation = this.requireConversation(input.conversationId);
     if (!this.transport) {
