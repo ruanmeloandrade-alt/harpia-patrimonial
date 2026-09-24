@@ -3,6 +3,7 @@ import { createClient } from 'npm:@supabase/supabase-js@2.116.0';
 
 type Json = Record<string, unknown>;
 type LeadField = { name?: string; values?: unknown[] };
+type MetaAppConfig = { app_id?: string; app_secret?: string; webhook_verify_token?: string };
 
 const jsonHeaders = { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' };
 
@@ -24,6 +25,13 @@ function graphVersion() {
 
 function respond(status: number, payload: unknown) {
   return new Response(JSON.stringify(payload), { status, headers: jsonHeaders });
+}
+
+async function resolveAppConfig(admin: ReturnType<typeof createClient>) {
+  const { data, error } = await admin.rpc('admin_resolve_meta_app_config');
+  if (error) throw error;
+  const row = Array.isArray(data) ? data[0] : data;
+  return (row && typeof row === 'object' ? row : null) as MetaAppConfig | null;
 }
 
 function constantTimeEqual(a: string, b: string) {
@@ -311,7 +319,26 @@ async function processWebhook(payload: Json, supabaseUrl: string, serverKey: str
 }
 
 Deno.serve(async (req: Request) => {
-  const verifyToken = String(Deno.env.get('META_WEBHOOK_VERIFY_TOKEN') || '').trim();
+  const supabaseUrl = Deno.env.get('SUPABASE_URL');
+  const serverKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || namedKey('SUPABASE_SECRET_KEYS');
+  if (!supabaseUrl || !serverKey) {
+    return respond(503, { received: false, message: 'Configuração interna incompleta.' });
+  }
+
+  const admin = createClient(supabaseUrl, serverKey, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  });
+
+  let appConfig: MetaAppConfig | null = null;
+  try {
+    appConfig = await resolveAppConfig(admin);
+  } catch (error) {
+    console.error('meta app config resolve failed', error);
+  }
+
+  const verifyToken = String(
+    Deno.env.get('META_WEBHOOK_VERIFY_TOKEN') || appConfig?.webhook_verify_token || ''
+  ).trim();
 
   if (req.method === 'GET') {
     const url = new URL(req.url);
@@ -328,7 +355,7 @@ Deno.serve(async (req: Request) => {
 
   if (req.method !== 'POST') return respond(405, { received: false, message: 'Método não permitido.' });
 
-  const appSecret = String(Deno.env.get('META_APP_SECRET') || '').trim();
+  const appSecret = String(Deno.env.get('META_APP_SECRET') || appConfig?.app_secret || '').trim();
   if (!appSecret) return respond(503, { received: false, message: 'Webhook Meta ainda não configurado.' });
 
   const rawBuffer = new Uint8Array(await req.arrayBuffer());
@@ -343,12 +370,6 @@ Deno.serve(async (req: Request) => {
     payload = JSON.parse(new TextDecoder().decode(rawBuffer)) as Json;
   } catch {
     return respond(400, { received: false, message: 'Payload inválido.' });
-  }
-
-  const supabaseUrl = Deno.env.get('SUPABASE_URL');
-  const serverKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || namedKey('SUPABASE_SECRET_KEYS');
-  if (!supabaseUrl || !serverKey) {
-    return respond(503, { received: false, message: 'Configuração interna incompleta.' });
   }
 
   const processing = processWebhook(payload, supabaseUrl, serverKey).catch((error) =>
