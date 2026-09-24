@@ -31,7 +31,7 @@ interface CatalogRow {
   code: string;
   name: string;
   catalog_id: string | null;
-  item_type: CatalogItem['itemType'];
+  item_type: CatalogItem['itemType'] | null;
   kind: CatalogItem['kind'];
   parent_id: string | null;
   typology: string | null;
@@ -126,7 +126,7 @@ function draftPayload(input: CatalogItemDraft) {
     code: input.code.trim(),
     name: input.name.trim(),
     catalog_id: input.catalogId,
-    item_type: input.itemType,
+    item_type: null,
     kind: input.itemType === 'property' ? input.kind : 'standalone',
     parent_id: input.itemType === 'property' && input.kind === 'unit' ? input.parentId ?? null : null,
     typology: input.itemType === 'property' && input.kind === 'unit' ? input.typology?.trim() || null : null,
