@@ -134,6 +134,52 @@ Deno.serve(async (req) => {
   const { data: validToken, error: tokenError } = await db.rpc('admin_validate_f05_scheduler_token', { p_token: schedulerToken });
   if (tokenError || validToken !== true) return respond({ ok: false, message: 'Token de scheduler inválido.' }, 401);
 
+  async function currentLeadPlacement(runtimeLeadId?: string, inputContext: Json = {}): Promise<{ pipelineId?: string; stageId?: string }> {
+    const fallback = {
+      pipelineId: text(inputContext.pipelineId) || undefined,
+      stageId: text(inputContext.stageId) || undefined,
+    };
+    if (!runtimeLeadId) return fallback;
+    try {
+      const { data, error } = await db.from('platform_module_state').select('state').eq('module', 'crm').maybeSingle();
+      if (error) throw error;
+      const state = data?.state && typeof data.state === 'object' ? data.state as Json : {};
+      const leads = Array.isArray(state.leads) ? state.leads as Json[] : [];
+      const lead = leads.find((item) => text(item.id) === runtimeLeadId);
+      if (!lead) return fallback;
+      return {
+        pipelineId: text(lead.pipelineId) || fallback.pipelineId,
+        stageId: text(lead.stageId) || fallback.stageId,
+      };
+    } catch {
+      return fallback;
+    }
+  }
+
+  async function emitSalesBotAutomationEvent(
+    kind: 'salesbot_done' | 'salesbot_failed',
+    execution: Execution,
+  ): Promise<void> {
+    if (!execution.leadId) return;
+    const context = execution.runtimeContext && typeof execution.runtimeContext === 'object'
+      ? execution.runtimeContext
+      : {};
+    const placement = await currentLeadPlacement(execution.leadId, context);
+    const { error } = await db.from('automation_event_outbox').insert({
+      event_type: 'custom.event',
+      lead_id: execution.leadId,
+      conversation_id: execution.conversationId ?? null,
+      payload: {
+        kind,
+        botId: execution.botId,
+        executionId: execution.id,
+        ...(placement.pipelineId ? { pipelineId: placement.pipelineId } : {}),
+        ...(placement.stageId ? { stageId: placement.stageId } : {}),
+      },
+    });
+    if (error) console.error('Falha ao publicar evento de retomada do SalesBot', error.message);
+  }
+
   async function loadRow<T>(key: string): Promise<StorageRow<T>> {
     const { data, error } = await db.from('f05_shared_storage').select('value,revision').eq('storage_key', key).single();
     if (error) throw error;
@@ -301,16 +347,21 @@ Deno.serve(async (req) => {
             error: paused ? undefined : result.reason,
             action: result.reason,
           });
+          if (!paused) {
+            await emitSalesBotAutomationEvent('salesbot_failed', { ...current, status: 'failed', runtimeContext: context, error: result.reason });
+          }
           return { ...result, executionId };
         }
       }
 
       await patchExecution(executionId, { status: 'completed', finishedAt: nowIso(), runtimeContext: undefined, resumeMode: undefined, resumeAt: undefined, resumeClaimToken: undefined, resumeClaimedUntil: undefined, action: 'Execução concluída após delay.' });
+      await emitSalesBotAutomationEvent('salesbot_done', { ...current, status: 'completed', runtimeContext: context, finishedAt: nowIso() });
       return { status: 'accepted', executionId, data: { runtimeStatus: 'completed' } };
     } catch (error) {
       const reason = error instanceof Error ? error.message : 'Falha inesperada ao retomar SalesBot.';
       try {
         await patchExecution(executionId, { status: 'failed', finishedAt: nowIso(), runtimeContext: undefined, resumeMode: undefined, resumeAt: undefined, resumeClaimToken: undefined, resumeClaimedUntil: undefined, error: reason, action: reason });
+        await emitSalesBotAutomationEvent('salesbot_failed', { ...current, status: 'failed', runtimeContext: context, error: reason, finishedAt: nowIso() });
       } catch {
         // preserva a falha original
       }
