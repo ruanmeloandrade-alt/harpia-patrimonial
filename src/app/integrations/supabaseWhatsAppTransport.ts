@@ -38,6 +38,7 @@ export class SupabaseWhatsAppTransport implements InboxTransportPort {
             }
           : undefined,
         formPayload: message.formPayload,
+        buttons: message.buttons,
       },
     });
 
