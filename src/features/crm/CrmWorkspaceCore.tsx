@@ -16,6 +16,8 @@ import {
 import { BrowserCrmRepository } from './repository';
 import { CrmIntegrityError, CrmService } from './service';
 import type { CatalogRepository } from '../catalog/catalogRepository';
+import type { InboxService } from '../inbox/service';
+import { useAppRouter } from '../../core/router/router';
 import { LeadProductsPanel } from './LeadProductsPanel';
 import { listSalesBots } from '../salesbot/repository';
 import { listAIAgents } from '../ai-agents/repository';
@@ -40,6 +42,7 @@ export interface CrmWorkspaceProps {
   assignees?: AssigneeOption[];
   canManage?: boolean;
   catalogRepository?: CatalogRepository;
+  inboxService?: InboxService;
 }
 
 const emptyMessage = 'Nenhum dado real cadastrado ainda.';
@@ -63,7 +66,9 @@ export function CrmWorkspace({
   assignees = [],
   canManage = true,
   catalogRepository,
+  inboxService,
 }: CrmWorkspaceProps) {
+  const { navigate } = useAppRouter();
   const service = useMemo(
     () => injectedService ?? new CrmService(new BrowserCrmRepository()),
     [injectedService],
@@ -621,6 +626,8 @@ export function CrmWorkspace({
           onError={setFeedback}
           canManage={canManage}
           catalogRepository={catalogRepository}
+          inboxService={inboxService}
+          onOpenInbox={() => navigate(`/interno/inbox?lead=${encodeURIComponent(selectedLead.id)}`)}
         />
       )}
     </section>
@@ -670,6 +677,8 @@ function LeadDetailsPanel({
   onError,
   canManage,
   catalogRepository,
+  inboxService,
+  onOpenInbox,
 }: {
   lead: Lead;
   state: CrmState;
@@ -680,10 +689,17 @@ function LeadDetailsPanel({
   onError: (message: string) => void;
   canManage: boolean;
   catalogRepository?: CatalogRepository;
+  inboxService?: InboxService;
+  onOpenInbox: () => void;
 }) {
   const history = service.getLeadHistory(lead.id);
   const tasks = service.getLeadTasks(lead.id);
   const availableTags = state.tags.filter((tag) => !lead.tagIds.includes(tag.id));
+  const inboxSnapshot = inboxService?.snapshot();
+  const inboxConversation = inboxSnapshot?.conversations.find((conversation) => conversation.leadId === lead.id);
+  const inboxMessages = inboxConversation && inboxService
+    ? inboxService.getMessages(inboxConversation.id).slice(-8)
+    : [];
 
   const safeRun = (action: () => void, message: string) => {
     try {
@@ -772,6 +788,35 @@ function LeadDetailsPanel({
       <div className={styles.drawerHeader}>
         <div><span>Lead 360º</span><h2>{lead.name}</h2></div>
         <button type="button" onClick={onClose} aria-label="Fechar detalhes">×</button>
+      </div>
+
+      <div className={styles.inboxDrawerSection}>
+        <div className={styles.inboxDrawerHeading}>
+          <div>
+            <span>INBOX</span>
+            <h3>Conversa do lead</h3>
+          </div>
+          <button type="button" onClick={onOpenInbox}>Abrir no Inbox</button>
+        </div>
+        <div className={styles.inboxDrawerMessages}>
+          {inboxConversation ? (
+            inboxMessages.length > 0 ? (
+              inboxMessages.map((message) => (
+                <div
+                  key={message.id}
+                  className={message.direction === 'outbound' ? styles.inboxDrawerMessageOut : styles.inboxDrawerMessageIn}
+                >
+                  <p>{message.text || (message.attachment?.name ? `Arquivo: ${message.attachment.name}` : message.type)}</p>
+                  <small>{formatRuntimeDateTime(message.createdAt)}</small>
+                </div>
+              ))
+            ) : (
+              <div className={styles.inboxDrawerEmpty}>Conversa aberta, ainda sem mensagens.</div>
+            )
+          ) : (
+            <div className={styles.inboxDrawerEmpty}>Este lead ainda não tem conversa vinculada na Inbox.</div>
+          )}
+        </div>
       </div>
 
       <div className={styles.detailSection}>
