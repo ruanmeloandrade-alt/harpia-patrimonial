@@ -118,3 +118,7 @@
   .sb-library-actions{justify-content:flex-start}
   .sb-name-input{min-width:0;width:100%}
 }
+
+.sb-library-head-actions{display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-wrap:wrap}
+.sb-library-head-actions .f05-count{margin-right:2px}
+@media(max-width:760px){.sb-library-head-actions{justify-content:flex-start;width:100%}}
