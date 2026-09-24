@@ -287,8 +287,22 @@ export function InboxWorkspace({
   };
 
 
-  const explainUnsupportedTransportAction = (action: string) => {
-    setFeedback(`${action} está previsto na Inbox, mas o transporte WhatsApp atual ainda não expõe essa operação. Nenhuma ação foi simulada.`);
+  const createWhatsappGroup = async () => {
+    if (!selectedConversation) return;
+    if (selectedConversation.transportStatus !== 'connected') {
+      setFeedback('Conecte o WhatsApp desta conversa antes de criar o grupo.');
+      return;
+    }
+
+    const subject = window.prompt('Nome do grupo');
+    if (!subject?.trim()) return;
+
+    try {
+      const result = await inboxService.createGroup(selectedConversation.id, subject);
+      setFeedback(`Grupo “${result.subject}” criado no WhatsApp com sucesso.`);
+    } catch (error) {
+      setFeedback(error instanceof Error ? error.message : 'Não foi possível criar o grupo.');
+    }
   };
 
   const updateStage = (stageId: string) => {
@@ -447,10 +461,11 @@ export function InboxWorkspace({
               >
                 {automationStatus.aiAgent === 'running' ? 'Pausar Agente IA' : 'Acionar Agente IA'}
               </button>
-              <button type="button" onClick={() => explainUnsupportedTransportAction('Envio de formulário')}>
-                Formulário
-              </button>
-              <button type="button" onClick={() => explainUnsupportedTransportAction('Criação de grupo')}>
+              <button
+                type="button"
+                disabled={selectedConversation.transportStatus !== 'connected'}
+                onClick={() => { void createWhatsappGroup(); }}
+              >
                 Criar grupo
               </button>
             </div>
@@ -484,7 +499,7 @@ export function InboxWorkspace({
 
             <div className={styles.composerArea}>
               <div className={styles.mediaTypes} aria-label="Tipos de mensagem preparados">
-                {(['text', 'audio', 'image', 'video', 'document', 'form'] as MessageType[]).map((type) => (
+                {(['text', 'audio', 'image', 'video', 'document'] as MessageType[]).map((type) => (
                   <span key={type}>{messageTypeLabel(type)}</span>
                 ))}
               </div>
@@ -543,7 +558,7 @@ export function InboxWorkspace({
             </div>
             <div className={styles.composerArea}>
               <div className={styles.mediaTypes} aria-label="Tipos de mensagem preparados">
-                {(['text', 'audio', 'image', 'video', 'document', 'form'] as MessageType[]).map((type) => (
+                {(['text', 'audio', 'image', 'video', 'document'] as MessageType[]).map((type) => (
                   <span key={type}>{messageTypeLabel(type)}</span>
                 ))}
               </div>
