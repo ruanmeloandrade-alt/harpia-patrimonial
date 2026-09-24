@@ -97,9 +97,10 @@ export function updateIntegrationNotes(id: IntegrationKind, notes: string): Inte
 }
 
 export function subscribeIntegrationConnections(listener: () => void): () => void {
-  if (!isSupabaseConfigured || !supabase) return () => undefined;
+  const client = supabase;
+  if (!isSupabaseConfigured || !client) return () => undefined;
 
-  const channel = supabase
+  const channel = client
     .channel('harpia-integration-connections')
     .on(
       'postgres_changes',
@@ -109,6 +110,6 @@ export function subscribeIntegrationConnections(listener: () => void): () => voi
     .subscribe();
 
   return () => {
-    void supabase.removeChannel(channel);
+    void client.removeChannel(channel);
   };
 }
