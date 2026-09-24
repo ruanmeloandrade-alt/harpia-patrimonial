@@ -91,12 +91,37 @@ async function prepareConversation(conversationId: string) {
   return (data ?? {}) as Record<string, unknown>;
 }
 
+async function issueControlNonce(action: '/v1/send' | '/v1/group') {
+  const raw = `nonce_${crypto.randomUUID()}_${crypto.randomUUID()}`;
+  const digest = new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(raw)));
+  const tokenHash = Array.from(digest).map((byte) => byte.toString(16).padStart(2, '0')).join('');
+  const admin = serviceClient();
+  const expiresAt = new Date(Date.now() + 60_000).toISOString();
+
+  await admin
+    .from('whatsapp_control_nonces')
+    .delete()
+    .lt('expires_at', new Date().toISOString());
+
+  const { error } = await admin
+    .from('whatsapp_control_nonces')
+    .insert({
+      token_hash: tokenHash,
+      action,
+      expires_at: expiresAt,
+    });
+
+  if (error) throw new Error(`Não foi possível autorizar o conector WhatsApp: ${error.message}`);
+  return raw;
+}
+
 async function callConnector(path: '/v1/send' | '/v1/group', payload: Record<string, unknown>) {
   const baseUrl = (Deno.env.get('WHATSAPP_CONNECTOR_URL')?.trim() || DEFAULT_CONNECTOR_URL).replace(/\/+$/, '');
+  const nonceToken = await issueControlNonce(path);
   const derivedToken = await derivedControlToken();
   const configuredToken = Deno.env.get('WHATSAPP_CONNECTOR_TOKEN')?.trim() || '';
   const serviceRoleToken = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')?.trim() || '';
-  const tokens = [...new Set([derivedToken, configuredToken, serviceRoleToken].filter(Boolean))];
+  const tokens = [...new Set([nonceToken, derivedToken, configuredToken, serviceRoleToken].filter(Boolean))];
 
   if (!baseUrl || tokens.length === 0) {
     return {
