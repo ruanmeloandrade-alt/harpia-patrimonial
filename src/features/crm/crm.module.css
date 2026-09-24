@@ -2716,3 +2716,225 @@
   background: #efefff;
   color: #5d5bff;
 }
+
+/* Ajuste visual final do funil, colunas fixas e identidade verde dos gatilhos */
+.workspace .kanban {
+  grid-auto-columns: 280px;
+  grid-template-columns: none;
+  justify-content: start;
+  overflow-x: auto;
+  overflow-y: visible;
+  scroll-snap-type: x proximity;
+  overscroll-behavior-x: contain;
+  scrollbar-width: thin;
+  scrollbar-color: #819d89 #edf2ee;
+}
+
+.workspace .kanban::-webkit-scrollbar {
+  height: 10px;
+}
+
+.workspace .kanban::-webkit-scrollbar-track {
+  border-radius: 999px;
+  background: #edf2ee;
+}
+
+.workspace .kanban::-webkit-scrollbar-thumb {
+  border: 2px solid #edf2ee;
+  border-radius: 999px;
+  background: #819d89;
+}
+
+.workspace .column {
+  width: 280px;
+  min-width: 280px;
+  max-width: 280px;
+  scroll-snap-align: start;
+}
+
+.triggerPickerCard {
+  border-color: #d6dfd8;
+}
+
+.triggerPickerHead strong,
+.triggerPickerCopy strong {
+  color: #304239;
+}
+
+.triggerPickerSearch {
+  border-color: #d6dfd8;
+  box-shadow: 0 2px 5px rgba(49, 77, 63, .10);
+}
+
+.triggerPickerSearch:focus-within {
+  border-color: #6f8b78;
+  box-shadow: 0 0 0 2px rgba(49, 77, 63, .08);
+}
+
+.triggerPickerSearch span,
+.triggerPickerSearch input,
+.triggerPickerGroup h3,
+.triggerPickerCopy small {
+  color: #5f7167;
+}
+
+.triggerPickerItem {
+  border-color: #d9e2db;
+  color: #2f4338;
+  box-shadow: 0 2px 5px rgba(49, 77, 63, .05);
+}
+
+.triggerPickerItem:hover {
+  border-color: #718d7a;
+  box-shadow: 0 7px 18px rgba(49, 77, 63, .12);
+}
+
+.triggerPickerIcon {
+  background: #edf3ee;
+  color: #314d3f;
+}
+
+.triggerSelectedType {
+  border-color: #d7e2d9;
+  background: #f4f8f5;
+}
+
+.triggerSelectedType strong {
+  color: #304239;
+}
+
+.triggerSelectedType small {
+  color: #66766c;
+}
+
+.triggerSelectedType button {
+  color: #314d3f;
+}
+
+.triggerConfigPanel {
+  border-color: #d6dfd8;
+  color: #3d4f45;
+}
+
+.triggerConfigField,
+.triggerConfigDetailField,
+.triggerConfigInlinePair label,
+.triggerConfigActionBox label,
+.triggerConfigField > span,
+.triggerConfigSectionLabel {
+  color: #596b61;
+}
+
+.triggerConfigPanel input,
+.triggerConfigPanel select,
+.triggerConfigPanel textarea {
+  border-color: #d6dfd8;
+  color: #42554a;
+}
+
+.triggerConfigPanel input:focus,
+.triggerConfigPanel select:focus,
+.triggerConfigPanel textarea:focus {
+  border-color: #6f8b78;
+  box-shadow: 0 0 0 1px rgba(49, 77, 63, .10);
+}
+
+.triggerExecuteOption {
+  border-color: #d8e1da;
+  color: #596b61;
+}
+
+.triggerExecuteOption input:checked {
+  border-color: #314d3f;
+  background: #314d3f;
+}
+
+.triggerExecuteOptionSelected {
+  border-color: #58735f;
+  background: #eef4ef;
+  color: #3f5548;
+}
+
+.triggerConfigInlinePair,
+.triggerConfigDetailField,
+.triggerConditionEditor {
+  border-color: #dce4de;
+  background: #f7faf7;
+}
+
+.triggerSwitch input:checked + span {
+  background: #314d3f;
+}
+
+.triggerConfigActionBox {
+  border-color: #dce4de;
+}
+
+.triggerConfigActionBox > strong,
+.triggerConfigActionHead > strong {
+  color: #405449;
+}
+
+.triggerConfigActionBox code,
+.inboundWebhookBox code {
+  color: #3d5b48;
+}
+
+.inboundWebhookBox {
+  border-color: #d8e2da;
+  background: #f5f8f5;
+}
+
+.inboundWebhookBox > strong {
+  color: #304239;
+}
+
+.triggerApplyExisting input {
+  border-color: #6f8b78;
+}
+
+.triggerApplyExisting input:checked {
+  border-color: #314d3f;
+  background: #314d3f;
+}
+
+.triggerConfigReady {
+  background: #314d3f !important;
+  box-shadow: 0 2px 4px rgba(49, 77, 63, .20);
+}
+
+.triggerActiveButton {
+  border-color: #d6dfd8;
+  color: #4a5d52;
+}
+
+.triggerActiveMenu {
+  border-color: #d6dfd8;
+  box-shadow: 0 4px 12px rgba(49, 77, 63, .16);
+}
+
+.triggerActiveMenu button {
+  color: #465a4f;
+}
+
+.triggerActiveMenu button:hover {
+  background: #f0f5f1;
+}
+
+.triggerActiveMenu .triggerActiveMenuSelected {
+  background: #e8f0ea;
+  color: #314d3f;
+}
+
+@media (max-width: 720px) {
+  .workspace .kanban {
+    grid-auto-columns: 280px;
+  }
+
+  .workspace .column {
+    width: 280px;
+    min-width: 280px;
+    max-width: 280px;
+  }
+}
+
