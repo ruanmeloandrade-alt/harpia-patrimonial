@@ -225,6 +225,348 @@ export type Database = {
           },
         ]
       }
+      crm_custom_fields: {
+        Row: {
+          active: boolean
+          created_at: string
+          id: string
+          name: string
+          options: Json
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          id: string
+          name: string
+          options?: Json
+          type: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          name?: string
+          options?: Json
+          type?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      crm_history: {
+        Row: {
+          created_at: string
+          description: string
+          id: string
+          lead_id: string
+          metadata: Json | null
+          type: string
+        }
+        Insert: {
+          created_at?: string
+          description: string
+          id: string
+          lead_id: string
+          metadata?: Json | null
+          type: string
+        }
+        Update: {
+          created_at?: string
+          description?: string
+          id?: string
+          lead_id?: string
+          metadata?: Json | null
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_history_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "crm_leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      crm_lead_custom_field_values: {
+        Row: {
+          field_id: string
+          lead_id: string
+          updated_at: string
+          value: Json | null
+        }
+        Insert: {
+          field_id: string
+          lead_id: string
+          updated_at?: string
+          value?: Json | null
+        }
+        Update: {
+          field_id?: string
+          lead_id?: string
+          updated_at?: string
+          value?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_lead_custom_field_values_field_id_fkey"
+            columns: ["field_id"]
+            isOneToOne: false
+            referencedRelation: "crm_custom_fields"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_lead_custom_field_values_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "crm_leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      crm_lead_tags: {
+        Row: {
+          created_at: string
+          lead_id: string
+          position: number
+          tag_id: string
+        }
+        Insert: {
+          created_at?: string
+          lead_id: string
+          position?: number
+          tag_id: string
+        }
+        Update: {
+          created_at?: string
+          lead_id?: string
+          position?: number
+          tag_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_lead_tags_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "crm_leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_lead_tags_tag_id_fkey"
+            columns: ["tag_id"]
+            isOneToOne: false
+            referencedRelation: "crm_tags"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      crm_leads: {
+        Row: {
+          assignee_id: string | null
+          created_at: string
+          email: string | null
+          id: string
+          interest_label: string | null
+          interest_reference_id: string | null
+          interest_type: string | null
+          last_interaction_at: string | null
+          name: string
+          notes: string | null
+          pipeline_id: string | null
+          source: string | null
+          source_action: string | null
+          source_metadata: Json
+          source_occurred_at: string | null
+          source_page: string | null
+          stage_id: string | null
+          updated_at: string
+          whatsapp: string | null
+        }
+        Insert: {
+          assignee_id?: string | null
+          created_at?: string
+          email?: string | null
+          id: string
+          interest_label?: string | null
+          interest_reference_id?: string | null
+          interest_type?: string | null
+          last_interaction_at?: string | null
+          name: string
+          notes?: string | null
+          pipeline_id?: string | null
+          source?: string | null
+          source_action?: string | null
+          source_metadata?: Json
+          source_occurred_at?: string | null
+          source_page?: string | null
+          stage_id?: string | null
+          updated_at?: string
+          whatsapp?: string | null
+        }
+        Update: {
+          assignee_id?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          interest_label?: string | null
+          interest_reference_id?: string | null
+          interest_type?: string | null
+          last_interaction_at?: string | null
+          name?: string
+          notes?: string | null
+          pipeline_id?: string | null
+          source?: string | null
+          source_action?: string | null
+          source_metadata?: Json
+          source_occurred_at?: string | null
+          source_page?: string | null
+          stage_id?: string | null
+          updated_at?: string
+          whatsapp?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_leads_pipeline_id_fkey"
+            columns: ["pipeline_id"]
+            isOneToOne: false
+            referencedRelation: "crm_pipelines"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_leads_stage_id_fkey"
+            columns: ["stage_id"]
+            isOneToOne: false
+            referencedRelation: "crm_pipeline_stages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      crm_pipeline_stages: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          pipeline_id: string
+          position: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id: string
+          name: string
+          pipeline_id: string
+          position?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          pipeline_id?: string
+          position?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_pipeline_stages_pipeline_id_fkey"
+            columns: ["pipeline_id"]
+            isOneToOne: false
+            referencedRelation: "crm_pipelines"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      crm_pipelines: {
+        Row: {
+          active: boolean
+          created_at: string
+          id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          id: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      crm_tags: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      crm_tasks: {
+        Row: {
+          assignee_id: string | null
+          created_at: string
+          due_at: string | null
+          id: string
+          lead_id: string
+          notes: string | null
+          status: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          assignee_id?: string | null
+          created_at?: string
+          due_at?: string | null
+          id: string
+          lead_id: string
+          notes?: string | null
+          status: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          assignee_id?: string | null
+          created_at?: string
+          due_at?: string | null
+          id?: string
+          lead_id?: string
+          notes?: string | null
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_tasks_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "crm_leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       f05_shared_storage: {
         Row: {
           revision: number
@@ -647,6 +989,74 @@ export type Database = {
           },
         ]
       }
+      meta_lead_receipts: {
+        Row: {
+          ad_id: string | null
+          adset_id: string | null
+          campaign_id: string | null
+          connection_id: string | null
+          created_time: string | null
+          crm_lead_id: string | null
+          field_data: Json
+          form_id: string | null
+          id: string
+          last_error: string | null
+          leadgen_id: string
+          page_id: string
+          processed_at: string | null
+          raw_lead: Json
+          received_at: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          ad_id?: string | null
+          adset_id?: string | null
+          campaign_id?: string | null
+          connection_id?: string | null
+          created_time?: string | null
+          crm_lead_id?: string | null
+          field_data?: Json
+          form_id?: string | null
+          id?: string
+          last_error?: string | null
+          leadgen_id: string
+          page_id: string
+          processed_at?: string | null
+          raw_lead?: Json
+          received_at?: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          ad_id?: string | null
+          adset_id?: string | null
+          campaign_id?: string | null
+          connection_id?: string | null
+          created_time?: string | null
+          crm_lead_id?: string | null
+          field_data?: Json
+          form_id?: string | null
+          id?: string
+          last_error?: string | null
+          leadgen_id?: string
+          page_id?: string
+          processed_at?: string | null
+          raw_lead?: Json
+          received_at?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "meta_lead_receipts_connection_id_fkey"
+            columns: ["connection_id"]
+            isOneToOne: false
+            referencedRelation: "integration_connections"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       organization_settings: {
         Row: {
           city: string | null
@@ -920,6 +1330,14 @@ export type Database = {
         Args: { p_profile_id: string; p_secret_ref?: string }
         Returns: boolean
       }
+      admin_delete_whatsapp_auth_state: {
+        Args: { p_session_id: string; p_state_key?: string }
+        Returns: number
+      }
+      admin_disconnect_meta_page: {
+        Args: { p_page_id: string }
+        Returns: boolean
+      }
       admin_finish_automation_event: {
         Args: {
           p_error?: string
@@ -928,6 +1346,27 @@ export type Database = {
           p_success: boolean
         }
         Returns: undefined
+      }
+      admin_get_whatsapp_auth_state: {
+        Args: { p_session_id: string; p_state_key: string }
+        Returns: string
+      }
+      admin_ingest_meta_lead: {
+        Args: {
+          p_ad_id?: string
+          p_adset_id?: string
+          p_campaign_id?: string
+          p_created_time?: string
+          p_email?: string
+          p_field_data?: Json
+          p_form_id: string
+          p_leadgen_id: string
+          p_name: string
+          p_page_id: string
+          p_raw_lead?: Json
+          p_whatsapp?: string
+        }
+        Returns: string
       }
       admin_ingest_public_lead: {
         Args: {
@@ -943,13 +1382,58 @@ export type Database = {
         }
         Returns: string
       }
+      admin_ingest_whatsapp_message: {
+        Args: {
+          p_attachment?: Json
+          p_display_name: string
+          p_external_message_id: string
+          p_metadata?: Json
+          p_phone: string
+          p_received_at?: string
+          p_text?: string
+          p_thread_id: string
+          p_type: string
+        }
+        Returns: Json
+      }
+      admin_mark_stale_whatsapp_connector: { Args: never; Returns: number }
+      admin_prepare_whatsapp_conversation: {
+        Args: { p_conversation_id: string }
+        Returns: Json
+      }
       admin_resolve_ai_credential: {
         Args: { p_profile_id: string; p_secret_ref: string }
+        Returns: string
+      }
+      admin_resolve_meta_page_token: {
+        Args: { p_page_id: string }
+        Returns: string
+      }
+      admin_resolve_or_create_whatsapp_lead: {
+        Args: { p_display_name?: string; p_metadata?: Json; p_phone: string }
         Returns: string
       }
       admin_store_ai_credential: {
         Args: { p_api_key: string; p_profile_id: string }
         Returns: string
+      }
+      admin_store_meta_page_token: {
+        Args: {
+          p_form_ids?: string[]
+          p_graph_version?: string
+          p_page_access_token: string
+          p_page_id: string
+          p_page_name: string
+        }
+        Returns: string
+      }
+      admin_upsert_whatsapp_auth_state: {
+        Args: {
+          p_encrypted_value: string
+          p_session_id: string
+          p_state_key: string
+        }
+        Returns: undefined
       }
       admin_validate_f05_scheduler_token: {
         Args: { p_token: string }
