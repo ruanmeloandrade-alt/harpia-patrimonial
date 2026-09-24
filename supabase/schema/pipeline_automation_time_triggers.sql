@@ -46,3 +46,14 @@ begin
   );
 end
 $$;
+
+
+create unique index if not exists automation_scheduled_event_once_idx
+on public.automation_event_outbox (
+  (payload->>'automationId'),
+  lead_id,
+  (payload->>'scheduledKey')
+)
+where event_type = 'custom.event'
+  and payload ? 'automationId'
+  and payload ? 'scheduledKey';
