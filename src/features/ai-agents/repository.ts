@@ -20,6 +20,7 @@ export function listAIAgents(): AIAgentDefinition[] {
 
 export function createAIAgent(name: string): AIAgentDefinition {
   const timestamp = now();
+  const defaultProfile = listAIProviderProfiles().find((item) => item.status === 'ready' && item.apiKeyConfigured);
   const agent: AIAgentDefinition = {
     id: createF05Id('agent'),
     name: name.trim(),
@@ -29,7 +30,7 @@ export function createAIAgent(name: string): AIAgentDefinition {
     context: '',
     accessScopes: [],
     activationPoints: [],
-    providerProfileId: '',
+    providerProfileId: defaultProfile?.id ?? '',
     status: 'draft',
     createdAt: timestamp,
     updatedAt: timestamp,
