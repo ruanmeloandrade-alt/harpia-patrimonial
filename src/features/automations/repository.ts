@@ -173,7 +173,12 @@ function pipelineActionDefinition(input: PipelineAutomationMeta): AutomationActi
     return make('add_tag', { tagId });
   }
   if (input.action === 'assign_owner') return make('assign_owner', { userId: String(config.userId ?? '') });
-  if (input.action === 'update_field') return make('update_field', { fieldId: String(config.fieldId ?? ''), value: config.value ?? '' });
+  if (input.action === 'update_field') {
+    const fieldId = String(config.fieldId ?? '');
+    return fieldId.startsWith('lead.')
+      ? make('update_lead_field', { fieldId, value: config.value ?? '' })
+      : make('update_field', { fieldId, value: config.value ?? '' });
+  }
   if (input.action === 'delete_lead') return make('delete_lead', {});
   if (input.action === 'internal_message') return make('internal_message', { message: String(config.message ?? '') });
   if (input.action === 'generate_form') return make('generate_form', { title: String(config.title ?? ''), fields: String(config.fields ?? '') });
