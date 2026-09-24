@@ -39,7 +39,7 @@ export interface CatalogItem {
   id: string;
   code: string;
   name: string;
-  catalogId: string;
+  catalogId: string | null;
   itemType: CatalogItemType;
   kind: CatalogItemKind;
   parentId?: string;
@@ -74,7 +74,7 @@ export interface CatalogQuery {
   status?: CatalogStatus;
   kind?: CatalogItemKind;
   itemType?: CatalogItemType;
-  catalogId?: string;
+  catalogId?: string | null;
   search?: string;
 }
 
@@ -94,7 +94,7 @@ export interface PublicCatalogItem {
   id: string;
   code: string;
   name: string;
-  catalogId: string;
+  catalogId: string | null;
   itemType: CatalogItemType;
   kind: CatalogItemKind;
   parentId?: string;
