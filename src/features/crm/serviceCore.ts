@@ -212,6 +212,7 @@ export class CrmService {
       assigneeId: this.cleanOptional(input.assigneeId),
       pipelineId: placement.pipelineId,
       stageId: placement.stageId,
+      stageEnteredAt: placement.stageId ? timestamp : undefined,
       tagIds: [],
       customFields: {},
       notes: this.cleanOptional(input.notes),
@@ -268,7 +269,8 @@ export class CrmService {
     const previousStageId = lead.stageId ?? null;
     lead.pipelineId = stage.pipelineId;
     lead.stageId = stage.id;
-    lead.updatedAt = nowIso();
+    lead.stageEnteredAt = nowIso();
+    lead.updatedAt = lead.stageEnteredAt;
 
     this.addHistory(lead.id, 'stage_changed', 'Lead movido de etapa.', {
       previousStageId,
