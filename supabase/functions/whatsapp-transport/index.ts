@@ -93,33 +93,49 @@ async function prepareConversation(conversationId: string) {
 
 async function callConnector(path: '/v1/send' | '/v1/group', payload: Record<string, unknown>) {
   const baseUrl = (Deno.env.get('WHATSAPP_CONNECTOR_URL')?.trim() || DEFAULT_CONNECTOR_URL).replace(/\/+$/, '');
-  const token = Deno.env.get('WHATSAPP_CONNECTOR_TOKEN')?.trim() || await derivedControlToken();
+  const derivedToken = await derivedControlToken();
+  const configuredToken = Deno.env.get('WHATSAPP_CONNECTOR_TOKEN')?.trim() || '';
+  const tokens = [...new Set([derivedToken, configuredToken].filter(Boolean))];
 
-  if (!baseUrl || !token) {
+  if (!baseUrl || tokens.length === 0) {
     return {
       status: 503,
       payload: { ok: false, message: 'Conector WhatsApp ainda não foi configurado no backend.' },
     };
   }
 
-  const response = await fetch(`${baseUrl}${path}`, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${token}`,
-      'Content-Type': 'application/json',
-      Accept: 'application/json',
-    },
-    body: JSON.stringify(payload),
-    signal: AbortSignal.timeout(20_000),
-  });
+  const post = async (token: string) => {
+    const response = await fetch(`${baseUrl}${path}`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+      },
+      body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(20_000),
+    });
 
-  return {
-    status: response.status,
-    payload: await response.json().catch(() => ({
-      ok: false,
-      message: 'Resposta inválida do conector WhatsApp.',
-    })),
+    return {
+      status: response.status,
+      payload: await response.json().catch(() => ({
+        ok: false,
+        message: 'Resposta inválida do conector WhatsApp.',
+      })),
+    };
   };
+
+  let result = await post(tokens[0]);
+  if (result.status === 401 && tokens.length > 1) {
+    result = await post(tokens[1]);
+  }
+  if (result.status === 401) {
+    return {
+      status: 502,
+      payload: { ok: false, message: 'O conector WhatsApp recusou a credencial de envio.' },
+    };
+  }
+  return result;
 }
 
 Deno.serve(async (req: Request) => {
