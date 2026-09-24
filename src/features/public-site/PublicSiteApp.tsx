@@ -1,4 +1,5 @@
 import { FormEvent, MouseEvent, useEffect, useRef, useState } from 'react';
+import { formatCurrency as formatConfiguredCurrency } from '../settings/regional-runtime';
 import { ClientArea, type ClientProfileView } from '../client-area/ClientArea';
 import {
   emptyPublicCatalogReader,
@@ -120,8 +121,7 @@ const emptyFilterOptions: PublicCatalogFilterOptions = {
 };
 
 function formatCurrency(value: number | null) {
-  if (value === null) return 'Valor sob consulta';
-  return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(value);
+  return value === null ? 'Sob consulta' : formatConfiguredCurrency(value, 0);
 }
 
 function publicFinalPrice(item: PublicCatalogItem) {
