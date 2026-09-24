@@ -5,10 +5,7 @@ import { LoginPage } from '../features/auth/LoginPage';
 import { RecoverPasswordPage } from '../features/auth/RecoverPasswordPage';
 import { RegisterPage } from '../features/auth/RegisterPage';
 import { ResetPasswordPage } from '../features/auth/ResetPasswordPage';
-import { PermissionsPage } from '../features/permissions/PermissionsPage';
 import { matchesFront02PublicRoute } from '../features/public-site';
-import { CoreSettingsPage } from '../features/settings/core/CoreSettingsPage';
-import { UsersPage } from '../features/users/UsersPage';
 import { FullPageState } from '../shared/components/FullPageState';
 import { InternalShell } from '../shared/components/InternalShell';
 import { IntegratedPublicExperience } from './IntegratedPublicExperience';
@@ -24,6 +21,7 @@ import {
   IntegratedIntegrations,
   IntegratedMarketing,
   IntegratedSalesBot,
+  IntegratedSettings,
 } from './IntegratedInternalModules';
 
 export function AppRouter() {
@@ -104,18 +102,26 @@ export function AppRouter() {
       permission = undefined;
       permissions = undefined;
     } else if (pathname === '/interno/integracoes') {
-      page = <IntegratedIntegrations />;
+      page = <IntegratedSettings initialTab="integrations" />;
       permission = undefined;
       permissions = [PERMISSIONS.INTEGRATIONS_VIEW, PERMISSIONS.INTEGRATIONS_MANAGE];
-    } else if (pathname === '/interno/usuarios') {
-      page = <UsersPage />;
-      permission = PERMISSIONS.USERS_VIEW;
-    } else if (pathname === '/interno/permissoes') {
-      page = <PermissionsPage />;
-      permission = PERMISSIONS.ROLES_VIEW;
+    } else if (pathname === '/interno/usuarios' || pathname === '/interno/permissoes') {
+      page = <IntegratedSettings initialTab="users" />;
+      permission = undefined;
+      permissions = [PERMISSIONS.USERS_VIEW, PERMISSIONS.USERS_MANAGE, PERMISSIONS.ROLES_VIEW, PERMISSIONS.ROLES_MANAGE];
     } else if (pathname === '/interno/configuracoes') {
-      page = <CoreSettingsPage />;
-      permission = PERMISSIONS.SETTINGS_VIEW;
+      page = <IntegratedSettings />;
+      permission = undefined;
+      permissions = [
+        PERMISSIONS.SETTINGS_VIEW,
+        PERMISSIONS.SETTINGS_MANAGE,
+        PERMISSIONS.USERS_VIEW,
+        PERMISSIONS.USERS_MANAGE,
+        PERMISSIONS.ROLES_VIEW,
+        PERMISSIONS.ROLES_MANAGE,
+        PERMISSIONS.INTEGRATIONS_VIEW,
+        PERMISSIONS.INTEGRATIONS_MANAGE,
+      ];
     } else if (pathname !== '/interno') {
       return <FullPageState title="Página não encontrada" actionHref="/interno" actionLabel="Voltar ao painel" />;
     }
