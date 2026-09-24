@@ -7,6 +7,7 @@ import { AIProvidersWorkspace } from '../integrations/AIProvidersWorkspace';
 import type { AICredentialVaultPort } from '../integrations/aiCredentialPort';
 import { CoreSettingsPage } from './core/CoreSettingsPage';
 import {
+  DEFAULT_ORGANIZATION_PREFERENCES,
   getOrganizationSettings,
   mergeOrganizationPreferences,
   normalizeOrganizationPreferences,
@@ -23,6 +24,7 @@ import {
   type UserPreferences,
   updateUserPreferences,
 } from './user-preferences-service';
+import { applyRegionalRuntime, formatCurrency, formatDateTime, type RegionalRuntimePreferences } from './regional-runtime';
 import './settings-workspace.css';
 
 export type SettingsTab =
@@ -100,6 +102,7 @@ export function SettingsWorkspace({ credentialVault, initialTab = 'preferences' 
   const [activeTab, setActiveTab] = useState<SettingsTab>(initialTab);
   const [settings, setSettings] = useState<OrganizationSettings | null>(null);
   const [userPreferences, setUserPreferences] = useState<UserPreferences>({ ...DEFAULT_USER_PREFERENCES });
+  const [regionalDraft, setRegionalDraft] = useState<RegionalRuntimePreferences>({ ...DEFAULT_ORGANIZATION_PREFERENCES.regional });
   const [loadingSettings, setLoadingSettings] = useState(canViewSettings);
   const [loadingPersonal, setLoadingPersonal] = useState(Boolean(userId));
   const [saving, setSaving] = useState(false);
@@ -129,7 +132,11 @@ export function SettingsWorkspace({ credentialVault, initialTab = 'preferences' 
     setLoadingSettings(true);
     void getOrganizationSettings()
       .then((value) => {
-        if (!cancelled) setSettings(value);
+        if (cancelled) return;
+        setSettings(value);
+        const regional = normalizeOrganizationPreferences(value.preferences).regional;
+        setRegionalDraft(regional);
+        applyRegionalRuntime(regional);
       })
       .catch((err) => {
         if (!cancelled) setError(err instanceof Error ? err.message : 'Não foi possível carregar as configurações globais.');
@@ -167,6 +174,12 @@ export function SettingsWorkspace({ credentialVault, initialTab = 'preferences' 
 
   const preferences = normalizeOrganizationPreferences(settings?.preferences);
 
+  function previewRegional(patch: Partial<RegionalRuntimePreferences>) {
+    const next = { ...regionalDraft, ...patch };
+    setRegionalDraft(next);
+    applyRegionalRuntime(next);
+  }
+
   async function saveOrganizationPatch(patch: OrganizationPreferences, successMessage: string) {
     if (!settings || !canManageSettings) return;
     const next = mergeOrganizationPreferences(settings.preferences, patch);
@@ -194,6 +207,19 @@ export function SettingsWorkspace({ credentialVault, initialTab = 'preferences' 
         theme: String(form.get('theme') || 'system') as UserPreferences['theme'],
         compact_mode: bool(form, 'compactMode'),
       }, 'Suas preferências foram atualizadas.');
+
+      if (canManageSettings && settings) {
+        const regional: RegionalRuntimePreferences = {
+          locale: String(form.get('locale') || regionalDraft.locale),
+          currency: String(form.get('currency') || regionalDraft.currency),
+          timezone: String(form.get('timezone') || regionalDraft.timezone),
+          dateFormat: String(form.get('dateFormat') || regionalDraft.dateFormat),
+          timeFormat: String(form.get('timeFormat') || regionalDraft.timeFormat) as '24h' | '12h',
+        };
+        await saveOrganizationPatch({ regional }, 'Preferências pessoais e regionais atualizadas.');
+        setRegionalDraft(regional);
+        applyRegionalRuntime(regional);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Não foi possível salvar as preferências.');
     } finally {
@@ -404,7 +430,23 @@ export function SettingsWorkspace({ credentialVault, initialTab = 'preferences' 
                 </label>
               </div>
 
-              <div className="settings-inline-note">Tema e densidade visual são preferências individuais desta conta. Configurações institucionais não podem ser alteradas aqui.</div>
+              {canViewSettings ? (
+                <>
+                  <div className="settings-subtitle">Preferências regionais da empresa</div>
+                  <div className="form-grid">
+                    <label className="field"><span>Idioma</span><select name="locale" value={regionalDraft.locale} disabled={!canManageSettings} onChange={(event) => previewRegional({ locale: event.target.value })}><option value="pt-BR">Português Brasil</option><option value="pt-PT">Português Portugal</option><option value="en-US">English</option></select></label>
+                    <label className="field"><span>Moeda</span><select name="currency" value={regionalDraft.currency} disabled={!canManageSettings} onChange={(event) => previewRegional({ currency: event.target.value })}><option value="BRL">Real brasileiro (BRL)</option><option value="EUR">Euro (EUR)</option><option value="USD">Dólar americano (USD)</option></select></label>
+                    <label className="field"><span>Fuso horário</span><select name="timezone" value={regionalDraft.timezone} disabled={!canManageSettings} onChange={(event) => previewRegional({ timezone: event.target.value })}><option value="America/Sao_Paulo">Brasília / São Paulo</option><option value="America/Manaus">Manaus</option><option value="America/Rio_Branco">Rio Branco</option><option value="Europe/Lisbon">Lisboa</option><option value="UTC">UTC</option></select></label>
+                    <label className="field"><span>Formato de data</span><select name="dateFormat" value={regionalDraft.dateFormat} disabled={!canManageSettings} onChange={(event) => previewRegional({ dateFormat: event.target.value })}><option value="dd/MM/yyyy">DD/MM/AAAA</option><option value="MM/dd/yyyy">MM/DD/AAAA</option><option value="yyyy-MM-dd">AAAA-MM-DD</option></select></label>
+                    <label className="field"><span>Formato de hora</span><select name="timeFormat" value={regionalDraft.timeFormat} disabled={!canManageSettings} onChange={(event) => previewRegional({ timeFormat: event.target.value as '24h' | '12h' })}><option value="24h">24 horas</option><option value="12h">12 horas</option></select></label>
+                  </div>
+                  <div className="settings-regional-preview">
+                    <div><span>Prévia monetária</span><strong>{formatCurrency(123456.78)}</strong></div>
+                    <div><span>Prévia de data e hora</span><strong>{formatDateTime(new Date())}</strong></div>
+                  </div>
+                </>
+              ) : null}
+              <div className="settings-inline-note">Tema e modo compacto são individuais. Idioma, moeda, fuso e formatos são padrões globais aplicados à interface e aos formatadores do sistema.</div>
               <SaveButton saving={saving} canManage={Boolean(userId)} label="Salvar minhas preferências" />
             </>
           )}
