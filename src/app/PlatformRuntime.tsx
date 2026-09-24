@@ -33,6 +33,7 @@ import { SupabaseAICredentialVault } from './integrations/supabaseAICredentialVa
 import { SupabaseAIModelRuntime } from './integrations/supabaseAIModelRuntime';
 import { SupabaseAutomationWebhook } from './integrations/supabaseAutomationWebhook';
 import { SupabaseFavoritesStore } from './integrations/supabaseFavoritesStore';
+import { SupabaseSalesBotWhatsAppMessagePort, SupabaseWhatsAppTransport } from './integrations/supabaseWhatsAppTransport';
 import { loadInternalAssignees } from './integrations/internalAssignees';
 import { salesBotConditionEvaluator } from './integrations/salesBotConditionEvaluator';
 import { hydrateSharedF05Storage } from './integrations/sharedF05Storage';
@@ -83,6 +84,8 @@ export function PlatformRuntimeProvider({ children }: PropsWithChildren) {
   const credentialVault = useMemo(() => new SupabaseAICredentialVault(), []);
   const aiModelRuntime = useMemo(() => new SupabaseAIModelRuntime(), []);
   const automationWebhook = useMemo(() => new SupabaseAutomationWebhook(), []);
+  const whatsappTransport = useMemo(() => new SupabaseWhatsAppTransport(), []);
+  const whatsappSalesBotMessage = useMemo(() => new SupabaseSalesBotWhatsAppMessagePort(), []);
 
   useEffect(() => () => catalogRuntime?.dispose(), [catalogRuntime]);
 
@@ -208,7 +211,7 @@ export function PlatformRuntimeProvider({ children }: PropsWithChildren) {
         unsubscribeEvents?.();
 
         const crm = new CrmService(crmRepository);
-        const inbox = inboxRepository ? new InboxService(inboxRepository) : null;
+        const inbox = inboxRepository ? new InboxService(inboxRepository, whatsappTransport) : null;
         const waitForCrmPersistence = () => crmRepository.waitForLastSave?.() ?? Promise.resolve();
         const crmActions = createFront05CrmActionPort(crm, waitForCrmPersistence);
         const aiCommandPort = createAIAgentCommandPort(aiModelRuntime);
@@ -216,6 +219,7 @@ export function PlatformRuntimeProvider({ children }: PropsWithChildren) {
           ...unconfiguredSalesBotRuntimeDependencies,
           crm: crmActions,
           ai: aiCommandPort,
+          message: whatsappSalesBotMessage,
           condition: salesBotConditionEvaluator,
           webhook: automationWebhook,
         });
@@ -285,6 +289,21 @@ export function PlatformRuntimeProvider({ children }: PropsWithChildren) {
         { event: 'UPDATE', schema: 'public', table: 'platform_module_state' },
         () => { void installOperationalRuntime(false); },
       )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'inbox_conversations' },
+        () => { void installOperationalRuntime(false); },
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'inbox_messages' },
+        () => { void installOperationalRuntime(false); },
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'inbox_message_attachments' },
+        () => { void installOperationalRuntime(false); },
+      )
       .subscribe();
 
     return () => {
@@ -292,7 +311,7 @@ export function PlatformRuntimeProvider({ children }: PropsWithChildren) {
       unsubscribeEvents?.();
       if (channel) void supabase?.removeChannel(channel);
     };
-  }, [aiModelRuntime, auth.user?.id, automationWebhook, canUseCrm, canUseInbox, catalogRepository, f05Revision]);
+  }, [aiModelRuntime, auth.user?.id, automationWebhook, canUseCrm, canUseInbox, catalogRepository, f05Revision, whatsappSalesBotMessage, whatsappTransport]);
 
   const value = useMemo<PlatformRuntimeValue>(() => ({
     catalogRepository,

@@ -1,0 +1,24 @@
+{
+  "name": "@harpia/whatsapp-connector",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22.12 <25"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/server.js"
+  },
+  "dependencies": {
+    "@hapi/boom": "10.0.1",
+    "@supabase/supabase-js": "2.116.0",
+    "@whiskeysockets/baileys": "7.0.0-rc14",
+    "pino": "10.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "24.3.0",
+    "typescript": "5.9.2"
+  }
+}

@@ -5,6 +5,7 @@ import type { CrmRepository } from '../../features/crm/repository';
 import type { InboxState } from '../../features/inbox/domain';
 import { createEmptyInboxState } from '../../features/inbox/domain';
 import type { InboxRepository } from '../../features/inbox/repository';
+import { hydrateNormalizedInboxRepository } from './normalizedInboxRepository';
 
 const clone = <T,>(value: T): T => JSON.parse(JSON.stringify(value)) as T;
 
@@ -179,6 +180,5 @@ export async function hydrateSharedCrmRepository() {
 }
 
 export async function hydrateSharedInboxRepository() {
-  const row = await readModule('inbox');
-  return new SupabaseInboxRepository(normalizeInbox(row.state), row.revision);
+  return hydrateNormalizedInboxRepository();
 }

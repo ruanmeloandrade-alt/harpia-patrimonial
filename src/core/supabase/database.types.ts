@@ -293,6 +293,331 @@ export type Database = {
           },
         ]
       }
+      inbox_channel_accounts: {
+        Row: {
+          channel: string
+          connection_id: string | null
+          connector_version: string | null
+          created_at: string
+          display_name: string | null
+          external_account_id: string | null
+          id: string
+          last_error_at: string | null
+          last_error_code: string | null
+          last_event_at: string | null
+          last_heartbeat_at: string | null
+          metadata: Json
+          phone_number: string | null
+          provider: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          channel?: string
+          connection_id?: string | null
+          connector_version?: string | null
+          created_at?: string
+          display_name?: string | null
+          external_account_id?: string | null
+          id?: string
+          last_error_at?: string | null
+          last_error_code?: string | null
+          last_event_at?: string | null
+          last_heartbeat_at?: string | null
+          metadata?: Json
+          phone_number?: string | null
+          provider: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          channel?: string
+          connection_id?: string | null
+          connector_version?: string | null
+          created_at?: string
+          display_name?: string | null
+          external_account_id?: string | null
+          id?: string
+          last_error_at?: string | null
+          last_error_code?: string | null
+          last_event_at?: string | null
+          last_heartbeat_at?: string | null
+          metadata?: Json
+          phone_number?: string | null
+          provider?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inbox_channel_accounts_connection_id_fkey"
+            columns: ["connection_id"]
+            isOneToOne: false
+            referencedRelation: "integration_connections"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      inbox_conversations: {
+        Row: {
+          channel: string
+          channel_account_id: string | null
+          created_at: string
+          external_thread_id: string | null
+          id: string
+          last_message_at: string | null
+          lead_id: string
+          provider: string
+          transport_status: string
+          updated_at: string
+        }
+        Insert: {
+          channel?: string
+          channel_account_id?: string | null
+          created_at?: string
+          external_thread_id?: string | null
+          id: string
+          last_message_at?: string | null
+          lead_id: string
+          provider?: string
+          transport_status?: string
+          updated_at?: string
+        }
+        Update: {
+          channel?: string
+          channel_account_id?: string | null
+          created_at?: string
+          external_thread_id?: string | null
+          id?: string
+          last_message_at?: string | null
+          lead_id?: string
+          provider?: string
+          transport_status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inbox_conversations_channel_account_id_fkey"
+            columns: ["channel_account_id"]
+            isOneToOne: false
+            referencedRelation: "inbox_channel_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      inbox_message_attachments: {
+        Row: {
+          created_at: string
+          id: string
+          message_id: string
+          metadata: Json
+          mime_type: string | null
+          name: string | null
+          provider_media_id: string | null
+          size_bytes: number | null
+          storage_bucket: string | null
+          storage_path: string | null
+          url: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          message_id: string
+          metadata?: Json
+          mime_type?: string | null
+          name?: string | null
+          provider_media_id?: string | null
+          size_bytes?: number | null
+          storage_bucket?: string | null
+          storage_path?: string | null
+          url?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          message_id?: string
+          metadata?: Json
+          mime_type?: string | null
+          name?: string | null
+          provider_media_id?: string | null
+          size_bytes?: number | null
+          storage_bucket?: string | null
+          storage_path?: string | null
+          url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inbox_message_attachments_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "inbox_messages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      inbox_messages: {
+        Row: {
+          conversation_id: string
+          created_at: string
+          delivery_status: string
+          direction: string
+          error_code: string | null
+          error_message: string | null
+          external_message_id: string | null
+          form_payload: Json | null
+          id: string
+          provider: string
+          provider_timestamp: string | null
+          text_content: string | null
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          conversation_id: string
+          created_at?: string
+          delivery_status: string
+          direction: string
+          error_code?: string | null
+          error_message?: string | null
+          external_message_id?: string | null
+          form_payload?: Json | null
+          id: string
+          provider?: string
+          provider_timestamp?: string | null
+          text_content?: string | null
+          type: string
+          updated_at?: string
+        }
+        Update: {
+          conversation_id?: string
+          created_at?: string
+          delivery_status?: string
+          direction?: string
+          error_code?: string | null
+          error_message?: string | null
+          external_message_id?: string | null
+          form_payload?: Json | null
+          id?: string
+          provider?: string
+          provider_timestamp?: string | null
+          text_content?: string | null
+          type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inbox_messages_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "inbox_conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      integration_connections: {
+        Row: {
+          account_label: string | null
+          connected_at: string | null
+          created_at: string
+          external_account_id: string | null
+          id: string
+          last_error_at: string | null
+          last_error_code: string | null
+          last_event_at: string | null
+          last_health_at: string | null
+          metadata: Json
+          provider: string
+          revision: number
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          account_label?: string | null
+          connected_at?: string | null
+          created_at?: string
+          external_account_id?: string | null
+          id?: string
+          last_error_at?: string | null
+          last_error_code?: string | null
+          last_event_at?: string | null
+          last_health_at?: string | null
+          metadata?: Json
+          provider: string
+          revision?: number
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          account_label?: string | null
+          connected_at?: string | null
+          created_at?: string
+          external_account_id?: string | null
+          id?: string
+          last_error_at?: string | null
+          last_error_code?: string | null
+          last_event_at?: string | null
+          last_health_at?: string | null
+          metadata?: Json
+          provider?: string
+          revision?: number
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      integration_events: {
+        Row: {
+          attempt: number
+          connection_id: string | null
+          error_code: string | null
+          error_message: string | null
+          event_type: string
+          external_id: string | null
+          id: string
+          latency_ms: number | null
+          metadata: Json
+          occurred_at: string
+          provider: string
+          success: boolean
+        }
+        Insert: {
+          attempt?: number
+          connection_id?: string | null
+          error_code?: string | null
+          error_message?: string | null
+          event_type: string
+          external_id?: string | null
+          id?: string
+          latency_ms?: number | null
+          metadata?: Json
+          occurred_at?: string
+          provider: string
+          success: boolean
+        }
+        Update: {
+          attempt?: number
+          connection_id?: string | null
+          error_code?: string | null
+          error_message?: string | null
+          event_type?: string
+          external_id?: string | null
+          id?: string
+          latency_ms?: number | null
+          metadata?: Json
+          occurred_at?: string
+          provider?: string
+          success?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "integration_events_connection_id_fkey"
+            columns: ["connection_id"]
+            isOneToOne: false
+            referencedRelation: "integration_connections"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       internal_assignee_directory: {
         Row: {
           full_name: string
@@ -595,6 +920,10 @@ export type Database = {
         Args: { p_profile_id: string; p_secret_ref?: string }
         Returns: boolean
       }
+      admin_delete_whatsapp_auth_state: {
+        Args: { p_session_id: string; p_state_key?: string }
+        Returns: number
+      }
       admin_finish_automation_event: {
         Args: {
           p_error?: string
@@ -603,6 +932,10 @@ export type Database = {
           p_success: boolean
         }
         Returns: undefined
+      }
+      admin_get_whatsapp_auth_state: {
+        Args: { p_session_id: string; p_state_key: string }
+        Returns: string
       }
       admin_ingest_public_lead: {
         Args: {
@@ -618,13 +951,48 @@ export type Database = {
         }
         Returns: string
       }
+      admin_ingest_whatsapp_message: {
+        Args: {
+          p_attachment?: Json
+          p_display_name: string
+          p_external_message_id: string
+          p_metadata?: Json
+          p_phone: string
+          p_received_at?: string
+          p_text?: string
+          p_thread_id: string
+          p_type: string
+        }
+        Returns: Json
+      }
+      admin_mark_stale_whatsapp_connector: { Args: never; Returns: number }
+      admin_prepare_whatsapp_conversation: {
+        Args: { p_conversation_id: string }
+        Returns: Json
+      }
       admin_resolve_ai_credential: {
         Args: { p_profile_id: string; p_secret_ref: string }
+        Returns: string
+      }
+      admin_resolve_or_create_whatsapp_lead: {
+        Args: { p_display_name?: string; p_metadata?: Json; p_phone: string }
         Returns: string
       }
       admin_store_ai_credential: {
         Args: { p_api_key: string; p_profile_id: string }
         Returns: string
+      }
+      admin_upsert_whatsapp_auth_state: {
+        Args: {
+          p_encrypted_value: string
+          p_session_id: string
+          p_state_key: string
+        }
+        Returns: undefined
+      }
+      admin_validate_f05_scheduler_token: {
+        Args: { p_token: string }
+        Returns: boolean
       }
       f05_remove_ai_secret: { Args: { p_profile_id: string }; Returns: boolean }
       f05_resolve_ai_secret: {
