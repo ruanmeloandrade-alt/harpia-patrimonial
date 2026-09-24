@@ -9,13 +9,15 @@ export const publicRouteManifest = [
   '/arquitetura',
   '/imoveis',
   '/imoveis/:slug',
+  '/produtos',
+  '/produtos/:slug',
   '/vender',
   '/alugar',
   '/cliente',
 ] as const;
 
 const exactPublicRoutes = new Set<string>(
-  publicRouteManifest.filter((route) => route !== '/imoveis/:slug'),
+  publicRouteManifest.filter((route) => route !== '/imoveis/:slug' && route !== '/produtos/:slug'),
 );
 
 export function normalizeFront02PublicPath(pathname: string) {
@@ -25,7 +27,9 @@ export function normalizeFront02PublicPath(pathname: string) {
 
 export function matchesFront02PublicRoute(pathname: string) {
   const normalized = normalizeFront02PublicPath(pathname);
-  return exactPublicRoutes.has(normalized) || /^\/imoveis\/[^/]+$/.test(normalized);
+  return exactPublicRoutes.has(normalized)
+    || /^\/imoveis\/[^/]+$/.test(normalized)
+    || /^\/produtos\/[^/]+$/.test(normalized);
 }
 
 export function emitFront02LocationChange() {
