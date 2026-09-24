@@ -53,6 +53,8 @@ create index if not exists calendar_items_google_event_idx on public.calendar_it
   where google_event_id is not null;
 create index if not exists calendar_items_lead_idx on public.calendar_items(lead_id)
   where lead_id is not null;
+create index if not exists calendar_items_created_by_idx on public.calendar_items(created_by)
+  where created_by is not null;
 
 alter table public.calendar_items enable row level security;
 
@@ -99,13 +101,18 @@ where not exists (
 );
 
 drop policy if exists integration_connections_calendar_read on public.integration_connections;
-create policy integration_connections_calendar_read
+drop policy if exists integration_connections_read on public.integration_connections;
+create policy integration_connections_read
 on public.integration_connections for select to authenticated
 using (
-  provider = 'google_calendar'
-  and (
-    private.user_has_permission((select auth.uid()), 'calendar.view')
-    or private.user_has_permission((select auth.uid()), 'calendar.manage')
+  private.user_has_permission((select auth.uid()), 'integrations.view')
+  or private.user_has_permission((select auth.uid()), 'integrations.manage')
+  or (
+    provider = 'google_calendar'
+    and (
+      private.user_has_permission((select auth.uid()), 'calendar.view')
+      or private.user_has_permission((select auth.uid()), 'calendar.manage')
+    )
   )
 );
 
@@ -124,3 +131,6 @@ $$;
 
 -- Follow-up production migration: calendar_assignee_label_20260924
 alter table public.calendar_items add column if not exists assignee_label text;
+
+-- Follow-up production migration: calendar_policy_performance_hardening_20260924
+-- Consolidates Google Calendar read access into integration_connections_read and indexes created_by.
