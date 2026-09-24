@@ -1,5 +1,5 @@
 import { listAIAgents } from '../ai-agents/repository';
-import { createF05Id, readStoredList, writeStoredList } from '../automations/f05Storage';
+import { createF05Id, readStoredList, writeStoredList, writeStoredListConfirmed } from '../automations/f05Storage';
 import { findActiveSalesBotReferences, findSalesBotReferences, formatF05References } from '../automations/referenceIntegrity';
 import type { SalesBotBlock, SalesBotDefinition, SalesBotStatus } from './types';
 import { validateSalesBot } from './validation';
@@ -126,6 +126,21 @@ export function createSalesBot(input: { name: string; description?: string }): S
     updatedAt: timestamp,
   };
   writeStoredList(STORAGE_KEY, [bot, ...listSalesBots()]);
+  return bot;
+}
+
+export async function createSalesBotConfirmed(input: { name: string; description?: string }): Promise<SalesBotDefinition> {
+  const timestamp = now();
+  const bot: SalesBotDefinition = {
+    id: createF05Id('bot'),
+    name: input.name.trim(),
+    description: input.description?.trim() ?? '',
+    status: 'draft',
+    blocks: [makeStartBlock()],
+    createdAt: timestamp,
+    updatedAt: timestamp,
+  };
+  await writeStoredListConfirmed(STORAGE_KEY, [bot, ...listSalesBots()]);
   return bot;
 }
 
