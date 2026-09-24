@@ -22,7 +22,9 @@ const EVENTS: Array<{ value: CrmAutomationEventType; label: string }> = [
   { value: 'lead.created', label: 'Lead criado' }, { value: 'lead.stage_changed', label: 'Etapa alterada' },
   { value: 'lead.field_changed', label: 'Campo alterado' }, { value: 'lead.tag_added', label: 'Tag adicionada' },
   { value: 'lead.tag_removed', label: 'Tag removida' }, { value: 'lead.inactivity', label: 'Ausência de interação' },
-  { value: 'task.due', label: 'Tarefa/data atingida' }, { value: 'custom.event', label: 'Evento customizado' },
+  { value: 'lead.stage_elapsed', label: 'Tempo na etapa' }, { value: 'salesbot.completed', label: 'SalesBot concluído' },
+  { value: 'salesbot.failed', label: 'SalesBot falhou' }, { value: 'task.due', label: 'Tarefa/data atingida' },
+  { value: 'custom.event', label: 'Evento customizado' },
 ];
 const ACTIONS: Array<{ value: AutomationActionType; label: string }> = [
   { value: 'start_salesbot', label: 'Iniciar SalesBot' }, { value: 'invoke_ai', label: 'Chamar agente IA' },
@@ -75,6 +77,17 @@ export function AutomationsWorkspace({ canManage = false }: { canManage?: boolea
         <div className="f05-form-grid"><label>Nome<input value={selected.name} onChange={(e) => patch({ name: e.target.value })}/></label><label>Descrição<input value={selected.description} onChange={(e) => patch({ description: e.target.value })}/></label></div>
         <div className={`f05-validation ${validationIssues.length === 0 ? 'f05-validation--ok' : ''}`}><strong>{validationIssues.length === 0 ? 'Configuração válida para ativação' : `${validationIssues.length} pendência(s) de configuração`}</strong>{validationIssues.length > 0 && <span>{validationIssues[0]}</span>}</div>
         <label className="f05-field">Gatilho<select value={selected.trigger.event} onChange={(e) => patch({ trigger: { ...selected.trigger, event: e.target.value as CrmAutomationEventType } })}>{EVENTS.map((event) => <option key={event.value} value={event.value}>{event.label}</option>)}</select></label>
+        {selected.trigger.event === 'lead.stage_elapsed' && (
+          <div className="f05-readonly-note">
+            Para tempo na etapa, adicione uma condição <strong>afterMinutes</strong> com o número de minutos.
+            Opcionalmente use <strong>stageId</strong> para limitar a uma etapa específica.
+          </div>
+        )}
+        {(selected.trigger.event === 'salesbot.completed' || selected.trigger.event === 'salesbot.failed') && (
+          <div className="f05-readonly-note">
+            O evento recebe botId, executionId e runtimeStatus. Use botId nas condições se quiser limitar a um SalesBot.
+          </div>
+        )}
         <div className="f05-palette"><h3>Condições opcionais</h3>{selected.trigger.conditions.map((condition, index) => <div className="f05-condition-row" key={`${index}-${condition.field}`}><input value={condition.field} placeholder="Campo/evento" onChange={(e) => { const conditions = [...selected.trigger.conditions]; conditions[index] = { ...condition, field: e.target.value }; patch({ trigger: { ...selected.trigger, conditions } }); }}/><select value={condition.operator} onChange={(e) => { const conditions = [...selected.trigger.conditions]; conditions[index] = { ...condition, operator: e.target.value as typeof condition.operator }; patch({ trigger: { ...selected.trigger, conditions } }); }}><option value="equals">igual</option><option value="not_equals">diferente</option><option value="contains">contém</option><option value="exists">existe</option></select><input value={condition.value ?? ''} disabled={condition.operator === 'exists'} placeholder="Valor" onChange={(e) => { const conditions = [...selected.trigger.conditions]; conditions[index] = { ...condition, value: e.target.value }; patch({ trigger: { ...selected.trigger, conditions } }); }}/><button className="icon danger" onClick={() => patch({ trigger: { ...selected.trigger, conditions: selected.trigger.conditions.filter((_, i) => i !== index) } })}>×</button></div>)}<button className="secondary" onClick={() => patch({ trigger: { ...selected.trigger, conditions: [...selected.trigger.conditions, { field: '', operator: 'equals', value: '' }] } })}>Adicionar condição</button></div>
         <div className="f05-actions"><button onClick={() => { try { setAutomationStatus(selected.id, selected.status === 'active' ? 'paused' : 'active'); setError(''); refresh(selected.id); } catch (e) { setError(e instanceof Error ? e.message : 'Não foi possível alterar o status.'); } }}>{selected.status === 'active' ? 'Pausar' : 'Ativar'}</button><button className="secondary" onClick={() => { const copy = duplicateAutomation(selected.id); setError(''); refresh(copy.id); }}>Duplicar</button><button className="danger" onClick={() => { if (window.confirm('Excluir esta automação?')) { deleteAutomation(selected.id); refresh(); } }}>Excluir</button></div>
         <div className="f05-palette"><h3>Ações</h3><div className="f05-create-row"><select value={actionType} onChange={(e) => setActionType(e.target.value as AutomationActionType)}>{ACTIONS.map((action) => <option key={action.value} value={action.value}>{action.label}</option>)}</select><button onClick={() => { addAutomationAction(selected.id, { type: actionType, config: {} }); refresh(selected.id); }}>Adicionar ação</button></div></div>
