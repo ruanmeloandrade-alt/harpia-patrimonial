@@ -299,7 +299,7 @@ export function AIAgentsWorkspace({ canManage = false }: { canManage?: boolean }
       <div className={'f05-inline-message' + (readyProvider ? ' f05-validation--ok' : '')}>
         {readyProvider
           ? 'IA pronta em Integrações: ' + readyProvider.name + '. Os agentes usam essa configuração automaticamente.'
-          : 'Nenhuma IA pronta em Integrações. Configure uma chave antes de ativar agentes.'}
+          : 'Nenhuma IA pronta em Integrações. Você pode criar, configurar e ativar agentes normalmente; sem chave, apenas a execução ficará indisponível.'}
       </div>
 
       <fieldset className="f05-readonly-fieldset" disabled={!canManage}>
@@ -359,7 +359,6 @@ export function AIAgentsWorkspace({ canManage = false }: { canManage?: boolean }
                 <div className="f05-actions">
                   <button
                     type="button"
-                    disabled={selected.status !== 'active' && !readyProvider}
                     onClick={() => {
                       try {
                         setAIAgentStatus(selected.id, selected.status === 'active' ? 'paused' : 'active');
