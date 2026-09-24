@@ -1,8 +1,16 @@
 import { requireSupabase } from '../../../core/supabase/client';
 import type { Json } from '../../../core/supabase/database.types';
 
-export type ThemePreference = 'light' | 'dark' | 'system';
 export type TimeFormatPreference = '24h' | '12h';
+export type BusinessWeekday = 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday' | 'sunday';
+
+export type BusinessDaySchedule = {
+  enabled: boolean;
+  start: string;
+  end: string;
+};
+
+export type BusinessHoursSchedule = Record<BusinessWeekday, BusinessDaySchedule>;
 
 export type OrganizationPreferences = {
   organization?: {
@@ -11,10 +19,10 @@ export type OrganizationPreferences = {
     country?: string;
   };
   appearance?: {
-    theme?: ThemePreference;
-    compactMode?: boolean;
     logoUrl?: string;
     primaryColor?: string;
+    theme?: 'light' | 'dark' | 'system';
+    compactMode?: boolean;
   };
   regional?: {
     locale?: string;
@@ -26,29 +34,14 @@ export type OrganizationPreferences = {
   crm?: {
     leadDistribution?: 'manual' | 'round_robin' | 'lowest_load';
     defaultPipelineBehavior?: 'keep_origin' | 'first_active';
+    businessHours?: Partial<BusinessHoursSchedule>;
     businessHoursStart?: string;
     businessHoursEnd?: string;
     outsideBusinessHours?: 'queue' | 'keep_unassigned';
     requirePhoneForLead?: boolean;
   };
-  automations?: {
-    maxConcurrentRuns?: number;
-    retryAttempts?: number;
-    pauseOnRepeatedFailure?: boolean;
-    respectBusinessHours?: boolean;
-    quietHoursStart?: string;
-    quietHoursEnd?: string;
-  };
-  notifications?: {
-    inApp?: boolean;
-    email?: boolean;
-    whatsapp?: boolean;
-    newLead?: boolean;
-    newMessage?: boolean;
-    taskDue?: boolean;
-    automationFailure?: boolean;
-    integrationFailure?: boolean;
-  };
+  automations?: Record<string, unknown>;
+  notifications?: Record<string, unknown>;
   security?: {
     sessionTimeoutMinutes?: number;
     inactivityLockMinutes?: number;
@@ -77,8 +70,6 @@ export type NormalizedOrganizationPreferences = {
     country: string;
   };
   appearance: {
-    theme: ThemePreference;
-    compactMode: boolean;
     logoUrl: string;
     primaryColor: string;
   };
@@ -92,28 +83,9 @@ export type NormalizedOrganizationPreferences = {
   crm: {
     leadDistribution: 'manual' | 'round_robin' | 'lowest_load';
     defaultPipelineBehavior: 'keep_origin' | 'first_active';
-    businessHoursStart: string;
-    businessHoursEnd: string;
+    businessHours: BusinessHoursSchedule;
     outsideBusinessHours: 'queue' | 'keep_unassigned';
     requirePhoneForLead: boolean;
-  };
-  automations: {
-    maxConcurrentRuns: number;
-    retryAttempts: number;
-    pauseOnRepeatedFailure: boolean;
-    respectBusinessHours: boolean;
-    quietHoursStart: string;
-    quietHoursEnd: string;
-  };
-  notifications: {
-    inApp: boolean;
-    email: boolean;
-    whatsapp: boolean;
-    newLead: boolean;
-    newMessage: boolean;
-    taskDue: boolean;
-    automationFailure: boolean;
-    integrationFailure: boolean;
   };
   security: {
     sessionTimeoutMinutes: number;
@@ -149,6 +121,16 @@ export type OrganizationSettings = {
   preferences: OrganizationPreferences;
 };
 
+export const DEFAULT_BUSINESS_HOURS: BusinessHoursSchedule = {
+  monday: { enabled: true, start: '09:00', end: '18:00' },
+  tuesday: { enabled: true, start: '09:00', end: '18:00' },
+  wednesday: { enabled: true, start: '09:00', end: '18:00' },
+  thursday: { enabled: true, start: '09:00', end: '18:00' },
+  friday: { enabled: true, start: '09:00', end: '18:00' },
+  saturday: { enabled: false, start: '09:00', end: '13:00' },
+  sunday: { enabled: false, start: '09:00', end: '13:00' },
+};
+
 export const DEFAULT_ORGANIZATION_PREFERENCES: NormalizedOrganizationPreferences = {
   organization: {
     addressLine: '',
@@ -156,8 +138,6 @@ export const DEFAULT_ORGANIZATION_PREFERENCES: NormalizedOrganizationPreferences
     country: 'Brasil',
   },
   appearance: {
-    theme: 'light',
-    compactMode: false,
     logoUrl: '',
     primaryColor: '#b49a63',
   },
@@ -171,28 +151,9 @@ export const DEFAULT_ORGANIZATION_PREFERENCES: NormalizedOrganizationPreferences
   crm: {
     leadDistribution: 'manual',
     defaultPipelineBehavior: 'keep_origin',
-    businessHoursStart: '09:00',
-    businessHoursEnd: '18:00',
+    businessHours: DEFAULT_BUSINESS_HOURS,
     outsideBusinessHours: 'queue',
     requirePhoneForLead: false,
-  },
-  automations: {
-    maxConcurrentRuns: 5,
-    retryAttempts: 3,
-    pauseOnRepeatedFailure: true,
-    respectBusinessHours: false,
-    quietHoursStart: '20:00',
-    quietHoursEnd: '08:00',
-  },
-  notifications: {
-    inApp: true,
-    email: false,
-    whatsapp: false,
-    newLead: true,
-    newMessage: true,
-    taskDue: true,
-    automationFailure: true,
-    integrationFailure: true,
   },
   security: {
     sessionTimeoutMinutes: 720,
@@ -215,14 +176,37 @@ export const DEFAULT_ORGANIZATION_PREFERENCES: NormalizedOrganizationPreferences
   },
 };
 
+function normalizeBusinessHours(crm: OrganizationPreferences['crm']): BusinessHoursSchedule {
+  const legacyStart = crm?.businessHoursStart || '09:00';
+  const legacyEnd = crm?.businessHoursEnd || '18:00';
+  const stored = crm?.businessHours ?? {};
+  const result = {} as BusinessHoursSchedule;
+
+  (Object.keys(DEFAULT_BUSINESS_HOURS) as BusinessWeekday[]).forEach((day) => {
+    const fallback = DEFAULT_BUSINESS_HOURS[day];
+    const legacyFallback = day === 'saturday' || day === 'sunday'
+      ? fallback
+      : { enabled: true, start: legacyStart, end: legacyEnd };
+    result[day] = { ...legacyFallback, ...(stored[day] ?? {}) };
+  });
+
+  return result;
+}
+
 export function normalizeOrganizationPreferences(preferences: OrganizationPreferences = {}): NormalizedOrganizationPreferences {
   return {
     organization: { ...DEFAULT_ORGANIZATION_PREFERENCES.organization, ...(preferences.organization ?? {}) },
-    appearance: { ...DEFAULT_ORGANIZATION_PREFERENCES.appearance, ...(preferences.appearance ?? {}) },
+    appearance: {
+      ...DEFAULT_ORGANIZATION_PREFERENCES.appearance,
+      logoUrl: preferences.appearance?.logoUrl ?? DEFAULT_ORGANIZATION_PREFERENCES.appearance.logoUrl,
+      primaryColor: preferences.appearance?.primaryColor ?? DEFAULT_ORGANIZATION_PREFERENCES.appearance.primaryColor,
+    },
     regional: { ...DEFAULT_ORGANIZATION_PREFERENCES.regional, ...(preferences.regional ?? {}) },
-    crm: { ...DEFAULT_ORGANIZATION_PREFERENCES.crm, ...(preferences.crm ?? {}) },
-    automations: { ...DEFAULT_ORGANIZATION_PREFERENCES.automations, ...(preferences.automations ?? {}) },
-    notifications: { ...DEFAULT_ORGANIZATION_PREFERENCES.notifications, ...(preferences.notifications ?? {}) },
+    crm: {
+      ...DEFAULT_ORGANIZATION_PREFERENCES.crm,
+      ...(preferences.crm ?? {}),
+      businessHours: normalizeBusinessHours(preferences.crm),
+    },
     security: { ...DEFAULT_ORGANIZATION_PREFERENCES.security, ...(preferences.security ?? {}) },
     privacy: { ...DEFAULT_ORGANIZATION_PREFERENCES.privacy, ...(preferences.privacy ?? {}) },
     marketing: { ...DEFAULT_ORGANIZATION_PREFERENCES.marketing, ...(preferences.marketing ?? {}) },
@@ -235,30 +219,27 @@ export function mergeOrganizationPreferences(
 ): OrganizationPreferences {
   const base = normalizeOrganizationPreferences(current);
   return {
+    ...current,
     organization: { ...base.organization, ...(patch.organization ?? {}) },
     appearance: { ...base.appearance, ...(patch.appearance ?? {}) },
     regional: { ...base.regional, ...(patch.regional ?? {}) },
-    crm: { ...base.crm, ...(patch.crm ?? {}) },
-    automations: { ...base.automations, ...(patch.automations ?? {}) },
-    notifications: { ...base.notifications, ...(patch.notifications ?? {}) },
+    crm: {
+      ...base.crm,
+      ...(patch.crm ?? {}),
+      businessHours: patch.crm?.businessHours
+        ? { ...base.crm.businessHours, ...patch.crm.businessHours }
+        : base.crm.businessHours,
+    },
     security: { ...base.security, ...(patch.security ?? {}) },
     privacy: { ...base.privacy, ...(patch.privacy ?? {}) },
     marketing: { ...base.marketing, ...(patch.marketing ?? {}) },
   };
 }
 
-export function applyOrganizationPreferences(preferences: OrganizationPreferences) {
+export function applyOrganizationRegionalPreferences(preferences: OrganizationPreferences) {
   if (typeof document === 'undefined') return;
   const normalized = normalizeOrganizationPreferences(preferences);
   const root = document.documentElement;
-  const prefersDark = typeof window !== 'undefined' && window.matchMedia?.('(prefers-color-scheme: dark)').matches;
-  const resolvedTheme = normalized.appearance.theme === 'system'
-    ? (prefersDark ? 'dark' : 'light')
-    : normalized.appearance.theme;
-
-  root.dataset.theme = resolvedTheme;
-  root.dataset.themePreference = normalized.appearance.theme;
-  root.dataset.compact = normalized.appearance.compactMode ? 'true' : 'false';
   root.dataset.currency = normalized.regional.currency;
   root.dataset.timezone = normalized.regional.timezone;
   root.dataset.dateFormat = normalized.regional.dateFormat;
@@ -267,6 +248,8 @@ export function applyOrganizationPreferences(preferences: OrganizationPreference
   root.style.setProperty('--brand-accent', normalized.appearance.primaryColor);
   root.style.setProperty('--gold', normalized.appearance.primaryColor);
 }
+
+export const applyOrganizationPreferences = applyOrganizationRegionalPreferences;
 
 export async function getOrganizationSettings() {
   const supabase = requireSupabase();
@@ -294,5 +277,5 @@ export async function updateOrganizationPreferences(preferences: OrganizationPre
     .update({ preferences: preferences as Json })
     .eq('id', 1);
   if (error) throw error;
-  applyOrganizationPreferences(preferences);
+  applyOrganizationRegionalPreferences(preferences);
 }
