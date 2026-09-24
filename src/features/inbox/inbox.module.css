@@ -144,7 +144,7 @@
 .sessionForm small,
 .contextSection small,
 .composerArea small,
-.chatHeader span,
+.chatHeader > div:first-child > span,
 .conversationButton span,
 .conversationButton small,
 .task span {
