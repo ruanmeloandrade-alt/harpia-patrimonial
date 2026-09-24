@@ -33,7 +33,7 @@ type OutboxEvent = {
 const headers = { 'Content-Type': 'application/json' };
 const AUTOMATIONS_KEY = 'harpia:f05:automations';
 const CRM_ACTIONS = new Set(['create_task', 'move_stage', 'update_field', 'add_tag', 'remove_tag', 'assign_owner']);
-const EXTENDED_CRM_ACTIONS = new Set(['duplicate_lead', 'complete_tasks', 'delete_tasks', 'replace_tags', 'delete_lead', 'internal_message', 'generate_form', 'delete_files', 'link_product']);
+const EXTENDED_CRM_ACTIONS = new Set(['duplicate_lead', 'complete_tasks', 'delete_tasks', 'replace_tags', 'update_lead_field', 'delete_lead', 'internal_message', 'generate_form', 'delete_files', 'link_product']);
 const respond = (body: Json, status = 200) => new Response(JSON.stringify(body), { status, headers });
 
 function namedKey(envName: string): string | undefined {
