@@ -1,6 +1,20 @@
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
 import { createClient } from 'npm:@supabase/supabase-js@2.116.0';
 
+
+const DEFAULT_CONNECTOR_URL = 'https://harpia-patrimonial-production.up.railway.app';
+
+async function derivedControlToken() {
+  const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')?.trim();
+  if (!serviceRoleKey) return '';
+
+  const bytes = new TextEncoder().encode(`harpia-whatsapp-control-v1:${serviceRoleKey}`);
+  const digest = new Uint8Array(await crypto.subtle.digest('SHA-256', bytes));
+  let binary = '';
+  for (const byte of digest) binary += String.fromCharCode(byte);
+  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
+}
+
 const headers = {
   'Content-Type': 'application/json',
   'Cache-Control': 'no-store',
@@ -58,8 +72,8 @@ function serviceClient() {
 }
 
 async function callConnector(payload: Record<string, unknown>) {
-  const baseUrl = Deno.env.get('WHATSAPP_CONNECTOR_URL')?.trim().replace(/\/+$/, '');
-  const token = Deno.env.get('WHATSAPP_CONNECTOR_TOKEN')?.trim();
+  const baseUrl = (Deno.env.get('WHATSAPP_CONNECTOR_URL')?.trim() || DEFAULT_CONNECTOR_URL).replace(/\/+$/, '');
+  const token = Deno.env.get('WHATSAPP_CONNECTOR_TOKEN')?.trim() || await derivedControlToken();
 
   if (!baseUrl || !token) {
     return {
