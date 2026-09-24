@@ -211,7 +211,8 @@ export class WhatsAppConnector {
         logger: logger.child({ module: 'baileys' }) as never,
         browser: Browsers.ubuntu('Harpia Patrimonial'),
         markOnlineOnConnect: false,
-        syncFullHistory: false,
+        syncFullHistory: true,
+        shouldSyncHistoryMessage: () => true,
         generateHighQualityLinkPreview: false,
       });
 
@@ -523,6 +524,54 @@ export class WhatsAppConnector {
       }
     });
 
+    socket.ev.on('messaging-history.set', async (event) => {
+      if (generation !== this.socketGeneration) return;
+
+      this.lastProtocolEventAt = new Date().toISOString();
+      const historyMessages = Array.isArray(event.messages) ? event.messages.slice(0, 1000) : [];
+
+      await recordIntegrationEvent(this.sessionId, {
+        eventType: 'history_sync_received',
+        success: true,
+        metadata: {
+          messageCount: historyMessages.length,
+          contactCount: Array.isArray(event.contacts) ? event.contacts.length : 0,
+          chatCount: Array.isArray(event.chats) ? event.chats.length : 0,
+          isLatest: event.isLatest ?? null,
+          syncType: 'syncType' in event ? event.syncType ?? null : null,
+        },
+      }).catch(() => undefined);
+
+      let ingested = 0;
+      let failed = 0;
+
+      for (const message of historyMessages) {
+        try {
+          await this.handleIncomingMessage(socket, message, 'messaging-history.set');
+          ingested += 1;
+        } catch (error) {
+          failed += 1;
+          const externalId = message.key.id || undefined;
+          logger.error({ error, externalId }, 'Falha ao ingerir mensagem do histórico.');
+          await recordIntegrationEvent(this.sessionId, {
+            eventType: 'history_message_ingest_failed',
+            success: false,
+            externalId,
+            errorCode: 'history_ingest_failed',
+            errorMessage: error instanceof Error ? error.message : 'Falha ao ingerir mensagem do histórico.',
+          }).catch(() => undefined);
+        }
+      }
+
+      await recordIntegrationEvent(this.sessionId, {
+        eventType: 'history_sync_ingested',
+        success: failed === 0,
+        errorCode: failed > 0 ? 'history_partial_failure' : undefined,
+        errorMessage: failed > 0 ? 'Parte do histórico não pôde ser ingerida.' : undefined,
+        metadata: { ingested, failed, total: historyMessages.length },
+      }).catch(() => undefined);
+    });
+
     socket.ev.on('messages.upsert', async (event) => {
       if (generation !== this.socketGeneration) return;
       if ((event as { requestId?: unknown }).requestId) {
@@ -551,7 +600,7 @@ export class WhatsAppConnector {
     });
   }
 
-  private async handleIncomingMessage(socket: Socket, message: WAMessage) {
+  private async handleIncomingMessage(socket: Socket, message: WAMessage, source = 'messages.upsert') {
     if (!message.message || message.key.fromMe) return;
 
     const remoteJid = message.key.remoteJid;
@@ -630,7 +679,7 @@ export class WhatsAppConnector {
       receivedAt: timestampFromMessage(message),
       attachment,
       metadata: {
-        source: 'messages.upsert',
+        source,
       },
     });
 
