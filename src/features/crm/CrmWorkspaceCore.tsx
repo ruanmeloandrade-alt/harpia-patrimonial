@@ -57,10 +57,12 @@ const interestTypes: Array<{ value: InterestType; label: string }> = [
 const customFieldTypes: Array<{ value: CustomFieldType; label: string }> = [
   { value: 'text', label: 'Texto' },
   { value: 'number', label: 'Número' },
+  { value: 'currency', label: 'Valor' },
   { value: 'date', label: 'Data' },
+  { value: 'datetime', label: 'Data e hora' },
   { value: 'boolean', label: 'Sim/Não' },
-  { value: 'select', label: 'Seleção única' },
-  { value: 'multiselect', label: 'Seleção múltipla' },
+  { value: 'select', label: 'Lista, uma opção' },
+  { value: 'multiselect', label: 'Lista, múltiplas opções' },
 ];
 
 const pipelineTriggerEventLabels: Record<PipelineTriggerEvent, string> = {
@@ -1142,10 +1144,17 @@ function CustomFieldEditor({ field, value, onChange }: {
     <label className={styles.fieldEditor}>
       <span>{field.name}</span>
       <input
-        type={field.type === 'number' ? 'number' : field.type === 'date' ? 'date' : 'text'}
+        type={field.type === 'number' || field.type === 'currency'
+          ? 'number'
+          : field.type === 'date'
+            ? 'date'
+            : field.type === 'datetime'
+              ? 'datetime-local'
+              : 'text'}
+        step={field.type === 'currency' ? '0.01' : undefined}
         value={typeof value === 'string' || typeof value === 'number' ? value : ''}
         onChange={(event) => {
-          if (field.type === 'number') {
+          if (field.type === 'number' || field.type === 'currency') {
             onChange(event.target.value === '' ? null : Number(event.target.value));
             return;
           }
