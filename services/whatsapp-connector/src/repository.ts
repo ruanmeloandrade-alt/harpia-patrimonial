@@ -139,15 +139,27 @@ export async function setConnectionStatus(
       ? 'error'
       : 'not_connected';
 
-  const { error: conversationError } = await db
-    .from('inbox_conversations')
-    .update({
-      transport_status: conversationStatus,
-      updated_at: now,
-    })
+  const { data: channelAccounts, error: channelAccountReadError } = await db
+    .from('inbox_channel_accounts')
+    .select('id')
+    .eq('connection_id', connection.id)
     .eq('provider', 'whatsapp_web');
 
-  if (conversationError) throw conversationError;
+  if (channelAccountReadError) throw channelAccountReadError;
+
+  const channelAccountIds = (channelAccounts ?? []).map((item) => item.id as string);
+  if (channelAccountIds.length > 0) {
+    const { error: conversationError } = await db
+      .from('inbox_conversations')
+      .update({
+        transport_status: conversationStatus,
+        updated_at: now,
+      })
+      .eq('provider', 'whatsapp_web')
+      .in('channel_account_id', channelAccountIds);
+
+    if (conversationError) throw conversationError;
+  }
 
   return connection.id as string;
 }
@@ -359,15 +371,29 @@ export async function downloadOutboundMedia(input: {
 }
 
 export async function getConversationDestination(conversationId: string) {
+  const connection = await ensureConnection();
   const { data, error } = await db
     .from('inbox_conversations')
-    .select('external_thread_id,provider')
+    .select('external_thread_id,provider,channel_account_id')
     .eq('id', conversationId)
     .single();
 
   if (error) throw error;
-  if (data.provider !== 'whatsapp_web' || !data.external_thread_id) {
-    throw new Error('Conversa não pertence ao transporte WhatsApp Web.');
+  if (data.provider !== 'whatsapp_web' || !data.external_thread_id || !data.channel_account_id) {
+    throw new Error('Conversa não pertence a uma conta WhatsApp conectada.');
+  }
+
+  const { data: account, error: accountError } = await db
+    .from('inbox_channel_accounts')
+    .select('id')
+    .eq('id', data.channel_account_id)
+    .eq('connection_id', connection.id)
+    .eq('provider', 'whatsapp_web')
+    .maybeSingle();
+
+  if (accountError) throw accountError;
+  if (!account) {
+    throw new Error('Esta conversa está vinculada a outra conta WhatsApp.');
   }
 
   return String(data.external_thread_id);
