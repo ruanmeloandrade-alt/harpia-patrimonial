@@ -121,6 +121,15 @@ function matchesPipelineDefinition(definition: AutomationDefinition, event: CrmA
       && stageId === meta.stageId
       && (!meta.value || String(getPath(source, 'fieldId') ?? '') === meta.value);
   }
+  if (meta.event === 'assignee_changed') {
+    return event.type === 'lead.assignee_changed' && stageId === meta.stageId;
+  }
+  if (meta.event === 'hours_before_datetime' || meta.event === 'daily_time' || meta.event === 'specific_datetime') {
+    return event.type === 'custom.event'
+      && kind === meta.event
+      && stageId === meta.stageId
+      && (!automationId || automationId === definition.id);
+  }
   return false;
 }
 
