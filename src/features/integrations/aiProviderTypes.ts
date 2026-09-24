@@ -11,6 +11,7 @@ export interface AIProviderProfile {
   apiKeyConfigured: boolean;
   secretRef?: string;
   notes: string;
+  availableModels?: string[];
   createdAt: string;
   updatedAt: string;
 }
