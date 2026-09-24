@@ -21,6 +21,7 @@ import {
 } from '../features/dashboard/crmMetricsAdapter';
 import type { CommercialMetricsProvider } from '../features/dashboard/dashboardService';
 import { InboxService } from '../features/inbox/service';
+import { applyOrganizationRegionalPreferences, getOrganizationSettings } from '../features/settings/core/settings-service';
 import {
   createAIAgentCommandPort,
   createSalesBotCommandPort,
@@ -83,6 +84,13 @@ export function PlatformRuntimeProvider({ children }: PropsWithChildren) {
   const credentialVault = useMemo(() => new SupabaseAICredentialVault(), []);
   const aiModelRuntime = useMemo(() => new SupabaseAIModelRuntime(), []);
   const automationWebhook = useMemo(() => new SupabaseAutomationWebhook(), []);
+
+  useEffect(() => {
+    if (!isSupabaseConfigured) return;
+    void getOrganizationSettings()
+      .then((settings) => applyOrganizationRegionalPreferences(settings.preferences))
+      .catch(() => undefined);
+  }, []);
 
   useEffect(() => () => catalogRuntime?.dispose(), [catalogRuntime]);
 
