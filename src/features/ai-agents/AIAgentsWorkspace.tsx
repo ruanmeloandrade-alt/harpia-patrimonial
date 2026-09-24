@@ -346,7 +346,7 @@ export function AIAgentsWorkspace({ canManage = false }: { canManage?: boolean }
                 </div>
                 <label className="f05-field">Prompt do agente<textarea rows={5} value={selected.instructions} onChange={(event) => patch({ instructions: event.target.value })} placeholder="Instruções operacionais do agente" /></label>
                 <label className="f05-field">Regras<textarea rows={4} value={selected.rules} onChange={(event) => patch({ rules: event.target.value })} placeholder="Limites e regras obrigatórias" /></label>
-                <label className="f05-field">Contexto específico<textarea rows={3} value={selected.context} onChange={(event) => patch({ context: event.target.value })} placeholder="Contexto exclusivo deste agente. O Cérebro geral entra automaticamente." /></label>
+                <label className="f05-field">Cérebro do agente<textarea rows={4} value={selected.context} onChange={(event) => patch({ context: event.target.value })} placeholder="Contexto exclusivo deste agente. Pode ser configurado mesmo sem chave API. O Cérebro geral entra automaticamente." /></label>
                 <div className="f05-form-grid">
                   <label>Acessos<input value={selected.accessScopes.join(', ')} onChange={(event) => patch({ accessScopes: splitCsv(event.target.value) })} placeholder="crm.lead.read, catalog.read" /></label>
                   <label>Pontos de acionamento<input value={selected.activationPoints.join(', ')} onChange={(event) => patch({ activationPoints: splitCsv(event.target.value) })} placeholder="salesbot, inbox, automatize" /></label>
