@@ -21,7 +21,7 @@ const primaryLinks: NavItem[] = [
   { href: '/interno', label: 'Dashboard', permission: PERMISSIONS.DASHBOARD_VIEW },
   {
     href: '/interno/catalogo',
-    label: 'Imóveis',
+    label: 'Produtos',
     permissions: [PERMISSIONS.CATALOG_VIEW, PERMISSIONS.CATALOG_MANAGE, PERMISSIONS.CATALOG_PUBLISH],
   },
 ];
