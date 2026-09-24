@@ -233,7 +233,7 @@ A falta da integração real de WhatsApp/Meta não bloqueia a conclusão estrutu
 ## Handoff adicional: Cérebro autenticado e feedback de ação, 24/09/2026
 
 - Status: **PARCIAL / EM ANDAMENTO** até QA autenticado em navegador.
-- Branch: `work/ai-brain-upload-feedback-20260924`.
+- Branch: `work/ai-brain-upload-feedback-final-20260924`.
 - Escopo: fechar upload real do Cérebro, retirar a ponte estática e tornar ações visíveis ao usuário.
 - Código principal:
   - `src/features/ai-agents/brainRepository.ts`
