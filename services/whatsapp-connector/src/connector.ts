@@ -793,8 +793,9 @@ export class WhatsAppConnector {
       const lidJid = `${candidate.lid}@lid`;
       try {
         const pnJid = await resolvePnJid(socket, lidJid);
+        const recoveryJid = pnJid ?? lidJid;
         const requestId = await socket.requestPlaceholderResend({
-          remoteJid: lidJid,
+          remoteJid: recoveryJid,
           id: candidate.externalMessageId,
           fromMe: false,
         });
@@ -806,6 +807,7 @@ export class WhatsAppConnector {
           metadata: {
             lid: candidate.lid,
             pnJid: pnJid ?? null,
+            recoveryJid,
             phone: pnJid ? phoneFromPnJid(pnJid) : null,
             requestId: requestId ?? null,
             failedAt: candidate.failedAt ?? null,
