@@ -1337,3 +1337,152 @@
     grid-template-columns: 1fr;
   }
 }
+
+
+.crmTriggerForm {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(130px, 1fr)) auto;
+  gap: 9px;
+  align-items: end;
+  padding: 12px;
+  border: 1px solid #e1e5e1;
+  border-radius: 12px;
+  background: #f8faf7;
+}
+
+.crmTriggerForm label {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+  color: #5d675f;
+  font-size: 9px;
+  font-weight: 850;
+}
+
+.crmTriggerForm input,
+.crmTriggerForm select {
+  width: 100%;
+  min-width: 0;
+  min-height: 38px;
+  border: 1px solid #d4dad5;
+  border-radius: 8px;
+  background: #fff;
+  color: #2f4137;
+  padding: 8px 9px;
+  font: inherit;
+  font-size: 10px;
+}
+
+.crmTriggerForm > button {
+  min-height: 38px;
+  border: 1px solid #314d3f;
+  border-radius: 8px;
+  background: #314d3f;
+  color: #fff;
+  padding: 8px 12px;
+  font: inherit;
+  font-size: 10px;
+  font-weight: 850;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.crmTriggerList {
+  display: grid;
+  gap: 7px;
+  margin-top: 10px;
+}
+
+.crmTriggerRow {
+  display: grid;
+  grid-template-columns: minmax(190px, 1fr) minmax(190px, 1fr) auto auto;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid #e1e5e1;
+  border-radius: 10px;
+  background: #fff;
+}
+
+.crmTriggerRow > div {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.crmTriggerRow strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #31443a;
+  font-size: 10px;
+}
+
+.crmTriggerRow small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #7a837c;
+  font-size: 8px;
+}
+
+.crmTriggerStatus {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 25px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: #e5f0e7;
+  color: #346146;
+  font-size: 8px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.crmTriggerRow > button {
+  min-height: 30px;
+  border: 1px solid #e0c5c2;
+  border-radius: 8px;
+  background: #fff;
+  color: #984943;
+  padding: 6px 9px;
+  font: inherit;
+  font-size: 8px;
+  font-weight: 850;
+  cursor: pointer;
+}
+
+.crmTriggerEmpty {
+  padding: 20px 12px;
+  border: 1px dashed #cfd6d0;
+  border-radius: 10px;
+  background: #fbfcfa;
+  color: #7a837c;
+  text-align: center;
+  font-size: 9px;
+}
+
+@media (max-width: 1200px) {
+  .crmTriggerForm {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .crmTriggerForm > button {
+    width: fit-content;
+  }
+}
+
+@media (max-width: 720px) {
+  .crmTriggerForm {
+    grid-template-columns: 1fr;
+  }
+
+  .crmTriggerRow {
+    grid-template-columns: 1fr auto;
+  }
+
+  .crmTriggerRow > div {
+    grid-column: 1 / -1;
+  }
+}

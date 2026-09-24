@@ -342,7 +342,11 @@ export class CrmService {
     lead.updatedAt = nowIso();
     this.addHistory(lead.id, 'tag_added', 'Tag adicionada ao lead.', { tagId });
     this.persist();
-    this.publish('lead.tag_added', lead.id, { tagId });
+    this.publish('lead.tag_added', lead.id, {
+      tagId,
+      pipelineId: lead.pipelineId ?? null,
+      stageId: lead.stageId ?? null,
+    });
     return lead;
   }
 
@@ -388,7 +392,13 @@ export class CrmService {
       value,
     });
     this.persist();
-    this.publish('lead.custom_field_changed', lead.id, { fieldId, previousValue, value });
+    this.publish('lead.field_changed', lead.id, {
+      fieldId,
+      previousValue,
+      value,
+      pipelineId: lead.pipelineId ?? null,
+      stageId: lead.stageId ?? null,
+    });
     return lead;
   }
 
