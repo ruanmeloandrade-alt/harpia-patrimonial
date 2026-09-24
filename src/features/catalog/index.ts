@@ -7,3 +7,5 @@ export * from './catalogRuntime';
 export * from './publicCatalog';
 export * from './CatalogAdminPage';
 export * from './Front03Workspace';
+
+export * from './productCatalogRepository';
