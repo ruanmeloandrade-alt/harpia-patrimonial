@@ -95,7 +95,8 @@ async function callConnector(path: '/v1/send' | '/v1/group', payload: Record<str
   const baseUrl = (Deno.env.get('WHATSAPP_CONNECTOR_URL')?.trim() || DEFAULT_CONNECTOR_URL).replace(/\/+$/, '');
   const derivedToken = await derivedControlToken();
   const configuredToken = Deno.env.get('WHATSAPP_CONNECTOR_TOKEN')?.trim() || '';
-  const tokens = [...new Set([derivedToken, configuredToken].filter(Boolean))];
+  const serviceRoleToken = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')?.trim() || '';
+  const tokens = [...new Set([derivedToken, configuredToken, serviceRoleToken].filter(Boolean))];
 
   if (!baseUrl || tokens.length === 0) {
     return {
@@ -126,8 +127,8 @@ async function callConnector(path: '/v1/send' | '/v1/group', payload: Record<str
   };
 
   let result = await post(tokens[0]);
-  if (result.status === 401 && tokens.length > 1) {
-    result = await post(tokens[1]);
+  for (let index = 1; result.status === 401 && index < tokens.length; index += 1) {
+    result = await post(tokens[index]);
   }
   if (result.status === 401) {
     return {
