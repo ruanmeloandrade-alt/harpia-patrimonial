@@ -313,14 +313,22 @@ export function installRuntimeLocaleObserver() {
   };
 }
 
-function dateParts(dateFormat: string) {
-  if (dateFormat === 'MM/dd/yyyy') {
-    return { year: 'numeric', month: '2-digit', day: '2-digit' } as const;
-  }
-  if (dateFormat === 'yyyy-MM-dd') {
-    return { year: 'numeric', month: '2-digit', day: '2-digit' } as const;
-  }
-  return { day: '2-digit', month: '2-digit', year: 'numeric' } as const;
+function formattedDateParts(date: Date, preferences: RuntimeRegionalPreferences) {
+  const parts = new Intl.DateTimeFormat(preferences.locale, {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    timeZone: preferences.timezone,
+  }).formatToParts(date);
+  const get = (type: string) => parts.find((part) => part.type === type)?.value ?? '';
+  return { year: get('year'), month: get('month'), day: get('day') };
+}
+
+function assembleDate(date: Date, preferences: RuntimeRegionalPreferences) {
+  const { year, month, day } = formattedDateParts(date, preferences);
+  if (preferences.dateFormat === 'MM/dd/yyyy') return `${month}/${day}/${year}`;
+  if (preferences.dateFormat === 'yyyy-MM-dd') return `${year}-${month}-${day}`;
+  return `${day}/${month}/${year}`;
 }
 
 export function formatRuntimeCurrency(value: number) {
@@ -332,39 +340,15 @@ export function formatRuntimeDateTime(value: string | number | Date) {
   const p = readRuntimeRegionalPreferences();
   const date = value instanceof Date ? value : new Date(value);
   if (Number.isNaN(date.getTime())) return String(value);
-  const formatted = new Intl.DateTimeFormat(p.locale, {
-    ...dateParts(p.dateFormat),
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: p.timeFormat === '12h',
-    timeZone: p.timezone,
-  }).format(date);
-
-  if (p.dateFormat !== 'yyyy-MM-dd') return formatted;
-  const parts = new Intl.DateTimeFormat('en-CA', {
-    year: 'numeric', month: '2-digit', day: '2-digit',
-    hour: '2-digit', minute: '2-digit',
-    hour12: p.timeFormat === '12h',
-    timeZone: p.timezone,
-  }).formatToParts(date);
-  const get = (type: Intl.DateTimeFormatPartTypes) => parts.find((part) => part.type === type)?.value ?? '';
-  return `${get('year')}-${get('month')}-${get('day')} ${get('hour')}:${get('minute')}`;
+  return `${assembleDate(date, p)} ${formatRuntimeTime(date)}`;
 }
 
 export function formatRuntimeDate(value: string | number | Date) {
   const p = readRuntimeRegionalPreferences();
   const date = value instanceof Date ? value : new Date(value);
   if (Number.isNaN(date.getTime())) return String(value);
-  if (p.dateFormat === 'yyyy-MM-dd') {
-    const parts = new Intl.DateTimeFormat('en-CA', {
-      year: 'numeric', month: '2-digit', day: '2-digit', timeZone: p.timezone,
-    }).formatToParts(date);
-    const get = (type: Intl.DateTimeFormatPartTypes) => parts.find((part) => part.type === type)?.value ?? '';
-    return `${get('year')}-${get('month')}-${get('day')}`;
-  }
-  return new Intl.DateTimeFormat(p.locale, { ...dateParts(p.dateFormat), timeZone: p.timezone }).format(date);
+  return assembleDate(date, p);
 }
-
 
 export function formatRuntimeTime(value: string | number | Date) {
   const p = readRuntimeRegionalPreferences();
