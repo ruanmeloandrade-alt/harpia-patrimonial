@@ -12,6 +12,20 @@ const headers = {
 
 type ControlAction = 'status' | 'qr' | 'connect' | 'reconnect' | 'disconnect';
 
+const DEFAULT_CONNECTOR_URL = 'https://harpia-patrimonial-production.up.railway.app';
+
+async function derivedControlToken() {
+  const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')?.trim();
+  if (!serviceRoleKey) return '';
+
+  const bytes = new TextEncoder().encode(`harpia-whatsapp-control-v1:${serviceRoleKey}`);
+  const digest = new Uint8Array(await crypto.subtle.digest('SHA-256', bytes));
+  let binary = '';
+  for (const byte of digest) binary += String.fromCharCode(byte);
+  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
+}
+
+
 function respond(status: number, payload: unknown) {
   return new Response(JSON.stringify(payload), { status, headers });
 }
@@ -49,8 +63,8 @@ async function requirePermission(
 }
 
 async function callConnector(path: string, method: 'GET' | 'POST') {
-  const baseUrl = Deno.env.get('WHATSAPP_CONNECTOR_URL')?.trim().replace(/\/+$/, '');
-  const token = Deno.env.get('WHATSAPP_CONNECTOR_TOKEN')?.trim();
+  const baseUrl = (Deno.env.get('WHATSAPP_CONNECTOR_URL')?.trim() || DEFAULT_CONNECTOR_URL).replace(/\/+$/, '');
+  const token = Deno.env.get('WHATSAPP_CONNECTOR_TOKEN')?.trim() || await derivedControlToken();
 
   if (!baseUrl || !token) {
     return {
