@@ -284,72 +284,210 @@ function pipelineDurationMs(raw: string): number | null {
   return Number.isSafeInteger(total) && total > 0 ? total : null;
 }
 
+function zonedDateParts(date: Date, timeZone: string) {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+  }).formatToParts(date);
+  const read = (type: string) => Number(parts.find((part) => part.type === type)?.value ?? 0);
+  return {
+    year: read('year'),
+    month: read('month'),
+    day: read('day'),
+    hour: read('hour'),
+    minute: read('minute'),
+  };
+}
+
+function localDateTimeToEpoch(raw: string, timeZone: string): number | null {
+  const match = raw.trim().match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/);
+  if (!match) return null;
+  const target = {
+    year: Number(match[1]),
+    month: Number(match[2]),
+    day: Number(match[3]),
+    hour: Number(match[4]),
+    minute: Number(match[5]),
+  };
+  const targetUtc = Date.UTC(target.year, target.month - 1, target.day, target.hour, target.minute);
+  let guess = targetUtc;
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const actual = zonedDateParts(new Date(guess), timeZone);
+    const actualUtc = Date.UTC(actual.year, actual.month - 1, actual.day, actual.hour, actual.minute);
+    const delta = targetUtc - actualUtc;
+    guess += delta;
+    if (delta === 0) break;
+  }
+  return Number.isFinite(guess) ? guess : null;
+}
+
 async function enqueueDuePipelineTimeEvents(
   db: ReturnType<typeof createClient>,
   automations: AutomationDefinition[],
 ): Promise<number> {
+  const supported = new Set(['time', 'hours_before_datetime', 'daily_time', 'specific_datetime']);
   const definitions = automations.filter((definition) => (
     definition.status === 'active'
     && definition.origin === 'pipeline'
-    && definition.pipeline?.event === 'time'
-    && definition.pipeline.pipelineId
+    && supported.has(String(definition.pipeline?.event ?? ''))
+    && definition.pipeline?.pipelineId
     && definition.pipeline.stageId
-    && pipelineDurationMs(String(definition.pipeline.value ?? ''))
   ));
   if (!definitions.length) return 0;
 
-  const { data: crmRow, error: crmError } = await db
-    .from('platform_module_state')
-    .select('state')
-    .eq('module', 'crm')
-    .maybeSingle();
+  const [{ data: crmRow, error: crmError }, { data: settingsRow }] = await Promise.all([
+    db.from('platform_module_state').select('state').eq('module', 'crm').maybeSingle(),
+    db.from('organization_settings').select('preferences').eq('id', 1).maybeSingle(),
+  ]);
   if (crmError) throw crmError;
 
   const state = crmRow?.state && typeof crmRow.state === 'object' ? crmRow.state as Json : {};
   const leads = Array.isArray(state.leads) ? state.leads as Json[] : [];
   const history = Array.isArray(state.history) ? state.history as Json[] : [];
+  const preferences = settingsRow?.preferences && typeof settingsRow.preferences === 'object'
+    ? settingsRow.preferences as Json
+    : {};
+  const regional = preferences.regional && typeof preferences.regional === 'object'
+    ? preferences.regional as Json
+    : {};
+  const timeZone = String(regional.timezone ?? 'America/Sao_Paulo');
+  const nowDate = new Date();
+  const now = nowDate.getTime();
+  const localNow = zonedDateParts(nowDate, timeZone);
+  const localDateKey = [
+    String(localNow.year).padStart(4, '0'),
+    String(localNow.month).padStart(2, '0'),
+    String(localNow.day).padStart(2, '0'),
+  ].join('-');
+  const localTimeKey = [
+    String(localNow.hour).padStart(2, '0'),
+    String(localNow.minute).padStart(2, '0'),
+  ].join(':');
   let enqueued = 0;
-  const now = Date.now();
+
+  const enqueue = async (
+    definition: AutomationDefinition,
+    leadId: string,
+    kind: string,
+    scheduledKey: string,
+    extra: Json,
+  ) => {
+    const meta = definition.pipeline!;
+    const payload = {
+      ...extra,
+      kind,
+      automationId: definition.id,
+      pipelineId: meta.pipelineId,
+      stageId: meta.stageId,
+      scheduledKey,
+    };
+    const { error } = await db.from('automation_event_outbox').insert({
+      event_type: 'custom.event',
+      lead_id: leadId,
+      payload,
+    });
+    if (!error) {
+      enqueued += 1;
+      return;
+    }
+    if (error.code !== '23505') throw error;
+  };
 
   for (const definition of definitions) {
     const meta = definition.pipeline!;
-    const duration = pipelineDurationMs(String(meta.value ?? ''));
-    if (!duration) continue;
+    const config = meta.actionConfig ?? {};
 
     for (const lead of leads) {
       if (String(lead.pipelineId ?? '') !== meta.pipelineId || String(lead.stageId ?? '') !== meta.stageId) continue;
       const leadId = String(lead.id ?? '').trim();
       if (!leadId) continue;
 
-      const stageHistory = history
-        .filter((entry) => (
-          String(entry.leadId ?? '') === leadId
-          && String(entry.type ?? '') === 'stage_changed'
-          && String((entry.metadata as Json | undefined)?.stageId ?? '') === meta.stageId
-        ))
-        .sort((a, b) => String(b.createdAt ?? '').localeCompare(String(a.createdAt ?? '')));
-      const stageSince = String(stageHistory[0]?.createdAt ?? lead.createdAt ?? lead.updatedAt ?? '').trim();
-      const stageSinceMs = Date.parse(stageSince);
-      if (!stageSince || !Number.isFinite(stageSinceMs) || now < stageSinceMs + duration) continue;
+      if (meta.event === 'time') {
+        const duration = pipelineDurationMs(String(meta.value ?? ''));
+        if (!duration) continue;
+        const stageHistory = history
+          .filter((entry) => (
+            String(entry.leadId ?? '') === leadId
+            && String(entry.type ?? '') === 'stage_changed'
+            && String((entry.metadata as Json | undefined)?.stageId ?? '') === meta.stageId
+          ))
+          .sort((a, b) => String(b.createdAt ?? '').localeCompare(String(a.createdAt ?? '')));
+        const stageSince = String(stageHistory[0]?.createdAt ?? lead.createdAt ?? lead.updatedAt ?? '').trim();
+        const stageSinceMs = Date.parse(stageSince);
+        if (!stageSince || !Number.isFinite(stageSinceMs) || now < stageSinceMs + duration) continue;
 
-      const payload = {
-        automationId: definition.id,
-        pipelineId: meta.pipelineId,
-        stageId: meta.stageId,
-        duration: String(meta.value ?? ''),
-        stageSince,
-        dueAt: new Date(stageSinceMs + duration).toISOString(),
-      };
-      const { error } = await db.from('automation_event_outbox').insert({
-        event_type: 'lead.inactivity',
-        lead_id: leadId,
-        payload,
-      });
-      if (!error) {
-        enqueued += 1;
+        const payload = {
+          automationId: definition.id,
+          pipelineId: meta.pipelineId,
+          stageId: meta.stageId,
+          duration: String(meta.value ?? ''),
+          stageSince,
+          dueAt: new Date(stageSinceMs + duration).toISOString(),
+        };
+        const { error } = await db.from('automation_event_outbox').insert({
+          event_type: 'lead.inactivity',
+          lead_id: leadId,
+          payload,
+        });
+        if (!error) {
+          enqueued += 1;
+          continue;
+        }
+        if (error.code !== '23505') throw error;
         continue;
       }
-      if (error.code !== '23505') throw error;
+
+      if (meta.event === 'daily_time') {
+        const scheduleTime = String(config.scheduleTime ?? '').trim();
+        if (!/^\d{2}:\d{2}$/.test(scheduleTime) || localTimeKey !== scheduleTime) continue;
+        await enqueue(
+          definition,
+          leadId,
+          'daily_time',
+          'daily|' + localDateKey + '|' + scheduleTime,
+          { scheduleTime, timeZone },
+        );
+        continue;
+      }
+
+      if (meta.event === 'specific_datetime') {
+        const scheduleDateTime = String(config.scheduleDateTime ?? '').trim();
+        const dueAt = localDateTimeToEpoch(scheduleDateTime, timeZone);
+        if (!scheduleDateTime || dueAt === null || now < dueAt) continue;
+        await enqueue(
+          definition,
+          leadId,
+          'specific_datetime',
+          'specific|' + scheduleDateTime,
+          { scheduleDateTime, dueAt: new Date(dueAt).toISOString(), timeZone },
+        );
+        continue;
+      }
+
+      if (meta.event === 'hours_before_datetime') {
+        const fieldId = String(config.scheduleFieldId ?? '').trim();
+        const hours = Number(config.scheduleHours ?? 0);
+        const customFields = lead.customFields && typeof lead.customFields === 'object'
+          ? lead.customFields as Json
+          : {};
+        const fieldValue = String(customFields[fieldId] ?? '').trim();
+        const targetAt = Date.parse(fieldValue);
+        if (!fieldId || !(hours > 0) || !fieldValue || !Number.isFinite(targetAt)) continue;
+        const dueAt = targetAt - hours * 3_600_000;
+        if (now < dueAt) continue;
+        await enqueue(
+          definition,
+          leadId,
+          'hours_before_datetime',
+          'before|' + fieldId + '|' + fieldValue + '|' + hours,
+          { fieldId, fieldValue, hours, dueAt: new Date(dueAt).toISOString() },
+        );
+      }
     }
   }
 
