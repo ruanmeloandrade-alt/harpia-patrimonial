@@ -9,6 +9,7 @@ import { InboxWorkspace } from '../features/inbox/InboxWorkspace';
 import { SalesBotWorkspace } from '../features/salesbot/SalesBotWorkspace';
 import { ExecutionLogsPanel } from '../features/salesbot/ExecutionLogsPanel';
 import { listSalesBots } from '../features/salesbot/repository';
+import '../features/salesbot/salesbotBuilder.css';
 import { AIAgentsWorkspace } from '../features/ai-agents/AIAgentsWorkspace';
 import { listAIAgents } from '../features/ai-agents/repository';
 import { AutomationsWorkspace } from '../features/automations/AutomationsWorkspace';
@@ -154,11 +155,9 @@ export function IntegratedIntegrations() {
   return <Front05Module><IntegrationsWorkspace credentialVault={runtime.credentialVault} canManage={auth.hasPermission(PERMISSIONS.INTEGRATIONS_MANAGE)} /></Front05Module>;
 }
 
-
 export function IntegratedMarketing() {
   return <MarketingWorkspace />;
 }
-
 
 export function IntegratedSettings({ initialTab = 'general' }: { initialTab?: SettingsTab }) {
   const runtime = usePlatformRuntime();
