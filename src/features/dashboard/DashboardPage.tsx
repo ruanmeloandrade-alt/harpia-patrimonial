@@ -253,7 +253,7 @@ export function DashboardPage({ catalogRepository, commercialProvider }: Dashboa
           <div className="f03-panel-heading">
             <div>
               <h2>Catálogo</h2>
-              <p>Saúde dos produtos e serviços cadastrados.</p>
+              <p>Saúde dos itens cadastrados.</p>
             </div>
           </div>
 
@@ -273,10 +273,10 @@ export function DashboardPage({ catalogRepository, commercialProvider }: Dashboa
 
       <div className="f03-dashboard-panels">
         <DistributionPanel
-          title="Produtos por região"
+          title="Itens por região"
           subtitle="Distribuição dos itens publicados."
           items={snapshot.catalog.byCity}
-          emptyText="As regiões aparecerão aqui conforme os produtos forem cadastrados."
+          emptyText="As regiões aparecerão aqui conforme os itens forem cadastrados."
         />
 
         <DistributionPanel
