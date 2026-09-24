@@ -82,6 +82,13 @@ export function InboxWorkspace({
   const selectedAgentId = selectedConversationId
     ? selectedAgentByConversation[selectedConversationId] ?? ''
     : '';
+  const serviceMode = automationStatus.salesBot === 'running'
+    ? 'SalesBot ativo'
+    : automationStatus.aiAgent === 'running'
+      ? 'Agente IA ativo'
+      : automationStatus.salesBot === 'paused' || automationStatus.aiAgent === 'paused'
+        ? 'Automação pausada · Humano'
+        : 'Atendimento humano';
 
   const setSelectedBotId = (id: string) => {
     if (!selectedConversationId) return;
@@ -280,6 +287,10 @@ export function InboxWorkspace({
   };
 
 
+  const explainUnsupportedTransportAction = (action: string) => {
+    setFeedback(`${action} está previsto na Inbox, mas o transporte WhatsApp atual ainda não expõe essa operação. Nenhuma ação foi simulada.`);
+  };
+
   const updateStage = (stageId: string) => {
     if (!selectedLead || !stageId) return;
     try {
@@ -417,8 +428,32 @@ export function InboxWorkspace({
                 <strong>{selectedLead.name}</strong>
                 <span>{selectedLead.whatsapp || selectedLead.email || 'Contato não informado'}</span>
               </div>
-              <TransportBadge conversation={selectedConversation} />
+              <div className={styles.chatStatusStack}>
+                <span className={styles.interactionBadge}>{serviceMode}</span>
+                <TransportBadge conversation={selectedConversation} />
+              </div>
             </header>
+
+            <div className={styles.quickActions} aria-label="Ações rápidas de atendimento">
+              <button
+                type="button"
+                onClick={() => automationStatus.salesBot === 'running' ? void pauseSalesBot() : void startSalesBot()}
+              >
+                {automationStatus.salesBot === 'running' ? 'Pausar SalesBot' : 'Enviar SalesBot'}
+              </button>
+              <button
+                type="button"
+                onClick={() => automationStatus.aiAgent === 'running' ? void pauseAiAgent() : void startAiAgent()}
+              >
+                {automationStatus.aiAgent === 'running' ? 'Pausar Agente IA' : 'Acionar Agente IA'}
+              </button>
+              <button type="button" onClick={() => explainUnsupportedTransportAction('Envio de formulário')}>
+                Formulário
+              </button>
+              <button type="button" onClick={() => explainUnsupportedTransportAction('Criação de grupo')}>
+                Criar grupo
+              </button>
+            </div>
 
             <div className={styles.messageArea}>
               {messages.length === 0 ? (
@@ -492,10 +527,32 @@ export function InboxWorkspace({
             </div>
           </>
         ) : (
-          <EmptyState
-            title="Selecione uma conversa"
-            description="O contexto comercial aparecerá aqui sem mensagens fictícias."
-          />
+          <>
+            <header className={styles.chatHeader}>
+              <div>
+                <strong>Nenhuma conversa selecionada</strong>
+                <span>Escolha uma conversa à esquerda para iniciar o atendimento.</span>
+              </div>
+              <span className={styles.transportBadge}>Canal aguardando conversa</span>
+            </header>
+            <div className={styles.messageArea}>
+              <EmptyState
+                title="Área de mensagens pronta"
+                description="O histórico real aparecerá aqui. A estrutura permanece visível mesmo quando a Inbox está vazia."
+              />
+            </div>
+            <div className={styles.composerArea}>
+              <div className={styles.mediaTypes} aria-label="Tipos de mensagem preparados">
+                {(['text', 'audio', 'image', 'video', 'document', 'form'] as MessageType[]).map((type) => (
+                  <span key={type}>{messageTypeLabel(type)}</span>
+                ))}
+              </div>
+              <div className={styles.composer}>
+                <textarea rows={2} placeholder="Selecione uma conversa para escrever" disabled />
+                <button type="button" disabled>Enviar</button>
+              </div>
+            </div>
+          </>
         )}
       </main>
 
@@ -621,7 +678,24 @@ export function InboxWorkspace({
             </section>
           </>
         ) : (
-          <EmptyState title="Contexto CRM" description="Selecione uma conversa para operar o lead." />
+          <>
+            <header className={styles.contextHeader}>
+              <span>Contexto CRM</span>
+              <h2>Sem conversa selecionada</h2>
+            </header>
+            <section className={styles.contextSection}>
+              <h3>Dados comerciais</h3>
+              <small>Origem, interesse e contexto do lead aparecerão aqui.</small>
+            </section>
+            <section className={styles.contextSection}>
+              <h3>Etapa e responsável</h3>
+              <small>Selecione uma conversa para operar o funil e a distribuição.</small>
+            </section>
+            <section className={styles.contextSection}>
+              <h3>Automação</h3>
+              <small>SalesBot e Agente IA só podem ser acionados sobre uma conversa real.</small>
+            </section>
+          </>
         )}
       </aside>
     </section>
