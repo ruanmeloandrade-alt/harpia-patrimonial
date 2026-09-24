@@ -241,6 +241,7 @@ Deno.serve(async (req) => {
     const bot = bots.find((item) => item.id === original.botId);
     if (!bot || bot.status !== 'active') {
       await patchExecution(executionId, { status: 'failed', finishedAt: nowIso(), error: 'SalesBot ausente ou inativo durante retomada.', runtimeContext: undefined, resumeMode: undefined, resumeAt: undefined, resumeClaimToken: undefined, resumeClaimedUntil: undefined });
+      await emitSalesBotAutomationEvent('salesbot_failed', { ...original, status: 'failed', error: 'SalesBot ausente ou inativo durante retomada.' });
       return { status: 'rejected', executionId, reason: 'SalesBot ausente ou inativo durante retomada.' };
     }
 
@@ -248,6 +249,7 @@ Deno.serve(async (req) => {
     const currentIndex = blocks.findIndex((block) => block.id === original.currentBlockId);
     if (currentIndex < 0) {
       await patchExecution(executionId, { status: 'failed', finishedAt: nowIso(), error: 'Bloco de retomada não encontrado.', runtimeContext: undefined, resumeMode: undefined, resumeAt: undefined, resumeClaimToken: undefined, resumeClaimedUntil: undefined });
+      await emitSalesBotAutomationEvent('salesbot_failed', { ...original, status: 'failed', error: 'Bloco de retomada não encontrado.' });
       return { status: 'rejected', executionId, reason: 'Bloco de retomada não encontrado.' };
     }
 
@@ -265,6 +267,7 @@ Deno.serve(async (req) => {
         if (block.type === 'trigger') continue;
         if (block.type === 'finish') {
           await patchExecution(executionId, { status: 'completed', finishedAt: nowIso(), runtimeContext: undefined, resumeMode: undefined, resumeAt: undefined, resumeClaimToken: undefined, resumeClaimedUntil: undefined, action: 'Execução concluída após delay.' });
+          await emitSalesBotAutomationEvent('salesbot_done', { ...original, status: 'completed', runtimeContext: context, finishedAt: nowIso() });
           return { status: 'accepted', executionId, data: { runtimeStatus: 'completed' } };
         }
         if (block.type === 'condition') {
@@ -272,6 +275,7 @@ Deno.serve(async (req) => {
           if (matched === null) throw new Error('Condição inválida.');
           if (!matched) {
             await patchExecution(executionId, { status: 'completed', finishedAt: nowIso(), runtimeContext: undefined, resumeMode: undefined, resumeAt: undefined, action: 'Condição não atendida; fluxo encerrado.' });
+            await emitSalesBotAutomationEvent('salesbot_done', { ...original, status: 'completed', runtimeContext: context, finishedAt: nowIso() });
             return { status: 'accepted', executionId, data: { runtimeStatus: 'completed' } };
           }
           continue;
@@ -348,20 +352,20 @@ Deno.serve(async (req) => {
             action: result.reason,
           });
           if (!paused) {
-            await emitSalesBotAutomationEvent('salesbot_failed', { ...current, status: 'failed', runtimeContext: context, error: result.reason });
+            await emitSalesBotAutomationEvent('salesbot_failed', { ...original, status: 'failed', runtimeContext: context, error: result.reason });
           }
           return { ...result, executionId };
         }
       }
 
       await patchExecution(executionId, { status: 'completed', finishedAt: nowIso(), runtimeContext: undefined, resumeMode: undefined, resumeAt: undefined, resumeClaimToken: undefined, resumeClaimedUntil: undefined, action: 'Execução concluída após delay.' });
-      await emitSalesBotAutomationEvent('salesbot_done', { ...current, status: 'completed', runtimeContext: context, finishedAt: nowIso() });
+      await emitSalesBotAutomationEvent('salesbot_done', { ...original, status: 'completed', runtimeContext: context, finishedAt: nowIso() });
       return { status: 'accepted', executionId, data: { runtimeStatus: 'completed' } };
     } catch (error) {
       const reason = error instanceof Error ? error.message : 'Falha inesperada ao retomar SalesBot.';
       try {
         await patchExecution(executionId, { status: 'failed', finishedAt: nowIso(), runtimeContext: undefined, resumeMode: undefined, resumeAt: undefined, resumeClaimToken: undefined, resumeClaimedUntil: undefined, error: reason, action: reason });
-        await emitSalesBotAutomationEvent('salesbot_failed', { ...current, status: 'failed', runtimeContext: context, error: reason, finishedAt: nowIso() });
+        await emitSalesBotAutomationEvent('salesbot_failed', { ...original, status: 'failed', runtimeContext: context, error: reason, finishedAt: nowIso() });
       } catch {
         // preserva a falha original
       }
