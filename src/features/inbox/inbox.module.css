@@ -934,3 +934,38 @@
     display: none;
   }
 }
+
+
+.automationPicker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  padding: 9px;
+  border: 1px solid #d9d6cf;
+  border-radius: 10px;
+  background: #f7f7f3;
+}
+
+.automationPicker strong {
+  width: 100%;
+  color: #5c6962;
+  font-size: 10px;
+}
+
+.automationPicker button {
+  min-height: 30px;
+  padding: 6px 9px;
+  border: 1px solid #cfd4ce;
+  border-radius: 8px;
+  background: #fff;
+  color: #405048;
+  font: inherit;
+  font-size: 10px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.automationPicker button:hover {
+  border-color: #9eae96;
+  background: #edf2e9;
+}
