@@ -97,7 +97,7 @@ export class LocalCatalogRepository implements CatalogRepository {
       if (!Array.isArray(parsed)) return [];
       return parsed.map((item) => ({
         ...item,
-        catalogId: item.catalogId ?? '',
+        catalogId: item.catalogId ?? null,
         itemType: item.itemType ?? 'product',
         discountType: item.discountType ?? undefined,
         discountValue: item.discountValue ?? undefined,
@@ -131,8 +131,7 @@ export class LocalCatalogRepository implements CatalogRepository {
     const name = normalizeText(input.name);
     const city = normalizeText(input.location.city);
 
-    if (!input.catalogId.trim()) throw new Error('Selecione o catálogo do produto.');
-    if (!code) throw new Error('Informe um código para o item.');
+     if (!code) throw new Error('Informe um código para o item.');
     if (!name) throw new Error('Informe um nome para o item.');
     if (input.itemType === 'property' && !city) throw new Error('Informe a cidade do imóvel.');
     if (input.price !== null && input.price < 0) throw new Error('O preço não pode ser negativo.');
@@ -168,7 +167,7 @@ export class LocalCatalogRepository implements CatalogRepository {
       .filter((item) => !query.status || item.status === query.status)
       .filter((item) => !query.kind || item.kind === query.kind)
       .filter((item) => !query.itemType || item.itemType === query.itemType)
-      .filter((item) => !query.catalogId || item.catalogId === query.catalogId)
+      .filter((item) => query.catalogId === undefined || item.catalogId === query.catalogId)
       .filter((item) => {
         if (!search) return true;
         const haystack = [
@@ -198,7 +197,7 @@ export class LocalCatalogRepository implements CatalogRepository {
   async create(input: CatalogItemDraft) {
     const normalized: CatalogItemDraft = {
       ...clone(input),
-      catalogId: input.catalogId,
+      catalogId: input.catalogId ?? null,
       itemType: input.itemType ?? 'product',
       tags: Array.isArray(input.tags) ? input.tags : [],
       kind: input.itemType === 'property' ? input.kind : 'standalone',
