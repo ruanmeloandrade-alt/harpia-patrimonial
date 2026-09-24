@@ -117,7 +117,9 @@ export function IntegrationsWorkspace({ credentialVault, canManage = false, show
         <small>
           {item.id === 'whatsapp'
             ? 'O pareamento por QR e a reconexão serão ativados pelo conector do WhatsApp Web.'
-            : item.id === 'meta'
+            : item.id === 'google_calendar'
+              ? 'Calendário interno, convidados e Google Meet já estão preparados. Falta somente concluir o OAuth do Google para criar eventos externos e enviar convites.'
+              : item.id === 'meta'
               ? 'Meta Ads, Lead Ads, Facebook e Instagram ficam preparados visualmente e serão ativados somente na segunda fase.'
               : item.id === 'email'
                 ? 'Gmail e Google Workspace ficam preparados para campanhas e jornadas da segunda fase.'
