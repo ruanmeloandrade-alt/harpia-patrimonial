@@ -132,6 +132,18 @@ export class CrmService {
     return pipeline;
   }
 
+  removePipeline(pipelineId: CrmId): void {
+    const pipeline = this.requirePipeline(pipelineId);
+    const leadCount = this.state.leads.filter((lead) => lead.pipelineId === pipeline.id).length;
+    if (leadCount > 0) {
+      throw new CrmIntegrityError(`Este funil possui ${leadCount} lead${leadCount === 1 ? '' : 's'}. Mova ou exclua os leads antes de apagar o funil.`);
+    }
+
+    this.state.stages = this.state.stages.filter((stage) => stage.pipelineId !== pipeline.id);
+    this.state.pipelines = this.state.pipelines.filter((item) => item.id !== pipeline.id);
+    this.persist();
+  }
+
   createStage(pipelineId: CrmId, name: string): PipelineStage {
     this.requirePipeline(pipelineId);
     const siblings = this.getStages(pipelineId);
