@@ -725,31 +725,47 @@ export class WhatsAppConnector {
       name?: string;
       providerMediaId?: string;
     } | undefined;
+    let mediaUnavailable = false;
 
     if (type !== 'text') {
       const info = mediaInfo(normalizedContent, type);
-      if (!info) throw new Error('Metadados de mídia ausentes.');
+      if (!info) {
+        mediaUnavailable = true;
+      } else {
+        try {
+          const bytes = await downloadMediaMessage(
+            message,
+            'buffer',
+            {},
+            {
+              logger: logger.child({ module: 'baileys-media' }) as never,
+              reuploadRequest: socket.updateMediaMessage,
+            },
+          ) as Buffer;
 
-      const bytes = await downloadMediaMessage(
-        message,
-        'buffer',
-        {},
-        {
-          logger: logger.child({ module: 'baileys-media' }) as never,
-          reuploadRequest: socket.updateMediaMessage,
-        },
-      ) as Buffer;
-
-      attachment = {
-        ...await uploadInboundMedia(this.sessionId, {
-          externalMessageId,
-          bytes,
-          mimeType: info.mimeType,
-          fileName: info.fileName,
-        }),
-        name: info.fileName,
-        providerMediaId: externalMessageId,
-      };
+          attachment = {
+            ...await uploadInboundMedia(this.sessionId, {
+              externalMessageId,
+              bytes,
+              mimeType: info.mimeType,
+              fileName: info.fileName,
+            }),
+            name: info.fileName,
+            providerMediaId: externalMessageId,
+          };
+        } catch (error) {
+          mediaUnavailable = true;
+          logger.warn({ error, externalMessageId, type }, 'Mídia antiga indisponível; mensagem será preservada sem anexo.');
+          await recordIntegrationEvent(this.sessionId, {
+            eventType: 'message_media_unavailable',
+            success: false,
+            externalId: externalMessageId,
+            errorCode: 'media_unavailable',
+            errorMessage: error instanceof Error ? error.message : 'Mídia antiga indisponível para download.',
+            metadata: { source, type },
+          }).catch(() => undefined);
+        }
+      }
     }
 
     const result = await ingestIncomingMessage(this.sessionId, {
@@ -763,6 +779,7 @@ export class WhatsAppConnector {
       attachment,
       metadata: {
         source,
+        mediaUnavailable,
       },
     });
 
@@ -776,6 +793,7 @@ export class WhatsAppConnector {
         messageId: result.messageId,
         type,
         duplicate: result.duplicate,
+        mediaUnavailable,
       },
     });
   }
