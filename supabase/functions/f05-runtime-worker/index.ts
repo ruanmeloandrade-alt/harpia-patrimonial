@@ -222,7 +222,56 @@ Deno.serve(async (req) => {
   async function loadList<T>(key: string): Promise<T[]> { const { data, error } = await db.from('f05_shared_storage').select('value').eq('storage_key', key).maybeSingle(); if (error) throw error; return Array.isArray(data?.value) ? data.value as T[] : []; }
   async function saveList<T>(key: string, value: T[]) { const { data: row, error: readError } = await db.from('f05_shared_storage').select('revision').eq('storage_key', key).single(); if (readError) throw readError; const { data, error } = await db.from('f05_shared_storage').update({ value, revision: Number(row.revision) + 1, updated_at: nowIso(), updated_by: null }).eq('storage_key', key).eq('revision', row.revision).select('revision').maybeSingle(); if (error) throw error; if (!data) throw new Error('Conflito de concorrência ao persistir runtime F05.'); }
 
-  async function invokeAgent(agentId: string, inputContext: Json): Promise<Result> {
+  async function currentLeadPlacement(runtimeLeadId: string | undefined, inputContext: Json): Promise<{ pipelineId?: string; stageId?: string }> {
+    const fallback = {
+      pipelineId: text(inputContext.pipelineId) || undefined,
+      stageId: text(inputContext.stageId) || undefined,
+    };
+    if (!runtimeLeadId) return fallback;
+
+    try {
+      const { data, error } = await db.from('platform_module_state').select('state').eq('module', 'crm').maybeSingle();
+      if (error) throw error;
+      const state = data?.state && typeof data.state === 'object' ? data.state as Json : {};
+      const leads = Array.isArray(state.leads) ? state.leads as Json[] : [];
+      const lead = leads.find((item) => text(item.id) === runtimeLeadId);
+      if (!lead) return fallback;
+      return {
+        pipelineId: text(lead.pipelineId) || fallback.pipelineId,
+        stageId: text(lead.stageId) || fallback.stageId,
+      };
+    } catch {
+      return fallback;
+    }
+  }
+
+  async function emitRuntimeAutomationEvent(
+    kind: 'salesbot_done' | 'salesbot_failed' | 'ai_done',
+    resourceKey: 'botId' | 'agentId',
+    resourceId: string,
+    inputContext: Json,
+    executionId?: string,
+  ): Promise<void> {
+    const runtimeLeadId = text(inputContext.leadId) || leadId;
+    if (!runtimeLeadId) return;
+    const placement = await currentLeadPlacement(runtimeLeadId, inputContext);
+    const payload: Json = {
+      kind,
+      [resourceKey]: resourceId,
+      ...(executionId ? { executionId } : {}),
+      ...(placement.pipelineId ? { pipelineId: placement.pipelineId } : {}),
+      ...(placement.stageId ? { stageId: placement.stageId } : {}),
+    };
+    const { error } = await db.from('automation_event_outbox').insert({
+      event_type: 'custom.event',
+      lead_id: runtimeLeadId,
+      conversation_id: text(inputContext.conversationId) || conversationId || null,
+      payload,
+    });
+    if (error) console.error('Falha ao publicar evento de conclusão F05', error.message);
+  }
+
+  async function invokeAgentCore(agentId: string, inputContext: Json): Promise<Result> {
     const [agents, providers] = await Promise.all([loadList<Agent>(AGENT_KEY), loadList<Provider>(PROVIDER_KEY)]);
     const agent = agents.find((item) => item.id === agentId);
     if (!agent) return { status: 'rejected', reason: 'Agente IA não encontrado.' };
@@ -236,7 +285,7 @@ Deno.serve(async (req) => {
     try { const url = await safeUrl(request.url); const response = await fetch(url, request.init); if (response.status >= 300 && response.status < 400) return { status: 'rejected', reason: 'Redirecionamento do provedor IA não permitido.' }; const raw = await response.json().catch(() => null); if (!response.ok) return { status: 'rejected', reason: `Provedor IA respondeu HTTP ${response.status}.` }; const output = extractText(profile.provider, raw).trim(); if (!output) return { status: 'rejected', reason: 'Provedor IA respondeu sem texto utilizável.' }; return { status: 'accepted', data: { output, provider: profile.provider, model: profile.model } }; } catch (error) { return { status: 'rejected', reason: error instanceof Error ? error.message : 'Falha no provedor IA.' }; }
   }
 
-  async function runBot(botId: string, inputContext: Json, depth = 0): Promise<Result> {
+  async function runBotCore(botId: string, inputContext: Json, depth = 0): Promise<Result> {
     if (depth > 8) return { status: 'rejected', reason: 'Limite de encadeamento de SalesBots excedido.' };
     const bots = await loadList<Bot>(BOT_KEY);
     const bot = bots.find((item) => item.id === botId);
@@ -279,5 +328,42 @@ Deno.serve(async (req) => {
     } catch (error) { const reason = error instanceof Error ? error.message : 'Falha inesperada no runtime server-side.'; try { await persist({ status: 'failed', finishedAt: nowIso(), runtimeContext: undefined, error: reason, action: reason }); } catch {} return { status: 'rejected', executionId: execution.id, reason }; }
   }
 
-  try { if (action === 'invoke_ai') return respond(await invokeAgent(text(body.agentId), context)); if (action === 'start_salesbot') return respond(await runBot(text(body.botId), { ...context, ...(leadId ? { leadId } : {}), ...(conversationId ? { conversationId } : {}) })); return respond({ status: 'rejected', reason: 'Ação server-side F05 não suportada.' }, 400); } catch (error) { return respond({ status: 'rejected', reason: error instanceof Error ? error.message : 'Falha inesperada no runtime F05.' }, 500); }
+  async function invokeAgent(agentId: string, inputContext: Json): Promise<Result> {
+    const result = await invokeAgentCore(agentId, inputContext);
+    if (result.status === 'accepted') {
+      await emitRuntimeAutomationEvent('ai_done', 'agentId', agentId, inputContext, result.executionId);
+    }
+    return result;
+  }
+
+  async function runBot(botId: string, inputContext: Json, depth = 0): Promise<Result> {
+    const result = await runBotCore(botId, inputContext, depth);
+    const runtimeStatus = String(result.data?.runtimeStatus ?? '');
+    if (result.status === 'accepted' && runtimeStatus === 'completed') {
+      await emitRuntimeAutomationEvent('salesbot_done', 'botId', botId, inputContext, result.executionId);
+    } else if (result.status === 'rejected') {
+      await emitRuntimeAutomationEvent('salesbot_failed', 'botId', botId, inputContext, result.executionId);
+    }
+    return result;
+  }
+
+  try {
+    if (action === 'invoke_ai') {
+      return respond(await invokeAgent(text(body.agentId), {
+        ...context,
+        ...(leadId ? { leadId } : {}),
+        ...(conversationId ? { conversationId } : {}),
+      }));
+    }
+    if (action === 'start_salesbot') {
+      return respond(await runBot(text(body.botId), {
+        ...context,
+        ...(leadId ? { leadId } : {}),
+        ...(conversationId ? { conversationId } : {}),
+      }));
+    }
+    return respond({ status: 'rejected', reason: 'Ação server-side F05 não suportada.' }, 400);
+  } catch (error) {
+    return respond({ status: 'rejected', reason: error instanceof Error ? error.message : 'Falha inesperada no runtime F05.' }, 500);
+  }
 });
