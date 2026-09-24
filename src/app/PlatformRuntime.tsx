@@ -10,6 +10,7 @@ import { PublicCatalogService } from '../features/catalog/publicCatalog';
 import { CrmService } from '../features/crm/service';
 import type { AssigneeOption } from '../features/crm/CrmWorkspace';
 import type { InboxAutomationPort } from '../features/crm/contracts';
+import { saveLeadProductAssociation } from '../features/crm/leadProductRepository';
 import {
   createFront05CrmActionPort,
   createFront05InboxAutomationAdapter,
@@ -215,7 +216,11 @@ export function PlatformRuntimeProvider({ children }: PropsWithChildren) {
         const crmActions = createFront05CrmActionPort(crm, waitForCrmPersistence);
         const aiCommandPort = createAIAgentCommandPort(aiModelRuntime);
         const salesBotMessagePort = {
-          send: async (input: { conversationId?: string; message: string }) => {
+          send: async (input: {
+            conversationId?: string;
+            message: string;
+            buttons?: Array<{ id: string; label: string }>;
+          }) => {
             if (!inbox || !input.conversationId) {
               return { status: 'rejected' as const, reason: 'Conversa da Inbox obrigatória para enviar mensagem do SalesBot.' };
             }
@@ -224,6 +229,7 @@ export function PlatformRuntimeProvider({ children }: PropsWithChildren) {
                 conversationId: input.conversationId,
                 type: 'text',
                 text: input.message,
+                buttons: input.buttons,
               });
               return {
                 status: 'accepted' as const,
@@ -237,6 +243,136 @@ export function PlatformRuntimeProvider({ children }: PropsWithChildren) {
             }
           },
         };
+
+        const accepted = (data?: Record<string, unknown>) => ({ status: 'accepted' as const, data });
+        const rejected = (reason: string) => ({ status: 'rejected' as const, reason });
+        const notConfigured = (reason: string) => ({ status: 'not_configured' as const, reason });
+
+        const salesBotActionPort = {
+          execute: async (input: {
+            actionType: string;
+            leadId?: string;
+            conversationId?: string;
+            config: Record<string, unknown>;
+          }) => {
+            try {
+              const leadId = input.leadId;
+              const config = input.config;
+              if (input.actionType === 'reaction') {
+                return notConfigured('Reação nativa aguarda suporte do conector WhatsApp.');
+              }
+              if (input.actionType === 'internal_comment') {
+                if (!inbox || !input.conversationId) return rejected('Conversa obrigatória para comentário interno.');
+                const note = inbox.addInternalNote(input.conversationId, String(config.text ?? ''));
+                return accepted({ messageId: note.id });
+              }
+              if (input.actionType === 'send_email') {
+                return notConfigured('E-mail pertence à segunda fase de Marketing.');
+              }
+              if (!leadId && ['add_note','create_task','move_stage','update_field','set_tag','complete_task','link_product','assign_owner'].includes(input.actionType)) {
+                return rejected('Lead obrigatório para executar esta ação.');
+              }
+
+              if (input.actionType === 'add_note') {
+                const lead = crm.snapshot().leads.find((item) => item.id === leadId);
+                if (!lead) return rejected('Lead não encontrado.');
+                const text = String(config.text ?? '').trim();
+                if (!text) return rejected('Nota vazia.');
+                crm.updateLead(lead.id, { notes: [lead.notes, text].filter(Boolean).join('\n\n') });
+                await waitForCrmPersistence();
+                return accepted();
+              }
+
+              if (input.actionType === 'create_task') {
+                crm.createTask({
+                  leadId: leadId!,
+                  title: String(config.title ?? ''),
+                  dueAt: String(config.dueAt ?? '').trim() || undefined,
+                  assigneeId: String(config.userId ?? '').trim() || undefined,
+                });
+                await waitForCrmPersistence();
+                return accepted();
+              }
+
+              if (input.actionType === 'move_stage') {
+                crm.moveLead(leadId!, String(config.stageId ?? ''));
+                await waitForCrmPersistence();
+                return accepted();
+              }
+
+              if (input.actionType === 'update_field') {
+                const fieldId = String(config.fieldId ?? '');
+                const definition = crm.snapshot().customFieldDefinitions.find((item) => item.id === fieldId);
+                let value: string | number | boolean | string[] | null = String(config.fieldValue ?? '');
+                if (definition?.type === 'number') {
+                  const numeric = Number(value);
+                  if (!Number.isFinite(numeric)) return rejected('Valor numérico inválido.');
+                  value = numeric;
+                } else if (definition?.type === 'boolean') {
+                  value = ['1','true','sim','yes'].includes(String(value).toLocaleLowerCase('pt-BR'));
+                } else if (definition?.type === 'multiselect') {
+                  value = String(value).split(',').map((item) => item.trim()).filter(Boolean);
+                }
+                crm.setCustomFieldValue(leadId!, fieldId, value);
+                await waitForCrmPersistence();
+                return accepted();
+              }
+
+              if (input.actionType === 'set_tag') {
+                crm.addTagToLead(leadId!, String(config.tagId ?? ''));
+                await waitForCrmPersistence();
+                return accepted();
+              }
+
+              if (input.actionType === 'complete_task') {
+                crm.updateTaskStatus(String(config.taskId ?? ''), 'done');
+                await waitForCrmPersistence();
+                return accepted();
+              }
+
+              if (input.actionType === 'link_product') {
+                const association = await saveLeadProductAssociation({
+                  leadId: leadId!,
+                  catalogItemId: String(config.productId ?? ''),
+                  relationship: 'interest',
+                  quantity: 1,
+                });
+                return accepted({ catalogItemId: association.catalogItemId });
+              }
+
+              if (input.actionType === 'assign_owner') {
+                crm.assignLead(leadId!, String(config.userId ?? ''));
+                await waitForCrmPersistence();
+                return accepted();
+              }
+
+              if (input.actionType === 'webhook') {
+                return automationWebhook.invoke({
+                  url: String(config.url ?? ''),
+                  method: String(config.method ?? 'POST'),
+                  payload: input.context ?? {},
+                });
+              }
+
+              if (input.actionType === 'conversation_status') {
+                return notConfigured('Status aberto/encerrado da conversa ainda não existe no modelo da Inbox.');
+              }
+              if (input.actionType === 'form') {
+                return notConfigured('Envio de formulário ainda não está conectado ao transporte.');
+              }
+              if (input.actionType === 'private_message') {
+                return notConfigured('Envio privado ainda não possui transporte operacional.');
+              }
+              if (input.actionType === 'notify_admins') {
+                return notConfigured('Notificação administrativa ainda não está conectada ao executor.');
+              }
+
+              return rejected('Ação do SalesBot não reconhecida.');
+            } catch (error) {
+              return rejected(error instanceof Error ? error.message : 'Falha ao executar ação do SalesBot.');
+            }
+          },
+        };
         const salesBotCommandPort = createSalesBotCommandPort({
           ...unconfiguredSalesBotRuntimeDependencies,
           crm: crmActions,
@@ -244,6 +380,7 @@ export function PlatformRuntimeProvider({ children }: PropsWithChildren) {
           message: salesBotMessagePort,
           condition: salesBotConditionEvaluator,
           webhook: automationWebhook,
+          action: salesBotActionPort,
         });
         const automationDependencies = {
           ...unconfiguredAutomationEngineDependencies,
