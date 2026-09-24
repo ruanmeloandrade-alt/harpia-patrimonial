@@ -2,6 +2,29 @@ import type { CrmAutomationEventType } from './contracts';
 
 export type AutomationStatus = 'draft' | 'active' | 'paused';
 
+export type PipelineTriggerEvent =
+  | 'enter'
+  | 'leave'
+  | 'created'
+  | 'time'
+  | 'salesbot_done'
+  | 'salesbot_failed'
+  | 'ai_done'
+  | 'tag_added'
+  | 'field_changed';
+
+export type PipelineTriggerAction = 'move_stage' | 'salesbot' | 'ai';
+
+export interface PipelineAutomationMeta {
+  pipelineId: string;
+  event: PipelineTriggerEvent;
+  stageId?: string;
+  value?: string;
+  action: PipelineTriggerAction;
+  targetStageId?: string;
+  resourceId?: string;
+}
+
 export type AutomationActionType =
   | 'start_salesbot'
   | 'invoke_ai'
@@ -33,6 +56,8 @@ export interface AutomationDefinition {
   name: string;
   description: string;
   status: AutomationStatus;
+  origin?: 'manual' | 'pipeline';
+  pipeline?: PipelineAutomationMeta;
   trigger: AutomationTrigger;
   actions: AutomationAction[];
   createdAt: string;
