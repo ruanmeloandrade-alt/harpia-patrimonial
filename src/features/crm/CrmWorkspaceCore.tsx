@@ -29,16 +29,17 @@ import {
 import { listSalesBots } from '../salesbot/repository';
 import { listAIAgents } from '../ai-agents/repository';
 import {
-  createPipelineAutomation,
+  createPipelineAutomationConfirmed,
   deletePipelineAutomation,
   deletePipelineAutomationsForPipeline,
   deletePipelineAutomationsForStage,
   listPipelineAutomations,
-  updatePipelineAutomation,
+  updatePipelineAutomationConfirmed,
 } from '../automations/repository';
 import type { PipelineTriggerAction, PipelineTriggerEvent } from '../automations/types';
 import { useF05StorageListener } from '../automations/useF05StorageListener';
 import { formatRuntimeDateTime } from '../settings/runtime-preferences';
+import { isSupabaseConfigured, supabase } from '../../core/supabase/client';
 import styles from './crm.module.css';
 
 export interface AssigneeOption {
@@ -276,13 +277,17 @@ export function CrmWorkspace({
     setTriggerActionConfig({});
   };
 
-  const handleAddTrigger = (event: FormEvent<HTMLFormElement>) => {
+  const handleAddTrigger = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!selectedPipeline || !canManage || !triggerModalStageId) return;
 
     const value = triggerEvent === 'time'
       ? `${Math.max(1, Number(triggerDurationAmount) || 1)}${triggerDurationUnit}`
       : triggerValue;
+
+    const applyExisting = triggerActionConfig.applyExisting === '1';
+    const persistedActionConfig = { ...triggerActionConfig };
+    delete persistedActionConfig.applyExisting;
 
     const input = {
       pipelineId: selectedPipeline.id,
@@ -292,14 +297,27 @@ export function CrmWorkspace({
       action: triggerAction,
       targetStageId: triggerTargetStageId,
       resourceId: triggerResourceId,
-      actionConfig: triggerActionConfig,
+      actionConfig: persistedActionConfig,
     };
 
     try {
-      if (editingTriggerId) updatePipelineAutomation(editingTriggerId, input);
-      else createPipelineAutomation(input);
+      const saved = editingTriggerId
+        ? await updatePipelineAutomationConfirmed(editingTriggerId, input)
+        : await createPipelineAutomationConfirmed(input);
+
+      if (applyExisting) {
+        if (!isSupabaseConfigured || !supabase) throw new Error('Supabase indisponível para aplicar o gatilho aos leads atuais.');
+        const { data, error } = await supabase.functions.invoke('automation-apply-existing', {
+          body: { automationId: saved.id },
+        });
+        if (error) throw error;
+        if (data && data.ok === false) throw new Error(String(data.message ?? 'Não foi possível aplicar o gatilho aos leads atuais.'));
+      }
+
       setAutomationRevision((value) => value + 1);
-      setFeedback(editingTriggerId ? 'Gatilho atualizado.' : 'Gatilho adicionado à etapa.');
+      setFeedback(applyExisting
+        ? (editingTriggerId ? 'Gatilho atualizado e aplicado aos leads desta etapa.' : 'Gatilho adicionado e aplicado aos leads desta etapa.')
+        : (editingTriggerId ? 'Gatilho atualizado.' : 'Gatilho adicionado à etapa.'));
       closeTriggerModal();
     } catch (error) {
       setFeedback(error instanceof Error ? error.message : 'Não foi possível salvar o gatilho.');
