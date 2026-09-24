@@ -12,6 +12,7 @@ import { AIAgentsWorkspace } from '../features/ai-agents/AIAgentsWorkspace';
 import { listAIAgents } from '../features/ai-agents/repository';
 import { AutomationsWorkspace } from '../features/automations/AutomationsWorkspace';
 import { IntegrationsWorkspace } from '../features/integrations/IntegrationsWorkspace';
+import { MarketingWorkspace } from '../features/marketing/MarketingWorkspace';
 import '../features/automations/front05.css';
 import { FullPageState } from '../shared/components/FullPageState';
 import { usePlatformRuntime } from './PlatformRuntime';
@@ -137,4 +138,9 @@ export function IntegratedIntegrations() {
   const auth = useAuth();
   const runtime = usePlatformRuntime();
   return <Front05Module><IntegrationsWorkspace credentialVault={runtime.credentialVault} canManage={auth.hasPermission(PERMISSIONS.INTEGRATIONS_MANAGE)} /></Front05Module>;
+}
+
+
+export function IntegratedMarketing() {
+  return <MarketingWorkspace />;
 }
