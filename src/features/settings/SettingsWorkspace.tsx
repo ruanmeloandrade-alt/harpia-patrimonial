@@ -10,6 +10,7 @@ import {
   getOrganizationSettings,
   mergeOrganizationPreferences,
   normalizeOrganizationPreferences,
+  type BusinessHoursSchedule,
   type BusinessWeekday,
   type OrganizationPreferences,
   type OrganizationSettings,
@@ -226,7 +227,7 @@ export function SettingsWorkspace({ credentialVault, initialTab = 'preferences' 
         start: String(form.get(`${id}_start`) || preferences.crm.businessHours[id].start),
         end: String(form.get(`${id}_end`) || preferences.crm.businessHours[id].end),
       },
-    ])) as OrganizationPreferences['crm'] extends infer T ? any : never;
+    ])) as BusinessHoursSchedule;
 
     try {
       setSaving(true);
@@ -257,7 +258,9 @@ export function SettingsWorkspace({ credentialVault, initialTab = 'preferences' 
       setNotice(null);
 
       let browserNotifications = bool(form, 'browser_notifications');
-      if (browserNotifications && typeof Notification !== 'undefined' && Notification.permission !== 'granted') {
+      if (browserNotifications && typeof Notification === 'undefined') {
+        browserNotifications = false;
+      } else if (browserNotifications && Notification.permission !== 'granted') {
         const permission = await Notification.requestPermission();
         browserNotifications = permission === 'granted';
       }
