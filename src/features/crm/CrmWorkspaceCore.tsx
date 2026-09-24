@@ -15,6 +15,9 @@ import {
 } from './domain';
 import { BrowserCrmRepository } from './repository';
 import { CrmIntegrityError, CrmService } from './service';
+import { AppLink } from '../../core/router/router';
+import type { CatalogRepository } from '../catalog/catalogRepository';
+import { LeadProductsPanel } from './LeadProductsPanel';
 import styles from './crm.module.css';
 
 export interface AssigneeOption {
@@ -25,6 +28,8 @@ export interface AssigneeOption {
 export interface CrmWorkspaceProps {
   service?: CrmService;
   assignees?: AssigneeOption[];
+  canManage?: boolean;
+  catalogRepository?: CatalogRepository;
 }
 
 const emptyMessage = 'Nenhum dado real cadastrado ainda.';
@@ -43,7 +48,12 @@ const customFieldTypes: Array<{ value: CustomFieldType; label: string }> = [
   { value: 'multiselect', label: 'Seleção múltipla' },
 ];
 
-export function CrmWorkspace({ service: injectedService, assignees = [] }: CrmWorkspaceProps) {
+export function CrmWorkspace({
+  service: injectedService,
+  assignees = [],
+  canManage = true,
+  catalogRepository,
+}: CrmWorkspaceProps) {
   const service = useMemo(
     () => injectedService ?? new CrmService(new BrowserCrmRepository()),
     [injectedService],
@@ -80,6 +90,9 @@ export function CrmWorkspace({ service: injectedService, assignees = [] }: CrmWo
   const selectedPipeline = state.pipelines.find((pipeline) => pipeline.id === selectedPipelineId);
   const stages = selectedPipeline ? service.getStages(selectedPipeline.id) : [];
   const selectedLead = state.leads.find((lead) => lead.id === selectedLeadId);
+  const selectedPipelineLeads = selectedPipeline
+    ? state.leads.filter((lead) => lead.pipelineId === selectedPipeline.id)
+    : [];
 
   const handleCreatePipeline = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -151,6 +164,18 @@ export function CrmWorkspace({ service: injectedService, assignees = [] }: CrmWo
     const name = window.prompt('Novo nome do funil', selectedPipeline.name);
     if (name === null) return;
     run(() => service.renamePipeline(selectedPipeline.id, name), 'Funil renomeado.');
+  };
+
+  const duplicatePipeline = () => {
+    if (!selectedPipeline) return;
+    try {
+      const copy = service.duplicatePipeline(selectedPipeline.id);
+      setSelectedPipelineId(copy.id);
+      setSelectedLeadId(undefined);
+      refresh('Funil duplicado com a mesma estrutura de etapas. Leads não foram copiados.');
+    } catch (error) {
+      setFeedback(error instanceof Error ? error.message : 'Não foi possível duplicar o funil.');
+    }
   };
 
   const renameStage = (stage: PipelineStage) => {
@@ -226,11 +251,21 @@ export function CrmWorkspace({ service: injectedService, assignees = [] }: CrmWo
       {selectedPipeline ? (
         <>
           <div className={styles.toolbar}>
-            <div>
-              <strong>{selectedPipeline.name}</strong>
-              <span>{selectedPipeline.active ? 'Ativo' : 'Desativado'}</span>
+            <div className={styles.toolbarTitle}>
+              <div>
+                <strong>{selectedPipeline.name}</strong>
+                <span className={selectedPipeline.active ? styles.statusActive : styles.statusPaused}>
+                  {selectedPipeline.active ? 'Ativo' : 'Desativado'}
+                </span>
+              </div>
+              <div className={styles.pipelineSummary} aria-label="Resumo do funil">
+                <span><strong>{stages.length}</strong> etapas</span>
+                <span><strong>{selectedPipelineLeads.length}</strong> leads</span>
+              </div>
             </div>
             <div className={styles.toolbarActions}>
+              <AppLink className={styles.automateLink} href="/interno/automatize">Automatize</AppLink>
+              <button type="button" onClick={duplicatePipeline}>Duplicar funil</button>
               <button type="button" onClick={renamePipeline}>Renomear</button>
               <button
                 type="button"
@@ -345,6 +380,8 @@ export function CrmWorkspace({ service: injectedService, assignees = [] }: CrmWo
           onClose={() => setSelectedLeadId(undefined)}
           onChanged={(message) => refresh(message)}
           onError={setFeedback}
+          canManage={canManage}
+          catalogRepository={catalogRepository}
         />
       )}
     </section>
@@ -376,7 +413,17 @@ function LeadCard({ lead, state, assignees, selected, onSelect }: {
   );
 }
 
-function LeadDetailsPanel({ lead, state, service, assignees, onClose, onChanged, onError }: {
+function LeadDetailsPanel({
+  lead,
+  state,
+  service,
+  assignees,
+  onClose,
+  onChanged,
+  onError,
+  canManage,
+  catalogRepository,
+}: {
   lead: Lead;
   state: CrmState;
   service: CrmService;
@@ -384,6 +431,8 @@ function LeadDetailsPanel({ lead, state, service, assignees, onClose, onChanged,
   onClose: () => void;
   onChanged: (message: string) => void;
   onError: (message: string) => void;
+  canManage: boolean;
+  catalogRepository?: CatalogRepository;
 }) {
   const history = service.getLeadHistory(lead.id);
   const tasks = service.getLeadTasks(lead.id);
@@ -536,6 +585,16 @@ function LeadDetailsPanel({ lead, state, service, assignees, onClose, onChanged,
           <button type="submit">Adicionar</button>
         </form>
       </div>
+
+      {catalogRepository && (
+        <LeadProductsPanel
+          leadId={lead.id}
+          catalogRepository={catalogRepository}
+          canManage={canManage}
+          onChanged={onChanged}
+          onError={onError}
+        />
+      )}
 
       <div className={styles.detailSection}>
         <h3>Campos personalizados</h3>

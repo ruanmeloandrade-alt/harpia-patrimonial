@@ -85,6 +85,33 @@ export class CrmService {
     return pipeline;
   }
 
+  duplicatePipeline(pipelineId: CrmId, name?: string): Pipeline {
+    const source = this.requirePipeline(pipelineId);
+    const sourceStages = this.getStages(source.id);
+    const timestamp = nowIso();
+    const pipeline: Pipeline = {
+      id: createCrmId('pipeline'),
+      name: this.requireName(name ?? `Cópia de ${source.name}`, 'Nome do funil'),
+      active: source.active,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    };
+
+    const copiedStages = sourceStages.map((stage, position): PipelineStage => ({
+      id: createCrmId('stage'),
+      pipelineId: pipeline.id,
+      name: stage.name,
+      position,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    }));
+
+    this.state.pipelines.push(pipeline);
+    this.state.stages.push(...copiedStages);
+    this.persist();
+    return pipeline;
+  }
+
   renamePipeline(pipelineId: CrmId, name: string): Pipeline {
     const pipeline = this.requirePipeline(pipelineId);
     pipeline.name = this.requireName(name, 'Nome do funil');

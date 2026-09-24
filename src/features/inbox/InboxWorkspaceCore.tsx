@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useMemo, useState } from 'react';
+import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from 'react';
 import {
   UnavailableInboxAutomationPort,
 } from '../crm/contracts';
@@ -60,6 +60,7 @@ export function InboxWorkspace({
     () => Object.fromEntries(agentSelectionMemory),
   );
   const [feedback, setFeedback] = useState('');
+  const [mediaBusy, setMediaBusy] = useState(false);
   const [automationStatus, setAutomationStatus] = useState<ConversationAutomationStatus>({
     salesBot: 'unavailable',
     aiAgent: 'unavailable',
@@ -81,6 +82,13 @@ export function InboxWorkspace({
   const selectedAgentId = selectedConversationId
     ? selectedAgentByConversation[selectedConversationId] ?? ''
     : '';
+  const serviceMode = automationStatus.salesBot === 'running'
+    ? 'SalesBot ativo'
+    : automationStatus.aiAgent === 'running'
+      ? 'Agente IA ativo'
+      : automationStatus.salesBot === 'paused' || automationStatus.aiAgent === 'paused'
+        ? 'Automação pausada · Humano'
+        : 'Atendimento humano';
 
   const setSelectedBotId = (id: string) => {
     if (!selectedConversationId) return;
@@ -214,6 +222,17 @@ export function InboxWorkspace({
     }
   };
 
+  const activateWhatsApp = async () => {
+    if (!selectedConversation || !selectedLead?.whatsapp) return;
+    try {
+      await inboxService.connectTransport(selectedConversation.id);
+      refresh();
+      setFeedback('WhatsApp ativado para esta conversa.');
+    } catch (error) {
+      setFeedback(error instanceof Error ? error.message : 'Não foi possível ativar o WhatsApp nesta conversa.');
+    }
+  };
+
   const submitText = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!selectedConversation) return;
@@ -231,6 +250,45 @@ export function InboxWorkspace({
     } catch (error) {
       setFeedback(error instanceof Error ? error.message : 'Nenhuma mensagem foi enviada.');
     }
+  };
+  const submitMedia = async (event: ChangeEvent<HTMLInputElement>) => {
+    const input = event.currentTarget;
+    const file = input.files?.[0];
+    if (!file || !selectedConversation) return;
+
+    const type = mediaTypeFromMime(file.type);
+    if (!type) {
+      setFeedback('Formato de arquivo não suportado pela Inbox.');
+      input.value = '';
+      return;
+    }
+
+    setMediaBusy(true);
+    try {
+      const attachment = await inboxService.uploadAttachment({
+        name: file.name,
+        mimeType: file.type || 'application/octet-stream',
+        size: file.size,
+        body: file,
+      });
+      await inboxService.sendMessage({
+        conversationId: selectedConversation.id,
+        type,
+        attachment,
+      });
+      refresh();
+      setFeedback('Mídia enviada pelo transporte conectado.');
+    } catch (error) {
+      setFeedback(error instanceof Error ? error.message : 'Não foi possível enviar a mídia.');
+    } finally {
+      setMediaBusy(false);
+      input.value = '';
+    }
+  };
+
+
+  const explainUnsupportedTransportAction = (action: string) => {
+    setFeedback(`${action} está previsto na Inbox, mas o transporte WhatsApp atual ainda não expõe essa operação. Nenhuma ação foi simulada.`);
   };
 
   const updateStage = (stageId: string) => {
@@ -370,8 +428,32 @@ export function InboxWorkspace({
                 <strong>{selectedLead.name}</strong>
                 <span>{selectedLead.whatsapp || selectedLead.email || 'Contato não informado'}</span>
               </div>
-              <TransportBadge conversation={selectedConversation} />
+              <div className={styles.chatStatusStack}>
+                <span className={styles.interactionBadge}>{serviceMode}</span>
+                <TransportBadge conversation={selectedConversation} />
+              </div>
             </header>
+
+            <div className={styles.quickActions} aria-label="Ações rápidas de atendimento">
+              <button
+                type="button"
+                onClick={() => automationStatus.salesBot === 'running' ? void pauseSalesBot() : void startSalesBot()}
+              >
+                {automationStatus.salesBot === 'running' ? 'Pausar SalesBot' : 'Enviar SalesBot'}
+              </button>
+              <button
+                type="button"
+                onClick={() => automationStatus.aiAgent === 'running' ? void pauseAiAgent() : void startAiAgent()}
+              >
+                {automationStatus.aiAgent === 'running' ? 'Pausar Agente IA' : 'Acionar Agente IA'}
+              </button>
+              <button type="button" onClick={() => explainUnsupportedTransportAction('Envio de formulário')}>
+                Formulário
+              </button>
+              <button type="button" onClick={() => explainUnsupportedTransportAction('Criação de grupo')}>
+                Criar grupo
+              </button>
+            </div>
 
             <div className={styles.messageArea}>
               {messages.length === 0 ? (
@@ -387,7 +469,13 @@ export function InboxWorkspace({
                   >
                     <span>{message.type}</span>
                     {message.text && <p>{message.text}</p>}
-                    {message.attachment?.name && <strong>{message.attachment.name}</strong>}
+                    {message.attachment?.url ? (
+                      <a href={message.attachment.url} target="_blank" rel="noreferrer">
+                        {message.attachment.name || 'Abrir arquivo'}
+                      </a>
+                    ) : message.attachment?.name ? (
+                      <strong>{message.attachment.name}</strong>
+                    ) : null}
                     <small>{new Date(message.createdAt).toLocaleString('pt-BR')}</small>
                   </article>
                 ))
@@ -407,24 +495,64 @@ export function InboxWorkspace({
                   placeholder={
                     selectedConversation.transportStatus === 'connected'
                       ? 'Digite uma mensagem'
-                      : 'Canal não conectado — envio bloqueado'
+                      : 'Canal não conectado. Envio bloqueado.'
                   }
                   disabled={selectedConversation.transportStatus !== 'connected'}
                 />
-                <button type="submit" disabled={selectedConversation.transportStatus !== 'connected'}>
+                <button type="submit" disabled={selectedConversation.transportStatus !== 'connected' || mediaBusy}>
                   Enviar
                 </button>
               </form>
+              <label>
+                <span>{mediaBusy ? 'Enviando mídia...' : 'Anexar mídia'}</span>
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,audio/ogg,audio/mpeg,audio/mp4,video/mp4,application/pdf,text/plain,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation,application/zip,application/octet-stream"
+                  disabled={selectedConversation.transportStatus !== 'connected' || mediaBusy}
+                  onChange={(event) => { void submitMedia(event); }}
+                />
+              </label>
               {selectedConversation.transportStatus !== 'connected' && (
-                <small>Nenhuma ação nesta tela simula envio real.</small>
+                <>
+                  {selectedLead.whatsapp ? (
+                    <button type="button" onClick={() => { void activateWhatsApp(); }}>
+                      Ativar WhatsApp
+                    </button>
+                  ) : (
+                    <small>Este lead não possui WhatsApp válido para iniciar o atendimento.</small>
+                  )}
+                  <small>Nenhuma ação nesta tela simula envio real.</small>
+                </>
               )}
             </div>
           </>
         ) : (
-          <EmptyState
-            title="Selecione uma conversa"
-            description="O contexto comercial aparecerá aqui sem mensagens fictícias."
-          />
+          <>
+            <header className={styles.chatHeader}>
+              <div>
+                <strong>Nenhuma conversa selecionada</strong>
+                <span>Escolha uma conversa à esquerda para iniciar o atendimento.</span>
+              </div>
+              <span className={styles.transportBadge}>Canal aguardando conversa</span>
+            </header>
+            <div className={styles.messageArea}>
+              <EmptyState
+                title="Área de mensagens pronta"
+                description="O histórico real aparecerá aqui. A estrutura permanece visível mesmo quando a Inbox está vazia."
+              />
+            </div>
+            <div className={styles.composerArea}>
+              <div className={styles.mediaTypes} aria-label="Tipos de mensagem preparados">
+                {(['text', 'audio', 'image', 'video', 'document', 'form'] as MessageType[]).map((type) => (
+                  <span key={type}>{messageTypeLabel(type)}</span>
+                ))}
+              </div>
+              <div className={styles.composer}>
+                <textarea rows={2} placeholder="Selecione uma conversa para escrever" disabled />
+                <button type="button" disabled>Enviar</button>
+              </div>
+            </div>
+          </>
         )}
       </main>
 
@@ -550,7 +678,24 @@ export function InboxWorkspace({
             </section>
           </>
         ) : (
-          <EmptyState title="Contexto CRM" description="Selecione uma conversa para operar o lead." />
+          <>
+            <header className={styles.contextHeader}>
+              <span>Contexto CRM</span>
+              <h2>Sem conversa selecionada</h2>
+            </header>
+            <section className={styles.contextSection}>
+              <h3>Dados comerciais</h3>
+              <small>Origem, interesse e contexto do lead aparecerão aqui.</small>
+            </section>
+            <section className={styles.contextSection}>
+              <h3>Etapa e responsável</h3>
+              <small>Selecione uma conversa para operar o funil e a distribuição.</small>
+            </section>
+            <section className={styles.contextSection}>
+              <h3>Automação</h3>
+              <small>SalesBot e Agente IA só podem ser acionados sobre uma conversa real.</small>
+            </section>
+          </>
         )}
       </aside>
     </section>
@@ -719,6 +864,25 @@ function EmptyState({ title, description }: { title: string; description: string
       <p>{description}</p>
     </div>
   );
+}
+
+function mediaTypeFromMime(mimeType: string): Exclude<MessageType, 'text' | 'form'> | null {
+  if (mimeType.startsWith('image/')) return 'image';
+  if (mimeType.startsWith('audio/')) return 'audio';
+  if (mimeType === 'video/mp4') return 'video';
+  if (
+    mimeType === 'text/plain'
+    || mimeType === 'application/pdf'
+    || mimeType === 'application/msword'
+    || mimeType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    || mimeType === 'application/vnd.ms-excel'
+    || mimeType === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    || mimeType === 'application/vnd.ms-powerpoint'
+    || mimeType === 'application/vnd.openxmlformats-officedocument.presentationml.presentation'
+    || mimeType === 'application/zip'
+    || mimeType === 'application/octet-stream'
+  ) return 'document';
+  return null;
 }
 
 function messageTypeLabel(type: MessageType): string {

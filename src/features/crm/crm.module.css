@@ -180,7 +180,8 @@
 .toolbarActions button,
 .sectionTitleRow button,
 .compactForm button,
-.taskForm button {
+.taskForm button,
+.automateLink {
   border: 1px solid #233b32;
   border-radius: 10px;
   background: #233b32;
@@ -189,19 +190,83 @@
   cursor: pointer;
 }
 
+.automateLink {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+  background: #c3ce94;
+  border-color: #b5c07f;
+  color: #1f332b;
+  font-weight: 850;
+}
+
 .toolbar {
   margin-top: 18px;
   padding: 12px 4px;
 }
 
-.toolbar > div:first-child {
+.toolbarTitle {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.toolbarTitle > div:first-child {
   display: flex;
-  align-items: baseline;
+  align-items: center;
+  flex-wrap: wrap;
   gap: 10px;
+}
+
+.statusActive,
+.statusPaused {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 0 9px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+
+.statusActive {
+  background: #e6f3ea;
+  color: #2f6845 !important;
+}
+
+.statusPaused {
+  background: #eee9df;
+  color: #756b5e !important;
+}
+
+.pipelineSummary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.pipelineSummary span {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  padding: 5px 8px;
+  border: 1px solid #ddd6ca;
+  border-radius: 9px;
+  background: rgba(255,255,255,.62);
+  font-size: 11px;
+}
+
+.pipelineSummary strong {
+  color: #233b32;
 }
 
 .toolbarActions {
   display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
   gap: 8px;
 }
 

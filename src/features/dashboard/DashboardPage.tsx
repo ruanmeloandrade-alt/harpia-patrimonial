@@ -3,7 +3,6 @@ import { CATALOG_CHANGED_EVENT, LocalCatalogRepository, type CatalogRepository }
 import {
   commercialAvailability,
   getDashboardSnapshot,
-  type CommercialMetricKey,
   type CommercialMetricsProvider,
   type DashboardSnapshot,
 } from './dashboardService';
@@ -63,30 +62,77 @@ function percent(value: number) {
 interface MetricCardProps {
   label: string;
   value: string | number;
-  helper?: string;
+  helper: string;
+  accent?: boolean;
 }
 
-function MetricCard({ label, value, helper }: MetricCardProps) {
+function MetricCard({ label, value, helper, accent = false }: MetricCardProps) {
   return (
-    <article className="f03-metric-card">
-      <span>{label}</span>
+    <article className={accent ? 'f03-metric-card f03-metric-card--accent' : 'f03-metric-card'}>
+      <div className="f03-metric-card__top">
+        <span>{label}</span>
+        <i aria-hidden="true" />
+      </div>
       <strong>{value}</strong>
-      {helper && <small>{helper}</small>}
+      <small>{helper}</small>
     </article>
   );
 }
 
-function StatList({ items, emptyText }: { items: Array<{ label: string; value: number }>; emptyText: string }) {
-  if (!items.length) return <div className="f03-dashboard-empty">{emptyText}</div>;
+function EmptyVisual({ text }: { text: string }) {
   return (
-    <div className="f03-stat-list">
-      {items.map((item) => (
-        <div className="f03-stat-row" key={item.label}>
-          <span>{item.label}</span>
-          <strong>{item.value}</strong>
-        </div>
-      ))}
+    <div className="f03-empty-visual">
+      <div className="f03-empty-visual__art" aria-hidden="true">
+        <span />
+        <span />
+        <span />
+        <span />
+      </div>
+      <p>{text}</p>
     </div>
+  );
+}
+
+function DistributionPanel({
+  title,
+  subtitle,
+  items,
+  emptyText,
+}: {
+  title: string;
+  subtitle: string;
+  items: Array<{ label: string; value: number }>;
+  emptyText: string;
+}) {
+  const max = Math.max(...items.map((item) => item.value), 1);
+
+  return (
+    <section className="f03-dashboard-panel">
+      <div className="f03-panel-heading">
+        <div>
+          <h3>{title}</h3>
+          <p>{subtitle}</p>
+        </div>
+      </div>
+
+      {items.length ? (
+        <div className="f03-distribution">
+          {items.map((item) => (
+            <div className="f03-distribution__row" key={item.label}>
+              <div className="f03-distribution__label">
+                <span>{item.label}</span>
+                <strong>{item.value}</strong>
+              </div>
+              <div className="f03-distribution__track" aria-hidden="true">
+                <span style={{ width: `${Math.max((item.value / max) * 100, 4)}%` }} />
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <EmptyVisual text={emptyText} />
+      )}
+    </section>
   );
 }
 
@@ -102,7 +148,7 @@ export function DashboardPage({ catalogRepository, commercialProvider }: Dashboa
       setError('');
       setSnapshot(await getDashboardSnapshot(catalog, commercialProvider));
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : 'Não foi possível carregar o dashboard.');
+      setError(loadError instanceof Error ? loadError.message : 'Não foi possível atualizar os indicadores.');
     } finally {
       setLoading(false);
     }
@@ -117,98 +163,149 @@ export function DashboardPage({ catalogRepository, commercialProvider }: Dashboa
   useEffect(() => {
     if (!commercialProvider?.subscribe) return undefined;
     return commercialProvider.subscribe(() => void reload());
-  }, [catalog, commercialProvider]);
-
-  if (loading) {
-    return <section className="f03-dashboard"><div className="f03-dashboard-message">Carregando métricas reais…</div></section>;
-  }
-
-  if (error) {
-    return <section className="f03-dashboard"><div className="f03-dashboard-message f03-dashboard-error">{error}</div></section>;
-  }
+  }, [commercialProvider]);
 
   const crmConnected = snapshot.commercialSource === 'connected';
-  const availability = snapshot.commercialAvailability;
-  const helper = (key: CommercialMetricKey) => availability[key] ? undefined : 'Métrica ainda não configurada no CRM';
 
   return (
     <section className="f03-dashboard">
       <header className="f03-dashboard-header">
         <div>
-          <p className="f03-dashboard-kicker">Visão operacional</p>
+          <p className="f03-dashboard-kicker">Painel operacional</p>
           <h1>Dashboard</h1>
-          <p>Métricas do catálogo vêm dos registros reais. Métricas comerciais só são tratadas como disponíveis quando a fonte realmente as expõe.</p>
+          <p>Acompanhe vendas, produtos e movimentações da operação em um só lugar.</p>
         </div>
-        <div className={`f03-source-pill ${crmConnected ? 'connected' : ''}`}>
+
+        <div className={crmConnected ? 'f03-source-pill connected' : 'f03-source-pill'}>
           <span className="f03-source-dot" />
-          {crmConnected ? 'CRM conectado' : 'Aguardando CRM'}
+          {loading ? 'Atualizando dados' : crmConnected ? 'CRM conectado' : 'Operação sem movimentação'}
         </div>
       </header>
 
+      {error && (
+        <div className="f03-dashboard-notice" role="alert">
+          <strong>Não foi possível atualizar alguns indicadores.</strong>
+          <span>O painel continua disponível e tentará sincronizar novamente.</span>
+        </div>
+      )}
+
       <div className="f03-metric-grid">
-        <MetricCard label="Publicados" value={snapshot.catalog.active} helper="Elegíveis para o site público" />
-        <MetricCard label="Publicados ocultos" value={snapshot.catalog.hiddenPublished} helper="Unidades publicadas cujo empreendimento pai não está publicado" />
-        <MetricCard label="Estoque ativo" value={snapshot.catalog.inventoryCount} helper="Unidades, imóveis avulsos e empreendimentos sem unidades que ainda não foram vendidos" />
-        <MetricCard label="Rascunhos" value={snapshot.catalog.drafts} helper="Ainda não publicados" />
-        <MetricCard label="Pausados" value={snapshot.catalog.paused} helper="Fora da exposição pública" />
-        <MetricCard label="Vendidos" value={snapshot.catalog.sold} helper="Histórico preservado" />
-        <MetricCard label="Valor do estoque" value={money(snapshot.catalog.inventoryValue)} helper="Unidades prevalecem sobre o preço do empreendimento para evitar dupla contagem" />
+        <MetricCard
+          label="Leads"
+          value={snapshot.commercial.leads}
+          helper="Contatos no CRM"
+          accent
+        />
+        <MetricCard
+          label="Produtos ativos"
+          value={snapshot.catalog.active}
+          helper="Itens publicados"
+        />
+        <MetricCard
+          label="Propostas"
+          value={snapshot.commercial.proposals}
+          helper="Em acompanhamento"
+        />
+        <MetricCard
+          label="Vendas"
+          value={snapshot.commercial.sales}
+          helper="Negócios concluídos"
+        />
       </div>
 
-      <section className="f03-dashboard-section">
-        <div className="f03-section-heading">
-          <h2>Comercial</h2>
-          <p>{crmConnected ? 'Fonte conectada. Somente métricas realmente disponíveis são consideradas ativas.' : 'Fonte ainda não integrada: valores ficam em zero conforme regra do projeto.'}</p>
-        </div>
-        <div className="f03-commercial-grid">
-          <MetricCard label="Leads" value={snapshot.commercial.leads} helper={helper('leads')} />
-          <MetricCard label="Visitas" value={snapshot.commercial.visits} helper={helper('visits')} />
-          <MetricCard label="Propostas" value={snapshot.commercial.proposals} helper={helper('proposals')} />
-          <MetricCard label="Negociações" value={snapshot.commercial.negotiations} helper={helper('negotiations')} />
-          <MetricCard label="Vendas" value={snapshot.commercial.sales} helper={helper('sales')} />
-          <MetricCard label="Pipeline / VGV" value={money(snapshot.commercial.pipelineValue)} helper={helper('pipelineValue')} />
-          <MetricCard label="Ticket" value={money(snapshot.commercial.ticket)} helper={helper('ticket')} />
-          <MetricCard label="Conversão" value={percent(snapshot.commercial.conversionRate)} helper={helper('conversionRate')} />
-        </div>
-      </section>
+      <div className="f03-dashboard-main-grid">
+        <section className="f03-dashboard-panel f03-dashboard-panel--commercial">
+          <div className="f03-panel-heading">
+            <div>
+              <h2>Resumo comercial</h2>
+              <p>Indicadores principais do funil de vendas.</p>
+            </div>
+            <span className="f03-panel-badge">{crmConnected ? 'Tempo real' : 'Sem dados ainda'}</span>
+          </div>
+
+          <div className="f03-commercial-summary">
+            <div><span>Visitas</span><strong>{snapshot.commercial.visits}</strong></div>
+            <div><span>Negociações</span><strong>{snapshot.commercial.negotiations}</strong></div>
+            <div><span>Pipeline</span><strong>{money(snapshot.commercial.pipelineValue)}</strong></div>
+            <div><span>Conversão</span><strong>{percent(snapshot.commercial.conversionRate)}</strong></div>
+          </div>
+
+          <div className="f03-pipeline-visual" aria-label="Visão visual do funil comercial">
+            {[
+              ['Leads', snapshot.commercial.leads],
+              ['Visitas', snapshot.commercial.visits],
+              ['Propostas', snapshot.commercial.proposals],
+              ['Negociações', snapshot.commercial.negotiations],
+              ['Vendas', snapshot.commercial.sales],
+            ].map(([label, value], index) => (
+              <div className="f03-pipeline-step" key={String(label)}>
+                <span className="f03-pipeline-step__index">{String(index + 1).padStart(2, '0')}</span>
+                <div>
+                  <small>{label}</small>
+                  <strong>{value}</strong>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section className="f03-dashboard-panel f03-dashboard-panel--inventory">
+          <div className="f03-panel-heading">
+            <div>
+              <h2>Catálogo</h2>
+              <p>Saúde dos produtos e serviços cadastrados.</p>
+            </div>
+          </div>
+
+          <div className="f03-inventory-total">
+            <span>Valor do estoque</span>
+            <strong>{money(snapshot.catalog.inventoryValue)}</strong>
+          </div>
+
+          <div className="f03-inventory-status">
+            <div><span>Ativos</span><strong>{snapshot.catalog.inventoryCount}</strong></div>
+            <div><span>Rascunhos</span><strong>{snapshot.catalog.drafts}</strong></div>
+            <div><span>Pausados</span><strong>{snapshot.catalog.paused}</strong></div>
+            <div><span>Vendidos</span><strong>{snapshot.catalog.sold}</strong></div>
+          </div>
+        </section>
+      </div>
 
       <div className="f03-dashboard-panels">
+        <DistributionPanel
+          title="Produtos por região"
+          subtitle="Distribuição dos itens publicados."
+          items={snapshot.catalog.byCity}
+          emptyText="As regiões aparecerão aqui conforme os produtos forem cadastrados."
+        />
+
+        <DistributionPanel
+          title="Origem dos leads"
+          subtitle="Canais que estão trazendo oportunidades."
+          items={snapshot.commercial.leadOrigins}
+          emptyText="As origens dos leads aparecerão aqui conforme o CRM receber contatos."
+        />
+
         <section className="f03-dashboard-panel">
-          <h3>Publicados por cidade</h3>
-          <StatList items={snapshot.catalog.byCity} emptyText="Nenhum imóvel publicado. As cidades aparecerão a partir dos dados reais do catálogo." />
-        </section>
-        <section className="f03-dashboard-panel">
-          <h3>Publicados por finalidade</h3>
-          <StatList items={snapshot.catalog.byPurpose} emptyText="Sem itens publicados para consolidar finalidade." />
-        </section>
-        <section className="f03-dashboard-panel">
-          <h3>Próximas ações</h3>
-          {availability.nextActions && snapshot.commercial.nextActions.length ? (
-            <div className="f03-stat-list">
+          <div className="f03-panel-heading">
+            <div>
+              <h3>Próximas ações</h3>
+              <p>Agenda comercial vinculada ao CRM.</p>
+            </div>
+          </div>
+
+          {snapshot.commercial.nextActions.length ? (
+            <div className="f03-action-list">
               {snapshot.commercial.nextActions.map((action) => (
-                <div className="f03-stat-row" key={action.id}>
+                <div className="f03-action-row" key={action.id}>
                   <span>{action.label}</span>
-                  <strong>{action.date ? new Date(action.date).toLocaleDateString('pt-BR') : '—'}</strong>
+                  <strong>{action.date ? new Date(action.date).toLocaleDateString('pt-BR') : 'Sem data'}</strong>
                 </div>
               ))}
             </div>
-          ) : <div className="f03-dashboard-empty">{availability.nextActions ? 'Nenhuma próxima ação real disponível.' : 'Métrica aguardando contrato/configuração do CRM.'}</div>}
-        </section>
-        <section className="f03-dashboard-panel">
-          <h3>Origem dos leads</h3>
-          <StatList items={availability.leadOrigins ? snapshot.commercial.leadOrigins : []} emptyText={availability.leadOrigins ? 'Nenhuma origem registrada nos leads atuais.' : 'Métrica aguardando contrato/configuração do CRM.'} />
-        </section>
-        <section className="f03-dashboard-panel">
-          <h3>Demanda por região</h3>
-          <StatList items={availability.demandByRegion ? snapshot.commercial.demandByRegion : []} emptyText={availability.demandByRegion ? 'Nenhum lead com imóvel referenciado para consolidar região.' : 'Métrica aguardando catálogo + referência real do CRM.'} />
-        </section>
-        <section className="f03-dashboard-panel">
-          <h3>Interesse por produto (leads)</h3>
-          <StatList items={availability.performanceByProduct ? snapshot.commercial.performanceByProduct : []} emptyText={availability.performanceByProduct ? 'Nenhum interesse real vinculado a produto do catálogo.' : 'Métrica aguardando catálogo + referência real do CRM.'} />
-        </section>
-        <section className="f03-dashboard-panel">
-          <h3>Integridade dos dados</h3>
-          <div className="f03-dashboard-empty">Sem dados demonstrativos. O módulo só consolida registros existentes nas fontes conectadas.</div>
+          ) : (
+            <EmptyVisual text="Nenhuma ação pendente. Novas tarefas aparecerão aqui automaticamente." />
+          )}
         </section>
       </div>
     </section>
