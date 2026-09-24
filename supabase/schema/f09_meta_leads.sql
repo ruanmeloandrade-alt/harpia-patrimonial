@@ -376,3 +376,118 @@ grant execute on function public.admin_store_meta_page_token(text,text,text,text
 grant execute on function public.admin_resolve_meta_page_token(text) to service_role;
 grant execute on function public.admin_disconnect_meta_page(text) to service_role;
 grant execute on function public.admin_ingest_meta_lead(text,text,text,text,text,text,timestamptz,text,text,text,jsonb,jsonb) to service_role;
+
+
+-- Configuração global do App Meta. O App Secret e o Verify Token ficam no Vault.
+create table if not exists private.meta_app_config (
+  id smallint primary key default 1 check (id = 1),
+  app_id text not null,
+  app_secret_id uuid not null unique,
+  webhook_verify_secret_id uuid not null unique,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+revoke all on table private.meta_app_config from public, anon, authenticated;
+grant select, insert, update, delete on table private.meta_app_config to service_role;
+
+create or replace function public.admin_store_meta_app_config(
+  p_app_id text,
+  p_app_secret text
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  existing_app_secret_id uuid;
+  existing_verify_secret_id uuid;
+  stored_app_secret_id uuid;
+  stored_verify_secret_id uuid;
+  verify_token text;
+begin
+  if coalesce(current_setting('request.jwt.claim.role', true), '') <> 'service_role' then
+    raise exception 'service_role required';
+  end if;
+  if nullif(btrim(p_app_id), '') is null then raise exception 'app_id required'; end if;
+  if nullif(btrim(p_app_secret), '') is null then raise exception 'app_secret required'; end if;
+
+  select c.app_secret_id, c.webhook_verify_secret_id
+  into existing_app_secret_id, existing_verify_secret_id
+  from private.meta_app_config c
+  where c.id = 1
+  for update;
+
+  if existing_app_secret_id is not null then
+    perform vault.update_secret(
+      existing_app_secret_id,
+      p_app_secret,
+      'harpia_meta_app_secret',
+      'Harpia Meta App Secret',
+      null
+    );
+    stored_app_secret_id := existing_app_secret_id;
+  else
+    stored_app_secret_id := vault.create_secret(
+      p_app_secret,
+      'harpia_meta_app_secret',
+      'Harpia Meta App Secret',
+      null
+    );
+  end if;
+
+  if existing_verify_secret_id is not null then
+    select ds.decrypted_secret into verify_token
+    from vault.decrypted_secrets ds
+    where ds.id = existing_verify_secret_id;
+  end if;
+
+  if nullif(verify_token, '') is null then
+    verify_token := replace(gen_random_uuid()::text, '-', '') || replace(gen_random_uuid()::text, '-', '');
+    stored_verify_secret_id := vault.create_secret(
+      verify_token,
+      'harpia_meta_webhook_verify_token',
+      'Harpia Meta Webhook Verify Token',
+      null
+    );
+  else
+    stored_verify_secret_id := existing_verify_secret_id;
+  end if;
+
+  insert into private.meta_app_config(id, app_id, app_secret_id, webhook_verify_secret_id)
+  values (1, btrim(p_app_id), stored_app_secret_id, stored_verify_secret_id)
+  on conflict (id) do update
+  set app_id = excluded.app_id,
+      app_secret_id = excluded.app_secret_id,
+      webhook_verify_secret_id = excluded.webhook_verify_secret_id,
+      updated_at = now();
+
+  return jsonb_build_object(
+    'appId', btrim(p_app_id),
+    'verifyToken', verify_token
+  );
+end;
+$$;
+
+create or replace function public.admin_resolve_meta_app_config()
+returns table(app_id text, app_secret text, webhook_verify_token text)
+language sql
+security definer
+set search_path = ''
+as $$
+  select
+    c.app_id,
+    app_secret.decrypted_secret,
+    verify_secret.decrypted_secret
+  from private.meta_app_config c
+  join vault.decrypted_secrets app_secret on app_secret.id = c.app_secret_id
+  join vault.decrypted_secrets verify_secret on verify_secret.id = c.webhook_verify_secret_id
+  where c.id = 1
+    and coalesce(current_setting('request.jwt.claim.role', true), '') = 'service_role';
+$$;
+
+revoke all on function public.admin_store_meta_app_config(text,text) from public, anon, authenticated;
+revoke all on function public.admin_resolve_meta_app_config() from public, anon, authenticated;
+grant execute on function public.admin_store_meta_app_config(text,text) to service_role;
+grant execute on function public.admin_resolve_meta_app_config() to service_role;
