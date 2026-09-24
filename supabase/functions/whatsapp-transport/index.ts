@@ -71,7 +71,7 @@ function serviceClient() {
   });
 }
 
-async function callConnector(payload: Record<string, unknown>) {
+async function callConnector(path: '/v1/send' | '/v1/group', payload: Record<string, unknown>) {
   const baseUrl = (Deno.env.get('WHATSAPP_CONNECTOR_URL')?.trim() || DEFAULT_CONNECTOR_URL).replace(/\/+$/, '');
   const token = Deno.env.get('WHATSAPP_CONNECTOR_TOKEN')?.trim() || await derivedControlToken();
 
@@ -82,7 +82,7 @@ async function callConnector(payload: Record<string, unknown>) {
     };
   }
 
-  const response = await fetch(`${baseUrl}/v1/send`, {
+  const response = await fetch(`${baseUrl}${path}`, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${token}`,
@@ -138,6 +138,13 @@ Deno.serve(async (req: Request) => {
       return respond(200, { ok: true, ...((data ?? {}) as Record<string, unknown>) });
     }
 
+    if (action === 'group') {
+      const subject = String(body.subject || '').trim();
+      if (!subject) return respond(400, { ok: false, message: 'Nome do grupo é obrigatório.' });
+      const result = await callConnector('/v1/group', { conversationId, subject });
+      return respond(result.status, result.payload);
+    }
+
     if (action !== 'send') {
       return respond(400, { ok: false, message: 'Ação inválida.' });
     }
@@ -148,11 +155,11 @@ Deno.serve(async (req: Request) => {
       ? body.attachment as Record<string, unknown>
       : undefined;
 
-    if (!['text', 'audio', 'image', 'video', 'document', 'form'].includes(type)) {
+    if (!['text', 'audio', 'image', 'video', 'document'].includes(type)) {
       return respond(400, { ok: false, message: 'Tipo de mensagem inválido.' });
     }
 
-    const result = await callConnector({ conversationId, type, text, attachment });
+    const result = await callConnector('/v1/send', { conversationId, type, text, attachment });
     return respond(result.status, result.payload);
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Falha ao operar o transporte WhatsApp.';
