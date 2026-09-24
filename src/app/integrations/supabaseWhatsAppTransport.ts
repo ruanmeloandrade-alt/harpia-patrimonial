@@ -11,19 +11,17 @@ type TransportResponse = {
 export class SupabaseWhatsAppTransport implements InboxTransportPort {
   async send(message: OutgoingTransportMessage): Promise<{ externalMessageId: string; sentAt?: string }> {
     const supabase = requireSupabase() as any;
+    const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+    const accessToken = sessionData?.session?.access_token;
 
-    const prepared = await supabase.functions.invoke('whatsapp-transport', {
-      body: {
-        action: 'prepare',
-        conversationId: message.conversationId,
-      },
-    });
-
-    if (prepared.error) {
-      throw new Error(prepared.error.message || 'Não foi possível preparar a conversa no WhatsApp.');
+    if (sessionError || !accessToken) {
+      throw new Error('Sua sessão expirou. Entre novamente para enviar mensagens pelo WhatsApp.');
     }
 
     const sent = await supabase.functions.invoke('whatsapp-transport', {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
       body: {
         action: 'send',
         conversationId: message.conversationId,
@@ -43,7 +41,14 @@ export class SupabaseWhatsAppTransport implements InboxTransportPort {
     });
 
     if (sent.error) {
-      throw new Error(sent.error.message || 'Não foi possível enviar a mensagem pelo WhatsApp.');
+      let detail = sent.error.message || 'Não foi possível enviar a mensagem pelo WhatsApp.';
+      try {
+        const payload = await sent.error.context?.json?.();
+        if (payload?.message) detail = String(payload.message);
+      } catch {
+        // Mantém a mensagem original do invoke.
+      }
+      throw new Error(detail);
     }
 
     const result = sent.data as TransportResponse | null;
