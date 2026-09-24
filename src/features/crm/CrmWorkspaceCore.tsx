@@ -203,9 +203,9 @@ export function CrmWorkspace({
     <section className={styles.workspace} aria-label="CRM Hárpia">
       <header className={styles.header}>
         <div>
-          <span className={styles.kicker}>CRM</span>
-          <h1>Relacionamento comercial</h1>
-          <p>Funis configuráveis, contexto completo do lead e histórico preservado.</p>
+          <span className={styles.kicker}>VENDAS</span>
+          <h1>CRM</h1>
+          <p>Funis, leads, produtos, tarefas e automações em uma visão operacional.</p>
         </div>
         <div className={styles.headerBadge}>
           <strong>{state.leads.length}</strong>
@@ -242,10 +242,13 @@ export function CrmWorkspace({
           )}
         </div>
 
-        <form className={styles.inlineForm} onSubmit={handleCreatePipeline}>
-          <input name="pipelineName" required placeholder="Novo funil" aria-label="Nome do novo funil" />
-          <button type="submit">Criar funil</button>
-        </form>
+        <details className={styles.pipelineCreator}>
+          <summary>+ Novo funil</summary>
+          <form className={styles.inlineForm} onSubmit={handleCreatePipeline}>
+            <input name="pipelineName" required placeholder="Nome do novo funil" aria-label="Nome do novo funil" />
+            <button type="submit">Criar</button>
+          </form>
+        </details>
       </div>
 
       {selectedPipeline ? (
@@ -280,38 +283,44 @@ export function CrmWorkspace({
           </div>
 
           <div className={styles.creationGrid}>
-            <form className={styles.cardForm} onSubmit={handleCreateStage}>
-              <div>
-                <strong>Adicionar etapa</strong>
-                <span>Você define a operação; nada vem pré-configurado.</span>
-              </div>
-              <input name="stageName" required placeholder="Ex.: Qualificação" aria-label="Nome da etapa" />
-              <button type="submit">Adicionar</button>
-            </form>
+            <details className={styles.quickCreate}>
+              <summary>+ Nova etapa</summary>
+              <form className={styles.cardForm} onSubmit={handleCreateStage}>
+                <div>
+                  <strong>Adicionar etapa</strong>
+                  <span>Inclua somente as etapas usadas na operação real.</span>
+                </div>
+                <input name="stageName" required placeholder="Ex.: Qualificação" aria-label="Nome da etapa" />
+                <button type="submit">Adicionar etapa</button>
+              </form>
+            </details>
 
-            <form className={styles.cardForm} onSubmit={handleCreateLead}>
-              <div>
-                <strong>Novo lead</strong>
-                <span>Criar o lead não envia mensagem automaticamente.</span>
-              </div>
-              <div className={styles.formFields}>
-                <input name="name" required placeholder="Nome" />
-                <input name="email" type="email" placeholder="E-mail" />
-                <input name="whatsapp" placeholder="WhatsApp" />
-                <input name="source" placeholder="Origem" />
-                <select name="stageId" defaultValue="">
-                  <option value="">Sem etapa</option>
-                  {stages.map((stage) => <option key={stage.id} value={stage.id}>{stage.name}</option>)}
-                </select>
-                <select name="interestType" defaultValue="">
-                  <option value="">Tipo de interesse</option>
-                  {interestTypes.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
-                </select>
-                <input name="interestLabel" placeholder="Imóvel/produto/serviço" />
-                <input name="interestReferenceId" placeholder="ID/referência (opcional)" />
-              </div>
-              <button type="submit">Criar lead</button>
-            </form>
+            <details className={`${styles.quickCreate} ${styles.quickCreateLead}`}>
+              <summary>+ Novo lead</summary>
+              <form className={styles.cardForm} onSubmit={handleCreateLead}>
+                <div>
+                  <strong>Novo lead</strong>
+                  <span>Cadastre o contato e já posicione no funil correto.</span>
+                </div>
+                <div className={styles.formFields}>
+                  <input name="name" required placeholder="Nome" />
+                  <input name="email" type="email" placeholder="E-mail" />
+                  <input name="whatsapp" placeholder="WhatsApp" />
+                  <input name="source" placeholder="Origem" />
+                  <select name="stageId" defaultValue="">
+                    <option value="">Sem etapa</option>
+                    {stages.map((stage) => <option key={stage.id} value={stage.id}>{stage.name}</option>)}
+                  </select>
+                  <select name="interestType" defaultValue="">
+                    <option value="">Tipo de interesse</option>
+                    {interestTypes.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
+                  </select>
+                  <input name="interestLabel" placeholder="Imóvel/produto/serviço" />
+                  <input name="interestReferenceId" placeholder="ID/referência (opcional)" />
+                </div>
+                <button type="submit">Criar lead</button>
+              </form>
+            </details>
           </div>
 
           {stages.length === 0 ? (
@@ -405,9 +414,17 @@ function LeadCard({ lead, state, assignees, selected, onSelect }: {
       onDragStart={(event) => event.dataTransfer.setData('text/harpia-lead', lead.id)}
       onClick={onSelect}
     >
-      <strong>{lead.name}</strong>
-      <span>{lead.interest?.label || lead.source || 'Sem contexto informado'}</span>
-      {assignee && <small>Responsável: {assignee.name}</small>}
+      <div className={styles.leadCardTop}>
+        <span className={styles.leadAvatar}>{lead.name.trim().charAt(0).toUpperCase() || 'L'}</span>
+        <div className={styles.leadIdentity}>
+          <strong>{lead.name}</strong>
+          <span className={styles.leadContext}>{lead.interest?.label || lead.source || 'Sem contexto informado'}</span>
+        </div>
+      </div>
+      <div className={styles.leadMeta}>
+        <span>{lead.source || 'Origem não informada'}</span>
+        {assignee && <small>{assignee.name}</small>}
+      </div>
       {tags.length > 0 && <div className={styles.tagRow}>{tags.map((tag) => <em key={tag.id}>{tag.name}</em>)}</div>}
     </button>
   );
