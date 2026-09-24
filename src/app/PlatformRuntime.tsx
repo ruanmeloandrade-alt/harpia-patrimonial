@@ -1,4 +1,4 @@
-import { createContext, PropsWithChildren, useContext, useEffect, useMemo, useState } from 'react';
+import { createContext, PropsWithChildren, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { useAuth } from '../core/auth/AuthProvider';
 import { PERMISSIONS } from '../core/auth/permissions';
 import { isSupabaseConfigured, supabase } from '../core/supabase/client';
@@ -29,6 +29,8 @@ import {
   unconfiguredSalesBotRuntimeDependencies,
 } from '../features/automations';
 import { resetF05SharedStorage } from '../features/automations/f05Storage';
+import { listAutomations } from '../features/automations/repository';
+import { listSalesBotExecutions } from '../features/salesbot/executionRepository';
 import { SupabaseAICredentialVault } from './integrations/supabaseAICredentialVault';
 import { SupabaseAIModelRuntime } from './integrations/supabaseAIModelRuntime';
 import { SupabaseAutomationWebhook } from './integrations/supabaseAutomationWebhook';
@@ -101,6 +103,7 @@ export function PlatformRuntimeProvider({ children }: PropsWithChildren) {
   const [f05Loading, setF05Loading] = useState(false);
   const [f05Error, setF05Error] = useState('');
   const [f05Revision, setF05Revision] = useState(0);
+  const firedStageTimersRef = useRef(new Set<string>());
 
   const canUseInbox = auth.isInternalUser && (
     auth.hasPermission(PERMISSIONS.INBOX_VIEW)
@@ -189,6 +192,7 @@ export function PlatformRuntimeProvider({ children }: PropsWithChildren) {
     let reloading = false;
     let pendingReload = false;
     let unsubscribeEvents: (() => void) | undefined;
+    let automationTimer: ReturnType<typeof window.setInterval> | undefined;
     let channel: ReturnType<NonNullable<typeof supabase>['channel']> | null = null;
 
     const installOperationalRuntime = async (showLoading: boolean) => {
@@ -215,7 +219,7 @@ export function PlatformRuntimeProvider({ children }: PropsWithChildren) {
         const waitForCrmPersistence = () => crmRepository.waitForLastSave?.() ?? Promise.resolve();
         const crmActions = createFront05CrmActionPort(crm, waitForCrmPersistence);
         const aiCommandPort = createAIAgentCommandPort(aiModelRuntime);
-        const salesBotCommandPort = createSalesBotCommandPort({
+        const baseSalesBotCommandPort = createSalesBotCommandPort({
           ...unconfiguredSalesBotRuntimeDependencies,
           crm: crmActions,
           ai: aiCommandPort,
@@ -223,13 +227,119 @@ export function PlatformRuntimeProvider({ children }: PropsWithChildren) {
           condition: salesBotConditionEvaluator,
           webhook: automationWebhook,
         });
-        const automationDependencies = {
+
+        let automationDependencies = {
           ...unconfiguredAutomationEngineDependencies,
-          salesbot: salesBotCommandPort,
+          salesbot: baseSalesBotCommandPort,
           ai: aiCommandPort,
           crm: crmActions,
           webhook: automationWebhook,
         };
+
+        const publishSalesBotResult = async (input: {
+          botId: string;
+          leadId?: string;
+          conversationId?: string;
+          executionId?: string;
+          runtimeStatus?: string;
+        }) => {
+          if (input.runtimeStatus !== 'completed' && input.runtimeStatus !== 'failed') return;
+          await processCrmAutomationEvent({
+            id: `salesbot-event-${globalThis.crypto?.randomUUID?.() ?? Date.now()}`,
+            type: input.runtimeStatus === 'completed' ? 'salesbot.completed' : 'salesbot.failed',
+            occurredAt: new Date().toISOString(),
+            leadId: input.leadId,
+            conversationId: input.conversationId,
+            payload: {
+              botId: input.botId,
+              executionId: input.executionId ?? null,
+              runtimeStatus: input.runtimeStatus,
+            },
+          }, automationDependencies);
+        };
+
+        const salesBotCommandPort = {
+          ...baseSalesBotCommandPort,
+          async start(input: Parameters<typeof baseSalesBotCommandPort.start>[0]) {
+            const result = await baseSalesBotCommandPort.start(input);
+            await publishSalesBotResult({
+              botId: input.botId,
+              leadId: input.leadId,
+              conversationId: input.conversationId,
+              executionId: result.executionId,
+              runtimeStatus: String(result.data?.runtimeStatus ?? ''),
+            });
+            return result;
+          },
+          async resume(input: Parameters<typeof baseSalesBotCommandPort.resume>[0]) {
+            const before = listSalesBotExecutions().find((item) => item.id === input.executionId);
+            const result = await baseSalesBotCommandPort.resume(input);
+            if (before) {
+              await publishSalesBotResult({
+                botId: before.botId,
+                leadId: before.leadId,
+                conversationId: before.conversationId,
+                executionId: result.executionId ?? before.id,
+                runtimeStatus: String(result.data?.runtimeStatus ?? ''),
+              });
+            }
+            return result;
+          },
+        };
+
+        automationDependencies = {
+          ...automationDependencies,
+          salesbot: salesBotCommandPort,
+        };
+
+        const runStageTimeTriggers = async () => {
+          const definitions = listAutomations().filter(
+            (item) => item.status === 'active' && item.trigger.event === 'lead.stage_elapsed',
+          );
+          if (definitions.length === 0) return;
+
+          const snapshot = crm.snapshot();
+          const nowMs = Date.now();
+
+          for (const definition of definitions) {
+            const afterCondition = definition.trigger.conditions.find((item) => item.field === 'afterMinutes');
+            const stageCondition = definition.trigger.conditions.find((item) => item.field === 'stageId');
+            const afterMinutes = Number(afterCondition?.value ?? '');
+            if (!Number.isFinite(afterMinutes) || afterMinutes <= 0) continue;
+
+            for (const lead of snapshot.leads) {
+              if (!lead.stageId || !lead.stageEnteredAt) continue;
+              if (stageCondition?.value && String(stageCondition.value) !== lead.stageId) continue;
+
+              const enteredMs = Date.parse(lead.stageEnteredAt);
+              if (!Number.isFinite(enteredMs)) continue;
+              const elapsedMinutes = Math.floor((nowMs - enteredMs) / 60_000);
+              if (elapsedMinutes < afterMinutes) continue;
+
+              const dedupeKey = `${definition.id}:${lead.id}:${lead.stageId}:${lead.stageEnteredAt}:${afterMinutes}`;
+              if (firedStageTimersRef.current.has(dedupeKey)) continue;
+              firedStageTimersRef.current.add(dedupeKey);
+
+              await processCrmAutomationEvent({
+                id: `stage-time-${globalThis.crypto?.randomUUID?.() ?? Date.now()}`,
+                type: 'lead.stage_elapsed',
+                occurredAt: new Date().toISOString(),
+                leadId: lead.id,
+                payload: {
+                  pipelineId: lead.pipelineId ?? null,
+                  stageId: lead.stageId,
+                  afterMinutes: String(afterMinutes),
+                  elapsedMinutes,
+                },
+              }, automationDependencies);
+            }
+          }
+        };
+
+        if (automationTimer) window.clearInterval(automationTimer);
+        automationTimer = window.setInterval(() => { void runStageTimeTriggers(); }, 30_000);
+        void runStageTimeTriggers();
+
         const sink = new Front05CrmEventSink(
           (event) => processCrmAutomationEvent(event, automationDependencies),
           waitForCrmPersistence,
@@ -309,6 +419,7 @@ export function PlatformRuntimeProvider({ children }: PropsWithChildren) {
     return () => {
       active = false;
       unsubscribeEvents?.();
+      if (automationTimer) window.clearInterval(automationTimer);
       if (channel) void supabase?.removeChannel(channel);
     };
   }, [aiModelRuntime, auth.user?.id, automationWebhook, canUseCrm, canUseInbox, catalogRepository, f05Revision, whatsappSalesBotMessage, whatsappTransport]);
