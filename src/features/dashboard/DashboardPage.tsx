@@ -6,6 +6,7 @@ import {
   type CommercialMetricsProvider,
   type DashboardSnapshot,
 } from './dashboardService';
+import { formatCurrency, formatDate, formatPercent } from '../settings/regional-runtime';
 import './dashboard.css';
 
 interface DashboardPageProps {
@@ -44,19 +45,11 @@ const initialSnapshot: DashboardSnapshot = {
 };
 
 function money(value: number) {
-  return new Intl.NumberFormat('pt-BR', {
-    style: 'currency',
-    currency: 'BRL',
-    maximumFractionDigits: 0,
-  }).format(value);
+  return formatCurrency(value, 0);
 }
 
 function percent(value: number) {
-  return new Intl.NumberFormat('pt-BR', {
-    style: 'percent',
-    minimumFractionDigits: 1,
-    maximumFractionDigits: 1,
-  }).format(value > 1 ? value / 100 : value);
+  return formatPercent(value);
 }
 
 const DASHBOARD_KPI_PREF_KEY = 'harpia_dashboard_kpis_v1';
@@ -375,7 +368,7 @@ export function DashboardPage({ catalogRepository, commercialProvider }: Dashboa
               {snapshot.commercial.nextActions.map((action) => (
                 <div className="f03-action-row" key={action.id}>
                   <span>{action.label}</span>
-                  <strong>{action.date ? new Date(action.date).toLocaleDateString('pt-BR') : 'Sem data'}</strong>
+                  <strong>{action.date ? formatDate(action.date) : 'Sem data'}</strong>
                 </div>
               ))}
             </div>
