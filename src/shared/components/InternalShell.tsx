@@ -148,9 +148,9 @@ export function InternalShell({ children }: PropsWithChildren) {
           ) : null}
 
           {canSeeCatalog ? (
-            <AppLink href="/interno/catalogo" title="Imóveis" className={pathname === '/interno/catalogo' ? 'nav-link active' : 'nav-link'} onClick={() => setMobileOpen(false)}>
-              <span className="nav-icon" aria-hidden="true">⌂</span>
-              <span className="nav-label">Imóveis</span>
+            <AppLink href="/interno/catalogo" title="Produtos" className={pathname === '/interno/catalogo' ? 'nav-link active' : 'nav-link'} onClick={() => setMobileOpen(false)}>
+              <span className="nav-icon" aria-hidden="true">▤</span>
+              <span className="nav-label">Produtos</span>
             </AppLink>
           ) : null}
 
