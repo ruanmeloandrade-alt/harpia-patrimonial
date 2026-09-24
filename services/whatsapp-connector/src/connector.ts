@@ -524,6 +524,66 @@ export class WhatsAppConnector {
       }
     });
 
+    socket.ev.on('messaging-history.status', async (event) => {
+      if (generation !== this.socketGeneration) return;
+      this.lastProtocolEventAt = new Date().toISOString();
+      await recordIntegrationEvent(this.sessionId, {
+        eventType: 'history_sync_status',
+        success: event.status === 'complete',
+        errorCode: event.status === 'paused' ? 'history_sync_paused' : undefined,
+        errorMessage: event.status === 'paused' ? 'Sincronização de histórico pausada pelo WhatsApp.' : undefined,
+        metadata: {
+          syncType: event.syncType ?? null,
+          status: event.status,
+          explicit: event.explicit,
+        },
+      }).catch(() => undefined);
+    });
+
+    socket.ev.on('chats.upsert', async (chats) => {
+      if (generation !== this.socketGeneration) return;
+      this.lastProtocolEventAt = new Date().toISOString();
+      const recent = chats
+        .filter((chat) => typeof chat.id === 'string' && chat.id && !chat.id.endsWith('@g.us') && !chat.id.endsWith('@newsletter'))
+        .slice(0, 250)
+        .map((chat) => ({
+          id: chat.id,
+          name: typeof chat.name === 'string' ? chat.name : undefined,
+          conversationTimestamp: chat.conversationTimestamp?.toString?.() ?? null,
+          lastMessageRecvTimestamp: chat.lastMessageRecvTimestamp ?? null,
+          unreadCount: chat.unreadCount ?? null,
+          fields: Object.keys(chat).slice(0, 40),
+        }));
+
+      if (recent.length > 0) {
+        await recordIntegrationEvent(this.sessionId, {
+          eventType: 'chat_snapshot_received',
+          success: true,
+          metadata: { chats: recent, count: recent.length },
+        }).catch(() => undefined);
+      }
+    });
+
+    socket.ev.on('contacts.upsert', async (contacts) => {
+      if (generation !== this.socketGeneration) return;
+      const snapshot = contacts
+        .filter((contact) => typeof contact.id === 'string' && contact.id)
+        .slice(0, 500)
+        .map((contact) => ({
+          id: contact.id,
+          name: contact.name ?? contact.notify ?? undefined,
+          verifiedName: contact.verifiedName ?? undefined,
+        }));
+
+      if (snapshot.length > 0) {
+        await recordIntegrationEvent(this.sessionId, {
+          eventType: 'contact_snapshot_received',
+          success: true,
+          metadata: { contacts: snapshot, count: snapshot.length },
+        }).catch(() => undefined);
+      }
+    });
+
     socket.ev.on('messaging-history.set', async (event) => {
       if (generation !== this.socketGeneration) return;
 
