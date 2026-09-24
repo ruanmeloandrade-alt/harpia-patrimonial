@@ -7,6 +7,16 @@ type AutomationDefinition = {
   id: string;
   name?: string;
   status: string;
+  origin?: 'manual' | 'pipeline';
+  pipeline?: {
+    pipelineId?: string;
+    event?: 'enter' | 'created_or_moved' | 'leave' | 'created' | 'time' | 'salesbot_done' | 'salesbot_failed' | 'ai_done' | 'tag_added' | 'field_changed';
+    stageId?: string;
+    value?: string;
+    action?: string;
+    targetStageId?: string;
+    resourceId?: string;
+  };
   trigger?: { event?: string; conditions?: Array<{ field?: string; operator?: string; value?: unknown }> };
   actions?: AutomationAction[];
 };
@@ -43,8 +53,52 @@ function getPath(source: Json, path: string): unknown {
   }, source);
 }
 
+function matchesPipeline(definition: AutomationDefinition, event: OutboxEvent, source: Json): boolean {
+  const meta = definition.pipeline;
+  if (!meta || definition.status !== 'active') return false;
+  const pipelineId = String(getPath(source, 'pipelineId') ?? '');
+  const stageId = String(getPath(source, 'stageId') ?? '');
+  const previousStageId = String(getPath(source, 'previousStageId') ?? '');
+  const kind = String(getPath(source, 'kind') ?? getPath(source, 'sourceEventType') ?? '');
+  const automationId = String(getPath(source, 'automationId') ?? '');
+  const duration = String(getPath(source, 'duration') ?? getPath(source, 'threshold') ?? '');
+
+  if (meta.pipelineId && pipelineId !== meta.pipelineId) return false;
+  if (meta.event === 'enter') return event.event_type === 'lead.stage_changed' && stageId === meta.stageId;
+  if (meta.event === 'created_or_moved') {
+    return (event.event_type === 'lead.created' || event.event_type === 'lead.stage_changed') && stageId === meta.stageId;
+  }
+  if (meta.event === 'leave') return event.event_type === 'lead.stage_changed' && previousStageId === meta.stageId;
+  if (meta.event === 'created') return event.event_type === 'lead.created' && (!meta.stageId || stageId === meta.stageId);
+  if (meta.event === 'time') {
+    if (event.event_type !== 'lead.inactivity' || stageId !== meta.stageId) return false;
+    if (automationId) return automationId === definition.id;
+    if (duration) return duration === String(meta.value ?? '');
+    return false;
+  }
+  if (meta.event === 'salesbot_done' || meta.event === 'salesbot_failed' || meta.event === 'ai_done') {
+    if (event.event_type !== 'custom.event' || kind !== meta.event) return false;
+    if (meta.stageId && stageId !== meta.stageId) return false;
+    if (!meta.value) return true;
+    const resourceId = meta.event.startsWith('salesbot_')
+      ? String(getPath(source, 'botId') ?? '')
+      : String(getPath(source, 'agentId') ?? '');
+    return resourceId === meta.value;
+  }
+  if (meta.event === 'tag_added') {
+    return event.event_type === 'lead.tag_added'
+      && stageId === meta.stageId
+      && (!meta.value || String(getPath(source, 'tagId') ?? '') === meta.value);
+  }
+  if (meta.event === 'field_changed') {
+    return event.event_type === 'lead.field_changed'
+      && stageId === meta.stageId
+      && (!meta.value || String(getPath(source, 'fieldId') ?? '') === meta.value);
+  }
+  return false;
+}
+
 function matches(definition: AutomationDefinition, event: OutboxEvent): boolean {
-  if (definition.status !== 'active' || definition.trigger?.event !== event.event_type) return false;
   const payload = event.payload && typeof event.payload === 'object' ? event.payload : {};
   const source: Json = {
     ...payload,
@@ -55,6 +109,9 @@ function matches(definition: AutomationDefinition, event: OutboxEvent): boolean 
     conversationId: event.conversation_id,
     payload,
   };
+  if (definition.origin === 'pipeline' && definition.pipeline) return matchesPipeline(definition, event, source);
+  if (definition.status !== 'active' || definition.trigger?.event !== event.event_type) return false;
+
   return (definition.trigger?.conditions ?? []).every((condition) => {
     const actual = getPath(source, String(condition.field ?? ''));
     const operator = String(condition.operator ?? '');
