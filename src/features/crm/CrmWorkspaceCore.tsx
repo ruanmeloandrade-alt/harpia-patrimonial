@@ -21,6 +21,7 @@ import type { InboxService } from '../inbox/service';
 import { useAppRouter } from '../../core/router/router';
 import { LeadProductsPanel } from './LeadProductsPanel';
 import { PipelineTriggerPicker } from './PipelineTriggerPicker';
+import { PipelineTriggerConfigPanel } from './PipelineTriggerConfigPanel';
 import {
   findPipelineActionCatalogItem,
   isWebhookPipelineAction,
@@ -85,6 +86,10 @@ const pipelineTriggerEventLabels: Record<PipelineTriggerEvent, string> = {
   ai_done: 'Agente IA concluiu o serviço',
   tag_added: 'Tag adicionada',
   field_changed: 'Campo personalizado alterado',
+  assignee_changed: 'Responsável pelo lead mudou',
+  hours_before_datetime: 'Horas antes de um campo de data/hora',
+  daily_time: 'Todo dia em um horário fixo',
+  specific_datetime: 'Em uma data e hora específicas',
   inbound_webhook: 'Webhook recebido',
 };
 
@@ -304,14 +309,15 @@ export function CrmWorkspace({
     }
   };
 
-  const removeTrigger = (id: string) => {
+  const removeTrigger = (id: string, confirmDelete = true) => {
     if (!canManage) return;
-    if (!window.confirm('Excluir este gatilho do funil?')) return;
+    if (confirmDelete && !window.confirm('Excluir este gatilho do funil?')) return;
 
     try {
       deletePipelineAutomation(id);
       setAutomationRevision((value) => value + 1);
       setFeedback('Gatilho excluído.');
+      if (editingTriggerId === id) closeTriggerModal();
     } catch (error) {
       setFeedback(error instanceof Error ? error.message : 'Não foi possível excluir o gatilho.');
     }
@@ -526,6 +532,7 @@ export function CrmWorkspace({
 
                 return (
                   <div
+                    data-stage-id={stage.id}
                     className={automationOpen ? `${styles.column} ${styles.columnAutomation}` : styles.column}
                     key={stage.id}
                     onDragOver={(event) => { if (!automationOpen) event.preventDefault(); }}
@@ -658,385 +665,45 @@ export function CrmWorkspace({
       ) : null}
 
       {triggerModalStageId ? (
-        <div className={styles.crmModalBackdrop} onMouseDown={(event) => {
-          if (event.target === event.currentTarget) closeTriggerModal();
-        }}>
-          <form className={`${styles.crmModalCard} ${styles.triggerModalCard}`} onSubmit={handleAddTrigger}>
-            <div className={styles.crmModalHead}>
-              <div>
-                <small>GATILHO DA PIPELINE</small>
-                <h2>{editingTriggerId ? 'Editar gatilho' : 'Adicionar gatilho'}</h2>
-                <p>{stages.find((stage) => stage.id === triggerModalStageId)?.name}</p>
-              </div>
-              <button type="button" onClick={closeTriggerModal}>×</button>
-            </div>
-
-            <div className={styles.triggerSelectedType}>
-              <span className={styles.triggerPickerIcon}>{findPipelineActionCatalogItem(triggerCatalogSelection)?.icon ?? '⚡'}</span>
-              <div>
-                <strong>{findPipelineActionCatalogItem(triggerCatalogSelection)?.label ?? pipelineActionLabel(triggerAction)}</strong>
-                <small>{findPipelineActionCatalogItem(triggerCatalogSelection)?.description ?? 'Configure quando e como este gatilho deve executar.'}</small>
-              </div>
-              {!editingTriggerId ? (
-                <button type="button" onClick={() => {
-                  const stageId = triggerModalStageId;
-                  closeTriggerModal();
-                  openTriggerPicker(stageId);
-                }}>Trocar</button>
-              ) : null}
-            </div>
-
-            <div className={styles.triggerFormGrid}>
-              <label className={styles.triggerWide}>
-                Quando isso acontecer
-                <select value={triggerEvent} onChange={(event) => {
-                  setTriggerEvent(event.target.value as PipelineTriggerEvent);
-                  setTriggerValue('');
-                }}>
-                  <option value="enter">Lead entrou na etapa</option>
-                  <option value="created_or_moved">Lead criado ou movido para etapa</option>
-                  <option value="leave">Lead saiu da etapa</option>
-                  <option value="time">Lead está há X tempo na etapa</option>
-                  <option value="salesbot_done">SalesBot concluiu</option>
-                  <option value="salesbot_failed">SalesBot falhou</option>
-                  <option value="ai_done">Agente IA concluiu o serviço</option>
-                  <option value="tag_added">Tag adicionada</option>
-                  <option value="field_changed">Campo personalizado alterado</option>
-                  <option value="inbound_webhook">Webhook recebido</option>
-                </select>
-              </label>
-
-              {triggerEvent === 'time' ? (
-                <div className={`${styles.triggerDuration} ${styles.triggerWide}`}>
-                  <label>
-                    Tempo
-                    <input type="number" min="1" value={triggerDurationAmount} onChange={(event) => setTriggerDurationAmount(event.target.value)} />
-                  </label>
-                  <label>
-                    Unidade
-                    <select value={triggerDurationUnit} onChange={(event) => setTriggerDurationUnit(event.target.value as 'm' | 'h' | 'd')}>
-                      <option value="m">Minutos</option>
-                      <option value="h">Horas</option>
-                      <option value="d">Dias</option>
-                    </select>
-                  </label>
-                </div>
-              ) : null}
-
-              {triggerEvent === 'salesbot_done' || triggerEvent === 'salesbot_failed' ? (
-                <label className={styles.triggerWide}>
-                  Qual SalesBot
-                  <select value={triggerValue} onChange={(event) => setTriggerValue(event.target.value)}>
-                    <option value="">Qualquer SalesBot</option>
-                    {salesBots.map((bot) => <option key={bot.id} value={bot.id}>{bot.name}</option>)}
-                  </select>
-                </label>
-              ) : null}
-
-              {triggerEvent === 'ai_done' ? (
-                <label className={styles.triggerWide}>
-                  Qual agente IA
-                  <select value={triggerValue} onChange={(event) => setTriggerValue(event.target.value)}>
-                    <option value="">Qualquer agente IA</option>
-                    {aiAgents.map((agent) => <option key={agent.id} value={agent.id}>{agent.name}</option>)}
-                  </select>
-                </label>
-              ) : null}
-
-              {triggerEvent === 'tag_added' ? (
-                <label className={styles.triggerWide}>
-                  Qual tag
-                  <select value={triggerValue} onChange={(event) => setTriggerValue(event.target.value)}>
-                    <option value="">Qualquer tag</option>
-                    {state.tags.map((tag) => <option key={tag.id} value={tag.id}>{tag.name}</option>)}
-                  </select>
-                </label>
-              ) : null}
-
-              {triggerEvent === 'field_changed' ? (
-                <label className={styles.triggerWide}>
-                  Qual campo personalizado
-                  <select value={triggerValue} onChange={(event) => setTriggerValue(event.target.value)}>
-                    <option value="">Qualquer campo</option>
-                    {state.customFieldDefinitions.filter((field) => field.active).map((field) => (
-                      <option key={field.id} value={field.id}>{field.name}</option>
-                    ))}
-                  </select>
-                </label>
-              ) : null}
-
-              {triggerEvent !== 'inbound_webhook' ? (
-                <label className={styles.triggerWide}>
-                  Então faça isso
-                  <select value={triggerAction} onChange={(event) => {
-                    setTriggerAction(event.target.value as PipelineTriggerAction);
-                    setTriggerResourceId('');
-                    setTriggerTargetStageId('');
-                    setTriggerActionConfig({});
-                    setTriggerCatalogSelection(event.target.value);
-                  }}>
-                    {pipelineActionCatalog.filter((item) => item.mode !== 'event').map((item) => (
-                      <option key={item.id} value={item.id}>{item.label}</option>
-                    ))}
-                  </select>
-                </label>
-              ) : null}
-
-              {triggerAction === 'move_stage' && triggerEvent !== 'inbound_webhook' ? (
-                <label className={styles.triggerWide}>
-                  Mover para
-                  <select value={triggerTargetStageId} onChange={(event) => setTriggerTargetStageId(event.target.value)} required>
-                    <option value="">Selecione a etapa destino</option>
-                    {stages.filter((stage) => stage.id !== triggerModalStageId).map((stage) => (
-                      <option key={stage.id} value={stage.id}>{stage.name}</option>
-                    ))}
-                  </select>
-                </label>
-              ) : null}
-
-              {triggerAction === 'salesbot' ? (
-                <label className={styles.triggerWide}>
-                  SalesBot
-                  <select value={triggerResourceId} onChange={(event) => setTriggerResourceId(event.target.value)} required>
-                    <option value="">Selecione o SalesBot</option>
-                    {salesBots.map((bot) => <option key={bot.id} value={bot.id}>{bot.name}{bot.status === 'active' ? '' : ' · inativo'}</option>)}
-                  </select>
-                </label>
-              ) : null}
-
-              {triggerAction === 'ai' ? (
-                <label className={styles.triggerWide}>
-                  Agente IA
-                  <select value={triggerResourceId} onChange={(event) => setTriggerResourceId(event.target.value)} required>
-                    <option value="">Selecione o agente</option>
-                    {aiAgents.map((agent) => <option key={agent.id} value={agent.id}>{agent.name}{agent.status === 'active' ? '' : ' · inativo'}</option>)}
-                  </select>
-                </label>
-              ) : null}
-            </div>
-
-
-              {triggerAction === 'pause_ai' ? (
-                <label className={styles.triggerWide}>
-                  Agente IA
-                  <select value={triggerResourceId} onChange={(event) => setTriggerResourceId(event.target.value)}>
-                    <option value="">Qualquer agente IA ativo no lead</option>
-                    {aiAgents.map((agent) => <option key={agent.id} value={agent.id}>{agent.name}</option>)}
-                  </select>
-                </label>
-              ) : null}
-
-              {isWebhookPipelineAction(triggerAction) ? (
-                <>
-                  <label className={styles.triggerWide}>
-                    URL HTTPS
-                    <input
-                      type="url"
-                      value={triggerActionConfig.url ?? ''}
-                      onChange={(event) => setTriggerConfig('url', event.target.value)}
-                      placeholder="https://..."
-                      required
-                    />
-                  </label>
-                  <label>
-                    Método
-                    <select value={triggerActionConfig.method ?? 'POST'} onChange={(event) => setTriggerConfig('method', event.target.value)}>
-                      <option value="POST">POST</option>
-                      <option value="PUT">PUT</option>
-                      <option value="PATCH">PATCH</option>
-                      <option value="DELETE">DELETE</option>
-                    </select>
-                  </label>
-                </>
-              ) : null}
-
-              {triggerAction === 'internal_message' ? (
-                <label className={styles.triggerWide}>
-                  Mensagem interna
-                  <textarea
-                    value={triggerActionConfig.message ?? ''}
-                    onChange={(event) => setTriggerConfig('message', event.target.value)}
-                    placeholder="Mensagem para o time"
-                    required
-                  />
-                </label>
-              ) : null}
-
-              {triggerAction === 'duplicate_lead' ? (
-                <label className={styles.triggerWide}>
-                  Etapa da cópia
-                  <select value={triggerActionConfig.stageId ?? ''} onChange={(event) => setTriggerConfig('stageId', event.target.value)}>
-                    <option value="">Mesma etapa do lead</option>
-                    {stages.map((stage) => <option key={stage.id} value={stage.id}>{stage.name}</option>)}
-                  </select>
-                </label>
-              ) : null}
-
-              {triggerAction === 'create_task' ? (
-                <>
-                  <label className={styles.triggerWide}>
-                    Título da tarefa
-                    <input value={triggerActionConfig.title ?? ''} onChange={(event) => setTriggerConfig('title', event.target.value)} required />
-                  </label>
-                  <label className={styles.triggerWide}>
-                    Vencimento opcional
-                    <input type="datetime-local" value={triggerActionConfig.dueAt ?? ''} onChange={(event) => setTriggerConfig('dueAt', event.target.value)} />
-                  </label>
-                </>
-              ) : null}
-
-              {triggerAction === 'complete_tasks' || triggerAction === 'delete_tasks' ? (
-                <label className={styles.triggerWide}>
-                  Filtrar pelo título da tarefa
-                  <input
-                    value={triggerActionConfig.title ?? ''}
-                    onChange={(event) => setTriggerConfig('title', event.target.value)}
-                    placeholder="Deixe vazio para todas as tarefas do lead"
-                  />
-                </label>
-              ) : null}
-
-              {triggerAction === 'tags' ? (
-                <>
-                  <label>
-                    Operação
-                    <select value={triggerActionConfig.operation ?? 'add'} onChange={(event) => setTriggerConfig('operation', event.target.value)}>
-                      <option value="add">Adicionar</option>
-                      <option value="remove">Remover</option>
-                      <option value="replace">Substituir todas por esta tag</option>
-                    </select>
-                  </label>
-                  <label>
-                    Tag
-                    <select value={triggerActionConfig.tagId ?? ''} onChange={(event) => setTriggerConfig('tagId', event.target.value)} required>
-                      <option value="">Selecione a tag</option>
-                      {state.tags.map((tag) => <option key={tag.id} value={tag.id}>{tag.name}</option>)}
-                    </select>
-                  </label>
-                </>
-              ) : null}
-
-              {triggerAction === 'assign_owner' ? (
-                <label className={styles.triggerWide}>
-                  Novo responsável
-                  <select value={triggerActionConfig.userId ?? ''} onChange={(event) => setTriggerConfig('userId', event.target.value)} required>
-                    <option value="">Selecione o usuário</option>
-                    {assignees.map((assignee) => <option key={assignee.id} value={assignee.id}>{assignee.name}</option>)}
-                  </select>
-                </label>
-              ) : null}
-
-              {triggerAction === 'update_field' ? (
-                <>
-                  <label>
-                    Campo
-                    <select value={triggerActionConfig.fieldId ?? ''} onChange={(event) => setTriggerConfig('fieldId', event.target.value)} required>
-                      <option value="">Selecione o campo</option>
-                      <optgroup label="Campos padrão">
-                        <option value="lead.name">Nome</option>
-                        <option value="lead.email">E-mail</option>
-                        <option value="lead.whatsapp">WhatsApp</option>
-                        <option value="lead.source">Origem</option>
-                        <option value="lead.notes">Observações</option>
-                      </optgroup>
-                      <optgroup label="Campos personalizados">
-                      {state.customFieldDefinitions.filter((field) => field.active).map((field) => (
-                        <option key={field.id} value={field.id}>{field.name}</option>
-                      ))}
-                      </optgroup>
-                    </select>
-                  </label>
-                  <label>
-                    Novo valor
-                    <input value={triggerActionConfig.value ?? ''} onChange={(event) => setTriggerConfig('value', event.target.value)} />
-                  </label>
-                </>
-              ) : null}
-
-              {triggerAction === 'delete_lead' ? (
-                <div className={[styles.triggerWide, styles.triggerDangerNote].join(' ')}>
-                  O lead será removido permanentemente quando este gatilho for executado.
-                </div>
-              ) : null}
-
-              {triggerAction === 'generate_form' ? (
-                <>
-                  <label className={styles.triggerWide}>
-                    Nome do formulário
-                    <input value={triggerActionConfig.title ?? ''} onChange={(event) => setTriggerConfig('title', event.target.value)} required />
-                  </label>
-                  <label className={styles.triggerWide}>
-                    Campos
-                    <input
-                      value={triggerActionConfig.fields ?? ''}
-                      onChange={(event) => setTriggerConfig('fields', event.target.value)}
-                      placeholder="nome, telefone, orçamento"
-                    />
-                  </label>
-                </>
-              ) : null}
-
-              {triggerAction === 'delete_files' ? (
-                <label className={styles.triggerWide}>
-                  Classificação
-                  <input
-                    value={triggerActionConfig.classification ?? ''}
-                    onChange={(event) => setTriggerConfig('classification', event.target.value)}
-                    placeholder="Deixe vazio para remover todos os arquivos do lead"
-                  />
-                </label>
-              ) : null}
-
-              {triggerAction === 'link_product' ? (
-                <>
-                  <label className={styles.triggerWide}>
-                    Produto
-                    {catalogChoices.length ? (
-                      <select value={triggerActionConfig.catalogItemId ?? ''} onChange={(event) => setTriggerConfig('catalogItemId', event.target.value)} required>
-                        <option value="">Selecione o produto</option>
-                        {catalogChoices.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}
-                      </select>
-                    ) : (
-                      <input
-                        value={triggerActionConfig.catalogItemId ?? ''}
-                        onChange={(event) => setTriggerConfig('catalogItemId', event.target.value)}
-                        placeholder="ID do produto"
-                        required
-                      />
-                    )}
-                  </label>
-                  <label>
-                    Relação
-                    <select value={triggerActionConfig.relationship ?? 'interest'} onChange={(event) => setTriggerConfig('relationship', event.target.value)}>
-                      <option value="interest">Interesse</option>
-                      <option value="quoted">Cotado</option>
-                      <option value="purchased">Comprado</option>
-                    </select>
-                  </label>
-                  <label>
-                    Quantidade
-                    <input type="number" min="1" step="1" value={triggerActionConfig.quantity ?? '1'} onChange={(event) => setTriggerConfig('quantity', event.target.value)} />
-                  </label>
-                </>
-              ) : null}
-
-              {triggerEvent === 'inbound_webhook' ? (
-                <div className={[styles.triggerWide, styles.inboundWebhookBox].join(' ')}>
-                  <strong>URL de entrada</strong>
-                  <code>{String(import.meta.env.VITE_SUPABASE_URL ?? '') + '/functions/v1/automation-inbound-webhook'}</code>
-                  <small>Envie um POST JSON para essa URL com o token abaixo. Pode enviar leadId existente ou nome, e-mail e WhatsApp para criar um lead.</small>
-                  <label>
-                    Token
-                    <input value={triggerValue} readOnly />
-                  </label>
-                </div>
-              ) : null}
-            <div className={styles.crmModalActions}>
-              <button type="button" onClick={closeTriggerModal}>Cancelar</button>
-              <button type="submit">{editingTriggerId ? 'Salvar gatilho' : 'Adicionar gatilho'}</button>
-            </div>
-          </form>
-        </div>
+        <PipelineTriggerConfigPanel
+          stageId={triggerModalStageId}
+          stageName={stages.find((stage) => stage.id === triggerModalStageId)?.name ?? 'Etapa'}
+          editing={Boolean(editingTriggerId)}
+          triggerCatalogSelection={triggerCatalogSelection}
+          triggerEvent={triggerEvent}
+          triggerValue={triggerValue}
+          triggerDurationAmount={triggerDurationAmount}
+          triggerDurationUnit={triggerDurationUnit}
+          triggerAction={triggerAction}
+          triggerResourceId={triggerResourceId}
+          triggerTargetStageId={triggerTargetStageId}
+          triggerActionConfig={triggerActionConfig}
+          stages={stages}
+          salesBots={salesBots}
+          aiAgents={aiAgents}
+          tags={state.tags}
+          fields={state.customFieldDefinitions}
+          assignees={assignees}
+          catalogChoices={catalogChoices}
+          onEventChange={(value) => {
+            setTriggerEvent(value);
+            if (value !== 'time') setTriggerValue('');
+          }}
+          onValueChange={setTriggerValue}
+          onDurationAmountChange={setTriggerDurationAmount}
+          onDurationUnitChange={setTriggerDurationUnit}
+          onResourceChange={setTriggerResourceId}
+          onTargetStageChange={setTriggerTargetStageId}
+          onConfigChange={setTriggerConfig}
+          onSubmit={handleAddTrigger}
+          onCancel={closeTriggerModal}
+          onDelete={() => {
+            if (editingTriggerId) removeTrigger(editingTriggerId, false);
+            else closeTriggerModal();
+          }}
+          onEditSalesBot={() => navigate('/interno/salesbot')}
+          onCreateSalesBot={() => navigate('/interno/salesbot')}
+        />
       ) : null}
 
       {pipelineModalOpen ? (
