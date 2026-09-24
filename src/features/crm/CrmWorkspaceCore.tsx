@@ -599,7 +599,6 @@ export function CrmWorkspace({
                   <option value="ai_done">Agente IA concluiu o serviço</option>
                   <option value="tag_added">Tag adicionada</option>
                   <option value="field_changed">Campo personalizado alterado</option>
-                  <option value="created">Lead criado no funil</option>
                 </select>
               </label>
 
