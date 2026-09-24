@@ -463,3 +463,34 @@ export async function getConversationDestination(sessionId: string, conversation
 
   return String(data.external_thread_id);
 }
+
+
+export async function listWhatsAppRecoveryCandidates(sessionId: string) {
+  const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+  const { data, error } = await db.rpc('admin_list_whatsapp_recovery_candidates', {
+    p_session_id: sessionId,
+    p_since: since,
+    p_limit: 25,
+  });
+
+  if (error) throw error;
+
+  return ((data ?? []) as Array<{
+    external_message_id?: string | null;
+    failed_at?: string | null;
+    lid?: string | null;
+    identity_updated_at?: string | null;
+    seconds_after_identity?: number | string | null;
+  }>).flatMap((row) => {
+    const externalMessageId = String(row.external_message_id || '').trim();
+    const lid = String(row.lid || '').replace(/\D/g, '');
+    if (!externalMessageId || !lid) return [];
+    return [{
+      externalMessageId,
+      failedAt: row.failed_at ? String(row.failed_at) : undefined,
+      lid,
+      identityUpdatedAt: row.identity_updated_at ? String(row.identity_updated_at) : undefined,
+      secondsAfterIdentity: Number(row.seconds_after_identity ?? 0),
+    }];
+  });
+}
