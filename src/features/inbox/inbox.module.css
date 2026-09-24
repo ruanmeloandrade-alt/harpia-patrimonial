@@ -1061,3 +1061,46 @@
   max-height: 360px;
   border-radius: 10px;
 }
+
+
+.inlineCreator {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 6px;
+}
+
+.inlineCreator button {
+  width: auto;
+  min-width: 62px;
+}
+
+.composer .micButton {
+  width: 36px;
+  min-width: 36px;
+  height: 36px;
+  min-height: 36px;
+  align-self: center;
+  padding: 0;
+  border: 1px solid #1f7a45;
+  border-radius: 999px;
+  background: #1f7a45;
+  color: #fff;
+}
+
+.composer .micButton:hover {
+  filter: brightness(.95);
+}
+
+.composer .micButton span {
+  font-size: 15px;
+}
+
+.composer .micButton small {
+  display: none;
+}
+
+.composer .micButtonRecording {
+  border-color: #a33f3b;
+  background: #a33f3b;
+  color: #fff;
+}
