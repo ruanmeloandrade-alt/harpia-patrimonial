@@ -1,6 +1,7 @@
 export type CrmAutomationEventType =
   | 'lead.created'
   | 'lead.stage_changed'
+  | 'lead.assignee_changed'
   | 'lead.field_changed'
   | 'lead.tag_added'
   | 'lead.tag_removed'
