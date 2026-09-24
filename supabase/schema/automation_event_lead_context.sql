@@ -40,7 +40,19 @@ begin
   new.payload := coalesce(new.payload, '{}'::jsonb)
     || jsonb_strip_nulls(jsonb_build_object(
       'pipelineId', pipeline_id,
-      'stageId', stage_id
+      'stageId', stage_id,
+      'source', nullif(lead->>'source',''),
+      'assigneeId', nullif(lead->>'assigneeId',''),
+      'lead', jsonb_strip_nulls(jsonb_build_object(
+        'id', lead->>'id',
+        'name', lead->>'name',
+        'email', lead->>'email',
+        'whatsapp', lead->>'whatsapp',
+        'source', lead->>'source',
+        'assigneeId', lead->>'assigneeId',
+        'pipelineId', pipeline_id,
+        'stageId', stage_id
+      ))
     ));
 
   return new;
