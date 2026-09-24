@@ -16,8 +16,6 @@ import {
 import { BrowserCrmRepository } from './repository';
 import { CrmIntegrityError, CrmService } from './service';
 import { AppLink } from '../../core/router/router';
-import type { CatalogRepository } from '../catalog/catalogRepository';
-import { LeadProductsPanel } from './LeadProductsPanel';
 import styles from './crm.module.css';
 
 export interface AssigneeOption {
@@ -29,7 +27,6 @@ export interface CrmWorkspaceProps {
   service?: CrmService;
   assignees?: AssigneeOption[];
   canManage?: boolean;
-  catalogRepository?: CatalogRepository;
 }
 
 const emptyMessage = 'Nenhum dado real cadastrado ainda.';
@@ -51,8 +48,7 @@ const customFieldTypes: Array<{ value: CustomFieldType; label: string }> = [
 export function CrmWorkspace({
   service: injectedService,
   assignees = [],
-  canManage = true,
-  catalogRepository,
+  canManage = true
 }: CrmWorkspaceProps) {
   const service = useMemo(
     () => injectedService ?? new CrmService(new BrowserCrmRepository()),
@@ -421,8 +417,7 @@ function LeadDetailsPanel({
   onClose,
   onChanged,
   onError,
-  canManage,
-  catalogRepository,
+  canManage
 }: {
   lead: Lead;
   state: CrmState;
@@ -432,7 +427,6 @@ function LeadDetailsPanel({
   onChanged: (message: string) => void;
   onError: (message: string) => void;
   canManage: boolean;
-  catalogRepository?: CatalogRepository;
 }) {
   const history = service.getLeadHistory(lead.id);
   const tasks = service.getLeadTasks(lead.id);
@@ -585,17 +579,6 @@ function LeadDetailsPanel({
           <button type="submit">Adicionar</button>
         </form>
       </div>
-
-      {catalogRepository && (
-        <LeadProductsPanel
-          leadId={lead.id}
-          catalogRepository={catalogRepository}
-          canManage={canManage}
-          onChanged={onChanged}
-          onError={onError}
-          waitForCrmPersistence={() => service.waitForPersistence()}
-        />
-      )}
 
       <div className={styles.detailSection}>
         <h3>Campos personalizados</h3>
