@@ -1,7 +1,9 @@
 import {
   DragEvent as ReactDragEvent,
   FormEvent,
+  MouseEvent as ReactMouseEvent,
   useMemo,
+  useRef,
   useState,
 } from 'react';
 import {
@@ -60,6 +62,8 @@ export function CrmWorkspace({
   );
   const [selectedLeadId, setSelectedLeadId] = useState<string | undefined>();
   const [feedback, setFeedback] = useState('');
+  const kanbanRef = useRef<HTMLDivElement | null>(null);
+  const panRef = useRef<{ x: number; scrollLeft: number } | null>(null);
 
   const refresh = (message?: string) => {
     const snapshot = service.snapshot();
@@ -195,6 +199,27 @@ export function CrmWorkspace({
     run(() => service.moveLead(leadId, stageId), 'Lead movido de etapa.');
   };
 
+  const startKanbanPan = (event: ReactMouseEvent<HTMLDivElement>) => {
+    if (event.button !== 0) return;
+    const target = event.target as HTMLElement;
+    if (target.closest('button, input, select, textarea, [draggable="true"]')) return;
+    const node = kanbanRef.current;
+    if (!node) return;
+    panRef.current = { x: event.clientX, scrollLeft: node.scrollLeft };
+    event.preventDefault();
+  };
+
+  const moveKanbanPan = (event: ReactMouseEvent<HTMLDivElement>) => {
+    const node = kanbanRef.current;
+    const pan = panRef.current;
+    if (!node || !pan) return;
+    node.scrollLeft = pan.scrollLeft - (event.clientX - pan.x);
+  };
+
+  const stopKanbanPan = () => {
+    panRef.current = null;
+  };
+
   return (
     <section className={styles.workspace} aria-label="CRM Hárpia">
       <header className={styles.header}>
@@ -316,7 +341,14 @@ export function CrmWorkspace({
               description="O CRM começa vazio de propósito. Adicione somente etapas que façam sentido para a operação real."
             />
           ) : (
-            <div className={styles.kanban}>
+            <div
+              ref={kanbanRef}
+              className={styles.kanban}
+              onMouseDown={startKanbanPan}
+              onMouseMove={moveKanbanPan}
+              onMouseUp={stopKanbanPan}
+              onMouseLeave={stopKanbanPan}
+            >
               {stages.map((stage) => {
                 const leads = state.leads.filter((lead) => lead.stageId === stage.id);
                 return (
