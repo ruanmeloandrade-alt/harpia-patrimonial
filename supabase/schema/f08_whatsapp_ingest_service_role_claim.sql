@@ -26,15 +26,14 @@ declare
   current_state jsonb;
   lead jsonb;
   history_entry jsonb;
-  request_role text;
+  legacy_role text;
+  claims_role text;
 begin
-  request_role := coalesce(
-    nullif(current_setting('request.jwt.claim.role', true), ''),
-    nullif((nullif(current_setting('request.jwt.claims', true), '')::jsonb ->> 'role'), ''),
-    ''
-  );
+  legacy_role := nullif(current_setting('request.jwt.claim.role', true), '');
+  claims_role := nullif((nullif(current_setting('request.jwt.claims', true), '')::jsonb ->> 'role'), '');
 
-  if request_role <> 'service_role' then
+  if coalesce(legacy_role, '') <> 'service_role'
+     and coalesce(claims_role, '') <> 'service_role' then
     raise exception 'service_role required';
   end if;
 
