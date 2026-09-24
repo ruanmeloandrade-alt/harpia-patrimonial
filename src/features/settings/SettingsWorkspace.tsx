@@ -1,6 +1,7 @@
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../../core/auth/AuthProvider';
 import { UsersPage } from '../users/UsersPage';
+import { PermissionsPage } from '../permissions/PermissionsPage';
 import { IntegrationsWorkspace } from '../integrations/IntegrationsWorkspace';
 import { AIProvidersWorkspace } from '../integrations/AIProvidersWorkspace';
 import type { AICredentialVaultPort } from '../integrations/aiCredentialPort';
@@ -301,7 +302,12 @@ export function SettingsWorkspace({ credentialVault, initialTab = 'general' }: S
         </form>
       )}
 
-      {activeTab === 'users' && <UsersPage embedded />}
+      {activeTab === 'users' && (
+        <div className="settings-user-access-stack">
+          <UsersPage embedded />
+          <PermissionsPage embedded />
+        </div>
+      )}
 
       {activeTab === 'integrations' && (
         <div className="settings-integrations-wrap">
