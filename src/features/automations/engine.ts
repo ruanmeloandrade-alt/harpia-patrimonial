@@ -148,6 +148,43 @@ function matchesDefinition(definition: AutomationDefinition, event: CrmAutomatio
 const configString = (action: AutomationAction, key: string) => String(action.config[key] ?? '').trim();
 const webhookMethod = (action: AutomationAction) => (configString(action, 'method') || 'POST').toUpperCase();
 
+function automationFollowupEvent(
+  action: AutomationAction,
+  result: AutomationCommandResult,
+  sourceEvent: CrmAutomationEvent,
+): CrmAutomationEvent | null {
+  const basePayload = { ...sourceEvent.payload };
+  const runtimeStatus = String(result.data?.runtimeStatus ?? '');
+
+  let kind = '';
+  let resource: Record<string, unknown> = {};
+  if (action.type === 'start_salesbot') {
+    if (result.status === 'accepted' && runtimeStatus === 'completed') kind = 'salesbot_done';
+    else if (result.status === 'rejected') kind = 'salesbot_failed';
+    else return null;
+    resource = { botId: configString(action, 'botId'), executionId: result.executionId };
+  } else if (action.type === 'invoke_ai' && result.status === 'accepted') {
+    kind = 'ai_done';
+    resource = { agentId: configString(action, 'agentId'), executionId: result.executionId };
+  } else {
+    return null;
+  }
+
+  const cryptoApi = globalThis.crypto;
+  const suffix = cryptoApi?.randomUUID
+    ? cryptoApi.randomUUID()
+    : `${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+
+  return {
+    id: `automation_followup_${suffix}`,
+    type: 'custom.event',
+    occurredAt: new Date().toISOString(),
+    leadId: sourceEvent.leadId,
+    conversationId: sourceEvent.conversationId,
+    payload: { ...basePayload, ...resource, kind },
+  };
+}
+
 async function executeAction(
   action: AutomationAction,
   event: CrmAutomationEvent,
@@ -197,6 +234,7 @@ async function executeAction(
 export async function processCrmAutomationEvent(
   event: CrmAutomationEvent,
   deps: AutomationEngineDependencies = unconfiguredAutomationEngineDependencies,
+  depth = 0,
 ): Promise<AutomationExecutionReport[]> {
   const reports: AutomationExecutionReport[] = [];
 
@@ -213,6 +251,12 @@ export async function processCrmAutomationEvent(
       for (const action of definition.actions) {
         const result = await executeAction(action, event, deps);
         report.actions.push({ actionId: action.id, type: action.type, result });
+
+        if (depth < 8) {
+          const followup = automationFollowupEvent(action, result, event);
+          if (followup) await processCrmAutomationEvent(followup, deps, depth + 1);
+        }
+
         if (result.status !== 'accepted') break;
       }
     }
