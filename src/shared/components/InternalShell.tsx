@@ -2,7 +2,9 @@ import { PropsWithChildren, useEffect, useState } from 'react';
 import { useAuth } from '../../core/auth/AuthProvider';
 import { PERMISSIONS } from '../../core/auth/permissions';
 import { AppLink, useAppRouter } from '../../core/router/router';
-import { applyOrganizationPreferences, getOrganizationSettings, normalizeOrganizationPreferences } from '../../features/settings/core/settings-service';
+import { getOrganizationSettings, applyOrganizationRegionalPreferences } from '../../features/settings/core/settings-service';
+import { applyUserAppearance, getUserPreferences } from '../../features/settings/user-preferences-service';
+import { NotificationCenter } from '../../features/notifications/NotificationCenter';
 import './internal-shell.css';
 
 type NavItem = {
@@ -34,20 +36,7 @@ const links: NavItem[] = [
       PERMISSIONS.AI_MANAGE,
     ],
   },
-  {
-    href: '/interno/configuracoes',
-    label: 'Configurações',
-    permissions: [
-      PERMISSIONS.SETTINGS_VIEW,
-      PERMISSIONS.SETTINGS_MANAGE,
-      PERMISSIONS.USERS_VIEW,
-      PERMISSIONS.USERS_MANAGE,
-      PERMISSIONS.ROLES_VIEW,
-      PERMISSIONS.ROLES_MANAGE,
-      PERMISSIONS.INTEGRATIONS_VIEW,
-      PERMISSIONS.INTEGRATIONS_MANAGE,
-    ],
-  },
+  { href: '/interno/configuracoes', label: 'Configurações' },
 ];
 
 export function InternalShell({ children }: PropsWithChildren) {
@@ -64,23 +53,32 @@ export function InternalShell({ children }: PropsWithChildren) {
     let media: MediaQueryList | null = null;
     let handleChange: (() => void) | null = null;
 
-    void getOrganizationSettings().then((settings) => {
-      if (!mounted) return;
-      applyOrganizationPreferences(settings.preferences);
-      if (normalizeOrganizationPreferences(settings.preferences).appearance.theme === 'system' && typeof window !== 'undefined') {
-        media = window.matchMedia('(prefers-color-scheme: dark)');
-        handleChange = () => applyOrganizationPreferences(settings.preferences);
-        media.addEventListener('change', handleChange);
-      }
-    }).catch(() => {
-      // Mantém o tema padrão quando a preferência não puder ser carregada.
-    });
+    void getOrganizationSettings()
+      .then((settings) => {
+        if (mounted) applyOrganizationRegionalPreferences(settings.preferences);
+      })
+      .catch(() => undefined);
+
+    const userId = auth.user?.id;
+    if (userId) {
+      void getUserPreferences(userId)
+        .then((preferences) => {
+          if (!mounted) return;
+          applyUserAppearance(preferences);
+          if (preferences.theme === 'system' && typeof window !== 'undefined') {
+            media = window.matchMedia('(prefers-color-scheme: dark)');
+            handleChange = () => applyUserAppearance(preferences);
+            media.addEventListener('change', handleChange);
+          }
+        })
+        .catch(() => undefined);
+    }
 
     return () => {
       mounted = false;
       if (media && handleChange) media.removeEventListener('change', handleChange);
     };
-  }, []);
+  }, [auth.user?.id]);
 
   const canSee = (item: NavItem) => {
     if (item.permissions?.length) return item.permissions.some(auth.hasPermission);
@@ -146,7 +144,7 @@ export function InternalShell({ children }: PropsWithChildren) {
           <button className="button button-ghost button-block" onClick={logout}>Sair</button>
         </div>
       </aside>
-      <main className="internal-main">{children}</main>
+      <main className="internal-main">{children}</main><NotificationCenter />
     </div>
   );
 }
