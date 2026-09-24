@@ -593,6 +593,7 @@ function LeadDetailsPanel({
           canManage={canManage}
           onChanged={onChanged}
           onError={onError}
+          waitForCrmPersistence={() => service.waitForPersistence()}
         />
       )}
 
