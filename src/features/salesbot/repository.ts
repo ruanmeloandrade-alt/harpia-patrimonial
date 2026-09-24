@@ -12,19 +12,41 @@ const IMPORTABLE_BLOCK_TYPES = new Set<SalesBotBlockType>([
   'condition',
   'delay',
   'message',
+  'reaction',
+  'internal_comment',
+  'action',
+  'validation',
   'ai_agent',
+  'distribution',
+  'finish',
+  'chain_flow',
   'move_stage',
   'assign_owner',
   'create_task',
   'update_field',
   'tag',
   'webhook',
-  'finish',
-  'chain_flow',
 ]);
 
 function recordValue(value: unknown): Record<string, unknown> | null {
   return value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : null;
+}
+
+function importConfigValue(value: unknown): SalesBotBlockConfigValue | undefined {
+  if (value === null || typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') return value;
+  if (Array.isArray(value)) {
+    const items = value.map(importConfigValue);
+    if (items.some((item) => item === undefined)) return undefined;
+    return items as SalesBotBlockConfigValue[];
+  }
+  const source = recordValue(value);
+  if (!source) return undefined;
+  const result: Record<string, SalesBotBlockConfigValue> = {};
+  for (const [key, item] of Object.entries(source)) {
+    const normalized = importConfigValue(item);
+    if (normalized !== undefined) result[key] = normalized;
+  }
+  return result;
 }
 
 function importConfig(value: unknown): Record<string, SalesBotBlockConfigValue> {
@@ -32,11 +54,8 @@ function importConfig(value: unknown): Record<string, SalesBotBlockConfigValue> 
   if (!source) return {};
   const config: Record<string, SalesBotBlockConfigValue> = {};
   Object.entries(source).forEach(([key, item]) => {
-    if (item === null || typeof item === 'string' || typeof item === 'number' || typeof item === 'boolean') {
-      config[key] = item;
-    } else if (Array.isArray(item) && item.every((entry) => typeof entry === 'string')) {
-      config[key] = item;
-    }
+    const normalized = importConfigValue(item);
+    if (normalized !== undefined) config[key] = normalized;
   });
   return config;
 }
@@ -49,9 +68,16 @@ function importedType(source: Record<string, unknown>): SalesBotBlockType | null
   const legacyMap: Record<string, SalesBotBlockType> = {
     inicio: 'trigger',
     mensagem: 'message',
+    'enviar-mensagem': 'message',
     espera: 'delay',
+    pausar: 'delay',
+    reacao: 'reaction',
+    comentario: 'internal_comment',
+    acao: 'action',
     condicao: 'condition',
+    validacao: 'validation',
     ia: 'ai_agent',
+    distribuicao: 'distribution',
     'iniciar-salesbot': 'chain_flow',
     'encerrar-bot': 'finish',
   };
@@ -60,21 +86,36 @@ function importedType(source: Record<string, unknown>): SalesBotBlockType | null
 
 function importedLegacyConfig(source: Record<string, unknown>, type: SalesBotBlockType): Record<string, SalesBotBlockConfigValue> {
   const data = recordValue(source.data) ?? {};
+  const importedData = importConfig(data);
   if (type === 'trigger') return { event: 'manual' };
   if (type === 'message') {
     const buttons = Array.isArray(data.buttons)
-      ? data.buttons.map((item) => {
+      ? data.buttons.map((item, index) => {
         const row = recordValue(item);
-        return row ? String(row.label ?? '').trim() : String(item ?? '').trim();
-      }).filter(Boolean)
+        return {
+          id: String(row?.id ?? `button-${index + 1}`),
+          label: String(row?.label ?? item ?? '').trim() || `Botão ${index + 1}`,
+        };
+      })
       : [];
-    return { message: String(data.text ?? ''), buttons };
+    return { ...importedData, message: String(data.text ?? data.message ?? ''), buttons };
   }
-  if (type === 'delay') return { duration: String(data.duration ?? '1m'), pauseMode: 'timer' };
-  if (type === 'condition') return { expression: String(data.expression ?? data.value ?? '') };
-  if (type === 'ai_agent') return { agentId: String(data.agentId ?? '') };
-  if (type === 'chain_flow') return { botId: String(data.botId ?? '') };
-  return {};
+  if (type === 'delay') {
+    return {
+      ...importedData,
+      duration: String(data.duration ?? '1m'),
+      pauseMode: String(data.pauseType ?? data.pauseMode ?? 'timer'),
+    };
+  }
+  if (type === 'reaction') return { ...importedData, emoji: String(data.emoji ?? '👍') };
+  if (type === 'internal_comment') return { ...importedData, text: String(data.text ?? '') };
+  if (type === 'action') return { ...importedData, actionType: String(data.actionType ?? '') };
+  if (type === 'condition') return importedData;
+  if (type === 'validation') return { ...importedData, validationType: String(data.validationType ?? '') };
+  if (type === 'ai_agent') return { ...importedData, agentId: String(data.agentId ?? '') };
+  if (type === 'distribution') return importedData;
+  if (type === 'chain_flow') return { ...importedData, botId: String(data.botId ?? '') };
+  return importedData;
 }
 
 const makeStartBlock = (): SalesBotBlock => ({
@@ -90,25 +131,24 @@ const makeStartBlock = (): SalesBotBlock => ({
 });
 
 const withCanvasDefaults = (blocks: SalesBotBlock[]): SalesBotBlock[] => {
-  const normalized = blocks.map((block, index) => ({
-    ...block,
-    x: Number.isFinite(block.x) ? block.x : 80 + (index % 4) * 270,
-    y: Number.isFinite(block.y) ? block.y : 90 + Math.floor(index / 4) * 180,
-    nextBlockId: block.nextBlockId ?? null,
-    falseNextBlockId: block.falseNextBlockId ?? null,
-    routes: block.routes ?? {},
-  }));
-  const ids = new Set(normalized.map((block) => block.id));
-  return normalized.map((block, index) => {
-    const explicitNext = block.nextBlockId && ids.has(block.nextBlockId) ? block.nextBlockId : null;
-    const fallbackNext = block.type !== 'finish' ? normalized[index + 1]?.id ?? null : null;
+  const normalized = blocks.map((block, index) => {
+    const hadNextField = Object.prototype.hasOwnProperty.call(block, 'nextBlockId');
     return {
       ...block,
-      nextBlockId: explicitNext ?? fallbackNext,
-      falseNextBlockId: block.falseNextBlockId && ids.has(block.falseNextBlockId) ? block.falseNextBlockId : null,
-      routes: Object.fromEntries(Object.entries(block.routes ?? {}).filter(([, target]) => !target || ids.has(target))),
+      x: Number.isFinite(block.x) ? Number(block.x) : 80 + (index % 4) * 330,
+      y: Number.isFinite(block.y) ? Number(block.y) : 70 + Math.floor(index / 4) * 260,
+      nextBlockId: hadNextField ? block.nextBlockId ?? null : (block.type !== 'finish' ? blocks[index + 1]?.id ?? null : null),
+      falseNextBlockId: block.falseNextBlockId ?? null,
+      routes: block.routes ?? {},
     };
   });
+  const ids = new Set(normalized.map((block) => block.id));
+  return normalized.map((block) => ({
+    ...block,
+    nextBlockId: block.nextBlockId && ids.has(block.nextBlockId) ? block.nextBlockId : null,
+    falseNextBlockId: block.falseNextBlockId && ids.has(block.falseNextBlockId) ? block.falseNextBlockId : null,
+    routes: Object.fromEntries(Object.entries(block.routes ?? {}).filter(([, target]) => !target || ids.has(target))),
+  }));
 };
 
 const normalizeBot = (bot: SalesBotDefinition): SalesBotDefinition => {
@@ -290,7 +330,7 @@ export function duplicateSalesBot(id: string): SalesBotDefinition {
     blocks: source.blocks.map((block) => ({
       ...block,
       id: idMap.get(block.id)!,
-      config: { ...block.config },
+      config: JSON.parse(JSON.stringify(block.config)) as SalesBotBlock['config'],
       nextBlockId: block.nextBlockId ? idMap.get(block.nextBlockId) ?? null : null,
       falseNextBlockId: block.falseNextBlockId ? idMap.get(block.falseNextBlockId) ?? null : null,
       routes: Object.fromEntries(Object.entries(block.routes ?? {}).map(([key, target]) => [key, target ? idMap.get(target) ?? null : null])),
@@ -336,6 +376,46 @@ export function insertSalesBotBlockAfter(id: string, afterBlockId: string, block
   };
   const blocks = current.blocks.map((item) => item.id === source.id ? { ...item, nextBlockId: nextBlock.id } : item);
   blocks.splice(afterIndex + 1, 0, nextBlock);
+  return updateSalesBot(id, { blocks });
+}
+
+export function insertSalesBotBlockFromOutput(
+  id: string,
+  sourceBlockId: string,
+  branch: 'next' | 'false' | `route:${string}`,
+  block: Omit<SalesBotBlock, 'id'>,
+): SalesBotDefinition {
+  const current = getSalesBot(id);
+  if (!current) throw new Error('SalesBot não encontrado.');
+  const sourceIndex = current.blocks.findIndex((item) => item.id === sourceBlockId);
+  if (sourceIndex < 0) throw new Error('Bloco de origem não encontrado.');
+  const source = current.blocks[sourceIndex];
+
+  const branchIndex = branch === 'false'
+    ? 1
+    : branch.startsWith('route:')
+      ? Math.max(1, Object.keys(source.routes ?? {}).indexOf(branch.slice(6)) + 1)
+      : 0;
+  const created: SalesBotBlock = {
+    ...block,
+    id: createF05Id('block'),
+    x: (source.x ?? 80) + 360,
+    y: Math.max(30, (source.y ?? 70) + branchIndex * 190),
+    nextBlockId: null,
+    falseNextBlockId: null,
+    routes: {},
+  };
+
+  const updatedSource: SalesBotBlock = {
+    ...source,
+    routes: { ...(source.routes ?? {}) },
+  };
+  if (branch === 'false') updatedSource.falseNextBlockId = created.id;
+  else if (branch.startsWith('route:')) updatedSource.routes![branch.slice(6)] = created.id;
+  else updatedSource.nextBlockId = created.id;
+
+  const blocks = current.blocks.map((item) => item.id === source.id ? updatedSource : item);
+  blocks.splice(sourceIndex + 1, 0, created);
   return updateSalesBot(id, { blocks });
 }
 
