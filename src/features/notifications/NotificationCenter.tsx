@@ -49,6 +49,12 @@ export function NotificationCenter() {
       })
       .catch(() => undefined);
 
+    const preferenceListener = (event: Event) => {
+      const next = (event as CustomEvent<UserPreferences>).detail;
+      if (next) preferencesRef.current = next;
+    };
+    window.addEventListener('harpia:user-preferences-updated', preferenceListener);
+
     const unsubscribe = subscribeUserNotifications(userId, (notification) => {
       const preferences = preferencesRef.current;
       setItems((current) => [notification, ...current].slice(0, 20));
@@ -73,6 +79,7 @@ export function NotificationCenter() {
 
     return () => {
       mounted = false;
+      window.removeEventListener('harpia:user-preferences-updated', preferenceListener);
       unsubscribe();
     };
   }, [userId]);
