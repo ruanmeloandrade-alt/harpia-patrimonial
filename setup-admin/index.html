@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Ativar Administrador | Hárpia Patrimonial</title>
+<style>
+:root{--g:#3c5034;--l:#c3ce94;--b:#161616;--o:#eeeef0}
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;background:linear-gradient(135deg,#243222,#3c5034);font-family:Inter,Arial,sans-serif;color:var(--b);display:grid;place-items:center;padding:24px}
+.box{width:min(520px,100%);background:var(--o);padding:32px;border-radius:20px;box-shadow:0 24px 70px rgba(0,0,0,.28)}
+.logo{display:block;width:250px;max-width:100%;margin:0 auto 24px;background:#3c5034;padding:12px 15px;border-radius:10px}
+h1{font-family:Georgia,serif;font-weight:400;font-size:32px;margin:0 0 8px}
+.sub{color:#696d67;font-size:13px;line-height:1.55;margin-bottom:22px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+label{display:grid;gap:6px;font-size:11px;font-weight:700}
+label.wide{grid-column:1/-1}
+input{width:100%;height:44px;border:1px solid #cfd2cc;border-radius:10px;padding:0 13px;background:white;font-size:13px}
+button{width:100%;height:48px;margin-top:18px;border:0;border-radius:10px;background:var(--g);color:white;font-weight:700;cursor:pointer}
+button:disabled{opacity:.6;cursor:not-allowed}
+.msg{min-height:22px;margin-top:12px;font-size:12px;line-height:1.45}
+.note{margin-top:18px;padding:12px 13px;border-radius:10px;background:#e2e6df;color:#62685f;font-size:10px;line-height:1.55}
+@media(max-width:620px){.grid{grid-template-columns:1fr}.wide{grid-column:auto}}
+</style>
+</head>
+<body>
+<main class="box">
+<img class="logo" src="/harpia-logo-white.svg" alt="Hárpia Patrimonial & Co.">
+<h1>Ativar primeira conta</h1>
+<div class="sub">Crie a primeira conta administrativa real da Hárpia. Esta tela deixa de funcionar automaticamente assim que a primeira conta é criada.</div>
+<form id="setupForm">
+<div class="grid">
+<label class="wide">Nome completo<input id="name" autocomplete="name" required></label>
+<label>E-mail<input id="email" type="email" autocomplete="email" required></label>
+<label>WhatsApp<input id="phone" type="tel" autocomplete="tel"></label>
+<label class="wide">Senha inicial<input id="password" type="password" minlength="8" autocomplete="new-password" required></label>
+</div>
+<button id="submit" type="submit">Criar Administrador</button>
+<div id="msg" class="msg"></div>
+</form>
+<div class="note">O token de ativação não fica salvo nesta página. A conta recebe o grupo Administrador e, após a criação, o setup inicial é bloqueado no servidor.</div>
+</main>
+<script>
+const SB_URL='https://desxomqvtjaymwwxivwq.supabase.co';
+const SB_KEY='sb_publishable_wWUVxjkMDMXLOrzE0y3Y_w_k9jXf88B';
+const token=new URLSearchParams(location.search).get('token')||'';
+const form=document.getElementById('setupForm'),msg=document.getElementById('msg'),button=document.getElementById('submit');
+if(!token){msg.textContent='Link de ativação inválido ou incompleto.';button.disabled=true}
+form.addEventListener('submit',async e=>{
+  e.preventDefault();
+  if(!token)return;
+  button.disabled=true;button.textContent='Criando...';msg.textContent='';
+  const fullName=document.getElementById('name').value.trim();
+  const email=document.getElementById('email').value.trim().toLowerCase();
+  const whatsapp=document.getElementById('phone').value.trim();
+  const password=document.getElementById('password').value;
+  try{
+    const r=await fetch(SB_URL+'/functions/v1/bootstrap-first-admin',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','apikey':SB_KEY,'x-bootstrap-token':token},
+      body:JSON.stringify({fullName,email,whatsapp,password})
+    });
+    const j=await r.json().catch(()=>({}));
+    if(!r.ok||!j.ok)throw new Error(j.message||'Não foi possível criar a conta.');
+
+    const auth=await fetch(SB_URL+'/auth/v1/token?grant_type=password',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','apikey':SB_KEY},
+      body:JSON.stringify({email,password})
+    });
+    const authData=await auth.json().catch(()=>({}));
+    if(!auth.ok||!authData.access_token)throw new Error('Conta criada, mas o login automático falhou. Use a tela normal de login.');
+
+    const session={
+      role:'internal',
+      email,
+      name:fullName,
+      userId:authData.user.id,
+      accessToken:authData.access_token,
+      refreshToken:authData.refresh_token,
+      expiresAt:Date.now()+Number(authData.expires_in||3600)*1000
+    };
+    localStorage.setItem('harpia_session',JSON.stringify(session));
+    localStorage.setItem('harpia_demo_session',JSON.stringify(session));
+    msg.textContent='Administrador criado. Abrindo a Hárpia...';
+    setTimeout(()=>location.href='/interno/',500);
+  }catch(error){
+    msg.textContent=error instanceof Error?error.message:'Não foi possível concluir a ativação.';
+    button.disabled=false;button.textContent='Criar Administrador';
+  }
+});
+</script>
+</body>
+</html>
