@@ -22,6 +22,7 @@ import {
   IntegratedExecutionLogs,
   IntegratedInbox,
   IntegratedIntegrations,
+  IntegratedMarketing,
   IntegratedSalesBot,
 } from './IntegratedInternalModules';
 
@@ -98,6 +99,10 @@ export function AppRouter() {
         PERMISSIONS.AI_VIEW,
         PERMISSIONS.AI_MANAGE,
       ];
+    } else if (pathname === '/interno/marketing') {
+      page = <IntegratedMarketing />;
+      permission = undefined;
+      permissions = undefined;
     } else if (pathname === '/interno/integracoes') {
       page = <IntegratedIntegrations />;
       permission = undefined;
