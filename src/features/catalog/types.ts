@@ -5,6 +5,18 @@ export type CatalogStatus = 'draft' | 'published' | 'paused' | 'sold';
 export type CatalogMediaType = 'image' | 'video' | 'document' | 'floorplan';
 export type CatalogDiscountType = 'percentage' | 'fixed';
 
+export interface ProductCatalog {
+  id: string;
+  name: string;
+  description?: string;
+  tags: string[];
+  isActive: boolean;
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
+  deletedAt?: string;
+}
+
 export interface CatalogLocation {
   city: string;
   neighborhood: string;
@@ -27,6 +39,7 @@ export interface CatalogItem {
   id: string;
   code: string;
   name: string;
+  catalogId: string;
   itemType: CatalogItemType;
   kind: CatalogItemKind;
   parentId?: string;
@@ -61,6 +74,7 @@ export interface CatalogQuery {
   status?: CatalogStatus;
   kind?: CatalogItemKind;
   itemType?: CatalogItemType;
+  catalogId?: string;
   search?: string;
 }
 
@@ -80,6 +94,7 @@ export interface PublicCatalogItem {
   id: string;
   code: string;
   name: string;
+  catalogId: string;
   itemType: CatalogItemType;
   kind: CatalogItemKind;
   parentId?: string;
