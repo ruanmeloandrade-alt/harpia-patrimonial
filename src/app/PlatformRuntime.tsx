@@ -214,10 +214,34 @@ export function PlatformRuntimeProvider({ children }: PropsWithChildren) {
         const waitForCrmPersistence = () => crmRepository.waitForLastSave?.() ?? Promise.resolve();
         const crmActions = createFront05CrmActionPort(crm, waitForCrmPersistence);
         const aiCommandPort = createAIAgentCommandPort(aiModelRuntime);
+        const salesBotMessagePort = {
+          send: async (input: { conversationId?: string; message: string }) => {
+            if (!inbox || !input.conversationId) {
+              return { status: 'rejected' as const, reason: 'Conversa da Inbox obrigatória para enviar mensagem do SalesBot.' };
+            }
+            try {
+              const sent = await inbox.sendMessage({
+                conversationId: input.conversationId,
+                type: 'text',
+                text: input.message,
+              });
+              return {
+                status: 'accepted' as const,
+                data: { externalMessageId: sent.externalMessageId ?? '' },
+              };
+            } catch (error) {
+              return {
+                status: 'rejected' as const,
+                reason: error instanceof Error ? error.message : 'Não foi possível enviar a mensagem do SalesBot pelo WhatsApp.',
+              };
+            }
+          },
+        };
         const salesBotCommandPort = createSalesBotCommandPort({
           ...unconfiguredSalesBotRuntimeDependencies,
           crm: crmActions,
           ai: aiCommandPort,
+          message: salesBotMessagePort,
           condition: salesBotConditionEvaluator,
           webhook: automationWebhook,
         });
