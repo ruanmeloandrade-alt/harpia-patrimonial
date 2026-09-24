@@ -12,9 +12,34 @@ export type PipelineTriggerEvent =
   | 'salesbot_failed'
   | 'ai_done'
   | 'tag_added'
-  | 'field_changed';
+  | 'field_changed'
+  | 'inbound_webhook';
 
-export type PipelineTriggerAction = 'move_stage' | 'salesbot' | 'ai';
+export type PipelineTriggerAction =
+  | 'move_stage'
+  | 'salesbot'
+  | 'ai'
+  | 'pause_ai'
+  | 'meta_ads'
+  | 'webhook_won'
+  | 'webhook_lost'
+  | 'webhook_remarketing'
+  | 'webhook_meeting'
+  | 'webhook_charge'
+  | 'webhook_qualified'
+  | 'internal_message'
+  | 'webhook'
+  | 'duplicate_lead'
+  | 'create_task'
+  | 'complete_tasks'
+  | 'delete_tasks'
+  | 'tags'
+  | 'assign_owner'
+  | 'update_field'
+  | 'delete_lead'
+  | 'generate_form'
+  | 'delete_files'
+  | 'link_product';
 
 export interface PipelineAutomationMeta {
   pipelineId: string;
@@ -24,6 +49,7 @@ export interface PipelineAutomationMeta {
   action: PipelineTriggerAction;
   targetStageId?: string;
   resourceId?: string;
+  actionConfig?: Record<string, string | number | boolean | null>;
 }
 
 export type AutomationActionType =
@@ -35,7 +61,17 @@ export type AutomationActionType =
   | 'add_tag'
   | 'remove_tag'
   | 'assign_owner'
-  | 'webhook';
+  | 'webhook'
+  | 'pause_ai'
+  | 'duplicate_lead'
+  | 'complete_tasks'
+  | 'delete_tasks'
+  | 'replace_tags'
+  | 'delete_lead'
+  | 'internal_message'
+  | 'generate_form'
+  | 'delete_files'
+  | 'link_product';
 
 export interface AutomationTrigger {
   event: CrmAutomationEventType;
