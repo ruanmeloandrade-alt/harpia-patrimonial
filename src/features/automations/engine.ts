@@ -84,6 +84,23 @@ function matchesPipelineDefinition(definition: AutomationDefinition, event: CrmA
 
   if (meta.pipelineId && pipelineId !== meta.pipelineId) return false;
 
+  const config = meta.actionConfig ?? {};
+  const sourceId = String(config.sourceId ?? '').trim();
+  if (sourceId) {
+    const eventSource = String(getPath(source, 'lead.source') ?? getPath(source, 'source') ?? '').trim();
+    if (eventSource !== sourceId) return false;
+  }
+
+  const conditionField = String(config.conditionField ?? '').trim();
+  if (conditionField) {
+    const actual = getPath(source, conditionField);
+    const operator = String(config.conditionOperator ?? 'equals');
+    const expected = String(config.conditionValue ?? '');
+    if (operator === 'equals' && String(actual ?? '') !== expected) return false;
+    if (operator === 'not_equals' && String(actual ?? '') === expected) return false;
+    if (operator === 'contains' && !String(actual ?? '').includes(expected)) return false;
+  }
+
   if (meta.event === 'enter') {
     return event.type === 'lead.stage_changed' && stageId === meta.stageId;
   }
