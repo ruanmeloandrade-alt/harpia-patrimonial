@@ -12,7 +12,6 @@ import { IntegratedPublicExperience } from './IntegratedPublicExperience';
 import { ingestPublicLead } from './integrations/publicLeadIngest';
 import {
   IntegratedAIAgents,
-  IntegratedAutomations,
   IntegratedCalendar,
   IntegratedCatalog,
   IntegratedCrm,
@@ -84,9 +83,7 @@ export function AppRouter() {
       permission = undefined;
       permissions = [PERMISSIONS.SALESBOT_VIEW, PERMISSIONS.SALESBOT_MANAGE];
     } else if (pathname === '/interno/automatize') {
-      page = <IntegratedAutomations />;
-      permission = undefined;
-      permissions = [PERMISSIONS.AUTOMATIONS_VIEW, PERMISSIONS.AUTOMATIONS_MANAGE];
+      return <Navigate to="/interno/crm" />;
     } else if (pathname === '/interno/agentes-ia') {
       page = <IntegratedAIAgents />;
       permission = undefined;
