@@ -64,7 +64,7 @@ export function LeadProductsPanel({
     try {
       setLoading(true);
       const [catalog, linked] = await Promise.all([
-        catalogRepository.list(),
+        catalogRepository.list({ includeDeleted: true }),
         listLeadProductAssociations(leadId),
       ]);
       setItems(catalog);
@@ -85,7 +85,7 @@ export function LeadProductsPanel({
     [associations],
   );
 
-  const availableItems = items.filter((item) => !associationMap.has(item.id));
+  const availableItems = items.filter((item) => !item.deletedAt && !associationMap.has(item.id));
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
