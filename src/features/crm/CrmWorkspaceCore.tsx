@@ -160,8 +160,7 @@ export function CrmWorkspace({ service: injectedService, assignees = [] }: CrmWo
   const duplicatePipeline = () => {
     if (!selectedPipeline) return;
     try {
-      const copy = service.createPipeline(`Cópia de ${selectedPipeline.name}`);
-      stages.forEach((stage) => service.createStage(copy.id, stage.name));
+      const copy = service.duplicatePipeline(selectedPipeline.id);
       setSelectedPipelineId(copy.id);
       setSelectedLeadId(undefined);
       refresh('Funil duplicado com a mesma estrutura de etapas. Leads não foram copiados.');
