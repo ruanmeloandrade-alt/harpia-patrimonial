@@ -50,6 +50,7 @@ function toPublicItem(item: RepositoryItem, allPublishedItems: RepositoryItem[])
     id: item.id,
     code: item.code,
     name: item.name,
+    catalogId: item.catalogId,
     itemType: item.itemType,
     kind: item.kind,
     parentId: item.parentId,
