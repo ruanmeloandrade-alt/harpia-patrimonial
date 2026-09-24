@@ -185,6 +185,112 @@ export type Database = {
         }
         Relationships: []
       }
+      calendar_items: {
+        Row: {
+          all_day: boolean
+          assignee_id: string | null
+          assignee_label: string | null
+          created_at: string
+          created_by: string | null
+          description: string
+          end_at: string
+          google_calendar_id: string | null
+          google_event_id: string | null
+          google_html_link: string | null
+          google_meet_url: string | null
+          google_sync_error: string | null
+          google_sync_requested_at: string | null
+          google_sync_status: string
+          guest_emails: string[]
+          id: string
+          kind: string
+          lead_id: string | null
+          location: string | null
+          source: string
+          start_at: string
+          status: string
+          sync_to_google: boolean
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          all_day?: boolean
+          assignee_id?: string | null
+          assignee_label?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string
+          end_at: string
+          google_calendar_id?: string | null
+          google_event_id?: string | null
+          google_html_link?: string | null
+          google_meet_url?: string | null
+          google_sync_error?: string | null
+          google_sync_requested_at?: string | null
+          google_sync_status?: string
+          guest_emails?: string[]
+          id?: string
+          kind?: string
+          lead_id?: string | null
+          location?: string | null
+          source?: string
+          start_at: string
+          status?: string
+          sync_to_google?: boolean
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          all_day?: boolean
+          assignee_id?: string | null
+          assignee_label?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string
+          end_at?: string
+          google_calendar_id?: string | null
+          google_event_id?: string | null
+          google_html_link?: string | null
+          google_meet_url?: string | null
+          google_sync_error?: string | null
+          google_sync_requested_at?: string | null
+          google_sync_status?: string
+          guest_emails?: string[]
+          id?: string
+          kind?: string
+          lead_id?: string | null
+          location?: string | null
+          source?: string
+          start_at?: string
+          status?: string
+          sync_to_google?: boolean
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "calendar_items_assignee_id_fkey"
+            columns: ["assignee_id"]
+            isOneToOne: false
+            referencedRelation: "internal_assignee_directory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "calendar_items_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "calendar_items_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "crm_leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       catalog_items: {
         Row: {
           address: string | null
