@@ -15,9 +15,9 @@ import {
 } from './domain';
 import { BrowserCrmRepository } from './repository';
 import { CrmIntegrityError, CrmService } from './service';
-import { AppLink } from '../../core/router/router';
 import type { CatalogRepository } from '../catalog/catalogRepository';
 import { LeadProductsPanel } from './LeadProductsPanel';
+import { AutomationsWorkspace } from '../automations/AutomationsWorkspace';
 import { formatRuntimeDateTime } from '../settings/runtime-preferences';
 import styles from './crm.module.css';
 
@@ -59,12 +59,16 @@ export function CrmWorkspace({
     () => injectedService ?? new CrmService(new BrowserCrmRepository()),
     [injectedService],
   );
-  const [state, setState] = useState<CrmState>(() => service.snapshot());
+  const initialSnapshot = useMemo(() => service.snapshot(), [service]);
+  const [state, setState] = useState<CrmState>(() => initialSnapshot);
   const [selectedPipelineId, setSelectedPipelineId] = useState<string | undefined>(
-    () => service.snapshot().pipelines.find((pipeline) => pipeline.active)?.id,
+    () => initialSnapshot.pipelines.find((pipeline) => pipeline.active)?.id ?? initialSnapshot.pipelines[0]?.id,
   );
   const [selectedLeadId, setSelectedLeadId] = useState<string | undefined>();
   const [feedback, setFeedback] = useState('');
+  const [automationOpen, setAutomationOpen] = useState(false);
+  const [pipelineModalOpen, setPipelineModalOpen] = useState(false);
+  const [leadModalOpen, setLeadModalOpen] = useState(false);
 
   const refresh = (message?: string) => {
     const snapshot = service.snapshot();
@@ -72,7 +76,7 @@ export function CrmWorkspace({
     if (message) setFeedback(message);
 
     if (selectedPipelineId && !snapshot.pipelines.some((pipeline) => pipeline.id === selectedPipelineId)) {
-      setSelectedPipelineId(snapshot.pipelines[0]?.id);
+      setSelectedPipelineId(snapshot.pipelines.find((pipeline) => pipeline.active)?.id ?? snapshot.pipelines[0]?.id);
     }
     if (selectedLeadId && !snapshot.leads.some((lead) => lead.id === selectedLeadId)) {
       setSelectedLeadId(undefined);
@@ -91,9 +95,6 @@ export function CrmWorkspace({
   const selectedPipeline = state.pipelines.find((pipeline) => pipeline.id === selectedPipelineId);
   const stages = selectedPipeline ? service.getStages(selectedPipeline.id) : [];
   const selectedLead = state.leads.find((lead) => lead.id === selectedLeadId);
-  const selectedPipelineLeads = selectedPipeline
-    ? state.leads.filter((lead) => lead.pipelineId === selectedPipeline.id)
-    : [];
 
   const handleCreatePipeline = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -102,8 +103,10 @@ export function CrmWorkspace({
     try {
       const pipeline = service.createPipeline(name);
       setSelectedPipelineId(pipeline.id);
+      setSelectedLeadId(undefined);
+      setPipelineModalOpen(false);
       event.currentTarget.reset();
-      refresh('Funil criado. Agora adicione as etapas conforme a operação real.');
+      refresh('Funil criado.');
     } catch (error) {
       setFeedback(error instanceof Error ? error.message : 'Não foi possível criar o funil.');
     }
@@ -113,8 +116,13 @@ export function CrmWorkspace({
     event.preventDefault();
     if (!selectedPipeline) return;
     const form = new FormData(event.currentTarget);
-    run(() => service.createStage(selectedPipeline.id, String(form.get('stageName') ?? '')), 'Etapa criada.');
-    event.currentTarget.reset();
+    try {
+      service.createStage(selectedPipeline.id, String(form.get('stageName') ?? ''));
+      event.currentTarget.reset();
+      refresh('Etapa criada.');
+    } catch (error) {
+      setFeedback(error instanceof Error ? error.message : 'Não foi possível criar a etapa.');
+    }
   };
 
   const handleCreateLead = (event: FormEvent<HTMLFormElement>) => {
@@ -142,6 +150,7 @@ export function CrmWorkspace({
           : undefined,
       });
       setSelectedLeadId(lead.id);
+      setLeadModalOpen(false);
       event.currentTarget.reset();
       refresh('Lead criado sem disparar mensagem automática.');
     } catch (error) {
@@ -179,6 +188,19 @@ export function CrmWorkspace({
     }
   };
 
+  const deletePipeline = () => {
+    if (!selectedPipeline) return;
+    if (!window.confirm(`Excluir o funil “${selectedPipeline.name}”?`)) return;
+    try {
+      service.removePipeline(selectedPipeline.id);
+      setSelectedLeadId(undefined);
+      setAutomationOpen(false);
+      refresh('Funil excluído.');
+    } catch (error) {
+      setFeedback(error instanceof Error ? error.message : 'Não foi possível excluir o funil.');
+    }
+  };
+
   const renameStage = (stage: PipelineStage) => {
     const name = window.prompt('Novo nome da etapa', stage.name);
     if (name === null) return;
@@ -201,138 +223,82 @@ export function CrmWorkspace({
   };
 
   return (
-    <section className={styles.workspace} aria-label="CRM Hárpia">
-      <header className={styles.header}>
-        <div>
-          <span className={styles.kicker}>VENDAS</span>
-          <h1>CRM</h1>
-          <p>Funis, leads, produtos, tarefas e automações em uma visão operacional.</p>
-        </div>
-        <div className={styles.headerBadge}>
-          <strong>{state.leads.length}</strong>
-          <span>leads reais</span>
-        </div>
-      </header>
+    <section className={styles.workspace} aria-label="Funis de vendas Hárpia">
+      <div className={styles.crmPro}>
+        <header className={styles.crmTopbar}>
+          <div className={styles.crmTitlebox}>
+            <h1>Funis de vendas</h1>
+            <p>Crie, edite, duplique e automatize os funis da operação.</p>
+          </div>
+          <div className={styles.crmActions}>
+            <select
+              aria-label="Selecionar funil"
+              value={selectedPipelineId ?? ''}
+              disabled={state.pipelines.length === 0}
+              onChange={(event) => {
+                setSelectedPipelineId(event.target.value || undefined);
+                setSelectedLeadId(undefined);
+              }}
+            >
+              {state.pipelines.length === 0
+                ? <option value="">Nenhum funil</option>
+                : state.pipelines.map((pipeline) => <option key={pipeline.id} value={pipeline.id}>{pipeline.name}</option>)}
+            </select>
+            <button className={styles.primaryAction} type="button" disabled={!canManage || !selectedPipeline} onClick={() => setLeadModalOpen(true)}>+ Novo lead</button>
+            <button type="button" disabled={!canManage} onClick={() => setPipelineModalOpen(true)}>+ Novo funil</button>
+            <button
+              type="button"
+              className={automationOpen ? styles.automatizeActive : undefined}
+              disabled={!selectedPipeline}
+              onClick={() => setAutomationOpen((open) => !open)}
+            >
+              Automatize
+            </button>
+          </div>
+        </header>
 
-      {feedback && (
-        <div className={styles.feedback} role="status">
-          {feedback}
-          <button type="button" onClick={() => setFeedback('')} aria-label="Fechar aviso">×</button>
-        </div>
-      )}
+        {feedback && (
+          <div className={styles.feedback} role="status">
+            {feedback}
+            <button type="button" onClick={() => setFeedback('')} aria-label="Fechar aviso">×</button>
+          </div>
+        )}
 
-      <div className={styles.pipelineBar}>
-        <div className={styles.pipelineTabs}>
+        <div className={styles.crmPipelineTabs}>
           {state.pipelines.length === 0 ? (
             <span className={styles.muted}>Nenhum funil configurado.</span>
           ) : (
-            state.pipelines.map((pipeline) => (
-              <button
-                key={pipeline.id}
-                type="button"
-                className={pipeline.id === selectedPipelineId ? styles.activeTab : styles.tab}
-                onClick={() => {
-                  setSelectedPipelineId(pipeline.id);
-                  setSelectedLeadId(undefined);
-                }}
-              >
-                {pipeline.name}
-                {!pipeline.active && <small>pausado</small>}
-              </button>
-            ))
+            state.pipelines.map((pipeline) => {
+              const count = state.leads.filter((lead) => lead.pipelineId === pipeline.id).length;
+              return (
+                <button
+                  key={pipeline.id}
+                  type="button"
+                  className={pipeline.id === selectedPipelineId ? styles.crmPipelineTabActive : styles.crmPipelineTab}
+                  onClick={() => {
+                    setSelectedPipelineId(pipeline.id);
+                    setSelectedLeadId(undefined);
+                  }}
+                >
+                  {pipeline.name} · {count}
+                </button>
+              );
+            })
           )}
         </div>
 
-        <details className={styles.pipelineCreator}>
-          <summary>+ Novo funil</summary>
-          <form className={styles.inlineForm} onSubmit={handleCreatePipeline}>
-            <input name="pipelineName" required placeholder="Nome do novo funil" aria-label="Nome do novo funil" />
-            <button type="submit">Criar</button>
-          </form>
-        </details>
-      </div>
-
-      {selectedPipeline ? (
-        <>
-          <div className={styles.toolbar}>
-            <div className={styles.toolbarTitle}>
-              <div>
-                <strong>{selectedPipeline.name}</strong>
-                <span className={selectedPipeline.active ? styles.statusActive : styles.statusPaused}>
-                  {selectedPipeline.active ? 'Ativo' : 'Desativado'}
-                </span>
-              </div>
-              <div className={styles.pipelineSummary} aria-label="Resumo do funil">
-                <span><strong>{stages.length}</strong> etapas</span>
-                <span><strong>{selectedPipelineLeads.length}</strong> leads</span>
-              </div>
-            </div>
-            <div className={styles.toolbarActions}>
-              <AppLink className={styles.automateLink} href="/interno/automatize">Automatize</AppLink>
-              <button type="button" onClick={duplicatePipeline}>Duplicar funil</button>
-              <button type="button" onClick={renamePipeline}>Renomear</button>
-              <button
-                type="button"
-                onClick={() => run(
-                  () => service.setPipelineActive(selectedPipeline.id, !selectedPipeline.active),
-                  selectedPipeline.active ? 'Funil desativado.' : 'Funil ativado.',
-                )}
-              >
-                {selectedPipeline.active ? 'Desativar' : 'Ativar'}
-              </button>
-            </div>
-          </div>
-
-          <div className={styles.creationGrid}>
-            <details className={styles.quickCreate}>
-              <summary>+ Nova etapa</summary>
-              <form className={styles.cardForm} onSubmit={handleCreateStage}>
-                <div>
-                  <strong>Adicionar etapa</strong>
-                  <span>Inclua somente as etapas usadas na operação real.</span>
-                </div>
-                <input name="stageName" required placeholder="Ex.: Qualificação" aria-label="Nome da etapa" />
-                <button type="submit">Adicionar etapa</button>
-              </form>
-            </details>
-
-            <details className={`${styles.quickCreate} ${styles.quickCreateLead}`}>
-              <summary>+ Novo lead</summary>
-              <form className={styles.cardForm} onSubmit={handleCreateLead}>
-                <div>
-                  <strong>Novo lead</strong>
-                  <span>Cadastre o contato e já posicione no funil correto.</span>
-                </div>
-                <div className={styles.formFields}>
-                  <input name="name" required placeholder="Nome" />
-                  <input name="email" type="email" placeholder="E-mail" />
-                  <input name="whatsapp" placeholder="WhatsApp" />
-                  <input name="source" placeholder="Origem" />
-                  <select name="stageId" defaultValue="">
-                    <option value="">Sem etapa</option>
-                    {stages.map((stage) => <option key={stage.id} value={stage.id}>{stage.name}</option>)}
-                  </select>
-                  <select name="interestType" defaultValue="">
-                    <option value="">Tipo de interesse</option>
-                    {interestTypes.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
-                  </select>
-                  <input name="interestLabel" placeholder="Imóvel/produto/serviço" />
-                  <input name="interestReferenceId" placeholder="ID/referência (opcional)" />
-                </div>
-                <button type="submit">Criar lead</button>
-              </form>
-            </details>
-          </div>
-
-          {stages.length === 0 ? (
-            <EmptyState
-              title="Crie a primeira etapa do funil"
-              description="O CRM começa vazio de propósito. Adicione somente etapas que façam sentido para a operação real."
-            />
-          ) : (
+        {selectedPipeline ? (
+          <>
             <div className={styles.kanban}>
-              {stages.map((stage) => {
-                const leads = state.leads.filter((lead) => lead.stageId === stage.id);
+              {stages.length === 0 ? (
+                <div className={styles.crmEmptyBoard}>
+                  <div>
+                    <strong>Este funil ainda não tem etapas</strong>
+                    <span>Abra Automatize e use “+ Etapa” para montar o processo comercial.</span>
+                  </div>
+                </div>
+              ) : stages.map((stage) => {
+                const leads = state.leads.filter((lead) => lead.pipelineId === selectedPipeline.id && lead.stageId === stage.id);
                 return (
                   <div
                     className={styles.column}
@@ -343,18 +309,20 @@ export function CrmWorkspace({
                     <div className={styles.columnHeader}>
                       <div>
                         <strong>{stage.name}</strong>
-                        <span>{leads.length}</span>
+                        <span>{leads.length} lead{leads.length === 1 ? '' : 's'}</span>
                       </div>
-                      <div className={styles.stageActions}>
-                        <button type="button" onClick={() => moveStage(stage, -1)} aria-label="Mover etapa para esquerda">←</button>
-                        <button type="button" onClick={() => moveStage(stage, 1)} aria-label="Mover etapa para direita">→</button>
-                        <button type="button" onClick={() => renameStage(stage)} aria-label="Renomear etapa">✎</button>
-                        <button type="button" onClick={() => removeStage(stage)} aria-label="Remover etapa">×</button>
-                      </div>
+                      {canManage ? (
+                        <div className={styles.stageActions}>
+                          <button type="button" onClick={() => renameStage(stage)} title="Renomear etapa">✎</button>
+                          <button type="button" onClick={() => moveStage(stage, -1)} title="Mover para esquerda">←</button>
+                          <button type="button" onClick={() => moveStage(stage, 1)} title="Mover para direita">→</button>
+                          <button type="button" onClick={() => removeStage(stage)} title="Excluir etapa">×</button>
+                        </div>
+                      ) : null}
                     </div>
                     <div className={styles.leadList}>
                       {leads.length === 0 ? (
-                        <div className={styles.columnEmpty}>Sem leads nesta etapa.</div>
+                        <div className={styles.columnEmpty}>Arraste um lead para esta etapa ou crie um novo.</div>
                       ) : (
                         leads.map((lead) => (
                           <LeadCard
@@ -372,14 +340,77 @@ export function CrmWorkspace({
                 );
               })}
             </div>
-          )}
-        </>
-      ) : (
-        <EmptyState
-          title="CRM pronto para configuração"
-          description="Crie um funil para começar. Nenhum funil ou lead fictício foi inserido."
-        />
-      )}
+
+            {automationOpen ? (
+              <section className={styles.crmAutomation}>
+                <div className={styles.crmAutomationHead}>
+                  <div>
+                    <h2>Automatize</h2>
+                    <p>Adicione gatilhos vinculados ao funil e às etapas.</p>
+                  </div>
+                  <button type="button" onClick={() => setAutomationOpen(false)}>Fechar</button>
+                </div>
+
+                {canManage ? (
+                  <div className={styles.crmAutomationTools}>
+                    <button type="button" onClick={duplicatePipeline}>Duplicar funil</button>
+                    <button type="button" onClick={renamePipeline}>Editar funil</button>
+                    <button type="button" className={styles.dangerAction} onClick={deletePipeline}>Excluir funil</button>
+                    <form onSubmit={handleCreateStage}>
+                      <input name="stageName" required placeholder="Nome da nova etapa" />
+                      <button type="submit">+ Etapa</button>
+                    </form>
+                  </div>
+                ) : null}
+
+                <div className={styles.automationBody}>
+                  <AutomationsWorkspace canManage={canManage} />
+                </div>
+              </section>
+            ) : null}
+          </>
+        ) : (
+          <div className={styles.crmEmptyBoard}>
+            <div>
+              <strong>Crie um funil para começar</strong>
+              <span>Depois adicione etapas e leads reais.</span>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {pipelineModalOpen ? (
+        <div className={styles.crmModalBackdrop} onMouseDown={(event) => {
+          if (event.target === event.currentTarget) setPipelineModalOpen(false);
+        }}>
+          <form className={styles.crmModalCard} onSubmit={handleCreatePipeline}>
+            <div className={styles.crmModalHead}><div><small>FUNIL</small><h2>Novo funil</h2></div><button type="button" onClick={() => setPipelineModalOpen(false)}>×</button></div>
+            <label>Nome<input name="pipelineName" required autoFocus placeholder="Nome do novo funil" /></label>
+            <div className={styles.crmModalActions}><button type="button" onClick={() => setPipelineModalOpen(false)}>Cancelar</button><button type="submit">Salvar funil</button></div>
+          </form>
+        </div>
+      ) : null}
+
+      {leadModalOpen ? (
+        <div className={styles.crmModalBackdrop} onMouseDown={(event) => {
+          if (event.target === event.currentTarget) setLeadModalOpen(false);
+        }}>
+          <form className={`${styles.crmModalCard} ${styles.crmLeadModal}`} onSubmit={handleCreateLead}>
+            <div className={styles.crmModalHead}><div><small>LEAD</small><h2>Novo lead</h2></div><button type="button" onClick={() => setLeadModalOpen(false)}>×</button></div>
+            <div className={styles.crmLeadForm}>
+              <label>Nome<input name="name" required autoFocus placeholder="Nome do contato" /></label>
+              <label>WhatsApp<input name="whatsapp" placeholder="(00) 00000-0000" /></label>
+              <label>E-mail<input name="email" type="email" placeholder="email@cliente.com" /></label>
+              <label>Origem<input name="source" placeholder="Instagram, indicação, site..." /></label>
+              <label>Etapa<select name="stageId" defaultValue={stages[0]?.id ?? ''}><option value="">Sem etapa</option>{stages.map((stage) => <option key={stage.id} value={stage.id}>{stage.name}</option>)}</select></label>
+              <label>Tipo de interesse<select name="interestType" defaultValue=""><option value="">Não informado</option>{interestTypes.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></label>
+              <label>Interesse<input name="interestLabel" placeholder="Imóvel, produto ou serviço" /></label>
+              <label>Referência<input name="interestReferenceId" placeholder="ID opcional" /></label>
+            </div>
+            <div className={styles.crmModalActions}><button type="button" onClick={() => setLeadModalOpen(false)}>Cancelar</button><button type="submit">Salvar lead</button></div>
+          </form>
+        </div>
+      ) : null}
 
       {selectedLead && (
         <LeadDetailsPanel
