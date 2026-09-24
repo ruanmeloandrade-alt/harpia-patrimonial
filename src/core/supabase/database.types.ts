@@ -14,6 +14,91 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_brain_config: {
+        Row: {
+          company_context: string
+          id: boolean
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          company_context?: string
+          id?: boolean
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          company_context?: string
+          id?: boolean
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_brain_config_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_brain_sources: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          error_message: string | null
+          id: string
+          mime_type: string | null
+          size_bytes: number | null
+          source_type: string
+          status: string
+          storage_bucket: string | null
+          storage_path: string | null
+          text_content: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          error_message?: string | null
+          id?: string
+          mime_type?: string | null
+          size_bytes?: number | null
+          source_type: string
+          status?: string
+          storage_bucket?: string | null
+          storage_path?: string | null
+          text_content?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          error_message?: string | null
+          id?: string
+          mime_type?: string | null
+          size_bytes?: number | null
+          source_type?: string
+          status?: string
+          storage_bucket?: string | null
+          storage_path?: string | null
+          text_content?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_brain_sources_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       automation_action_runs: {
         Row: {
           action_id: string
@@ -103,16 +188,20 @@ export type Database = {
       catalog_items: {
         Row: {
           address: string | null
-          city: string
+          catalog_id: string | null
+          city: string | null
           code: string
           condominium: string | null
           created_at: string
           deleted_at: string | null
           description: string
           developer: string | null
+          discount_type: string | null
+          discount_value: number | null
           features: string[]
           id: string
           is_launch: boolean
+          item_type: string | null
           kind: Database["public"]["Enums"]["catalog_item_kind"]
           lifestyle_tags: string[]
           media: Json
@@ -124,21 +213,26 @@ export type Database = {
           purpose: Database["public"]["Enums"]["catalog_purpose"]
           sold_at: string | null
           status: Database["public"]["Enums"]["catalog_status"]
+          tags: string[]
           typology: string | null
           updated_at: string
         }
         Insert: {
           address?: string | null
-          city: string
+          catalog_id?: string | null
+          city?: string | null
           code: string
           condominium?: string | null
           created_at?: string
           deleted_at?: string | null
           description?: string
           developer?: string | null
+          discount_type?: string | null
+          discount_value?: number | null
           features?: string[]
           id?: string
           is_launch?: boolean
+          item_type?: string | null
           kind: Database["public"]["Enums"]["catalog_item_kind"]
           lifestyle_tags?: string[]
           media?: Json
@@ -150,21 +244,26 @@ export type Database = {
           purpose: Database["public"]["Enums"]["catalog_purpose"]
           sold_at?: string | null
           status?: Database["public"]["Enums"]["catalog_status"]
+          tags?: string[]
           typology?: string | null
           updated_at?: string
         }
         Update: {
           address?: string | null
-          city?: string
+          catalog_id?: string | null
+          city?: string | null
           code?: string
           condominium?: string | null
           created_at?: string
           deleted_at?: string | null
           description?: string
           developer?: string | null
+          discount_type?: string | null
+          discount_value?: number | null
           features?: string[]
           id?: string
           is_launch?: boolean
+          item_type?: string | null
           kind?: Database["public"]["Enums"]["catalog_item_kind"]
           lifestyle_tags?: string[]
           media?: Json
@@ -176,10 +275,18 @@ export type Database = {
           purpose?: Database["public"]["Enums"]["catalog_purpose"]
           sold_at?: string | null
           status?: Database["public"]["Enums"]["catalog_status"]
+          tags?: string[]
           typology?: string | null
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "catalog_items_catalog_id_fkey"
+            columns: ["catalog_id"]
+            isOneToOne: false
+            referencedRelation: "product_catalogs"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "catalog_items_parent_id_fkey"
             columns: ["parent_id"]
@@ -319,6 +426,60 @@ export type Database = {
           },
           {
             foreignKeyName: "crm_lead_custom_field_values_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "crm_leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      crm_lead_products: {
+        Row: {
+          catalog_item_id: string
+          created_at: string
+          discount_type: string | null
+          discount_value: number | null
+          lead_id: string
+          notes: string | null
+          quantity: number
+          relationship: string
+          unit_price: number | null
+          updated_at: string
+        }
+        Insert: {
+          catalog_item_id: string
+          created_at?: string
+          discount_type?: string | null
+          discount_value?: number | null
+          lead_id: string
+          notes?: string | null
+          quantity?: number
+          relationship?: string
+          unit_price?: number | null
+          updated_at?: string
+        }
+        Update: {
+          catalog_item_id?: string
+          created_at?: string
+          discount_type?: string | null
+          discount_value?: number | null
+          lead_id?: string
+          notes?: string | null
+          quantity?: number
+          relationship?: string
+          unit_price?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_lead_products_catalog_item_id_fkey"
+            columns: ["catalog_item_id"]
+            isOneToOne: false
+            referencedRelation: "catalog_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_lead_products_lead_id_fkey"
             columns: ["lead_id"]
             isOneToOne: false
             referencedRelation: "crm_leads"
@@ -651,6 +812,7 @@ export type Database = {
           metadata: Json
           phone_number: string | null
           provider: string
+          responsible_user_id: string | null
           status: string
           updated_at: string
         }
@@ -669,6 +831,7 @@ export type Database = {
           metadata?: Json
           phone_number?: string | null
           provider: string
+          responsible_user_id?: string | null
           status?: string
           updated_at?: string
         }
@@ -687,6 +850,7 @@ export type Database = {
           metadata?: Json
           phone_number?: string | null
           provider?: string
+          responsible_user_id?: string | null
           status?: string
           updated_at?: string
         }
@@ -696,6 +860,13 @@ export type Database = {
             columns: ["connection_id"]
             isOneToOne: false
             referencedRelation: "integration_connections"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inbox_channel_accounts_responsible_user_id_fkey"
+            columns: ["responsible_user_id"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -1191,6 +1362,42 @@ export type Database = {
           },
         ]
       }
+      product_catalogs: {
+        Row: {
+          created_at: string
+          deleted_at: string | null
+          description: string | null
+          id: string
+          is_active: boolean
+          name: string
+          sort_order: number
+          tags: string[]
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          deleted_at?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          sort_order?: number
+          tags?: string[]
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          deleted_at?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          sort_order?: number
+          tags?: string[]
+          updated_at?: string
+        }
+        Relationships: []
+      }
       user_group_memberships: {
         Row: {
           created_at: string
@@ -1217,6 +1424,50 @@ export type Database = {
           },
           {
             foreignKeyName: "user_group_memberships_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_notifications: {
+        Row: {
+          body: string
+          created_at: string
+          href: string | null
+          id: string
+          kind: string
+          payload: Json
+          read_at: string | null
+          title: string
+          user_id: string
+        }
+        Insert: {
+          body?: string
+          created_at?: string
+          href?: string | null
+          id?: string
+          kind: string
+          payload?: Json
+          read_at?: string | null
+          title: string
+          user_id: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          href?: string | null
+          id?: string
+          kind?: string
+          payload?: Json
+          read_at?: string | null
+          title?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_notifications_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "user_profiles"
@@ -1255,6 +1506,59 @@ export type Database = {
             foreignKeyName: "user_permission_overrides_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_preferences: {
+        Row: {
+          browser_notifications: boolean
+          compact_mode: boolean
+          notify_automation_failure: boolean
+          notify_integration_failure: boolean
+          notify_new_lead: boolean
+          notify_new_message: boolean
+          notify_task_due: boolean
+          popup_notifications: boolean
+          sound_notifications: boolean
+          theme: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          browser_notifications?: boolean
+          compact_mode?: boolean
+          notify_automation_failure?: boolean
+          notify_integration_failure?: boolean
+          notify_new_lead?: boolean
+          notify_new_message?: boolean
+          notify_task_due?: boolean
+          popup_notifications?: boolean
+          sound_notifications?: boolean
+          theme?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          browser_notifications?: boolean
+          compact_mode?: boolean
+          notify_automation_failure?: boolean
+          notify_integration_failure?: boolean
+          notify_new_lead?: boolean
+          notify_new_message?: boolean
+          notify_task_due?: boolean
+          popup_notifications?: boolean
+          sound_notifications?: boolean
+          theme?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_preferences_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
             referencedRelation: "user_profiles"
             referencedColumns: ["id"]
           },
@@ -1385,6 +1689,7 @@ export type Database = {
       admin_ingest_whatsapp_message: {
         Args: {
           p_attachment?: Json
+          p_channel_account_id?: string
           p_display_name: string
           p_external_message_id: string
           p_metadata?: Json
@@ -1405,6 +1710,14 @@ export type Database = {
         Args: { p_profile_id: string; p_secret_ref: string }
         Returns: string
       }
+      admin_resolve_meta_app_config: {
+        Args: never
+        Returns: {
+          app_id: string
+          app_secret: string
+          webhook_verify_token: string
+        }[]
+      }
       admin_resolve_meta_page_token: {
         Args: { p_page_id: string }
         Returns: string
@@ -1416,6 +1729,10 @@ export type Database = {
       admin_store_ai_credential: {
         Args: { p_api_key: string; p_profile_id: string }
         Returns: string
+      }
+      admin_store_meta_app_config: {
+        Args: { p_app_id: string; p_app_secret: string }
+        Returns: Json
       }
       admin_store_meta_page_token: {
         Args: {
@@ -1455,6 +1772,7 @@ export type Database = {
           id: string
         }[]
       }
+      normalize_whatsapp_number: { Args: { p_value: string }; Returns: string }
       save_f05_shared_storage: {
         Args: {
           p_expected_revision: number
