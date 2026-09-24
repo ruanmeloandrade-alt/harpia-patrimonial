@@ -176,9 +176,9 @@ function draftFromProductForm(
 }
 
 const statusLabel: Record<CatalogItem['status'], string> = {
-  draft: 'Rascunho',
-  published: 'Ativo',
-  paused: 'Pausado',
+  draft: 'Não visível',
+  published: 'Visível no site',
+  paused: 'Não visível',
   sold: 'Encerrado',
 };
 
