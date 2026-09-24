@@ -5,6 +5,8 @@ const SIGNED_URL_SECONDS = 60 * 60 * 24 * 7;
 
 export interface UploadedInboxMedia {
   path: string;
+  storageBucket: string;
+  storagePath: string;
   url: string;
   name: string;
   mimeType: string;
@@ -40,7 +42,7 @@ export async function uploadInboxMedia(file: File): Promise<UploadedInboxMedia> 
 
   const supabase = requireSupabase() as any;
   const extension = extensionFrom(file);
-  const path = `messages/${new Date().getUTCFullYear()}/${randomId()}.${extension}`;
+  const path = `outbound/${new Date().getUTCFullYear()}/${randomId()}.${extension}`;
   const bucket = supabase.storage.from(INBOX_MEDIA_BUCKET);
 
   const uploaded = await bucket.upload(path, file, {
@@ -61,6 +63,8 @@ export async function uploadInboxMedia(file: File): Promise<UploadedInboxMedia> 
 
   return {
     path: uploaded.data.path,
+    storageBucket: INBOX_MEDIA_BUCKET,
+    storagePath: uploaded.data.path,
     url: signed.data.signedUrl,
     name: file.name,
     mimeType: file.type || 'application/octet-stream',
