@@ -94,7 +94,14 @@ export class LocalCatalogRepository implements CatalogRepository {
     if (!raw) return [];
     try {
       const parsed = JSON.parse(raw);
-      return Array.isArray(parsed) ? parsed : [];
+      if (!Array.isArray(parsed)) return [];
+      return parsed.map((item) => ({
+        ...item,
+        itemType: item.itemType ?? 'property',
+        discountType: item.discountType ?? undefined,
+        discountValue: item.discountValue ?? undefined,
+        tags: Array.isArray(item.tags) ? item.tags : [],
+      })) as CatalogItem[];
     } catch {
       return [];
     }
@@ -125,8 +132,13 @@ export class LocalCatalogRepository implements CatalogRepository {
 
     if (!code) throw new Error('Informe um código para o item.');
     if (!name) throw new Error('Informe um nome para o item.');
-    if (!city) throw new Error('Informe a cidade do item.');
+    if (input.itemType === 'property' && !city) throw new Error('Informe a cidade do imóvel.');
     if (input.price !== null && input.price < 0) throw new Error('O preço não pode ser negativo.');
+    if (input.discountValue !== undefined && input.discountValue < 0) throw new Error('O desconto não pode ser negativo.');
+    if (input.discountType === 'percentage' && (input.discountValue ?? 0) > 100) throw new Error('O desconto percentual não pode ultrapassar 100%.');
+    if ((input.discountType && input.discountValue === undefined) || (!input.discountType && input.discountValue !== undefined)) {
+      throw new Error('Informe o tipo e o valor do desconto.');
+    }
     assertCatalogMedia(input.media);
 
     const codeExists = items.some(
@@ -134,7 +146,7 @@ export class LocalCatalogRepository implements CatalogRepository {
     );
     if (codeExists) throw new Error('Já existe um item ativo com este código.');
 
-    if (input.kind === 'unit') {
+    if (input.itemType === 'property' && input.kind === 'unit') {
       if (!input.parentId) throw new Error('Selecione o empreendimento desta unidade.');
       if (!normalizeText(input.typology)) throw new Error('Informe a tipologia desta unidade.');
       const parent = items.find(
@@ -153,6 +165,7 @@ export class LocalCatalogRepository implements CatalogRepository {
       .filter((item) => query.includeDeleted || !item.deletedAt)
       .filter((item) => !query.status || item.status === query.status)
       .filter((item) => !query.kind || item.kind === query.kind)
+      .filter((item) => !query.itemType || item.itemType === query.itemType)
       .filter((item) => {
         if (!search) return true;
         const haystack = [
@@ -163,6 +176,7 @@ export class LocalCatalogRepository implements CatalogRepository {
           item.location.neighborhood,
           item.location.condominium,
           item.developer,
+          ...item.tags,
         ]
           .filter(Boolean)
           .join(' ')
@@ -181,8 +195,17 @@ export class LocalCatalogRepository implements CatalogRepository {
   async create(input: CatalogItemDraft) {
     const normalized: CatalogItemDraft = {
       ...clone(input),
-      parentId: input.kind === 'unit' ? input.parentId : undefined,
-      typology: input.kind === 'unit' ? normalizeText(input.typology) || undefined : undefined,
+      itemType: input.itemType ?? 'property',
+      tags: Array.isArray(input.tags) ? input.tags : [],
+      kind: input.itemType === 'property' ? input.kind : 'standalone',
+      purpose: input.itemType === 'property' ? input.purpose : 'sale',
+      location: input.itemType === 'property' ? input.location : { city: '', neighborhood: '' },
+      parentId: input.itemType === 'property' && input.kind === 'unit' ? input.parentId : undefined,
+      typology: input.itemType === 'property' && input.kind === 'unit' ? normalizeText(input.typology) || undefined : undefined,
+      isLaunch: input.itemType === 'property' ? input.isLaunch : false,
+      features: input.itemType === 'property' ? input.features : [],
+      lifestyleTags: input.itemType === 'property' ? input.lifestyleTags : [],
+      developer: input.itemType === 'property' ? input.developer : undefined,
     };
     const items = this.readAll();
     this.validateDraft(normalized, items);
@@ -209,6 +232,7 @@ export class LocalCatalogRepository implements CatalogRepository {
     const merged: CatalogItemDraft = {
       code: input.code ?? current.code,
       name: input.name ?? current.name,
+      itemType: input.itemType ?? current.itemType,
       kind: input.kind ?? current.kind,
       parentId: input.parentId ?? current.parentId,
       typology: input.typology ?? current.typology,
@@ -216,6 +240,9 @@ export class LocalCatalogRepository implements CatalogRepository {
       description: input.description ?? current.description,
       location: input.location ?? current.location,
       price: input.price === undefined ? current.price : input.price,
+      discountType: input.discountType === undefined ? current.discountType : input.discountType,
+      discountValue: input.discountValue === undefined ? current.discountValue : input.discountValue,
+      tags: input.tags ?? current.tags,
       isLaunch: input.isLaunch ?? current.isLaunch,
       features: input.features ?? current.features,
       lifestyleTags: input.lifestyleTags ?? current.lifestyleTags,
@@ -223,11 +250,21 @@ export class LocalCatalogRepository implements CatalogRepository {
       media: input.media ?? current.media,
     };
 
-    if (current.kind === 'development' && merged.kind !== 'development' && hasActiveUnits(items, id)) {
+    if (current.itemType === 'property' && current.kind === 'development' && (merged.itemType !== 'property' || merged.kind !== 'development') && hasActiveUnits(items, id)) {
       throw new Error('Este empreendimento possui unidades ativas. Remova ou realoque as unidades antes de alterar o tipo.');
     }
 
-    if (merged.kind !== 'unit') {
+    if (merged.itemType !== 'property') {
+      merged.kind = 'standalone';
+      merged.parentId = undefined;
+      merged.typology = undefined;
+      merged.purpose = 'sale';
+      merged.location = { city: '', neighborhood: '' };
+      merged.isLaunch = false;
+      merged.features = [];
+      merged.lifestyleTags = [];
+      merged.developer = undefined;
+    } else if (merged.kind !== 'unit') {
       merged.parentId = undefined;
       merged.typology = undefined;
     } else {
@@ -304,7 +341,7 @@ export class LocalCatalogRepository implements CatalogRepository {
       ...clone(source),
       id: makeId(),
       code,
-      name: `${source.name} — cópia`,
+      name: `${source.name} - cópia`,
       status: 'draft',
       createdAt: timestamp,
       updatedAt: timestamp,
