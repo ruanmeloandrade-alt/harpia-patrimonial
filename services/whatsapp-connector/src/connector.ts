@@ -578,13 +578,14 @@ export class WhatsAppConnector {
         logger.warn('Evento messages.upsert com requestId descartado.');
         return;
       }
-      if (event.type !== 'notify') return;
+      if (event.type !== 'notify' && event.type !== 'append') return;
 
       this.lastProtocolEventAt = new Date().toISOString();
+      const eventSource = event.type === 'append' ? 'messages.upsert.append' : 'messages.upsert.notify';
 
       for (const message of event.messages) {
         try {
-          await this.handleIncomingMessage(socket, message);
+          await this.handleIncomingMessage(socket, message, eventSource);
         } catch (error) {
           const externalId = message.key.id || undefined;
           logger.error({ error, externalId }, 'Falha ao ingerir mensagem recebida.');
