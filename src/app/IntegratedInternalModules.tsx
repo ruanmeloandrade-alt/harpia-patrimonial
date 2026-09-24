@@ -137,6 +137,7 @@ export function IntegratedSalesBot() {
       <SalesBotWorkspace
         canManage={auth.hasPermission(PERMISSIONS.SALESBOT_MANAGE)}
         crmState={runtime.crmService?.snapshot() ?? null}
+        crmService={runtime.crmService}
         assignees={runtime.assignees}
         catalogRepository={runtime.catalogRepository}
       />
