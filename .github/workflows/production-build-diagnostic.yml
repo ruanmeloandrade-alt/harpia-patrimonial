@@ -18,7 +18,7 @@ jobs:
           node-version: 22.12.0
       - name: Install dependencies
         run: npm install
-      - name: Typecheck
-        run: npm run typecheck
       - name: Build
         run: npm run build
+      - name: Typecheck
+        run: npm run typecheck
