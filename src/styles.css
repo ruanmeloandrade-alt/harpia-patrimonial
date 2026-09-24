@@ -253,3 +253,81 @@ th { color: var(--muted); font-size: 10px; text-transform: uppercase; letter-spa
 [data-compact="true"] .field input,
 [data-compact="true"] .field textarea,
 [data-compact="true"] .field select { padding: 9px 10px; }
+
+
+/* Tema escuro operacional: cobre todo o ambiente interno, não apenas Configurações. */
+[data-theme="dark"] .internal-main,
+[data-theme="dark"] .workspace-page,
+[data-theme="dark"] .settings-workspace {
+  background: var(--paper);
+  color: var(--ink);
+}
+[data-theme="dark"] .internal-main :is(
+  .panel,
+  .card,
+  .info-card,
+  .metric-card,
+  .section,
+  .list-card,
+  .check-card,
+  .setting-card,
+  .settings-section,
+  .settings-summary,
+  .settings-tabs,
+  .settings-toggle,
+  .settings-inline-note,
+  .business-hours-row,
+  .permission-module,
+  .access-editor,
+  .f05-card,
+  .f05-editor,
+  .f05-list-item,
+  .marketing-panel,
+  .marketing-metric,
+  .marketing-integration-card,
+  .marketing-tracking-card,
+  .crm-stage,
+  .crm-lead-card,
+  .crm-card,
+  .inbox-thread,
+  .inbox-message,
+  .inbox-sidebar,
+  .inbox-details
+) {
+  background-color: var(--surface) !important;
+  color: var(--ink) !important;
+  border-color: var(--line) !important;
+}
+[data-theme="dark"] .internal-main :is(input, textarea, select) {
+  background: #171c17 !important;
+  color: var(--ink) !important;
+  border-color: var(--line) !important;
+}
+[data-theme="dark"] .internal-main :is(
+  .muted,
+  small,
+  .tiny,
+  .note,
+  .list-card-main span,
+  .settings-summary span,
+  .settings-summary small
+) {
+  color: var(--muted) !important;
+}
+[data-theme="dark"] .internal-main :is(th, td, tr, .definition-list > div, .permission-check-row, .permission-override-row) {
+  border-color: var(--line) !important;
+}
+[data-theme="dark"] .internal-main :is(.button-light, .btn.alt) {
+  background: #252b25 !important;
+  color: var(--ink) !important;
+  border-color: var(--line) !important;
+}
+[data-theme="dark"] .internal-main :is(.empty, .empty-state) {
+  background: #171c17 !important;
+  color: var(--muted) !important;
+  border-color: var(--line) !important;
+}
+[data-theme="dark"] .internal-main ::placeholder {
+  color: #7f877e;
+  opacity: 1;
+}

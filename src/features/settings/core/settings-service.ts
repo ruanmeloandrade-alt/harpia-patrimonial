@@ -245,8 +245,8 @@ export function applyOrganizationRegionalPreferences(preferences: OrganizationPr
   root.dataset.dateFormat = normalized.regional.dateFormat;
   root.dataset.timeFormat = normalized.regional.timeFormat;
   root.lang = normalized.regional.locale;
-  root.style.setProperty('--brand-accent', normalized.appearance.primaryColor);
-  root.style.setProperty('--gold', normalized.appearance.primaryColor);
+  root.style.setProperty('--brand-accent', '#b49a63');
+  root.style.setProperty('--gold', '#b49a63');
 }
 
 export const applyOrganizationPreferences = applyOrganizationRegionalPreferences;

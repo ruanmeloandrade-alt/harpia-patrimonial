@@ -194,21 +194,6 @@ export function SettingsWorkspace({ credentialVault, initialTab = 'preferences' 
         theme: String(form.get('theme') || 'system') as UserPreferences['theme'],
         compact_mode: bool(form, 'compactMode'),
       }, 'Suas preferências foram atualizadas.');
-
-      if (canManageSettings && settings) {
-        await saveOrganizationPatch({
-          appearance: {
-            primaryColor: String(form.get('primaryColor') || preferences.appearance.primaryColor),
-          },
-          regional: {
-            locale: String(form.get('locale') || preferences.regional.locale),
-            currency: String(form.get('currency') || preferences.regional.currency),
-            timezone: String(form.get('timezone') || preferences.regional.timezone),
-            dateFormat: String(form.get('dateFormat') || preferences.regional.dateFormat),
-            timeFormat: String(form.get('timeFormat') || preferences.regional.timeFormat) as '24h' | '12h',
-          },
-        }, 'Preferências pessoais e globais atualizadas.');
-      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Não foi possível salvar as preferências.');
     } finally {
@@ -419,21 +404,7 @@ export function SettingsWorkspace({ credentialVault, initialTab = 'preferences' 
                 </label>
               </div>
 
-              {canViewSettings ? (
-                <>
-                  <div className="settings-subtitle">Padrões globais da empresa</div>
-                  {loadingSettings || !settings ? <div className="empty-state">Carregando padrões globais...</div> : (
-                    <div className="form-grid">
-                      <label className="field"><span>Idioma</span><select name="locale" defaultValue={preferences.regional.locale} disabled={!canManageSettings}><option value="pt-BR">Português Brasil</option><option value="pt-PT">Português Portugal</option><option value="en-US">English</option></select></label>
-                      <label className="field"><span>Moeda</span><select name="currency" defaultValue={preferences.regional.currency} disabled={!canManageSettings}><option value="BRL">Real brasileiro (BRL)</option><option value="EUR">Euro (EUR)</option><option value="USD">Dólar americano (USD)</option></select></label>
-                      <label className="field"><span>Fuso horário</span><select name="timezone" defaultValue={preferences.regional.timezone} disabled={!canManageSettings}><option value="America/Sao_Paulo">Brasília / São Paulo</option><option value="America/Manaus">Manaus</option><option value="America/Rio_Branco">Rio Branco</option><option value="Europe/Lisbon">Lisboa</option><option value="UTC">UTC</option></select></label>
-                      <label className="field"><span>Formato de data</span><select name="dateFormat" defaultValue={preferences.regional.dateFormat} disabled={!canManageSettings}><option value="dd/MM/yyyy">DD/MM/AAAA</option><option value="MM/dd/yyyy">MM/DD/AAAA</option><option value="yyyy-MM-dd">AAAA-MM-DD</option></select></label>
-                      <label className="field"><span>Formato de hora</span><select name="timeFormat" defaultValue={preferences.regional.timeFormat} disabled={!canManageSettings}><option value="24h">24 horas</option><option value="12h">12 horas</option></select></label>
-                      <label className="field"><span>Cor institucional</span><input name="primaryColor" type="color" defaultValue={preferences.appearance.primaryColor} disabled={!canManageSettings} /></label>
-                    </div>
-                  )}
-                </>
-              ) : null}
+              <div className="settings-inline-note">Tema e densidade visual são preferências individuais desta conta. Configurações institucionais não podem ser alteradas aqui.</div>
               <SaveButton saving={saving} canManage={Boolean(userId)} label="Salvar minhas preferências" />
             </>
           )}
