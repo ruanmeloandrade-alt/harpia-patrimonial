@@ -19,6 +19,8 @@ interface CalendarWorkspaceProps {
   canManage: boolean;
 }
 
+type CalendarView = 'month' | 'week' | 'day';
+
 interface Draft {
   kind: CalendarItemKind;
   title: string;
@@ -33,18 +35,58 @@ interface Draft {
 }
 
 const durations = [15, 30, 45, 60, 90, 120, 180];
+const hours = Array.from({ length: 15 }, (_, index) => index + 7);
 
 function localDateInput(date = new Date()) {
   const offset = date.getTimezoneOffset() * 60_000;
   return new Date(date.getTime() - offset).toISOString().slice(0, 10);
 }
 
-function initialDraft(kind: CalendarItemKind = 'task', date = new Date()): Draft {
+function dayStart(value: Date) {
+  return new Date(value.getFullYear(), value.getMonth(), value.getDate());
+}
+
+function weekStart(value: Date) {
+  const start = dayStart(value);
+  start.setDate(start.getDate() - start.getDay());
+  return start;
+}
+
+function monthStart(value: Date) {
+  return new Date(value.getFullYear(), value.getMonth(), 1);
+}
+
+function monthGridStart(value: Date) {
+  const start = monthStart(value);
+  start.setDate(1 - start.getDay());
+  return start;
+}
+
+function viewBounds(view: CalendarView, cursor: Date) {
+  if (view === 'day') {
+    const start = dayStart(cursor);
+    const end = new Date(start);
+    end.setDate(end.getDate() + 1);
+    return { start, end };
+  }
+  if (view === 'week') {
+    const start = weekStart(cursor);
+    const end = new Date(start);
+    end.setDate(end.getDate() + 7);
+    return { start, end };
+  }
+  const start = monthGridStart(cursor);
+  const end = new Date(start);
+  end.setDate(end.getDate() + 42);
+  return { start, end };
+}
+
+function initialDraft(kind: CalendarItemKind = 'task', date = new Date(), time = '09:00'): Draft {
   return {
     kind,
     title: '',
     date: localDateInput(date),
-    time: '09:00',
+    time,
     duration: kind === 'meeting' ? '60' : '30',
     assigneeId: '',
     description: '',
@@ -52,34 +94,6 @@ function initialDraft(kind: CalendarItemKind = 'task', date = new Date()): Draft
     location: '',
     syncToGoogle: kind === 'meeting',
   };
-}
-
-function monthStart(value: Date) {
-  return new Date(value.getFullYear(), value.getMonth(), 1);
-}
-
-function monthEnd(value: Date) {
-  return new Date(value.getFullYear(), value.getMonth() + 1, 1);
-}
-
-function gridStart(value: Date) {
-  const start = monthStart(value);
-  return new Date(start.getFullYear(), start.getMonth(), 1 - start.getDay());
-}
-
-function gridEnd(value: Date) {
-  const start = gridStart(value);
-  const end = new Date(start);
-  end.setDate(start.getDate() + 42);
-  return end;
-}
-
-function isoDay(value: Date) {
-  return localDateInput(value);
-}
-
-function formatMonth(value: Date) {
-  return new Intl.DateTimeFormat('pt-BR', { month: 'long', year: 'numeric' }).format(value);
 }
 
 function formatTime(value: string) {
@@ -93,6 +107,34 @@ function formatDateTime(value: string) {
     hour: '2-digit',
     minute: '2-digit',
   }).format(new Date(value));
+}
+
+function formatPeriodTitle(view: CalendarView, cursor: Date) {
+  if (view === 'day') {
+    return new Intl.DateTimeFormat('pt-BR', {
+      weekday: 'long',
+      day: '2-digit',
+      month: 'long',
+      year: 'numeric',
+    }).format(cursor);
+  }
+
+  if (view === 'week') {
+    const start = weekStart(cursor);
+    const end = new Date(start);
+    end.setDate(end.getDate() + 6);
+
+    if (start.getMonth() === end.getMonth() && start.getFullYear() === end.getFullYear()) {
+      const tail = new Intl.DateTimeFormat('pt-BR', { month: 'long', year: 'numeric' }).format(end);
+      return `${start.getDate()} a ${end.getDate()} de ${tail}`;
+    }
+
+    const left = new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: 'short' }).format(start);
+    const right = new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' }).format(end);
+    return `${left} a ${right}`;
+  }
+
+  return new Intl.DateTimeFormat('pt-BR', { month: 'long', year: 'numeric' }).format(monthStart(cursor));
 }
 
 function durationLabel(item: CalendarItem) {
@@ -115,7 +157,8 @@ function connectionLabel(connection: GoogleCalendarConnection | null) {
 }
 
 export function CalendarWorkspace({ assignees, canManage }: CalendarWorkspaceProps) {
-  const [cursor, setCursor] = useState(() => monthStart(new Date()));
+  const [view, setView] = useState<CalendarView>('month');
+  const [cursor, setCursor] = useState(() => new Date());
   const [items, setItems] = useState<CalendarItem[]>([]);
   const [connection, setConnection] = useState<GoogleCalendarConnection | null>(null);
   const [loading, setLoading] = useState(true);
@@ -130,13 +173,12 @@ export function CalendarWorkspace({ assignees, canManage }: CalendarWorkspacePro
     [assignees],
   );
 
-  const from = useMemo(() => gridStart(cursor), [cursor]);
-  const to = useMemo(() => gridEnd(cursor), [cursor]);
+  const bounds = useMemo(() => viewBounds(view, cursor), [view, cursor]);
 
   const refresh = useCallback(async () => {
     try {
       const [calendarItems, google] = await Promise.all([
-        listCalendarItems(from.toISOString(), to.toISOString()),
+        listCalendarItems(bounds.start.toISOString(), bounds.end.toISOString()),
         loadGoogleCalendarConnection(),
       ]);
       setItems(calendarItems);
@@ -147,7 +189,7 @@ export function CalendarWorkspace({ assignees, canManage }: CalendarWorkspacePro
     } finally {
       setLoading(false);
     }
-  }, [from, to]);
+  }, [bounds]);
 
   useEffect(() => {
     setLoading(true);
@@ -155,14 +197,27 @@ export function CalendarWorkspace({ assignees, canManage }: CalendarWorkspacePro
     return subscribeCalendarItems(() => { void refresh(); });
   }, [refresh]);
 
-  const days = useMemo(() => {
-    const start = gridStart(cursor);
+  const monthDays = useMemo(() => {
+    const start = monthGridStart(cursor);
     return Array.from({ length: 42 }, (_, index) => {
       const date = new Date(start);
       date.setDate(start.getDate() + index);
       return date;
     });
   }, [cursor]);
+
+  const visibleDays = useMemo(() => {
+    if (view === 'day') return [dayStart(cursor)];
+    if (view === 'week') {
+      const start = weekStart(cursor);
+      return Array.from({ length: 7 }, (_, index) => {
+        const date = new Date(start);
+        date.setDate(start.getDate() + index);
+        return date;
+      });
+    }
+    return monthDays;
+  }, [view, cursor, monthDays]);
 
   const byDay = useMemo(() => {
     const map = new Map<string, CalendarItem[]>();
@@ -175,16 +230,30 @@ export function CalendarWorkspace({ assignees, canManage }: CalendarWorkspacePro
     return map;
   }, [items]);
 
-  const upcoming = useMemo(() => items
-    .filter((item) => item.status !== 'cancelled' && new Date(item.endAt).getTime() >= Date.now())
-    .sort((a, b) => a.startAt.localeCompare(b.startAt))
-    .slice(0, 8), [items]);
+  const periodItems = useMemo(
+    () => [...items].sort((a, b) => a.startAt.localeCompare(b.startAt)),
+    [items],
+  );
 
-  function openCreate(kind: CalendarItemKind, date = new Date()) {
-    setDraft(initialDraft(kind, date));
+  const agendaItems = useMemo(
+    () => periodItems.filter((item) => item.status !== 'cancelled').slice(0, 10),
+    [periodItems],
+  );
+
+  function openCreate(kind: CalendarItemKind, date = new Date(), time = '09:00') {
+    setDraft(initialDraft(kind, date, time));
     setNotice('');
     setError('');
     setFormOpen(true);
+  }
+
+  function shiftPeriod(direction: number) {
+    setCursor((current) => {
+      if (view === 'month') return new Date(current.getFullYear(), current.getMonth() + direction, 1);
+      const next = new Date(current);
+      next.setDate(next.getDate() + direction * (view === 'week' ? 7 : 1));
+      return next;
+    });
   }
 
   async function save(event: FormEvent) {
@@ -273,6 +342,25 @@ export function CalendarWorkspace({ assignees, canManage }: CalendarWorkspacePro
     }
   }
 
+  function ownerLabel(item: CalendarItem) {
+    return item.assigneeId
+      ? assigneeNames.get(item.assigneeId) ?? item.assigneeLabel ?? 'Responsável não encontrado'
+      : item.assigneeLabel ?? 'Sem responsável';
+  }
+
+  function renderTimeEvent(item: CalendarItem) {
+    return (
+      <div
+        key={item.id}
+        className={`calendar-time-event calendar-time-event--${item.kind}${item.status === 'completed' ? ' calendar-time-event--done' : ''}`}
+      >
+        <strong>{item.title}</strong>
+        <span>{formatTime(item.startAt)} até {formatTime(item.endAt)} · {durationLabel(item)}</span>
+        <small>{ownerLabel(item)}</small>
+      </div>
+    );
+  }
+
   return (
     <section className="calendar-workspace">
       <header className="calendar-header">
@@ -295,71 +383,128 @@ export function CalendarWorkspace({ assignees, canManage }: CalendarWorkspacePro
       {error ? <div className="alert alert-error" role="alert">{error}</div> : null}
       {notice ? <div className="alert alert-success" role="status">{notice}</div> : null}
 
+      <div className="calendar-viewbar">
+        <div className="calendar-view-switch" role="group" aria-label="Visualização do calendário">
+          {([
+            ['month', 'Mês'],
+            ['week', 'Semana'],
+            ['day', 'Dia'],
+          ] as const).map(([value, label]) => (
+            <button
+              key={value}
+              type="button"
+              className={view === value ? 'active' : ''}
+              onClick={() => setView(value)}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+        <span>{view === 'month' ? 'Visão mensal' : view === 'week' ? 'Visão semanal com horários' : 'Visão diária com horários'}</span>
+      </div>
+
       <div className="calendar-layout">
         <div className="calendar-board">
           <div className="calendar-toolbar">
             <div className="calendar-toolbar-nav">
-              <button type="button" aria-label="Mês anterior" onClick={() => setCursor((value) => new Date(value.getFullYear(), value.getMonth() - 1, 1))}>‹</button>
-              <button type="button" onClick={() => setCursor(monthStart(new Date()))}>Hoje</button>
-              <button type="button" aria-label="Próximo mês" onClick={() => setCursor((value) => new Date(value.getFullYear(), value.getMonth() + 1, 1))}>›</button>
+              <button type="button" aria-label="Período anterior" onClick={() => shiftPeriod(-1)}>‹</button>
+              <button type="button" onClick={() => setCursor(new Date())}>Hoje</button>
+              <button type="button" aria-label="Próximo período" onClick={() => shiftPeriod(1)}>›</button>
             </div>
-            <strong>{formatMonth(cursor)}</strong>
+            <strong>{formatPeriodTitle(view, cursor)}</strong>
             <span>{loading ? 'Carregando...' : `${items.length} compromisso${items.length === 1 ? '' : 's'}`}</span>
           </div>
 
-          <div className="calendar-weekdays" aria-hidden="true">
-            {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map((day) => <span key={day}>{day}</span>)}
-          </div>
+          {view === 'month' ? (
+            <>
+              <div className="calendar-weekdays" aria-hidden="true">
+                {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map((day) => <span key={day}>{day}</span>)}
+              </div>
+              <div className="calendar-grid calendar-grid--month">
+                {monthDays.map((day) => {
+                  const key = localDateInput(day);
+                  const dayItems = byDay.get(key) ?? [];
+                  const currentMonth = day.getMonth() === cursor.getMonth();
+                  const today = key === localDateInput();
 
-          <div className="calendar-grid">
-            {days.map((day) => {
-              const key = isoDay(day);
-              const dayItems = byDay.get(key) ?? [];
-              const currentMonth = day.getMonth() === cursor.getMonth();
-              const today = key === localDateInput();
-              return (
-                <div
-                  key={key}
-                  className={`calendar-day${currentMonth ? '' : ' calendar-day--muted'}${today ? ' calendar-day--today' : ''}`}
-                  onDoubleClick={() => canManage && openCreate('task', day)}
-                >
-                  <button className="calendar-day-number" type="button" onClick={() => canManage && openCreate('task', day)} aria-label={`Criar tarefa em ${key}`}>
-                    {day.getDate()}
-                  </button>
-                  <div className="calendar-day-items">
-                    {dayItems.slice(0, 4).map((item) => (
-                      <button
-                        key={item.id}
-                        type="button"
-                        className={`calendar-chip calendar-chip--${item.kind}${item.status === 'completed' ? ' calendar-chip--done' : ''}`}
-                        title={`${item.title} · ${formatTime(item.startAt)} · ${durationLabel(item)}`}
-                        onClick={() => void toggleDone(item)}
-                        disabled={!canManage}
-                      >
-                        <span>{formatTime(item.startAt)}</span>
-                        <b>{item.title}</b>
-                        {item.kind === 'meeting' ? <em>Meet</em> : null}
+                  return (
+                    <div
+                      key={key}
+                      className={`calendar-day${currentMonth ? '' : ' calendar-day--muted'}${today ? ' calendar-day--today' : ''}`}
+                      onDoubleClick={() => canManage && openCreate('task', day)}
+                    >
+                      <button className="calendar-day-number" type="button" onClick={() => canManage && openCreate('task', day)} aria-label={`Criar tarefa em ${key}`}>
+                        {day.getDate()}
                       </button>
-                    ))}
-                    {dayItems.length > 4 ? <span className="calendar-more">+{dayItems.length - 4}</span> : null}
+                      <div className="calendar-day-items">
+                        {dayItems.slice(0, 4).map((item) => (
+                          <div
+                            key={item.id}
+                            className={`calendar-chip calendar-chip--${item.kind}${item.status === 'completed' ? ' calendar-chip--done' : ''}`}
+                            title={`${item.title} · ${formatTime(item.startAt)} · ${durationLabel(item)}`}
+                          >
+                            <span>{formatTime(item.startAt)}</span>
+                            <b>{item.title}</b>
+                            {item.kind === 'meeting' ? <em>Meet</em> : null}
+                          </div>
+                        ))}
+                        {dayItems.length > 4 ? <span className="calendar-more">+{dayItems.length - 4} compromissos</span> : null}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </>
+          ) : (
+            <div className={`calendar-time-view calendar-time-view--${view}`}>
+              <div className={`calendar-time-head calendar-time-head--${view}`}>
+                <div className="calendar-time-blank" />
+                {visibleDays.map((day) => {
+                  const key = localDateInput(day);
+                  return (
+                    <div key={key} className={`calendar-time-day${key === localDateInput() ? ' calendar-time-day--today' : ''}`}>
+                      <span>{new Intl.DateTimeFormat('pt-BR', { weekday: 'short' }).format(day).replace('.', '')}</span>
+                      <strong>{day.getDate()}</strong>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div className={`calendar-time-body calendar-time-body--${view}`}>
+                {hours.map((hour) => (
+                  <div key={hour} className={`calendar-hour-row calendar-hour-row--${view}`}>
+                    <div className="calendar-hour-label">{String(hour).padStart(2, '0')}:00</div>
+                    {visibleDays.map((day) => {
+                      const key = localDateInput(day);
+                      const cellItems = (byDay.get(key) ?? []).filter((item) => new Date(item.startAt).getHours() === hour);
+                      return (
+                        <div
+                          key={key}
+                          className={`calendar-hour-cell${key === localDateInput() ? ' calendar-hour-cell--today' : ''}`}
+                          onDoubleClick={() => canManage && openCreate('task', day, `${String(hour).padStart(2, '0')}:00`)}
+                        >
+                          {cellItems.map(renderTimeEvent)}
+                        </div>
+                      );
+                    })}
                   </div>
-                </div>
-              );
-            })}
-          </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         <aside className="calendar-agenda">
           <div className="calendar-agenda-head">
             <div>
-              <span>Próximos</span>
+              <span>Período atual</span>
               <h2>Agenda</h2>
             </div>
-            <span>{upcoming.length}</span>
+            <span>{agendaItems.length}</span>
           </div>
 
           <div className="calendar-agenda-list">
-            {upcoming.length ? upcoming.map((item) => (
+            {agendaItems.length ? agendaItems.map((item) => (
               <article key={item.id} className={item.status === 'completed' ? 'calendar-agenda-item calendar-agenda-item--done' : 'calendar-agenda-item'}>
                 <div className="calendar-agenda-date">
                   <strong>{new Date(item.startAt).getDate()}</strong>
@@ -372,7 +517,7 @@ export function CalendarWorkspace({ assignees, canManage }: CalendarWorkspacePro
                   </div>
                   <h3>{item.title}</h3>
                   <p>{formatDateTime(item.startAt)} · {durationLabel(item)}</p>
-                  <small>{item.assigneeId ? assigneeNames.get(item.assigneeId) ?? item.assigneeLabel ?? 'Responsável não encontrado' : item.assigneeLabel ?? 'Sem responsável'}</small>
+                  <small>{ownerLabel(item)}</small>
                   {item.googleMeetUrl ? <a href={item.googleMeetUrl} target="_blank" rel="noreferrer">Entrar no Google Meet</a> : null}
                 </div>
                 {canManage ? <div className="calendar-agenda-actions">
@@ -380,7 +525,7 @@ export function CalendarWorkspace({ assignees, canManage }: CalendarWorkspacePro
                   <button type="button" className="danger" onClick={() => void remove(item)}>Excluir</button>
                 </div> : null}
               </article>
-            )) : <div className="calendar-empty">Nenhum compromisso futuro neste período.</div>}
+            )) : <div className="calendar-empty">Nenhum compromisso neste período.</div>}
           </div>
 
           <div className="calendar-google-note">
