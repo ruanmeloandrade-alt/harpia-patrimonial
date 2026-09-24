@@ -50,6 +50,7 @@ export interface Front05CrmActionPort {
 export type Front05AutomationEventType =
   | 'lead.created'
   | 'lead.stage_changed'
+  | 'lead.assignee_changed'
   | 'lead.field_changed'
   | 'lead.tag_added'
   | 'lead.tag_removed'
@@ -295,6 +296,7 @@ export function createFront05CrmActionPort(crm: CrmService): Front05CrmActionPor
 function mapCrmEventType(type: CrmEvent['type']): Front05AutomationEventType {
   if (type === 'lead.created') return 'lead.created';
   if (type === 'lead.stage_changed') return 'lead.stage_changed';
+  if (type === 'lead.assignee_changed') return 'lead.assignee_changed';
   if (type === 'lead.custom_field_changed') return 'lead.field_changed';
   if (type === 'lead.tag_added') return 'lead.tag_added';
   if (type === 'lead.tag_removed') return 'lead.tag_removed';
