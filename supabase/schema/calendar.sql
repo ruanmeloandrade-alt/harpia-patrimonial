@@ -26,6 +26,7 @@ create table if not exists public.calendar_items (
   end_at timestamptz not null,
   all_day boolean not null default false,
   assignee_id uuid references public.internal_assignee_directory(id) on delete set null,
+  assignee_label text,
   lead_id text references public.crm_leads(id) on delete set null,
   guest_emails text[] not null default '{}',
   location text,
@@ -120,3 +121,6 @@ begin
   end if;
 end
 $$;
+
+-- Follow-up production migration: calendar_assignee_label_20260924
+alter table public.calendar_items add column if not exists assignee_label text;
