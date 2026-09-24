@@ -189,6 +189,7 @@ export type Database = {
         Row: {
           all_day: boolean
           assignee_id: string | null
+          assignee_label: string | null
           created_at: string
           created_by: string | null
           description: string
@@ -215,6 +216,7 @@ export type Database = {
         Insert: {
           all_day?: boolean
           assignee_id?: string | null
+          assignee_label?: string | null
           created_at?: string
           created_by?: string | null
           description?: string
@@ -241,6 +243,7 @@ export type Database = {
         Update: {
           all_day?: boolean
           assignee_id?: string | null
+          assignee_label?: string | null
           created_at?: string
           created_by?: string | null
           description?: string
