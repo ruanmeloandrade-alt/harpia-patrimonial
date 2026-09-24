@@ -4,6 +4,7 @@ import { config } from './config.js';
 import { WhatsAppConnector } from './connector.js';
 import { logger } from './logger.js';
 import {
+  consumeControlNonce,
   ensureConnection,
   getConversationSessionId,
   listWhatsAppSessions,
@@ -49,15 +50,23 @@ function constantTimeMatch(candidateValue: string, expectedValue: string) {
   return candidate.length === expected.length && timingSafeEqual(candidate, expected);
 }
 
-function safeTokenMatch(received: string | undefined) {
+async function safeTokenMatch(received: string | undefined, action: string) {
   if (!received) return false;
   const prefix = 'Bearer ';
   if (!received.startsWith(prefix)) return false;
 
   const candidate = received.slice(prefix.length);
-  return constantTimeMatch(candidate, config.controlToken)
+  if (
+    constantTimeMatch(candidate, config.controlToken)
     || constantTimeMatch(candidate, derivedControlToken())
-    || constantTimeMatch(candidate, config.supabaseServiceRoleKey);
+    || constantTimeMatch(candidate, config.supabaseServiceRoleKey)
+  ) {
+    return true;
+  }
+
+  if (!candidate.startsWith('nonce_')) return false;
+  const tokenHash = createHash('sha256').update(candidate).digest('hex');
+  return consumeControlNonce(tokenHash, action);
 }
 
 async function readJson(request: IncomingMessage, maxBytes = 128 * 1024) {
@@ -75,8 +84,8 @@ async function readJson(request: IncomingMessage, maxBytes = 128 * 1024) {
   return JSON.parse(Buffer.concat(chunks).toString('utf8')) as Record<string, unknown>;
 }
 
-function requireControlToken(request: IncomingMessage, response: ServerResponse) {
-  if (safeTokenMatch(request.headers.authorization)) return true;
+async function requireControlToken(request: IncomingMessage, response: ServerResponse, action: string) {
+  if (await safeTokenMatch(request.headers.authorization, action)) return true;
   sendJson(response, 401, { ok: false, message: 'Não autorizado.' });
   return false;
 }
@@ -132,7 +141,7 @@ async function handleRequest(request: IncomingMessage, response: ServerResponse)
       connectedSessions: connected,
       sessionCount: sessions.length,
       qrAvailable: sessions.some((item) => item.qrAvailable),
-      controlAuthVersion: 2,
+      controlAuthVersion: 3,
     });
     return;
   }
@@ -158,7 +167,7 @@ async function handleRequest(request: IncomingMessage, response: ServerResponse)
     return;
   }
 
-  if (!requireControlToken(request, response)) return;
+  if (!await requireControlToken(request, response, url.pathname)) return;
 
   if (url.pathname === '/v1/sessions' && method === 'GET') {
     sendJson(response, 200, { ok: true, sessions: await listSessionPayload() });
