@@ -124,6 +124,12 @@ function formatCurrency(value: number | null) {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(value);
 }
 
+function publicFinalPrice(item: PublicCatalogItem) {
+  if (item.price === null || !item.discountType || item.discountValue === undefined) return item.price;
+  if (item.discountType === 'percentage') return Math.max(0, item.price * (1 - item.discountValue / 100));
+  return Math.max(0, item.price - item.discountValue);
+}
+
 function currentLocation() {
   if (typeof window === 'undefined') return { pathname: '/', search: '' };
   return {
@@ -135,6 +141,17 @@ function currentLocation() {
 function decodePropertySlug(route: string): string | null {
   if (!route.startsWith('/imoveis/')) return '';
   const encoded = route.replace('/imoveis/', '');
+  try {
+    const decoded = decodeURIComponent(encoded).trim();
+    return decoded || null;
+  } catch {
+    return null;
+  }
+}
+
+function decodeProductSlug(route: string): string | null {
+  if (!route.startsWith('/produtos/')) return '';
+  const encoded = route.replace('/produtos/', '');
   try {
     const decoded = decodeURIComponent(encoded).trim();
     return decoded || null;
@@ -198,8 +215,11 @@ export default function PublicSiteApp({ catalog = emptyPublicCatalogReader, auth
   const initialLocation = currentLocation();
   const [route, setRoute] = useState(initialLocation.pathname);
   const [items, setItems] = useState<PublicCatalogItem[]>([]);
+  const [homeProducts, setHomeProducts] = useState<PublicCatalogItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [productLoading, setProductLoading] = useState(true);
   const [catalogError, setCatalogError] = useState('');
+  const [productError, setProductError] = useState('');
   const [notice, setNotice] = useState('');
   const [retentionOpen, setRetentionOpen] = useState(false);
   const [retentionSeen, setRetentionSeen] = useState(false);
@@ -230,11 +250,11 @@ export default function PublicSiteApp({ catalog = emptyPublicCatalogReader, auth
           if (active) setFilterOptions(options);
           return;
         }
-        const allItems = await catalog.listPublished();
+        const allItems = await catalog.listPublished({ itemType: 'property' });
         if (active) setFilterOptions(deriveFilterOptions(allItems));
       } catch {
         try {
-          const allItems = await catalog.listPublished();
+          const allItems = await catalog.listPublished({ itemType: 'property' });
           if (active) setFilterOptions(deriveFilterOptions(allItems));
         } catch {
           if (active) setFilterOptions(emptyFilterOptions);
@@ -249,12 +269,28 @@ export default function PublicSiteApp({ catalog = emptyPublicCatalogReader, auth
     let active = true;
     setLoading(true);
     setCatalogError('');
-    catalog.listPublished(route === '/imoveis' ? filters : {})
+    const query: PublicCatalogFilters = route === '/imoveis'
+      ? { ...filters, itemType: 'property' }
+      : route === '/produtos'
+        ? { itemType: 'product' }
+        : { itemType: 'property' };
+    catalog.listPublished(query)
       .then((result) => { if (active) setItems(result); })
       .catch(() => { if (active) setCatalogError('Não foi possível carregar o catálogo agora.'); })
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
   }, [catalog, catalogRevision, filters, route]);
+
+  useEffect(() => {
+    let active = true;
+    setProductLoading(true);
+    setProductError('');
+    catalog.listPublished({ itemType: 'product' })
+      .then((result) => { if (active) setHomeProducts(result); })
+      .catch(() => { if (active) setProductError('Não foi possível carregar os produtos agora.'); })
+      .finally(() => { if (active) setProductLoading(false); });
+    return () => { active = false; };
+  }, [catalog, catalogRevision]);
 
   useEffect(() => {
     if (route !== '/imoveis') return;
@@ -315,13 +351,14 @@ export default function PublicSiteApp({ catalog = emptyPublicCatalogReader, auth
 
   const requestService = (service: string) => { void emitConversion({ source: 'site-publico', action: 'solicitar-atendimento', page: route, service }); };
   const propertySlug = decodePropertySlug(route);
+  const productSlug = decodeProductSlug(route);
 
   return (
     <div className="harpia-public">
       <header className="public-header">
         <a className="brand" href="/" onClick={intercept('/')} aria-label="Hárpia Patrimonial - início"><span className="brand-mark">H</span><span><strong>HÁRPIA</strong><small>PATRIMONIAL & CO.</small></span></a>
         <nav className="public-nav" aria-label="Navegação principal">
-          <a href="/sobre" onClick={intercept('/sobre')}>Sobre</a><a href="/investimentos" onClick={intercept('/investimentos')}>Investimentos</a><a href="/leiloes" onClick={intercept('/leiloes')}>Leilões</a><a href="/assessoria-juridica" onClick={intercept('/assessoria-juridica')}>Assessoria Jurídica</a><a href="/arquitetura" onClick={intercept('/arquitetura')}>Arquitetura</a>
+          <a href="/sobre" onClick={intercept('/sobre')}>Sobre</a><a href="/produtos" onClick={intercept('/produtos')}>Produtos</a><a href="/investimentos" onClick={intercept('/investimentos')}>Investimentos</a><a href="/leiloes" onClick={intercept('/leiloes')}>Leilões</a><a href="/assessoria-juridica" onClick={intercept('/assessoria-juridica')}>Assessoria Jurídica</a><a href="/arquitetura" onClick={intercept('/arquitetura')}>Arquitetura</a>
         </nav>
         <div className="header-actions">
           <a className="quiet-link" href="/cliente" onClick={intercept('/cliente')}>Minha conta</a>
@@ -332,13 +369,19 @@ export default function PublicSiteApp({ catalog = emptyPublicCatalogReader, auth
 
       {notice && <div className="integration-notice" role="status"><span>{notice}</span><button type="button" onClick={() => setNotice('')} aria-label="Fechar aviso">×</button></div>}
 
-      {route === '/' && <HomePage items={items} loading={loading} error={catalogError} filterOptions={filterOptions} onNavigate={navigate} onService={requestService} onRetry={reloadCatalog} onFavorite={(item) => { if (!auth?.currentClient) return requestLogin('favoritar-imovel'); if (!favorites) return setNotice('Persistência de favoritos aguarda integração da conta com o catálogo real.'); return favorites.toggle(item); }} isFavorite={(id) => favorites?.isFavorite(id) ?? false} />}
+      {route === '/' && <HomePage items={items} products={homeProducts} loading={loading} productLoading={productLoading} error={catalogError} productError={productError} filterOptions={filterOptions} onNavigate={navigate} onService={requestService} onRetry={reloadCatalog} onFavorite={(item) => { if (!auth?.currentClient) return requestLogin('favoritar-imovel'); if (!favorites) return setNotice('Persistência de favoritos aguarda integração da conta com o catálogo real.'); return favorites.toggle(item); }} isFavorite={(id) => favorites?.isFavorite(id) ?? false} />}
 
       {route === '/imoveis' && <CatalogPage items={items} loading={loading} error={catalogError} filters={filters} options={filterOptions} onFilters={setFilters} onOpen={(slug) => navigate(`/imoveis/${encodeURIComponent(slug)}`)} onRetry={reloadCatalog} onFavorite={(item) => { if (!auth?.currentClient) return requestLogin('favoritar-imovel'); if (!favorites) return setNotice('Persistência de favoritos aguarda integração da conta com o catálogo real.'); return favorites.toggle(item); }} isFavorite={(id) => favorites?.isFavorite(id) ?? false} />}
+
+      {route === '/produtos' && <ProductCatalogPage items={items} loading={loading} error={catalogError} onOpen={(slug) => navigate(`/produtos/${encodeURIComponent(slug)}`)} onRetry={reloadCatalog} />}
 
       {propertySlug === null && <main className="section-shell property-detail"><div className="error-state"><strong>Endereço de imóvel inválido.</strong><p>Volte ao catálogo e escolha um imóvel publicado.</p><button className="secondary-button" type="button" onClick={() => navigate('/imoveis')}>Voltar ao catálogo</button></div></main>}
 
       {typeof propertySlug === 'string' && propertySlug && <PropertyDetail slug={propertySlug} catalog={catalog} isFavorite={(id) => favorites?.isFavorite(id) ?? false} onBack={() => navigate('/imoveis')} onNavigate={navigate} onFavorite={(item) => { if (!auth?.currentClient) return requestLogin('favoritar-imovel'); if (!favorites) return setNotice('Persistência de favoritos aguarda integração da conta com o catálogo real.'); return favorites.toggle(item); }} onService={(item) => emitConversion({ source: 'site-publico', action: 'atendimento-imovel', page: route, service: 'Atendimento consultivo', propertyId: item.id, propertySlug: item.slug })} />}
+
+      {productSlug === null && <main className="section-shell property-detail"><div className="error-state"><strong>Endereço de produto inválido.</strong><p>Volte aos produtos e escolha um item publicado.</p><button className="secondary-button" type="button" onClick={() => navigate('/produtos')}>Voltar aos produtos</button></div></main>}
+
+      {typeof productSlug === 'string' && productSlug && <ProductDetail slug={productSlug} catalog={catalog} onBack={() => navigate('/produtos')} onService={(item) => emitConversion({ source: 'site-publico', action: 'atendimento-produto', page: route, service: item.title, metadata: { productId: item.id, productSlug: item.slug } })} />}
 
       {(['sobre', 'investimentos', 'leiloes', 'assessoria-juridica', 'arquitetura'] as InstitutionalPageKey[]).map((key) => route === `/${key}` && <InstitutionalPage key={key} page={institutionalPages[key]} onService={() => requestService(institutionalPages[key].kicker)} />)}
 
@@ -346,19 +389,20 @@ export default function PublicSiteApp({ catalog = emptyPublicCatalogReader, auth
 
       {route === '/cliente' && <ClientArea profile={auth?.currentClient ?? null} favorites={favorites?.items ?? []} onRequestLogin={() => requestLogin('area-do-cliente')} onOpenProperty={(slug) => navigate(`/imoveis/${encodeURIComponent(slug)}`)} onGoToCatalog={() => navigate('/imoveis')} onRequestService={requestService} />}
 
-      <footer className="public-footer"><div><strong>HÁRPIA PATRIMONIAL & CO.</strong><p>Inteligência patrimonial especializada em negócios imobiliários.</p></div><div className="footer-links"><a href="/imoveis" onClick={intercept('/imoveis')}>Imóveis</a><a href="/vender" onClick={intercept('/vender')}>Quero vender meu imóvel</a><a href="/alugar" onClick={intercept('/alugar')}>Quero alugar meu imóvel</a><a href="/cliente" onClick={intercept('/cliente')}>Área do cliente</a></div></footer>
+      <footer className="public-footer"><div><strong>HÁRPIA PATRIMONIAL & CO.</strong><p>Inteligência patrimonial especializada em negócios imobiliários.</p></div><div className="footer-links"><a href="/imoveis" onClick={intercept('/imoveis')}>Imóveis</a><a href="/produtos" onClick={intercept('/produtos')}>Produtos</a><a href="/vender" onClick={intercept('/vender')}>Quero vender meu imóvel</a><a href="/alugar" onClick={intercept('/alugar')}>Quero alugar meu imóvel</a><a href="/cliente" onClick={intercept('/cliente')}>Área do cliente</a></div></footer>
 
       {retentionOpen && <RetentionDialog onClose={() => setRetentionOpen(false)} onAccept={() => { setRetentionOpen(false); requestService('Retenção de comprador'); }} />}
     </div>
   );
 }
 
-function HomePage({ items, loading, error, filterOptions, onNavigate, onService, onRetry, onFavorite, isFavorite }: { items: PublicCatalogItem[]; loading: boolean; error: string; filterOptions: PublicCatalogFilterOptions; onNavigate: (path: string) => void; onService: (service: string) => void; onRetry: () => void; onFavorite: (item: PublicCatalogItem) => void | Promise<void>; isFavorite: (id: string) => boolean; }) {
+function HomePage({ items, products, loading, productLoading, error, productError, filterOptions, onNavigate, onService, onRetry, onFavorite, isFavorite }: { items: PublicCatalogItem[]; products: PublicCatalogItem[]; loading: boolean; productLoading: boolean; error: string; productError: string; filterOptions: PublicCatalogFilterOptions; onNavigate: (path: string) => void; onService: (service: string) => void; onRetry: () => void; onFavorite: (item: PublicCatalogItem) => void | Promise<void>; isFavorite: (id: string) => boolean; }) {
   return (
     <main>
       <section className="hero section-shell"><div className="hero-copy"><p className="hero-kicker">Inteligência patrimonial · tradição desde 1986</p><h1>Decisões imobiliárias pensadas para o presente e para o que permanece.</h1><p>A Hárpia orienta negócios imobiliários, investimentos e decisões patrimoniais com uma visão que vai além da transação.</p><div className="hero-actions"><button className="primary-button" type="button" onClick={() => onNavigate('/imoveis')}>Explorar imóveis</button><button className="secondary-button" type="button" onClick={() => onService('Atendimento consultivo')}>Falar com a Hárpia</button></div></div><aside className="hero-search" aria-label="Busca de imóveis"><HomeCatalogSearch options={filterOptions} onNavigate={onNavigate} /></aside></section>
       <section className="manifesto section-shell"><p className="section-kicker">Hárpia Patrimonial & Co.</p><blockquote>“Enquanto o mercado negocia imóveis, nós orientamos e gerimos decisões.”</blockquote><p>Patrimônio é mais do que o que se possui. É a capacidade de transformar recursos em liberdade, escolhas em legado e imóveis em ativos que atravessam gerações.</p></section>
       <section className="section-shell"><div className="section-heading"><div><p className="section-kicker">Catálogo</p><h2>Imóveis e oportunidades publicados</h2></div><button className="text-button" type="button" onClick={() => onNavigate('/imoveis')}>Ver catálogo completo</button></div><PropertyGrid items={items.slice(0, 6)} loading={loading} error={error} onOpen={(slug) => onNavigate(`/imoveis/${encodeURIComponent(slug)}`)} onRetry={onRetry} onFavorite={onFavorite} isFavorite={isFavorite} /></section>
+      {products.length > 0 || productLoading || productError ? <section className="section-shell"><div className="section-heading"><div><p className="section-kicker">Produtos</p><h2>Produtos disponíveis</h2></div><button className="text-button" type="button" onClick={() => onNavigate('/produtos')}>Ver todos os produtos</button></div><ProductGrid items={products.slice(0, 6)} loading={productLoading} error={productError} onOpen={(slug) => onNavigate(`/produtos/${encodeURIComponent(slug)}`)} onRetry={onRetry} /></section> : null}
       <section className="lifestyle-section section-shell"><div className="section-heading"><div><p className="section-kicker">Encontre pelo estilo de vida</p><h2>O imóvel certo também depende de como você quer viver.</h2></div></div>{filterOptions.lifestyleTags.length === 0 ? <div className="empty-state"><strong>As categorias aparecerão com o catálogo real.</strong><p>A experiência já está preparada para usar classificações reais dos imóveis publicados, sem categorias fictícias.</p></div> : <div className="lifestyle-tags">{filterOptions.lifestyleTags.map((tag) => <button key={tag} type="button" onClick={() => onNavigate(`/imoveis?estilo=${encodeURIComponent(tag)}`)}>{tag}</button>)}</div>}</section>
       <section className="service-grid section-shell">{[['Investimentos', 'Estratégia imobiliária dentro de uma visão patrimonial.', '/investimentos'], ['Leilões & flipping', 'Aquisição, transformação e operação de ativos imobiliários.', '/leiloes'], ['Assessoria Jurídica', 'Apoio jurídico integrado à jornada imobiliária.', '/assessoria-juridica'], ['Arquitetura', 'Arquitetura, reformas e soluções ligadas ao bem viver.', '/arquitetura']].map(([title, copy, path]) => <article className="service-card" key={title}><p className="section-kicker">Serviço</p><h3>{title}</h3><p>{copy}</p><button className="text-button" type="button" onClick={() => onNavigate(path)}>Conhecer <span>→</span></button></article>)}</section>
       <section className="duo-section section-shell"><article><p className="section-kicker">DUMU Arquitetura</p><h2>Patrimônio, espaço e bem viver.</h2><p>A experiência está preparada para destacar a parceria com a DUMU Arquitetura assim que as imagens e materiais finais forem incorporados.</p><button className="text-button" type="button" onClick={() => onNavigate('/arquitetura')}>Ver arquitetura</button></article><article><p className="section-kicker">Atendimento consultivo</p><h2>Não é só encontrar um imóvel. É entender a decisão.</h2><p>A principal proposta da Hárpia é orientar o cliente com visão integrada dos aspectos imobiliários, patrimoniais e dos serviços envolvidos.</p><button className="primary-button" type="button" onClick={() => onService('Atendimento consultivo')}>Ser atendido agora</button></article></section>
