@@ -1,7 +1,9 @@
 export type CatalogItemKind = 'development' | 'unit' | 'standalone';
+export type CatalogItemType = 'property' | 'product' | 'service';
 export type CatalogPurpose = 'sale' | 'rent';
 export type CatalogStatus = 'draft' | 'published' | 'paused' | 'sold';
 export type CatalogMediaType = 'image' | 'video' | 'document' | 'floorplan';
+export type CatalogDiscountType = 'percentage' | 'fixed';
 
 export interface CatalogLocation {
   city: string;
@@ -25,6 +27,7 @@ export interface CatalogItem {
   id: string;
   code: string;
   name: string;
+  itemType: CatalogItemType;
   kind: CatalogItemKind;
   parentId?: string;
   typology?: string;
@@ -32,6 +35,9 @@ export interface CatalogItem {
   description: string;
   location: CatalogLocation;
   price: number | null;
+  discountType?: CatalogDiscountType;
+  discountValue?: number;
+  tags: string[];
   isLaunch: boolean;
   features: string[];
   lifestyleTags: string[];
@@ -54,23 +60,27 @@ export interface CatalogQuery {
   includeDeleted?: boolean;
   status?: CatalogStatus;
   kind?: CatalogItemKind;
+  itemType?: CatalogItemType;
   search?: string;
 }
 
 export interface PublicCatalogFilters {
   purpose?: CatalogPurpose;
+  itemType?: CatalogItemType;
   city?: string;
   location?: string;
   isLaunch?: boolean;
   minPrice?: number;
   maxPrice?: number;
   lifestyleTag?: string;
+  tag?: string;
 }
 
 export interface PublicCatalogItem {
   id: string;
   code: string;
   name: string;
+  itemType: CatalogItemType;
   kind: CatalogItemKind;
   parentId?: string;
   typology?: string;
@@ -78,6 +88,9 @@ export interface PublicCatalogItem {
   description: string;
   location: CatalogLocation;
   price: number | null;
+  discountType?: CatalogDiscountType;
+  discountValue?: number;
+  tags: string[];
   isLaunch: boolean;
   features: string[];
   lifestyleTags: string[];
