@@ -22,6 +22,7 @@ const links: NavItem[] = [
   { href: '/interno/crm', label: 'CRM', permissions: [PERMISSIONS.CRM_VIEW, PERMISSIONS.CRM_MANAGE] },
   { href: '/interno/inbox', label: 'Inbox', permissions: [PERMISSIONS.INBOX_VIEW, PERMISSIONS.INBOX_MANAGE] },
   { href: '/interno/calendario', label: 'Calendário', permissions: [PERMISSIONS.CALENDAR_VIEW, PERMISSIONS.CALENDAR_MANAGE] },
+  { href: '/interno/calendario', label: 'Calendário', permissions: [PERMISSIONS.CALENDAR_VIEW, PERMISSIONS.CALENDAR_MANAGE] },
   { href: '/interno/salesbot', label: 'SalesBot', permissions: [PERMISSIONS.SALESBOT_VIEW, PERMISSIONS.SALESBOT_MANAGE] },
   { href: '/interno/automatize', label: 'Automatize', permissions: [PERMISSIONS.AUTOMATIONS_VIEW, PERMISSIONS.AUTOMATIONS_MANAGE] },
   { href: '/interno/agentes-ia', label: 'Agentes IA', permissions: [PERMISSIONS.AI_VIEW, PERMISSIONS.AI_MANAGE] },
