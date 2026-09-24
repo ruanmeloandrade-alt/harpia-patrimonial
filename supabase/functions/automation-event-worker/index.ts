@@ -10,12 +10,13 @@ type AutomationDefinition = {
   origin?: 'manual' | 'pipeline';
   pipeline?: {
     pipelineId?: string;
-    event?: 'enter' | 'created_or_moved' | 'leave' | 'created' | 'time' | 'salesbot_done' | 'salesbot_failed' | 'ai_done' | 'tag_added' | 'field_changed' | 'inbound_webhook';
+    event?: 'enter' | 'created_or_moved' | 'leave' | 'created' | 'time' | 'salesbot_done' | 'salesbot_failed' | 'ai_done' | 'tag_added' | 'field_changed' | 'assignee_changed' | 'hours_before_datetime' | 'daily_time' | 'specific_datetime' | 'inbound_webhook';
     stageId?: string;
     value?: string;
     action?: string;
     targetStageId?: string;
     resourceId?: string;
+    actionConfig?: Json;
   };
   trigger?: { event?: string; conditions?: Array<{ field?: string; operator?: string; value?: unknown }> };
   actions?: AutomationAction[];
@@ -65,6 +66,24 @@ function matchesPipeline(definition: AutomationDefinition, event: OutboxEvent, s
   const duration = String(getPath(source, 'duration') ?? getPath(source, 'threshold') ?? '');
 
   if (meta.pipelineId && pipelineId !== meta.pipelineId) return false;
+
+  const config = meta.actionConfig ?? {};
+  const sourceId = String(config.sourceId ?? '').trim();
+  if (sourceId) {
+    const eventSource = String(getPath(source, 'lead.source') ?? getPath(source, 'source') ?? '').trim();
+    if (eventSource !== sourceId) return false;
+  }
+
+  const conditionField = String(config.conditionField ?? '').trim();
+  if (conditionField) {
+    const actual = getPath(source, conditionField);
+    const operator = String(config.conditionOperator ?? 'equals');
+    const expected = String(config.conditionValue ?? '');
+    if (operator === 'equals' && String(actual ?? '') !== expected) return false;
+    if (operator === 'not_equals' && String(actual ?? '') === expected) return false;
+    if (operator === 'contains' && !String(actual ?? '').includes(expected)) return false;
+  }
+
   if (meta.event === 'enter') return event.event_type === 'lead.stage_changed' && stageId === meta.stageId;
   if (meta.event === 'created_or_moved') {
     return (event.event_type === 'lead.created' || event.event_type === 'lead.stage_changed') && stageId === meta.stageId;
@@ -95,6 +114,15 @@ function matchesPipeline(definition: AutomationDefinition, event: OutboxEvent, s
     return event.event_type === 'lead.field_changed'
       && stageId === meta.stageId
       && (!meta.value || String(getPath(source, 'fieldId') ?? '') === meta.value);
+  }
+  if (meta.event === 'assignee_changed') {
+    return event.event_type === 'lead.assignee_changed' && stageId === meta.stageId;
+  }
+  if (meta.event === 'hours_before_datetime' || meta.event === 'daily_time' || meta.event === 'specific_datetime') {
+    return event.event_type === 'custom.event'
+      && kind === meta.event
+      && stageId === meta.stageId
+      && automationId === definition.id;
   }
   if (meta.event === 'inbound_webhook') {
     return event.event_type === 'custom.event'
