@@ -605,69 +605,92 @@ export function CatalogAdminPage({ access, repository, mediaStorage }: CatalogAd
       </label>
 
       <div className="f03-media-box">
-        <strong>Fotos, vídeos e documentos</strong>
-        {mediaStorage && (
-          <label>
-            Adicionar fotos
-            <input
-              type="file"
-              accept="image/jpeg,image/png,image/webp,image/gif"
-              multiple
-              disabled={uploadingType !== null}
-              onChange={(event) => void uploadFiles(event, 'image', 'imageUrls')}
-            />
-          </label>
-        )}
-        <label>
-          URLs adicionais de fotos, uma por linha
-          <textarea
-            rows={3}
-            value={productForm.imageUrls}
-            onChange={(event) => setProductForm({ ...productForm, imageUrls: event.target.value })}
-          />
-        </label>
+        <strong>Fotos e vídeos do produto</strong>
 
-        {mediaStorage && (
-          <label>
-            Adicionar vídeos
-            <input
-              type="file"
-              accept="video/mp4,video/webm"
-              multiple
-              disabled={uploadingType !== null}
-              onChange={(event) => void uploadFiles(event, 'video', 'videoUrls')}
-            />
-          </label>
-        )}
-        <label>
-          URLs adicionais de vídeos, uma por linha
-          <textarea
-            rows={3}
-            value={productForm.videoUrls}
-            onChange={(event) => setProductForm({ ...productForm, videoUrls: event.target.value })}
-          />
-        </label>
+        {mediaStorage ? (
+          <>
+            <label>
+              Adicionar fotos
+              <input
+                type="file"
+                accept="image/jpeg,image/png,image/webp,image/gif"
+                multiple
+                disabled={uploadingType !== null}
+                onChange={(event) => void uploadFiles(event, 'image', 'imageUrls')}
+              />
+            </label>
 
-        {mediaStorage && (
-          <label>
-            Adicionar documentos
-            <input
-              type="file"
-              accept="application/pdf,image/jpeg,image/png,image/webp"
-              multiple
-              disabled={uploadingType !== null}
-              onChange={(event) => void uploadFiles(event, 'document', 'documentUrls')}
-            />
-          </label>
+            {splitList(productForm.imageUrls).length > 0 && (
+              <div className="f03-item-list">
+                {splitList(productForm.imageUrls).map((url) => (
+                  <article className="f03-card f03-item" key={url}>
+                    <img src={url} alt="Foto do produto" style={{ width: '100%', maxHeight: 220, objectFit: 'cover', borderRadius: 10 }} />
+                    <div className="f03-actions">
+                      <button
+                        type="button"
+                        className="f03-button f03-button-danger"
+                        onClick={() => setProductForm((current) => ({
+                          ...current,
+                          imageUrls: splitList(current.imageUrls).filter((item) => item !== url).join('\n'),
+                        }))}
+                      >
+                        Remover foto
+                      </button>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            )}
+
+            <label>
+              Adicionar vídeos
+              <input
+                type="file"
+                accept="video/mp4,video/webm"
+                multiple
+                disabled={uploadingType !== null}
+                onChange={(event) => void uploadFiles(event, 'video', 'videoUrls')}
+              />
+            </label>
+
+            {splitList(productForm.videoUrls).length > 0 && (
+              <div className="f03-item-list">
+                {splitList(productForm.videoUrls).map((url) => (
+                  <article className="f03-card f03-item" key={url}>
+                    <video controls preload="metadata" src={url} style={{ width: '100%', maxHeight: 260, borderRadius: 10 }} />
+                    <div className="f03-actions">
+                      <button
+                        type="button"
+                        className="f03-button f03-button-danger"
+                        onClick={() => setProductForm((current) => ({
+                          ...current,
+                          videoUrls: splitList(current.videoUrls).filter((item) => item !== url).join('\n'),
+                        }))}
+                      >
+                        Remover vídeo
+                      </button>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            )}
+
+            <label>
+              Adicionar documentos
+              <input
+                type="file"
+                accept="application/pdf,image/jpeg,image/png,image/webp"
+                multiple
+                disabled={uploadingType !== null}
+                onChange={(event) => void uploadFiles(event, 'document', 'documentUrls')}
+              />
+            </label>
+          </>
+        ) : (
+          <div className="f03-alert f03-alert-error">
+            O armazenamento de mídia ainda não está conectado nesta execução.
+          </div>
         )}
-        <label>
-          URLs adicionais de documentos, uma por linha
-          <textarea
-            rows={3}
-            value={productForm.documentUrls}
-            onChange={(event) => setProductForm({ ...productForm, documentUrls: event.target.value })}
-          />
-        </label>
       </div>
 
       <div className="f03-actions">
