@@ -13,6 +13,7 @@ import { listAIAgents } from '../features/ai-agents/repository';
 import { AutomationsWorkspace } from '../features/automations/AutomationsWorkspace';
 import { IntegrationsWorkspace } from '../features/integrations/IntegrationsWorkspace';
 import { MarketingWorkspace } from '../features/marketing/MarketingWorkspace';
+import { SettingsWorkspace, type SettingsTab } from '../features/settings/SettingsWorkspace';
 import '../features/automations/front05.css';
 import { FullPageState } from '../shared/components/FullPageState';
 import { usePlatformRuntime } from './PlatformRuntime';
@@ -143,4 +144,10 @@ export function IntegratedIntegrations() {
 
 export function IntegratedMarketing() {
   return <MarketingWorkspace />;
+}
+
+
+export function IntegratedSettings({ initialTab = 'general' }: { initialTab?: SettingsTab }) {
+  const runtime = usePlatformRuntime();
+  return <SettingsWorkspace credentialVault={runtime.credentialVault} initialTab={initialTab} />;
 }
