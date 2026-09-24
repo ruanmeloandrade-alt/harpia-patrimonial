@@ -59,6 +59,57 @@ function percent(value: number) {
   }).format(value > 1 ? value / 100 : value);
 }
 
+const DASHBOARD_KPI_PREF_KEY = 'harpia_dashboard_kpis_v1';
+
+type DashboardKpiId =
+  | 'leads'
+  | 'visits'
+  | 'proposals'
+  | 'negotiations'
+  | 'sales'
+  | 'pipelineValue'
+  | 'ticket'
+  | 'conversionRate'
+  | 'activeProducts'
+  | 'inventoryValue'
+  | 'drafts'
+  | 'paused'
+  | 'sold';
+
+interface DashboardKpiDefinition {
+  id: DashboardKpiId;
+  label: string;
+  helper: string;
+  getValue: (snapshot: DashboardSnapshot) => string | number;
+}
+
+const dashboardKpis: DashboardKpiDefinition[] = [
+  { id: 'leads', label: 'Leads', helper: 'Contatos no CRM', getValue: (s) => s.commercial.leads },
+  { id: 'visits', label: 'Visitas', helper: 'Visitas registradas', getValue: (s) => s.commercial.visits },
+  { id: 'proposals', label: 'Propostas', helper: 'Em acompanhamento', getValue: (s) => s.commercial.proposals },
+  { id: 'negotiations', label: 'Negociações', helper: 'Negócios em negociação', getValue: (s) => s.commercial.negotiations },
+  { id: 'sales', label: 'Vendas', helper: 'Negócios concluídos', getValue: (s) => s.commercial.sales },
+  { id: 'pipelineValue', label: 'Valor do pipeline', helper: 'Valor em negociação', getValue: (s) => money(s.commercial.pipelineValue) },
+  { id: 'ticket', label: 'Ticket médio', helper: 'Valor médio por venda', getValue: (s) => money(s.commercial.ticket) },
+  { id: 'conversionRate', label: 'Taxa de conversão', helper: 'Conversão comercial', getValue: (s) => percent(s.commercial.conversionRate) },
+  { id: 'activeProducts', label: 'Produtos ativos', helper: 'Itens publicados', getValue: (s) => s.catalog.active },
+  { id: 'inventoryValue', label: 'Valor do estoque', helper: 'Valor dos itens ativos', getValue: (s) => money(s.catalog.inventoryValue) },
+  { id: 'drafts', label: 'Rascunhos', helper: 'Itens ainda não publicados', getValue: (s) => s.catalog.drafts },
+  { id: 'paused', label: 'Pausados', helper: 'Itens temporariamente pausados', getValue: (s) => s.catalog.paused },
+  { id: 'sold', label: 'Vendidos', helper: 'Itens encerrados como vendidos', getValue: (s) => s.catalog.sold },
+];
+
+function readDashboardKpiPreferences(): DashboardKpiId[] {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(DASHBOARD_KPI_PREF_KEY) || '[]');
+    if (!Array.isArray(parsed)) return [];
+    const allowed = new Set(dashboardKpis.map((item) => item.id));
+    return parsed.filter((id): id is DashboardKpiId => allowed.has(id));
+  } catch {
+    return [];
+  }
+}
+
 interface MetricCardProps {
   label: string;
   value: string | number;
@@ -141,6 +192,9 @@ export function DashboardPage({ catalogRepository, commercialProvider }: Dashboa
   const [snapshot, setSnapshot] = useState<DashboardSnapshot>(initialSnapshot);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [selectedKpis, setSelectedKpis] = useState<DashboardKpiId[]>(readDashboardKpiPreferences);
+  const [draftKpis, setDraftKpis] = useState<DashboardKpiId[]>([]);
+  const [customizing, setCustomizing] = useState(false);
 
   const reload = async () => {
     try {
@@ -166,19 +220,43 @@ export function DashboardPage({ catalogRepository, commercialProvider }: Dashboa
   }, [commercialProvider]);
 
   const crmConnected = snapshot.commercialSource === 'connected';
+  const visibleKpis = selectedKpis
+    .map((id) => dashboardKpis.find((item) => item.id === id))
+    .filter((item): item is DashboardKpiDefinition => Boolean(item));
+
+  const openCustomizer = () => {
+    setDraftKpis(selectedKpis);
+    setCustomizing(true);
+  };
+
+  const toggleKpi = (id: DashboardKpiId) => {
+    setDraftKpis((current) => current.includes(id)
+      ? current.filter((item) => item !== id)
+      : [...current, id]);
+  };
+
+  const saveKpis = () => {
+    setSelectedKpis(draftKpis);
+    localStorage.setItem(DASHBOARD_KPI_PREF_KEY, JSON.stringify(draftKpis));
+    setCustomizing(false);
+  };
 
   return (
     <section className="f03-dashboard">
       <header className="f03-dashboard-header">
         <div>
           <p className="f03-dashboard-kicker">Painel operacional</p>
-          <h1>Dashboard</h1>
           <p>Acompanhe vendas, produtos e movimentações da operação em um só lugar.</p>
         </div>
 
-        <div className={crmConnected ? 'f03-source-pill connected' : 'f03-source-pill'}>
-          <span className="f03-source-dot" />
-          {loading ? 'Atualizando dados' : crmConnected ? 'CRM conectado' : 'Operação sem movimentação'}
+        <div className="f03-dashboard-header__actions">
+          <button className="f03-customize-button" type="button" onClick={openCustomizer}>
+            Personalizar Dashboard
+          </button>
+          <div className={crmConnected ? 'f03-source-pill connected' : 'f03-source-pill'}>
+            <span className="f03-source-dot" />
+            {loading ? 'Atualizando dados' : crmConnected ? 'CRM conectado' : 'Operação sem movimentação'}
+          </div>
         </div>
       </header>
 
@@ -189,29 +267,27 @@ export function DashboardPage({ catalogRepository, commercialProvider }: Dashboa
         </div>
       )}
 
-      <div className="f03-metric-grid">
-        <MetricCard
-          label="Leads"
-          value={snapshot.commercial.leads}
-          helper="Contatos no CRM"
-          accent
-        />
-        <MetricCard
-          label="Produtos ativos"
-          value={snapshot.catalog.active}
-          helper="Itens publicados"
-        />
-        <MetricCard
-          label="Propostas"
-          value={snapshot.commercial.proposals}
-          helper="Em acompanhamento"
-        />
-        <MetricCard
-          label="Vendas"
-          value={snapshot.commercial.sales}
-          helper="Negócios concluídos"
-        />
-      </div>
+      {visibleKpis.length > 0 ? (
+        <div className="f03-metric-grid">
+          {visibleKpis.map((kpi, index) => (
+            <MetricCard
+              key={kpi.id}
+              label={kpi.label}
+              value={kpi.getValue(snapshot)}
+              helper={kpi.helper}
+              accent={index === 0}
+            />
+          ))}
+        </div>
+      ) : (
+        <div className="f03-kpi-empty">
+          <div>
+            <strong>Nenhum KPI selecionado</strong>
+            <span>Escolha quais indicadores devem aparecer na sua dashboard.</span>
+          </div>
+          <button type="button" onClick={openCustomizer}>Personalizar Dashboard</button>
+        </div>
+      )}
 
       <div className="f03-dashboard-main-grid">
         <section className="f03-dashboard-panel f03-dashboard-panel--commercial">
@@ -308,6 +384,55 @@ export function DashboardPage({ catalogRepository, commercialProvider }: Dashboa
           )}
         </section>
       </div>
+
+      {customizing && (
+        <div className="f03-kpi-modal-backdrop" role="presentation" onMouseDown={() => setCustomizing(false)}>
+          <section
+            className="f03-kpi-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="dashboard-customizer-title"
+            onMouseDown={(event) => event.stopPropagation()}
+          >
+            <div className="f03-kpi-modal__head">
+              <div>
+                <p className="f03-dashboard-kicker">Personalização</p>
+                <h2 id="dashboard-customizer-title">Escolha seus KPIs</h2>
+                <p>Marque somente os indicadores que você quer acompanhar na dashboard.</p>
+              </div>
+              <button type="button" className="f03-kpi-modal__close" onClick={() => setCustomizing(false)} aria-label="Fechar">×</button>
+            </div>
+
+            <div className="f03-kpi-options">
+              {dashboardKpis.map((kpi) => (
+                <label key={kpi.id} className={draftKpis.includes(kpi.id) ? 'selected' : ''}>
+                  <input
+                    type="checkbox"
+                    checked={draftKpis.includes(kpi.id)}
+                    onChange={() => toggleKpi(kpi.id)}
+                  />
+                  <span>
+                    <strong>{kpi.label}</strong>
+                    <small>{kpi.helper}</small>
+                  </span>
+                </label>
+              ))}
+            </div>
+
+            <div className="f03-kpi-modal__actions">
+              <button type="button" className="f03-customize-button secondary" onClick={() => setDraftKpis([])}>
+                Limpar seleção
+              </button>
+              <button type="button" className="f03-customize-button secondary" onClick={() => setCustomizing(false)}>
+                Cancelar
+              </button>
+              <button type="button" className="f03-customize-button" onClick={saveKpis}>
+                Salvar Dashboard
+              </button>
+            </div>
+          </section>
+        </div>
+      )}
     </section>
   );
 }
