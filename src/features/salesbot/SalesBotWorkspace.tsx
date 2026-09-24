@@ -732,9 +732,9 @@ export function SalesBotWorkspace({
     }
   };
 
-  const deleteSelected = () => {
+  const deleteBlocks = (ids: Set<string>) => {
     if (!selected || !canManage) return;
-    const kill = new Set([...selectedBlockIds].filter((id) => selected.blocks.find((block) => block.id === id)?.type !== 'trigger'));
+    const kill = new Set([...ids].filter((id) => selected.blocks.find((block) => block.id === id)?.type !== 'trigger'));
     if (!kill.size) return;
     pushHistory();
     const blocks = selected.blocks
@@ -751,6 +751,8 @@ export function SalesBotWorkspace({
     setPicker(null);
     refresh(selected.id);
   };
+
+  const deleteSelected = () => deleteBlocks(selectedBlockIds);
 
   const duplicateSelected = () => {
     if (!selected || !canManage) return;
@@ -969,7 +971,7 @@ export function SalesBotWorkspace({
               return <article key={block.id} className={`sb-free-node ${isStart?'is-start':''} ${selectedOne?'is-selected':''} ${expanded?'is-expanded':''}`} style={{left:pos.x,top:pos.y,width:NODE_WIDTH}} onClick={(event:ReactMouseEvent)=>{event.stopPropagation();if(event.ctrlKey||event.metaKey){setSelectedBlockIds((current)=>{const next=new Set(current);if(next.has(block.id))next.delete(block.id);else next.add(block.id);return next;});}else setSelectedBlockIds(new Set([block.id]));}}>
                 <div className="sb-free-node__head" onPointerDown={(event)=>startDrag(event,block.id)}>
                   <div><span className="sb-node-index">{isStart?'▶':index}</span><div><strong>{isStart?'Iniciar SalesBot':block.label}</strong><small>{blockSummary(block)}</small></div></div>
-                  {isStart?<span className="sb-start-lock">PADRÃO</span>:canManage?<button type="button" className="icon danger" onClick={(event)=>{event.stopPropagation();setSelectedBlockIds(new Set([block.id]));window.setTimeout(deleteSelected,0);}}>×</button>:null}
+                  {isStart?<span className="sb-start-lock">PADRÃO</span>:canManage?<button type="button" className="icon danger" onClick={(event)=>{event.stopPropagation();deleteBlocks(new Set([block.id]));}}>×</button>:null}
                 </div>
                 {expanded?<div className="sb-free-node__config"><InlineEditor block={block} botId={selected.id} crmState={crmState} assignees={assignees} catalogs={catalogs} catalogItems={catalogItems} beforeChange={pushHistory} afterChange={()=>refresh(selected.id)} onError={setError}/></div>:null}
                 {outputs.length?<div className="sb-free-node__outputs">{outputs.map((output)=>{
