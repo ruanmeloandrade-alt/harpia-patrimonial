@@ -5,6 +5,7 @@ import { AppLink, useAppRouter } from '../../core/router/router';
 import { getOrganizationSettings, applyOrganizationRegionalPreferences } from '../../features/settings/core/settings-service';
 import { applyUserAppearance, getUserPreferences } from '../../features/settings/user-preferences-service';
 import { NotificationCenter } from '../../features/notifications/NotificationCenter';
+import { installRuntimeLocaleObserver } from '../../features/settings/runtime-preferences';
 import './internal-shell.css';
 
 type NavItem = {
@@ -47,6 +48,10 @@ export function InternalShell({ children }: PropsWithChildren) {
   useEffect(() => {
     setMobileOpen(false);
   }, [pathname]);
+
+  useEffect(() => installRuntimeLocaleObserver(), []);
+
+
 
   useEffect(() => {
     let mounted = true;
