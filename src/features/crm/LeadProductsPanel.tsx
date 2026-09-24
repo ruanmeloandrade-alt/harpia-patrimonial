@@ -1,6 +1,7 @@
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import type { CatalogRepository } from '../catalog/catalogRepository';
-import type { CatalogItem } from '../catalog/types';
+import { listProductCatalogs } from '../catalog/productCatalogRepository';
+import type { CatalogItem, ProductCatalog } from '../catalog/types';
 import {
   listLeadProductAssociations,
   removeLeadProductAssociation,
@@ -41,11 +42,6 @@ function finalPrice(
   return Math.max(0, price - discountValue);
 }
 
-function itemTypeLabel(item: CatalogItem) {
-  if (item.itemType === 'service') return 'Serviço';
-  if (item.itemType === 'product') return 'Produto';
-  return 'Imóvel';
-}
 
 export function LeadProductsPanel({
   leadId,
@@ -56,6 +52,7 @@ export function LeadProductsPanel({
   waitForCrmPersistence,
 }: LeadProductsPanelProps) {
   const [items, setItems] = useState<CatalogItem[]>([]);
+  const [catalogs, setCatalogs] = useState<ProductCatalog[]>([]);
   const [associations, setAssociations] = useState<LeadProductAssociation[]>([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -63,11 +60,13 @@ export function LeadProductsPanel({
   const load = async () => {
     try {
       setLoading(true);
-      const [catalog, linked] = await Promise.all([
+      const [catalogItems, productCatalogs, linked] = await Promise.all([
         catalogRepository.list({ includeDeleted: true }),
+        listProductCatalogs(),
         listLeadProductAssociations(leadId),
       ]);
-      setItems(catalog);
+      setItems(catalogItems);
+      setCatalogs(productCatalogs);
       setAssociations(linked);
     } catch (error) {
       onError(error instanceof Error ? error.message : 'Não foi possível carregar os produtos do cliente.');
@@ -83,6 +82,11 @@ export function LeadProductsPanel({
   const associationMap = useMemo(
     () => new Map(associations.map((association) => [association.catalogItemId, association])),
     [associations],
+  );
+
+  const catalogNameById = useMemo(
+    () => new Map(catalogs.map((catalog) => [catalog.id, catalog.name])),
+    [catalogs],
   );
 
   const availableItems = items.filter((item) => !item.deletedAt && !associationMap.has(item.id));
@@ -177,7 +181,7 @@ export function LeadProductsPanel({
     <div className={styles.detailSection}>
       <h3>Produtos do cliente</h3>
       <p style={{ marginTop: 0 }}>
-        Associe imóveis, produtos ou serviços do catálogo e preserve as condições comerciais usadas com este cliente.
+        Associe produtos cadastrados e preserve o catálogo e as condições comerciais usadas com este cliente.
       </p>
 
       {loading ? (
@@ -206,7 +210,7 @@ export function LeadProductsPanel({
                     <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'flex-start' }}>
                       <div>
                         <strong>{item?.name ?? association.catalogItemId}</strong>
-                        <div><small>{item ? itemTypeLabel(item) : 'Item do catálogo'} · Qtd. {association.quantity}</small></div>
+                        <div><small>{item ? (catalogNameById.get(item.catalogId) || 'Catálogo indisponível') : 'Item do catálogo'} · Qtd. {association.quantity}</small></div>
                         {item?.tags?.length ? <div className={styles.tagManager}>{item.tags.map((tag) => <span key={tag}>{tag}</span>)}</div> : null}
                       </div>
                       <div style={{ textAlign: 'right' }}>
@@ -250,7 +254,7 @@ export function LeadProductsPanel({
                 <option value="">Selecionar produto</option>
                 {availableItems.map((item) => (
                   <option key={item.id} value={item.id}>
-                    {item.name} | {itemTypeLabel(item)} | {money(finalPrice(item.price, item.discountType, item.discountValue))}
+                    {catalogNameById.get(item.catalogId) || 'Catálogo'} | {item.name} | {money(finalPrice(item.price, item.discountType, item.discountValue))}
                   </option>
                 ))}
               </select>
