@@ -2194,3 +2194,458 @@
     grid-template-columns: 1fr;
   }
 }
+
+
+/* Configurador de gatilho, referência MarketOn */
+.triggerConfigPanel {
+  position: fixed;
+  z-index: 3720;
+  width: 320px;
+  max-height: calc(100vh - 54px);
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  overflow: hidden;
+  border: 1px solid #dce1e8;
+  border-radius: 9px;
+  background: #fff;
+  box-shadow: 0 4px 14px rgba(31, 43, 58, .22);
+  color: #3c4858;
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+}
+
+.triggerConfigScroll {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 10px 11px 12px;
+  scrollbar-width: thin;
+  scrollbar-color: #8e9296 transparent;
+}
+
+.triggerConfigScroll::-webkit-scrollbar {
+  width: 9px;
+}
+
+.triggerConfigScroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.triggerConfigScroll::-webkit-scrollbar-thumb {
+  border: 2px solid #fff;
+  border-radius: 999px;
+  background: #8e9296;
+}
+
+.triggerConfigField,
+.triggerConfigDetailField,
+.triggerConfigInlinePair label,
+.triggerConfigActionBox label {
+  display: grid;
+  gap: 5px;
+  color: #596575;
+  font-size: 9px;
+  font-weight: 600;
+}
+
+.triggerConfigField > span {
+  color: #505c6c;
+  font-size: 9px;
+  font-weight: 650;
+}
+
+.triggerConfigPanel input,
+.triggerConfigPanel select,
+.triggerConfigPanel textarea {
+  width: 100%;
+  min-height: 28px;
+  border: 1px solid #dbe0e8;
+  border-radius: 4px;
+  background: #fff;
+  color: #475464;
+  padding: 5px 8px;
+  font: inherit;
+  font-size: 9px;
+  line-height: 1.25;
+  outline: none;
+}
+
+.triggerConfigPanel input:focus,
+.triggerConfigPanel select:focus,
+.triggerConfigPanel textarea:focus {
+  border-color: #7e79ff;
+  box-shadow: 0 0 0 1px rgba(93, 91, 255, .08);
+}
+
+.triggerConditionAdd {
+  width: 100%;
+  min-height: 27px;
+  margin-top: 7px;
+  border: 1px dashed #d7dce5;
+  border-radius: 4px;
+  background: #fff;
+  color: #6f7a89;
+  padding: 5px 8px;
+  text-align: left;
+  font: inherit;
+  font-size: 9px;
+  cursor: pointer;
+}
+
+.triggerConfigHint {
+  display: block;
+  margin: 5px 1px 10px;
+  color: #737d89;
+  font-size: 8px;
+  line-height: 1.35;
+}
+
+.triggerConditionEditor {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 5px;
+  margin: 6px 0 10px;
+  padding: 7px;
+  border: 1px solid #e1e5eb;
+  border-radius: 5px;
+  background: #fafbfc;
+}
+
+.triggerConfigSectionLabel {
+  display: block;
+  margin: 9px 0 5px;
+  color: #606a78;
+  font-size: 8px;
+  font-weight: 850;
+  letter-spacing: .035em;
+}
+
+.triggerExecuteList {
+  display: grid;
+  gap: 3px;
+}
+
+.triggerExecuteOption {
+  min-height: 29px;
+  display: grid;
+  grid-template-columns: 15px minmax(0, 1fr);
+  align-items: center;
+  gap: 6px;
+  padding: 5px 8px;
+  border: 1px solid #d9dfe8;
+  border-radius: 4px;
+  background: #fff;
+  color: #596575;
+  font-size: 9px;
+  line-height: 1.25;
+  cursor: pointer;
+}
+
+.triggerExecuteOption input {
+  appearance: none;
+  width: 13px;
+  height: 13px;
+  min-height: 13px;
+  margin: 0;
+  padding: 0;
+  border: 1px solid #aeb8c5;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: none;
+}
+
+.triggerExecuteOption input:checked {
+  border: 2px solid #5d5bff;
+  box-shadow: inset 0 0 0 2px #fff;
+  background: #5d5bff;
+}
+
+.triggerExecuteOptionSelected {
+  border-color: #655fff;
+  background: #f2f1ff;
+  color: #485168;
+}
+
+.triggerConfigInlinePair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  margin-top: 6px;
+  padding: 7px;
+  border: 1px solid #e1e5eb;
+  border-radius: 5px;
+  background: #fafbff;
+}
+
+.triggerConfigDetailField {
+  margin-top: 6px;
+  padding: 7px;
+  border: 1px solid #e1e5eb;
+  border-radius: 5px;
+  background: #fafbff;
+}
+
+.triggerMessageHint {
+  margin: 7px 1px 12px;
+  color: #6f7986;
+  font-size: 7.5px;
+  line-height: 1.3;
+}
+
+.triggerActiveSelect {
+  display: block;
+  margin-bottom: 9px;
+}
+
+.triggerActiveSelect select {
+  min-height: 28px;
+}
+
+.triggerToggleRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 9px;
+  margin: 5px 0 11px;
+}
+
+.triggerToggleRow > div {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.triggerToggleRow strong {
+  color: #3f4a5a;
+  font-size: 9px;
+  font-weight: 750;
+}
+
+.triggerToggleRow small {
+  color: #78818d;
+  font-size: 7.5px;
+  line-height: 1.25;
+}
+
+.triggerSwitch {
+  position: relative;
+  width: 30px;
+  height: 17px;
+  cursor: pointer;
+}
+
+.triggerSwitch input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.triggerSwitch span {
+  position: absolute;
+  inset: 0;
+  border-radius: 999px;
+  background: #e1e5eb;
+  transition: background .15s ease;
+}
+
+.triggerSwitch span::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0,0,0,.18);
+  transition: transform .15s ease;
+}
+
+.triggerSwitch input:checked + span {
+  background: #5d5bff;
+}
+
+.triggerSwitch input:checked + span::after {
+  transform: translateX(13px);
+}
+
+.triggerConfigActionBox {
+  display: grid;
+  gap: 6px;
+  margin: 8px 0 10px;
+  padding: 8px;
+  border: 1px solid #dfe4eb;
+  border-radius: 5px;
+  background: #fff;
+}
+
+.triggerConfigActionBox > strong {
+  color: #3f4b5d;
+  font-size: 9px;
+  font-weight: 800;
+}
+
+.triggerConfigActionBox textarea {
+  min-height: 68px;
+  resize: vertical;
+}
+
+.triggerConfigActionBox code {
+  display: block;
+  overflow-x: auto;
+  padding: 6px;
+  border: 1px solid #e1e5eb;
+  border-radius: 4px;
+  background: #f8f9fb;
+  color: #5957c9;
+  font-size: 7px;
+  white-space: nowrap;
+}
+
+.triggerConfigActionHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 7px;
+}
+
+.triggerConfigActionHead > strong {
+  color: #3f4b5d;
+  font-size: 9px;
+}
+
+.triggerConfigActionHead > div {
+  display: flex;
+  gap: 4px;
+}
+
+.triggerConfigActionHead button {
+  min-height: 23px;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  border: 1px solid #d9dfe7;
+  border-radius: 10px;
+  background: #fff;
+  color: #505c6d;
+  padding: 3px 7px;
+  font: inherit;
+  font-size: 8px;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.triggerConfigResourceSelect {
+  min-height: 34px !important;
+  font-weight: 650 !important;
+  appearance: none;
+}
+
+.triggerConfigSelectedHint {
+  display: none;
+}
+
+.triggerConfigDanger {
+  border-color: #f0c8c5;
+  background: #fff8f7;
+}
+
+.triggerConfigDanger small {
+  color: #9b4d47;
+  font-size: 8px;
+  line-height: 1.3;
+}
+
+.triggerApplyExisting {
+  min-height: 27px;
+  display: grid;
+  grid-template-columns: 15px minmax(0, 1fr);
+  align-items: center;
+  gap: 6px;
+  margin: 3px 0 2px;
+  color: #4f5c6c;
+  font-size: 8.5px;
+  cursor: pointer;
+}
+
+.triggerApplyExisting input {
+  appearance: none;
+  width: 13px;
+  height: 13px;
+  min-height: 13px;
+  margin: 0;
+  padding: 0;
+  border: 1px solid #756fff;
+  border-radius: 50%;
+  background: #fff;
+}
+
+.triggerApplyExisting input:checked {
+  border: 2px solid #5d5bff;
+  box-shadow: inset 0 0 0 2px #fff;
+  background: #5d5bff;
+}
+
+.triggerConfigFooter {
+  min-height: 47px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 11px;
+  border-top: 1px solid #e1e5eb;
+  background: #fff;
+}
+
+.triggerConfigFooter button {
+  border: 0;
+  font: inherit;
+  cursor: pointer;
+}
+
+.triggerConfigReady {
+  min-height: 28px;
+  border-radius: 7px !important;
+  background: #5d5bff !important;
+  color: #fff !important;
+  padding: 5px 11px !important;
+  font-size: 9px !important;
+  font-weight: 800 !important;
+  box-shadow: 0 2px 4px rgba(93,91,255,.2);
+}
+
+.triggerConfigCancel {
+  min-height: 28px;
+  background: transparent !important;
+  color: #667180 !important;
+  padding: 5px 3px !important;
+  font-size: 8.5px !important;
+}
+
+.triggerConfigDelete {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  margin-left: auto;
+  background: transparent !important;
+  color: #ff454f !important;
+  padding: 4px !important;
+}
+
+.triggerConfigDelete svg {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+@media (max-width: 620px) {
+  .triggerConfigPanel {
+    width: min(320px, calc(100vw - 16px));
+    left: 8px !important;
+    top: 48px !important;
+    max-height: calc(100vh - 56px);
+  }
+}
