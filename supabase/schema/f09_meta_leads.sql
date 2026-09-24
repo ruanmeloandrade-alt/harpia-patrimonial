@@ -31,6 +31,9 @@ create table if not exists public.meta_lead_receipts (
   updated_at timestamptz not null default now()
 );
 
+create index if not exists meta_lead_receipts_connection_idx
+  on public.meta_lead_receipts(connection_id);
+
 create index if not exists meta_lead_receipts_page_received_idx
   on public.meta_lead_receipts(page_id, received_at desc);
 
