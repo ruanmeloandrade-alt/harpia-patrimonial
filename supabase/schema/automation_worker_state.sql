@@ -112,6 +112,7 @@ begin
       changed := true;
       history_type := 'assignee_changed';
       description := 'Responsável do lead alterado por automação.';
+      followup_type := 'lead.assignee_changed';
       followup_payload := jsonb_build_object('previousAssigneeId', old_text, 'assigneeId', requested_id);
     end if;
 
