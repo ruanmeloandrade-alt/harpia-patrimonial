@@ -1,11 +1,81 @@
 import { listAIAgents } from '../ai-agents/repository';
 import { createF05Id, readStoredList, writeStoredList, writeStoredListConfirmed } from '../automations/f05Storage';
 import { findActiveSalesBotReferences, findSalesBotReferences, formatF05References } from '../automations/referenceIntegrity';
-import type { SalesBotBlock, SalesBotDefinition, SalesBotStatus } from './types';
+import type { SalesBotBlock, SalesBotBlockConfigValue, SalesBotBlockType, SalesBotDefinition, SalesBotStatus } from './types';
 import { validateSalesBot } from './validation';
 
 const STORAGE_KEY = 'harpia:f05:salesbots';
 const now = () => new Date().toISOString();
+
+const IMPORTABLE_BLOCK_TYPES = new Set<SalesBotBlockType>([
+  'trigger',
+  'condition',
+  'delay',
+  'message',
+  'ai_agent',
+  'move_stage',
+  'assign_owner',
+  'create_task',
+  'update_field',
+  'tag',
+  'webhook',
+  'finish',
+  'chain_flow',
+]);
+
+function recordValue(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : null;
+}
+
+function importConfig(value: unknown): Record<string, SalesBotBlockConfigValue> {
+  const source = recordValue(value);
+  if (!source) return {};
+  const config: Record<string, SalesBotBlockConfigValue> = {};
+  Object.entries(source).forEach(([key, item]) => {
+    if (item === null || typeof item === 'string' || typeof item === 'number' || typeof item === 'boolean') {
+      config[key] = item;
+    } else if (Array.isArray(item) && item.every((entry) => typeof entry === 'string')) {
+      config[key] = item;
+    }
+  });
+  return config;
+}
+
+function importedType(source: Record<string, unknown>): SalesBotBlockType | null {
+  const type = String(source.type ?? '').trim() as SalesBotBlockType;
+  if (IMPORTABLE_BLOCK_TYPES.has(type)) return type;
+
+  const legacy = String(source.kind ?? '').trim();
+  const legacyMap: Record<string, SalesBotBlockType> = {
+    inicio: 'trigger',
+    mensagem: 'message',
+    espera: 'delay',
+    condicao: 'condition',
+    ia: 'ai_agent',
+    'iniciar-salesbot': 'chain_flow',
+    'encerrar-bot': 'finish',
+  };
+  return legacyMap[legacy] ?? null;
+}
+
+function importedLegacyConfig(source: Record<string, unknown>, type: SalesBotBlockType): Record<string, SalesBotBlockConfigValue> {
+  const data = recordValue(source.data) ?? {};
+  if (type === 'trigger') return { event: 'manual' };
+  if (type === 'message') {
+    const buttons = Array.isArray(data.buttons)
+      ? data.buttons.map((item) => {
+        const row = recordValue(item);
+        return row ? String(row.label ?? '').trim() : String(item ?? '').trim();
+      }).filter(Boolean)
+      : [];
+    return { message: String(data.text ?? ''), buttons };
+  }
+  if (type === 'delay') return { duration: String(data.duration ?? '1m'), pauseMode: 'timer' };
+  if (type === 'condition') return { expression: String(data.expression ?? data.value ?? '') };
+  if (type === 'ai_agent') return { agentId: String(data.agentId ?? '') };
+  if (type === 'chain_flow') return { botId: String(data.botId ?? '') };
+  return {};
+}
 
 const makeStartBlock = (): SalesBotBlock => ({
   id: createF05Id('block'),
@@ -308,6 +378,64 @@ export function removeSalesBotBlock(id: string, blockId: string): SalesBotDefini
       routes: Object.fromEntries(Object.entries(item.routes ?? {}).map(([key, target]) => [key, target === blockId ? null : target])),
     }));
   return updateSalesBot(id, { blocks });
+}
+
+export async function importSalesBot(
+  input: unknown,
+  fallbackName = 'SalesBot importado',
+): Promise<SalesBotDefinition> {
+  const root = Array.isArray(input) ? input[0] : input;
+  const source = recordValue(root);
+  if (!source || !Array.isArray(source.blocks)) throw new Error('Arquivo de SalesBot inválido.');
+
+  const rawBlocks = source.blocks.map(recordValue);
+  if (rawBlocks.some((block) => !block)) throw new Error('O arquivo contém blocos inválidos.');
+
+  const sourceIds = rawBlocks.map((block, index) => String(block?.id ?? `legacy-${index}`));
+  const idMap = new Map(sourceIds.map((sourceId) => [sourceId, createF05Id('block')]));
+
+  const blocks = rawBlocks.map((block, index): SalesBotBlock => {
+    const current = block!;
+    const type = importedType(current);
+    if (!type) throw new Error(`Tipo de bloco não suportado na importação: ${String(current.type ?? current.kind ?? 'desconhecido')}.`);
+
+    const sourceId = sourceIds[index];
+    const config = current.config !== undefined
+      ? importConfig(current.config)
+      : importedLegacyConfig(current, type);
+    const sourceRoutes = recordValue(current.routes) ?? {};
+
+    return {
+      id: idMap.get(sourceId)!,
+      type,
+      label: String(current.label ?? recordValue(current.data)?.label ?? (type === 'trigger' ? 'Iniciar SalesBot' : 'Bloco')),
+      config,
+      x: Number.isFinite(Number(current.x)) ? Number(current.x) : undefined,
+      y: Number.isFinite(Number(current.y)) ? Number(current.y) : undefined,
+      nextBlockId: current.nextBlockId ? idMap.get(String(current.nextBlockId)) ?? null : null,
+      falseNextBlockId: current.falseNextBlockId ? idMap.get(String(current.falseNextBlockId)) ?? null : null,
+      routes: Object.fromEntries(
+        Object.entries(sourceRoutes).map(([key, target]) => [
+          key,
+          target ? idMap.get(String(target)) ?? null : null,
+        ]),
+      ),
+    };
+  });
+
+  const timestamp = now();
+  const imported = normalizeBot({
+    id: createF05Id('bot'),
+    name: String(source.name ?? source.nome ?? fallbackName).trim() || fallbackName,
+    description: String(source.description ?? '').trim(),
+    status: 'draft',
+    blocks,
+    createdAt: timestamp,
+    updatedAt: timestamp,
+  });
+
+  await writeStoredListConfirmed(STORAGE_KEY, [imported, ...listSalesBots()]);
+  return imported;
 }
 
 export function moveSalesBotBlock(id: string, blockId: string, direction: -1 | 1): SalesBotDefinition {
