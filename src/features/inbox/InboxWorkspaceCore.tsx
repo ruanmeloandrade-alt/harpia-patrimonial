@@ -51,9 +51,14 @@ export function InboxWorkspace({
 
   const [inboxState, setInboxState] = useState<InboxState>(() => inboxService.snapshot());
   const [crmState, setCrmState] = useState(() => crmService.snapshot());
-  const [selectedConversationId, setSelectedConversationId] = useState<string | undefined>(
-    () => inboxService.snapshot().conversations[0]?.id,
-  );
+  const requestedLeadId = typeof window !== 'undefined'
+    ? new URLSearchParams(window.location.search).get('lead') || undefined
+    : undefined;
+  const [selectedConversationId, setSelectedConversationId] = useState<string | undefined>(() => {
+    const snapshot = inboxService.snapshot();
+    return snapshot.conversations.find((conversation) => conversation.leadId === requestedLeadId)?.id
+      ?? snapshot.conversations[0]?.id;
+  });
   const [selectedBotByConversation, setSelectedBotByConversation] = useState<Record<string, string>>(
     () => Object.fromEntries(botSelectionMemory),
   );
@@ -86,13 +91,13 @@ export function InboxWorkspace({
   const selectedAgentId = selectedConversationId
     ? selectedAgentByConversation[selectedConversationId] ?? ''
     : '';
-  const serviceMode = automationStatus.salesBot === 'running'
+  const automationLabel = automationStatus.salesBot === 'running'
     ? 'SalesBot ativo'
     : automationStatus.aiAgent === 'running'
       ? 'Agente IA ativo'
       : automationStatus.salesBot === 'paused' || automationStatus.aiAgent === 'paused'
-        ? 'Automação pausada · Humano'
-        : 'Atendimento humano';
+        ? 'Automação pausada'
+        : '';
 
   const setSelectedBotId = (id: string) => {
     if (!selectedConversationId) return;
@@ -107,6 +112,14 @@ export function InboxWorkspace({
     else agentSelectionMemory.delete(selectedConversationId);
     setSelectedAgentByConversation((current) => ({ ...current, [selectedConversationId]: id }));
   };
+
+  useEffect(() => {
+    if (!requestedLeadId) return;
+    const conversation = inboxState.conversations.find((item) => item.leadId === requestedLeadId);
+    if (conversation && conversation.id !== selectedConversationId) {
+      setSelectedConversationId(conversation.id);
+    }
+  }, [inboxState.conversations, requestedLeadId, selectedConversationId]);
 
   useEffect(() => {
     if (!selectedConversation) {
@@ -224,6 +237,19 @@ export function InboxWorkspace({
     } catch (error) {
       setFeedback(error instanceof Error ? error.message : 'Não foi possível pausar o agente IA.');
     }
+  };
+
+  const openWhatsAppWeb = () => {
+    if (!selectedLead?.whatsapp) {
+      setFeedback('Este lead não tem número de WhatsApp cadastrado.');
+      return;
+    }
+    const phone = selectedLead.whatsapp.replace(/\D/g, '');
+    if (!phone) {
+      setFeedback('O número de WhatsApp deste lead é inválido.');
+      return;
+    }
+    window.open(`https://web.whatsapp.com/send?phone=${encodeURIComponent(phone)}`, '_blank', 'noopener,noreferrer');
   };
 
   const copyMessage = async (text: string) => {
@@ -646,8 +672,11 @@ export function InboxWorkspace({
                 </div>
               </div>
               <div className={styles.chatStatusStack}>
-                <span className={styles.interactionBadge}>{serviceMode}</span>
+                {automationLabel ? <span className={styles.interactionBadge}>{automationLabel}</span> : null}
                 <TransportBadge conversation={selectedConversation} />
+                <button className={styles.whatsappWebButton} type="button" onClick={openWhatsAppWeb}>
+                  Abrir WhatsApp Web
+                </button>
               </div>
             </header>
 
