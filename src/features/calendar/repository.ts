@@ -163,8 +163,9 @@ export async function requestGoogleCalendarSync(itemId: string): Promise<void> {
 }
 
 export function subscribeCalendarItems(listener: () => void): () => void {
-  if (!isSupabaseConfigured || !supabase) return () => undefined;
-  const channel = supabase
+  const client = supabase;
+  if (!isSupabaseConfigured || !client) return () => undefined;
+  const channel = client
     .channel('harpia-calendar-items')
     .on(
       'postgres_changes',
@@ -174,6 +175,6 @@ export function subscribeCalendarItems(listener: () => void): () => void {
     .subscribe();
 
   return () => {
-    void supabase.removeChannel(channel);
+    void client.removeChannel(channel);
   };
 }
