@@ -109,9 +109,11 @@ export class PublicCatalogService {
 
   private async publishedItems() {
     const published = await this.repository.list({ status: 'published' });
-    return filterPublicEligibleCatalogItems(
+    const propertyItems = filterPublicEligibleCatalogItems(
       published.filter((item) => item.itemType === 'property'),
     );
+    const genericItems = published.filter((item) => item.itemType !== 'property');
+    return [...propertyItems, ...genericItems];
   }
 
   async list(filters: PublicCatalogFilters = {}): Promise<PublicCatalogItem[]> {
@@ -159,7 +161,7 @@ export class PublicCatalogService {
   }
 
   async getFilterOptions(): Promise<PublicCatalogFilterOptions> {
-    const items = await this.publishedItems();
+    const items = (await this.publishedItems()).filter((item) => item.itemType === 'property');
     const cities = new Set<string>();
     const locations = new Set<string>();
     const lifestyleTags = new Set<string>();
