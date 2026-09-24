@@ -30,6 +30,7 @@ interface CatalogRow {
   id: string;
   code: string;
   name: string;
+  catalog_id: string | null;
   item_type: CatalogItem['itemType'];
   kind: CatalogItem['kind'];
   parent_id: string | null;
@@ -89,7 +90,8 @@ function fromRow(row: CatalogRow): CatalogItem {
     id: row.id,
     code: row.code,
     name: row.name,
-    itemType: row.item_type ?? 'property',
+    catalogId: row.catalog_id ?? '',
+    itemType: row.item_type ?? 'product',
     kind: row.kind,
     parentId: row.parent_id ?? undefined,
     typology: row.typology ?? undefined,
@@ -123,6 +125,7 @@ function draftPayload(input: CatalogItemDraft) {
   return {
     code: input.code.trim(),
     name: input.name.trim(),
+    catalog_id: input.catalogId,
     item_type: input.itemType,
     kind: input.itemType === 'property' ? input.kind : 'standalone',
     parent_id: input.itemType === 'property' && input.kind === 'unit' ? input.parentId ?? null : null,
@@ -146,6 +149,7 @@ function draftPayload(input: CatalogItemDraft) {
 }
 
 function validateDraft(input: CatalogItemDraft) {
+  if (!input.catalogId.trim()) throw new Error('Selecione o catálogo do produto.');
   if (!input.code.trim()) throw new Error('Informe um código para o item.');
   if (!input.name.trim()) throw new Error('Informe um nome para o item.');
   if (input.itemType === 'property' && !input.location.city.trim()) throw new Error('Informe a cidade do imóvel.');
@@ -207,6 +211,7 @@ export class SupabaseCatalogRepository implements CatalogRepository {
     if (query.status) builder = builder.eq('status', query.status);
     if (query.kind) builder = builder.eq('kind', query.kind);
     if (query.itemType) builder = builder.eq('item_type', query.itemType);
+    if (query.catalogId) builder = builder.eq('catalog_id', query.catalogId);
     const result = await builder as SupabaseResultLike<CatalogRow[]>;
 
     if (result.error) fail(result.error, 'Não foi possível carregar o catálogo.');
@@ -246,6 +251,7 @@ export class SupabaseCatalogRepository implements CatalogRepository {
     const merged: CatalogItemDraft = {
       code: input.code ?? current.code,
       name: input.name ?? current.name,
+      catalogId: input.catalogId ?? current.catalogId,
       itemType: input.itemType ?? current.itemType,
       kind: input.kind ?? current.kind,
       parentId: input.parentId ?? current.parentId,
@@ -336,6 +342,7 @@ export class SupabaseCatalogRepository implements CatalogRepository {
     return this.create({
       code,
       name: `${source.name} - cópia`,
+      catalogId: source.catalogId,
       itemType: source.itemType,
       kind: source.kind,
       parentId: source.parentId,
