@@ -128,9 +128,9 @@ export function PipelineTriggerConfigPanel({
       }
 
       const rect = column.getBoundingClientRect();
-      const preferredLeft = rect.left + Math.min(180, Math.max(110, rect.width * .55));
+      const preferredLeft = rect.right - 1;
       const left = Math.max(gap, Math.min(preferredLeft, window.innerWidth - width - gap));
-      const top = Math.max(42, Math.min(rect.top + 8, window.innerHeight - 160));
+      const top = Math.max(40, Math.min(rect.top + 38, window.innerHeight - 160));
       setPosition({ top, left });
     };
 
