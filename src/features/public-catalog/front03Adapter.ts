@@ -34,6 +34,8 @@ export interface Front03PublishedItem {
   id: string;
   code: string;
   name: string;
+  itemType: 'property' | 'product' | 'service';
+  catalogId?: string | null;
   kind: Front03Kind;
   parentId?: string;
   typology?: string;
@@ -41,6 +43,9 @@ export interface Front03PublishedItem {
   description: string;
   location: Front03Location;
   price: number | null;
+  discountType?: 'percentage' | 'fixed';
+  discountValue?: number;
+  tags?: string[];
   isLaunch: boolean;
   features: string[];
   lifestyleTags: string[];
@@ -50,6 +55,7 @@ export interface Front03PublishedItem {
 }
 
 interface Front03Filters {
+  itemType?: 'property' | 'product' | 'service';
   purpose?: Front03Purpose;
   city?: string;
   location?: string;
@@ -92,6 +98,8 @@ function mapKind(kind: Front03Kind) {
 }
 
 function mapPropertyType(item: Front03PublishedItem) {
+  if (item.itemType === 'product') return 'Produto';
+  if (item.itemType === 'service') return 'Serviço';
   const typology = item.typology?.trim();
   return typology || mapKind(item.kind);
 }
@@ -105,12 +113,17 @@ function toPublicItem(item: Front03PublishedItem, parent?: Front03PublishedItem 
     id: item.id,
     slug: item.code || item.id,
     code: item.code,
+    itemType: item.itemType,
+    catalogId: item.catalogId ?? null,
     title: item.name,
     propertyType: mapPropertyType(item),
-    purpose: mapPurposeToPublic(item.purpose),
+    purpose: item.itemType === 'property' ? mapPurposeToPublic(item.purpose) : '',
     city: item.location.city,
     location: bestLocation(item.location),
     price: item.price,
+    discountType: item.discountType,
+    discountValue: item.discountValue,
+    tags: item.tags ?? [],
     isLaunch: item.isLaunch,
     status: 'published',
     description: item.description,
@@ -137,6 +150,7 @@ function toPublicItem(item: Front03PublishedItem, parent?: Front03PublishedItem 
 
 function toFront03Filters(filters: PublicCatalogFilters = {}): Front03Filters {
   return {
+    itemType: filters.itemType,
     purpose: mapPurposeToFront03(filters.purpose),
     city: filters.city,
     location: filters.location,
