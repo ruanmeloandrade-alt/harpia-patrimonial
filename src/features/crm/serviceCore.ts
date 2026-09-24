@@ -65,6 +65,10 @@ export class CrmService {
     return JSON.parse(JSON.stringify(this.state)) as CrmState;
   }
 
+  async waitForPersistence(): Promise<void> {
+    await this.repository.waitForLastSave?.();
+  }
+
   subscribeEvents(sink: CrmEventSink): () => void {
     this.eventSinks.add(sink);
     return () => this.eventSinks.delete(sink);
