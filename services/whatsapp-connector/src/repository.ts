@@ -521,16 +521,11 @@ export async function listWhatsAppHistoryRecoveryThreads(sessionId: string) {
 
 
 export async function consumeControlNonce(tokenHash: string, action: string) {
-  const now = new Date().toISOString();
-  const { data, error } = await db
-    .from('whatsapp_control_nonces')
-    .delete()
-    .eq('token_hash', tokenHash)
-    .eq('action', action)
-    .gt('expires_at', now)
-    .select('token_hash')
-    .maybeSingle();
+  const { data, error } = await db.rpc('admin_consume_whatsapp_control_nonce', {
+    p_token_hash: tokenHash,
+    p_action: action,
+  });
 
   if (error) throw error;
-  return Boolean(data?.token_hash);
+  return data === true;
 }
