@@ -1,5 +1,17 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.116.0';
 
+function normalizeWhatsapp(value: unknown) {
+  const raw = String(value ?? '').trim();
+  if (!raw) return '';
+  if (/[A-Za-z]/.test(raw)) throw new Error('WhatsApp inválido.');
+  let digits = raw.replace(/\D/g, '');
+  const explicitInternational = /^\s*(\+|00)/.test(raw);
+  if (digits.startsWith('00')) digits = digits.slice(2);
+  if (!explicitInternational && (digits.length === 10 || digits.length === 11)) digits = '55' + digits;
+  if (digits.length < 8 || digits.length > 15) throw new Error('WhatsApp inválido.');
+  return digits;
+}
+
 const jsonHeaders = {
   'Content-Type': 'application/json',
   'Access-Control-Allow-Origin': '*',
@@ -32,7 +44,8 @@ Deno.serve(async (req) => {
   const body = await req.json().catch(() => ({}));
   const fullName = String(body.fullName || '').trim();
   const email = String(body.email || '').trim().toLowerCase();
-  const whatsapp = String(body.whatsapp || '').trim();
+  let whatsapp = '';
+  try { whatsapp = normalizeWhatsapp(body.whatsapp); } catch { return new Response(JSON.stringify({ ok: false, message: 'WhatsApp inválido. Use DDI para números internacionais.' }), { status: 400, headers: jsonHeaders }); }
   const password = String(body.password || '');
   const groupId = body.groupId ? String(body.groupId) : null;
 

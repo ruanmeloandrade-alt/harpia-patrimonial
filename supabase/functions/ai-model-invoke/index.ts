@@ -179,7 +179,10 @@ function providerRequest(profile: ProviderProfile, apiKey: string, instructions:
 
   if (profile.provider === 'google_gemini') {
     const base = normalizeBase(profile.baseUrl || 'https://generativelanguage.googleapis.com');
-    const endpoint = base.endsWith('/interactions') ? base : base.endsWith('/v1beta') ? `${base}/interactions` : `${base}/v1beta/interactions`;
+    const model = profile.model.replace(/^models\//, '');
+    const endpoint = base.includes('/v1beta/')
+      ? `${base.replace(/\/$/, '')}/models/${encodeURIComponent(model)}:generateContent`
+      : `${base}/v1beta/models/${encodeURIComponent(model)}:generateContent`;
     const composedInput = instructions.trim() ? `${instructions.trim()}\n\n${input}` : input;
     return {
       url: assertSafeExternalUrl(endpoint),
@@ -187,7 +190,9 @@ function providerRequest(profile: ProviderProfile, apiKey: string, instructions:
         ...safeFetchInit(),
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
-        body: JSON.stringify({ model: profile.model, input: composedInput }),
+        body: JSON.stringify({
+          contents: [{ role: 'user', parts: [{ text: composedInput }] }],
+        }),
       },
     };
   }
@@ -221,11 +226,12 @@ function extractText(provider: ProviderKind, raw: any): string {
   }
   if (provider === 'google_gemini') {
     if (typeof raw?.output_text === 'string') return raw.output_text;
-    if (Array.isArray(raw?.outputs)) {
-      return raw.outputs.map((item: any) => item?.text ?? item?.content?.text).filter((value: unknown) => typeof value === 'string').join('\n');
-    }
-    if (Array.isArray(raw?.steps)) {
-      return raw.steps.flatMap((step: any) => step?.content ?? []).map((item: any) => item?.text).filter((value: unknown) => typeof value === 'string').join('\n');
+    if (Array.isArray(raw?.candidates)) {
+      return raw.candidates
+        .flatMap((candidate: any) => candidate?.content?.parts ?? [])
+        .map((part: any) => part?.text)
+        .filter((value: unknown) => typeof value === 'string')
+        .join('\n');
     }
     return '';
   }

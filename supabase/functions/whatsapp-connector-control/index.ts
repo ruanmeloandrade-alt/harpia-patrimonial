@@ -10,7 +10,14 @@ const headers = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
-type ControlAction = 'status' | 'qr' | 'connect' | 'reconnect' | 'disconnect';
+type ControlAction =
+  | 'list'
+  | 'create'
+  | 'status'
+  | 'qr'
+  | 'connect'
+  | 'reconnect'
+  | 'disconnect';
 
 const DEFAULT_CONNECTOR_URL = 'https://harpia-patrimonial-production.up.railway.app';
 
@@ -24,7 +31,6 @@ async function derivedControlToken() {
   for (const byte of digest) binary += String.fromCharCode(byte);
   return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
 }
-
 
 function respond(status: number, payload: unknown) {
   return new Response(JSON.stringify(payload), { status, headers });
@@ -62,7 +68,11 @@ async function requirePermission(
   );
 }
 
-async function callConnector(path: string, method: 'GET' | 'POST') {
+async function callConnector(
+  path: string,
+  method: 'GET' | 'POST',
+  body?: Record<string, unknown>,
+) {
   const baseUrl = (Deno.env.get('WHATSAPP_CONNECTOR_URL')?.trim() || DEFAULT_CONNECTOR_URL).replace(/\/+$/, '');
   const token = Deno.env.get('WHATSAPP_CONNECTOR_TOKEN')?.trim() || await derivedControlToken();
 
@@ -79,8 +89,10 @@ async function callConnector(path: string, method: 'GET' | 'POST') {
     headers: {
       Authorization: `Bearer ${token}`,
       Accept: 'application/json',
+      ...(body ? { 'Content-Type': 'application/json' } : {}),
     },
-    signal: AbortSignal.timeout(15_000),
+    body: body ? JSON.stringify(body) : undefined,
+    signal: AbortSignal.timeout(20_000),
   });
 
   const payload = await response.json().catch(() => ({
@@ -104,24 +116,40 @@ Deno.serve(async (req: Request) => {
 
   const body = await req.json().catch(() => ({}));
   const action = String(body.action || '') as ControlAction;
+  const sessionId = String(body.sessionId || '').trim();
 
-  if (!['status', 'qr', 'connect', 'reconnect', 'disconnect'].includes(action)) {
+  if (!['list', 'create', 'status', 'qr', 'connect', 'reconnect', 'disconnect'].includes(action)) {
     return respond(400, { ok: false, message: 'Ação inválida.' });
   }
 
-  const permission = action === 'status' ? 'integrations.view' : 'integrations.manage';
+  const permission = action === 'list' || action === 'status'
+    ? 'integrations.view'
+    : 'integrations.manage';
+
   if (!await requirePermission(authorization, permission)) {
     return respond(403, { ok: false, message: 'Sem permissão para esta ação.' });
   }
 
   try {
+    if (action === 'list') {
+      const result = await callConnector('/v1/sessions', 'GET');
+      return respond(result.status, result.payload);
+    }
+
+    if (action === 'create') {
+      const result = await callConnector('/v1/sessions', 'POST');
+      return respond(result.status, result.payload);
+    }
+
+    const query = sessionId ? `?sessionId=${encodeURIComponent(sessionId)}` : '';
+
     if (action === 'status') {
-      const result = await callConnector('/v1/status', 'GET');
+      const result = await callConnector(`/v1/status${query}`, 'GET');
       return respond(result.status, result.payload);
     }
 
     if (action === 'qr') {
-      const result = await callConnector('/v1/qr', 'GET');
+      const result = await callConnector(`/v1/qr${query}`, 'GET');
       if (!result.ok) return respond(result.status, result.payload);
 
       const rawQr = typeof (result.payload as { qr?: unknown }).qr === 'string'
@@ -137,7 +165,11 @@ Deno.serve(async (req: Request) => {
         errorCorrectionLevel: 'M',
       });
 
-      return respond(200, { ok: true, svg });
+      return respond(200, {
+        ok: true,
+        sessionId: (result.payload as { sessionId?: string }).sessionId || sessionId,
+        svg,
+      });
     }
 
     const path = action === 'connect'
@@ -146,7 +178,7 @@ Deno.serve(async (req: Request) => {
         ? '/v1/reconnect'
         : '/v1/disconnect';
 
-    const result = await callConnector(path, 'POST');
+    const result = await callConnector(path, 'POST', sessionId ? { sessionId } : {});
     return respond(result.status, result.payload);
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Falha ao acessar o conector WhatsApp.';

@@ -62,6 +62,18 @@ function normalizeInterest(value: unknown) {
   };
 }
 
+function normalizeWhatsapp(value: unknown) {
+  const raw = clean(value, 40);
+  if (!raw) return '';
+  if (/[A-Za-z]/.test(raw)) return '';
+  let digits = raw.replace(/\D/g, '');
+  const explicitInternational = /^\s*(\+|00)/.test(raw);
+  if (digits.startsWith('00')) digits = digits.slice(2);
+  if (!explicitInternational && (digits.length === 10 || digits.length === 11)) digits = '55' + digits;
+  if (digits.length < 8 || digits.length > 15) return '';
+  return digits;
+}
+
 function normalizeOccurredAt(value: unknown) {
   const candidate = clean(value, 80);
   if (!candidate) return new Date().toISOString();
@@ -82,7 +94,7 @@ Deno.serve(async (req) => {
   const contact = body.contact && typeof body.contact === 'object' ? body.contact as Record<string, unknown> : {};
   const name = clean(contact.name, 180);
   const email = clean(contact.email, 320);
-  const whatsapp = clean(contact.whatsapp, 40);
+  const whatsapp = normalizeWhatsapp(contact.whatsapp);
   const origin = clean(body.origin || 'site', 120) || 'site';
   const action = clean(body.action, 120);
   const page = clean(body.page, 500);

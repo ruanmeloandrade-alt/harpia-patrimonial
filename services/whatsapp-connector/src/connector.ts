@@ -118,6 +118,8 @@ function mediaInfo(content: ReturnType<typeof normalizeMessageContent>, type: 'a
 
 export class WhatsAppConnector {
   private socket: Socket | null = null;
+
+  constructor(readonly sessionId: string) {}
   private authState: Awaited<ReturnType<typeof createDatabaseAuthState>> | null = null;
   private qr: string | null = null;
   private phoneNumber: string | undefined;
@@ -144,6 +146,44 @@ export class WhatsAppConnector {
     return this.qr;
   }
 
+  async createGroup(conversationId: string, subject: string) {
+    if (!this.socket || this.status !== 'connected') {
+      throw new Error('WhatsApp Web não está conectado.');
+    }
+
+    const cleanSubject = subject.trim().slice(0, 100);
+    if (!cleanSubject) throw new Error('Nome do grupo é obrigatório.');
+
+    const destination = await getConversationDestination(this.sessionId, conversationId);
+    const startedAt = Date.now();
+
+    try {
+      const result = await this.socket.groupCreate(cleanSubject, [destination]);
+      const groupId = result?.id;
+      if (!groupId) throw new Error('WhatsApp não confirmou a criação do grupo.');
+
+      await recordIntegrationEvent(this.sessionId, {
+        eventType: 'group_created',
+        success: true,
+        externalId: groupId,
+        latencyMs: Date.now() - startedAt,
+        metadata: { conversationId, subject: cleanSubject },
+      });
+
+      return { groupId, subject: cleanSubject };
+    } catch (error) {
+      await recordIntegrationEvent(this.sessionId, {
+        eventType: 'group_create_failed',
+        success: false,
+        errorCode: 'group_create_failed',
+        errorMessage: error instanceof Error ? error.message : 'Falha ao criar grupo.',
+        latencyMs: Date.now() - startedAt,
+        metadata: { conversationId, subject: cleanSubject },
+      }).catch(() => undefined);
+      throw error;
+    }
+  }
+
   async start() {
     if (this.starting || this.socket) return this.snapshot();
 
@@ -151,13 +191,13 @@ export class WhatsAppConnector {
     this.manualStop = false;
     this.clearReconnectTimer();
     this.status = 'connecting';
-    await setConnectionStatus('connecting', {
+    await setConnectionStatus(this.sessionId, 'connecting', {
       lastErrorCode: null,
-      metadata: { qrAvailable: false },
+      metadata: { qrAvailable: false, disconnectedByUser: false },
     });
 
     try {
-      this.authState = await createDatabaseAuthState(config.sessionId);
+      this.authState = await createDatabaseAuthState(this.sessionId);
 
       const generation = ++this.socketGeneration;
       const socket = makeWASocket({
@@ -182,11 +222,11 @@ export class WhatsAppConnector {
       this.socket = null;
       this.status = 'error';
       const message = error instanceof Error ? error.message : 'Falha ao iniciar WhatsApp Web.';
-      await setConnectionStatus('error', {
+      await setConnectionStatus(this.sessionId, 'error', {
         lastErrorAt: new Date().toISOString(),
         lastErrorCode: 'startup_failed',
       }).catch(() => undefined);
-      await recordIntegrationEvent({
+      await recordIntegrationEvent(this.sessionId, {
         eventType: 'connector_start',
         success: false,
         errorCode: 'startup_failed',
@@ -242,11 +282,11 @@ export class WhatsAppConnector {
     this.status = 'not_connected';
     this.reconnectAttempt = 0;
 
-    await setConnectionStatus('not_connected', {
+    await setConnectionStatus(this.sessionId, 'not_connected', {
       lastHealthAt: new Date().toISOString(),
       metadata: { qrAvailable: false, disconnectedByUser: true },
     });
-    await recordIntegrationEvent({
+    await recordIntegrationEvent(this.sessionId, {
       eventType: 'manual_disconnect',
       success: true,
     });
@@ -272,7 +312,7 @@ export class WhatsAppConnector {
 
     if (this.status === 'connected' || this.status === 'connecting') {
       this.status = 'degraded';
-      await setConnectionStatus('degraded', {
+      await setConnectionStatus(this.sessionId, 'degraded', {
         lastHealthAt: new Date().toISOString(),
         lastErrorCode: 'process_shutdown',
         metadata: { qrAvailable: false },
@@ -285,7 +325,7 @@ export class WhatsAppConnector {
       throw new Error('WhatsApp Web não está conectado.');
     }
 
-    const destination = await getConversationDestination(input.conversationId);
+    const destination = await getConversationDestination(this.sessionId, input.conversationId);
     const startedAt = Date.now();
 
     try {
@@ -342,7 +382,7 @@ export class WhatsAppConnector {
       const externalMessageId = response?.key?.id;
       if (!externalMessageId) throw new Error('WhatsApp confirmou envio sem ID externo.');
 
-      await recordIntegrationEvent({
+      await recordIntegrationEvent(this.sessionId, {
         eventType: 'message_sent',
         success: true,
         externalId: externalMessageId,
@@ -355,7 +395,7 @@ export class WhatsAppConnector {
         sentAt: new Date().toISOString(),
       };
     } catch (error) {
-      await recordIntegrationEvent({
+      await recordIntegrationEvent(this.sessionId, {
         eventType: 'message_send_failed',
         success: false,
         errorCode: 'send_failed',
@@ -375,7 +415,7 @@ export class WhatsAppConnector {
       } catch (error) {
         logger.error({ error }, 'Falha ao persistir credenciais atualizadas do WhatsApp.');
         this.status = 'degraded';
-        await setConnectionStatus('degraded', {
+        await setConnectionStatus(this.sessionId, 'degraded', {
           lastErrorAt: new Date().toISOString(),
           lastErrorCode: 'auth_persist_failed',
         }).catch(() => undefined);
@@ -389,7 +429,7 @@ export class WhatsAppConnector {
       if (update.qr) {
         this.qr = update.qr;
         this.status = 'connecting';
-        await setConnectionStatus('connecting', {
+        await setConnectionStatus(this.sessionId, 'connecting', {
           lastHealthAt: this.lastProtocolEventAt,
           metadata: { qrAvailable: true },
         }).catch((error) => logger.error({ error }, 'Falha ao registrar QR disponível.'));
@@ -409,7 +449,7 @@ export class WhatsAppConnector {
         this.phoneNumber = phoneNumber || undefined;
 
         if (phoneNumber) {
-          await upsertChannelAccount({
+          await upsertChannelAccount(this.sessionId, {
             phoneNumber,
             displayName: socket.user?.name || undefined,
             connectorVersion: 'baileys-7.0.0-rc14',
@@ -417,16 +457,16 @@ export class WhatsAppConnector {
         }
 
         const now = new Date().toISOString();
-        await setConnectionStatus('connected', {
+        await setConnectionStatus(this.sessionId, 'connected', {
           accountLabel: phoneNumber ? `+${phoneNumber}` : 'WhatsApp Web',
           connectedAt: now,
           lastHealthAt: now,
           lastEventAt: now,
           lastErrorCode: null,
-          metadata: { qrAvailable: false },
+          metadata: { qrAvailable: false, disconnectedByUser: false },
         });
 
-        await recordIntegrationEvent({
+        await recordIntegrationEvent(this.sessionId, {
           eventType: 'connection_open',
           success: true,
           metadata: { hasPhoneNumber: Boolean(phoneNumber) },
@@ -456,13 +496,13 @@ export class WhatsAppConnector {
           await this.authState?.clear().catch(() => undefined);
           this.authState = null;
 
-          await recordIntegrationEvent({
+          await recordIntegrationEvent(this.sessionId, {
             eventType: 'connection_logged_out',
             success: false,
             errorCode: 'logged_out',
             errorMessage: 'A sessão do WhatsApp foi revogada e precisa de novo pareamento.',
           }).catch(() => undefined);
-          await setConnectionStatus('reauth_required', {
+          await setConnectionStatus(this.sessionId, 'reauth_required', {
             lastErrorAt: new Date().toISOString(),
             lastErrorCode: 'logged_out',
             metadata: { qrAvailable: false },
@@ -473,7 +513,7 @@ export class WhatsAppConnector {
         if (this.manualStop) return;
 
         this.status = 'degraded';
-        await recordIntegrationEvent({
+        await recordIntegrationEvent(this.sessionId, {
           eventType: 'connection_closed',
           success: false,
           errorCode: statusCode ? `wa_${statusCode}` : 'connection_closed',
@@ -499,7 +539,7 @@ export class WhatsAppConnector {
         } catch (error) {
           const externalId = message.key.id || undefined;
           logger.error({ error, externalId }, 'Falha ao ingerir mensagem recebida.');
-          await recordIntegrationEvent({
+          await recordIntegrationEvent(this.sessionId, {
             eventType: 'message_ingest_failed',
             success: false,
             externalId,
@@ -533,7 +573,7 @@ export class WhatsAppConnector {
     const phone = pnJid ? phoneFromPnJid(pnJid) : '';
 
     if (!phone || !pnJid) {
-      await recordIntegrationEvent({
+      await recordIntegrationEvent(this.sessionId, {
         eventType: 'message_address_unresolved',
         success: false,
         externalId: externalMessageId,
@@ -569,7 +609,7 @@ export class WhatsAppConnector {
       ) as Buffer;
 
       attachment = {
-        ...await uploadInboundMedia({
+        ...await uploadInboundMedia(this.sessionId, {
           externalMessageId,
           bytes,
           mimeType: info.mimeType,
@@ -580,7 +620,7 @@ export class WhatsAppConnector {
       };
     }
 
-    const result = await ingestIncomingMessage({
+    const result = await ingestIncomingMessage(this.sessionId, {
       externalMessageId,
       threadId: pnJid,
       phone,
@@ -594,7 +634,7 @@ export class WhatsAppConnector {
       },
     });
 
-    await recordIntegrationEvent({
+    await recordIntegrationEvent(this.sessionId, {
       eventType: result.duplicate ? 'message_duplicate' : 'message_received',
       success: true,
       externalId: externalMessageId,
@@ -612,7 +652,7 @@ export class WhatsAppConnector {
     this.stopHeartbeat();
     this.heartbeatTimer = setInterval(() => {
       if (!this.socket || this.status !== 'connected') return;
-      void heartbeat().catch((error) => {
+      void heartbeat(this.sessionId).catch((error) => {
         logger.error({ error }, 'Falha ao registrar heartbeat.');
         this.status = 'degraded';
       });

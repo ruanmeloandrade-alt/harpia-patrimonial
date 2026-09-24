@@ -136,6 +136,5 @@ export function IntegratedExecutionLogs() {
 
 export function IntegratedIntegrations() {
   const auth = useAuth();
-  const runtime = usePlatformRuntime();
-  return <Front05Module><IntegrationsWorkspace credentialVault={runtime.credentialVault} canManage={auth.hasPermission(PERMISSIONS.INTEGRATIONS_MANAGE)} /></Front05Module>;
+  return <Front05Module><IntegrationsWorkspace canManage={auth.hasPermission(PERMISSIONS.INTEGRATIONS_MANAGE)} /></Front05Module>;
 }

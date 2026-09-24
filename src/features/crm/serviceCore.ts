@@ -16,6 +16,7 @@ import {
   nowIso,
 } from './domain';
 import { CrmRepository } from './repository';
+import { normalizeWhatsAppNumber } from '../../shared/phone';
 
 export class CrmIntegrityError extends Error {
   constructor(message: string) {
@@ -202,7 +203,7 @@ export class CrmService {
       id: createCrmId('lead'),
       name: this.requireName(input.name, 'Nome do lead'),
       email: this.cleanOptional(input.email),
-      whatsapp: this.cleanOptional(input.whatsapp),
+      whatsapp: this.normalizeWhatsapp(input.whatsapp),
       source: this.cleanOptional(input.source),
       sourceAction: this.cleanOptional(input.sourceAction),
       sourcePage: this.cleanOptional(input.sourcePage),
@@ -245,7 +246,7 @@ export class CrmService {
     const lead = this.requireLead(leadId);
     if (input.name !== undefined) lead.name = this.requireName(input.name, 'Nome do lead');
     if (input.email !== undefined) lead.email = this.cleanOptional(input.email);
-    if (input.whatsapp !== undefined) lead.whatsapp = this.cleanOptional(input.whatsapp);
+    if (input.whatsapp !== undefined) lead.whatsapp = this.normalizeWhatsapp(input.whatsapp);
     if (input.source !== undefined) lead.source = this.cleanOptional(input.source);
     if (input.sourceAction !== undefined) lead.sourceAction = this.cleanOptional(input.sourceAction);
     if (input.sourcePage !== undefined) lead.sourcePage = this.cleanOptional(input.sourcePage);
@@ -526,6 +527,14 @@ export class CrmService {
   private cleanOptional(value?: string): string | undefined {
     const clean = value?.trim();
     return clean || undefined;
+  }
+
+  private normalizeWhatsapp(value?: string): string | undefined {
+    try {
+      return normalizeWhatsAppNumber(value);
+    } catch (error) {
+      throw new CrmIntegrityError(error instanceof Error ? error.message : 'WhatsApp inválido.');
+    }
   }
 
   private sameCustomFieldValue(left: CustomFieldValue, right: CustomFieldValue): boolean {
