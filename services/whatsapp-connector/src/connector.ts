@@ -17,6 +17,7 @@ import {
   getConversationDestination,
   heartbeat,
   ingestIncomingMessage,
+  listWhatsAppHistoryRecoveryThreads,
   listWhatsAppRecoveryCandidates,
   recordIntegrationEvent,
   setConnectionStatus,
@@ -478,6 +479,9 @@ export class WhatsAppConnector {
         setTimeout(() => {
           void this.recoverFailedInboundMessages(socket, generation);
         }, 1500);
+        setTimeout(() => {
+          void this.recoverInboundHistory(socket, generation);
+        }, 55000);
       }
 
       if (update.connection === 'close') {
@@ -774,6 +778,62 @@ export class WhatsAppConnector {
         duplicate: result.duplicate,
       },
     });
+  }
+
+  private async recoverInboundHistory(socket: Socket, generation: number) {
+    if (generation !== this.socketGeneration || this.status !== 'connected') return;
+
+    let threads: Awaited<ReturnType<typeof listWhatsAppHistoryRecoveryThreads>> = [];
+    try {
+      threads = await listWhatsAppHistoryRecoveryThreads(this.sessionId);
+    } catch (error) {
+      logger.warn({ error }, 'Não foi possível listar conversas para recuperação de histórico.');
+      return;
+    }
+
+    for (const thread of threads) {
+      if (generation !== this.socketGeneration || this.status !== 'connected') return;
+
+      try {
+        const timestampSeconds = Math.max(
+          1,
+          Math.floor(new Date(thread.failedAt).getTime() / 1000),
+        );
+        const requestId = await socket.fetchMessageHistory(
+          50,
+          {
+            remoteJid: thread.pnJid,
+            id: thread.externalMessageId,
+            fromMe: false,
+          },
+          timestampSeconds,
+        );
+
+        await recordIntegrationEvent(this.sessionId, {
+          eventType: 'history_recovery_requested',
+          success: true,
+          externalId: thread.externalMessageId,
+          metadata: {
+            pnJid: thread.pnJid,
+            failedAt: thread.failedAt,
+            requestId: requestId ?? null,
+            count: 50,
+          },
+        });
+      } catch (error) {
+        await recordIntegrationEvent(this.sessionId, {
+          eventType: 'history_recovery_failed',
+          success: false,
+          externalId: thread.externalMessageId,
+          errorCode: 'history_recovery_failed',
+          errorMessage: error instanceof Error ? error.message : 'Falha ao solicitar histórico do WhatsApp.',
+          metadata: {
+            pnJid: thread.pnJid,
+            failedAt: thread.failedAt,
+          },
+        }).catch(() => undefined);
+      }
+    }
   }
 
   private async recoverFailedInboundMessages(socket: Socket, generation: number) {
