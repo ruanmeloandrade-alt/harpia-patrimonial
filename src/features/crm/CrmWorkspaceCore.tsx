@@ -16,6 +16,8 @@ import {
 import { BrowserCrmRepository } from './repository';
 import { CrmIntegrityError, CrmService } from './service';
 import { AppLink } from '../../core/router/router';
+import type { CatalogRepository } from '../catalog/catalogRepository';
+import { LeadProductsPanel } from './LeadProductsPanel';
 import styles from './crm.module.css';
 
 export interface AssigneeOption {
@@ -26,6 +28,8 @@ export interface AssigneeOption {
 export interface CrmWorkspaceProps {
   service?: CrmService;
   assignees?: AssigneeOption[];
+  canManage?: boolean;
+  catalogRepository?: CatalogRepository;
 }
 
 const emptyMessage = 'Nenhum dado real cadastrado ainda.';
@@ -44,7 +48,12 @@ const customFieldTypes: Array<{ value: CustomFieldType; label: string }> = [
   { value: 'multiselect', label: 'Seleção múltipla' },
 ];
 
-export function CrmWorkspace({ service: injectedService, assignees = [] }: CrmWorkspaceProps) {
+export function CrmWorkspace({
+  service: injectedService,
+  assignees = [],
+  canManage = true,
+  catalogRepository,
+}: CrmWorkspaceProps) {
   const service = useMemo(
     () => injectedService ?? new CrmService(new BrowserCrmRepository()),
     [injectedService],
@@ -371,6 +380,8 @@ export function CrmWorkspace({ service: injectedService, assignees = [] }: CrmWo
           onClose={() => setSelectedLeadId(undefined)}
           onChanged={(message) => refresh(message)}
           onError={setFeedback}
+          canManage={canManage}
+          catalogRepository={catalogRepository}
         />
       )}
     </section>
@@ -402,7 +413,17 @@ function LeadCard({ lead, state, assignees, selected, onSelect }: {
   );
 }
 
-function LeadDetailsPanel({ lead, state, service, assignees, onClose, onChanged, onError }: {
+function LeadDetailsPanel({
+  lead,
+  state,
+  service,
+  assignees,
+  onClose,
+  onChanged,
+  onError,
+  canManage,
+  catalogRepository,
+}: {
   lead: Lead;
   state: CrmState;
   service: CrmService;
@@ -410,6 +431,8 @@ function LeadDetailsPanel({ lead, state, service, assignees, onClose, onChanged,
   onClose: () => void;
   onChanged: (message: string) => void;
   onError: (message: string) => void;
+  canManage: boolean;
+  catalogRepository?: CatalogRepository;
 }) {
   const history = service.getLeadHistory(lead.id);
   const tasks = service.getLeadTasks(lead.id);
@@ -562,6 +585,16 @@ function LeadDetailsPanel({ lead, state, service, assignees, onClose, onChanged,
           <button type="submit">Adicionar</button>
         </form>
       </div>
+
+      {catalogRepository && (
+        <LeadProductsPanel
+          leadId={lead.id}
+          catalogRepository={catalogRepository}
+          canManage={canManage}
+          onChanged={onChanged}
+          onError={onError}
+        />
+      )}
 
       <div className={styles.detailSection}>
         <h3>Campos personalizados</h3>
