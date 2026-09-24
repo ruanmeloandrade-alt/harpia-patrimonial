@@ -62,7 +62,7 @@ export function IntegrationsWorkspace({ credentialVault, canManage = false }: In
       <div>
         <span className="f05-kicker">Integrações</span>
         <h2>Conexões externas e provedores</h2>
-        <p>WhatsApp e Meta agora exibem o estado registrado pelo backend. A interface não pode forçar uma conexão como ativa.</p>
+        <p>WhatsApp permanece na operação atual. Meta e canais de marketing ficam visíveis, mas reservados para a segunda fase.</p>
       </div>
     </header>
 
@@ -80,10 +80,16 @@ export function IntegrationsWorkspace({ credentialVault, canManage = false }: In
     {loadError && <div className="f05-empty" role="alert">{loadError}</div>}
 
     <div className="f05-card-grid">
-      {externalItems.map((item) => <article className="f05-card" key={item.id}>
+      {externalItems.map((item) => {
+        const phaseTwo = item.id === 'meta' || item.id === 'email';
+        const displayStatus = phaseTwo ? 'future' : item.status;
+        return <article className="f05-card" key={item.id}>
         <div className="f05-card__top">
-          <h3>{item.label}</h3>
-          <span className={`f05-status f05-status--${item.status}`}>{STATUS_LABELS[item.status]}</span>
+          <div>
+            <h3>{item.label}</h3>
+            {phaseTwo ? <span className="f05-phase-badge">Segunda fase</span> : null}
+          </div>
+          <span className={`f05-status f05-status--${displayStatus}`}>{STATUS_LABELS[displayStatus]}</span>
         </div>
 
         <fieldset className="f05-readonly-fieldset" disabled={!canManage}>
@@ -98,7 +104,7 @@ export function IntegrationsWorkspace({ credentialVault, canManage = false }: In
           />
         </fieldset>
 
-        {(item.id === 'whatsapp' || item.id === 'meta') && (
+        {item.id === 'whatsapp' && (
           <dl className="f05-meta-list">
             <div><dt>Conta</dt><dd>{item.accountLabel ?? item.externalAccountId ?? 'Nenhuma conta conectada'}</dd></div>
             <div><dt>Último health</dt><dd>{formatDate(item.lastHealthAt)}</dd></div>
@@ -111,10 +117,13 @@ export function IntegrationsWorkspace({ credentialVault, canManage = false }: In
           {item.id === 'whatsapp'
             ? 'O pareamento por QR e a reconexão serão ativados pelo conector do WhatsApp Web.'
             : item.id === 'meta'
-              ? 'A autorização, webhook e seleção de ativos serão ativados pela integração Meta.'
-              : 'Integração ainda planejada para uma etapa posterior.'}
+              ? 'Meta Ads, Lead Ads, Facebook e Instagram ficam preparados visualmente e serão ativados somente na segunda fase.'
+              : item.id === 'email'
+                ? 'A conexão de e-mail para campanhas e jornadas será ativada somente na segunda fase.'
+                : 'Integração ainda planejada para uma etapa posterior.'}
         </small>
-      </article>)}
+      </article>;
+      })}
     </div>
   </section>;
 }
