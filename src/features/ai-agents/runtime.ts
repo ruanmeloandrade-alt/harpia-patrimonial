@@ -1,4 +1,5 @@
 import type { AIAgentCommandPort, AutomationCommandResult } from '../automations/contracts';
+import { loadAIBrain } from './brainRepository';
 import { listAIProviderProfiles } from '../integrations/aiProviderRepository';
 import type { AIModelRuntimePort } from '../integrations/aiRuntimePort';
 import { unconfiguredAIModelRuntime } from '../integrations/aiRuntimePort';
@@ -10,13 +11,31 @@ import {
   updateAIAgentExecution,
 } from './executionRepository';
 
-const buildInstructions = (agent: ReturnType<typeof listAIAgents>[number]) =>
+const buildInstructions = (
+  agent: ReturnType<typeof listAIAgents>[number],
+  brainContext = '',
+) =>
   [
     agent.role ? `Função: ${agent.role}` : '',
     agent.instructions,
     agent.rules ? `Regras:\n${agent.rules}` : '',
     agent.context ? `Contexto-base:\n${agent.context}` : '',
+    brainContext ? `Cérebro da empresa:\n${brainContext}` : '',
   ].filter(Boolean).join('\n\n');
+
+const loadBrainContext = async () => {
+  try {
+    const brain = await loadAIBrain();
+    return [
+      brain.companyContext,
+      ...brain.sources
+        .filter((source) => source.status === 'ready' && source.text_content)
+        .map((source) => `Fonte ${source.title}:\n${source.text_content}`),
+    ].filter(Boolean).join('\n\n').slice(0, 120000);
+  } catch {
+    return '';
+  }
+};
 
 export function createAIAgentCommandPort(runtime: AIModelRuntimePort = unconfiguredAIModelRuntime): AIAgentCommandPort {
   return {
@@ -24,13 +43,14 @@ export function createAIAgentCommandPort(runtime: AIModelRuntimePort = unconfigu
       const agent = listAIAgents().find((item) => item.id === input.agentId);
       if (!agent) return { status: 'rejected', reason: 'Agente IA não encontrado.' };
       if (agent.status !== 'active') return { status: 'rejected', reason: 'Agente IA precisa estar ativo.' };
-      if (!agent.providerProfileId) return { status: 'rejected', reason: 'Agente IA não possui perfil de provedor selecionado.' };
-
-      const profile = listAIProviderProfiles().find((item) => item.id === agent.providerProfileId);
-      if (!profile) return { status: 'rejected', reason: 'Perfil de provedor IA não encontrado.' };
-      if (profile.status !== 'ready' || !profile.apiKeyConfigured || !profile.secretRef) {
-        return { status: 'not_configured', reason: 'Perfil de provedor/modelo ainda não possui credencial segura pronta.' };
-      }
+      const profiles = listAIProviderProfiles();
+      const selectedProfile = agent.providerProfileId
+        ? profiles.find((item) => item.id === agent.providerProfileId)
+        : undefined;
+      const profile = selectedProfile?.status === 'ready' && selectedProfile.apiKeyConfigured && selectedProfile.secretRef
+        ? selectedProfile
+        : profiles.find((item) => item.status === 'ready' && item.apiKeyConfigured && item.secretRef);
+      if (!profile) return { status: 'not_configured', reason: 'Configure uma chave de IA em Integrações.' };
 
       const execution = startAIAgentExecution({
         agentId: agent.id,
@@ -40,10 +60,11 @@ export function createAIAgentCommandPort(runtime: AIModelRuntimePort = unconfigu
       });
 
       try {
+        const brainContext = await loadBrainContext();
         const result = await runtime.invoke({
           executionId: execution.id,
           profile,
-          instructions: buildInstructions(agent),
+          instructions: buildInstructions(agent, brainContext),
           input: input.input,
           context: input.context,
         });
