@@ -17,7 +17,7 @@ declare
   v_channel_account_id uuid;
   v_existing_conversation_id text;
 begin
-  if coalesce(current_setting('request.jwt.claim.role', true), '') <> 'service_role' then
+  if coalesce((nullif(current_setting('request.jwt.claims', true), '')::jsonb ->> 'role'), '') <> 'service_role' then
     raise exception 'service_role required';
   end if;
 
