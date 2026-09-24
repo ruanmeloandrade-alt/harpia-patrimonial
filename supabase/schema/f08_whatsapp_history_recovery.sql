@@ -51,14 +51,14 @@ begin
   from resolved r
   join target_connection tc on true
   where r.rn=1
-    and not exists (
-      select 1
+    and (
+      select count(*)
       from public.integration_events h
       where h.connection_id=tc.id
         and h.provider='whatsapp'
         and h.event_type='history_recovery_requested'
         and h.metadata->>'pnJid'=r.pn_jid
-    )
+    ) < 2
   order by r.failed_at asc
   limit greatest(1,least(coalesce(p_limit,10),10));
 end;
