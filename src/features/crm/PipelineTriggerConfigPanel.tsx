@@ -304,6 +304,15 @@ export function PipelineTriggerConfigPanel({
       );
     }
 
+    if (triggerAction === 'pause_salesbot') {
+      return (
+        <div className={styles.triggerConfigActionBox}>
+          <strong>Pausar SalesBot</strong>
+          <small>Ao disparar, pausa todos os SalesBots que estiverem em execução neste lead.</small>
+        </div>
+      );
+    }
+
     if (triggerAction === 'ai' || triggerAction === 'pause_ai') {
       return (
         <div className={styles.triggerConfigActionBox}>

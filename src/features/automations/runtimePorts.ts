@@ -90,6 +90,34 @@ export function createSalesBotCommandPort(
       return { status: 'accepted', executionId: input.executionId };
     },
 
+    async pauseForLead(input): Promise<AutomationCommandResult> {
+      const executions = listSalesBotExecutions();
+      const targets = executions.filter((item) => item.leadId === input.leadId && item.status === 'running');
+      if (targets.length === 0) {
+        return { status: 'accepted', data: { affected: 0, leadId: input.leadId } };
+      }
+
+      for (const execution of targets) {
+        updateExecution(execution.id, {
+          status: 'paused',
+          resumeMode: 'retry_current',
+          resumeAt: undefined,
+          resumeClaimToken: undefined,
+          resumeClaimedUntil: undefined,
+          action: input.reason ?? 'Pausado por automação da pipeline.',
+        });
+      }
+
+      return {
+        status: 'accepted',
+        data: {
+          affected: targets.length,
+          leadId: input.leadId,
+          executionIds: targets.map((item) => item.id),
+        },
+      };
+    },
+
     async resume(input): Promise<AutomationCommandResult> {
       const execution = listSalesBotExecutions().find((item) => item.id === input.executionId);
       if (!execution) return { status: 'rejected', reason: 'Execução não encontrada.' };

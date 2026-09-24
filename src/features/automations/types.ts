@@ -22,6 +22,7 @@ export type PipelineTriggerEvent =
 export type PipelineTriggerAction =
   | 'move_stage'
   | 'salesbot'
+  | 'pause_salesbot'
   | 'ai'
   | 'pause_ai'
   | 'meta_ads'
@@ -58,6 +59,7 @@ export interface PipelineAutomationMeta {
 
 export type AutomationActionType =
   | 'start_salesbot'
+  | 'pause_salesbot'
   | 'invoke_ai'
   | 'create_task'
   | 'move_stage'

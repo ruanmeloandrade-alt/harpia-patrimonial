@@ -14,6 +14,7 @@ export interface PipelineActionCatalogItem {
 
 export const pipelineActionCatalog: PipelineActionCatalogItem[] = [
   { id: 'salesbot', group: 'IA & BOTS', label: 'SalesBot', description: 'Escolhe qual SalesBot enviar ao lead nesta etapa.', icon: '▣' },
+  { id: 'pause_salesbot', group: 'IA & BOTS', label: 'Pausar SalesBot', description: 'Pausa todos os SalesBots em execução para este lead.', icon: 'Ⅱ' },
   { id: 'ai', group: 'IA & BOTS', label: 'Executar Agente IA', description: 'Ativa um Agente de IA pra conduzir a conversa com o lead.', icon: '▣' },
   { id: 'pause_ai', group: 'IA & BOTS', label: 'Pausar Agente IA', description: 'Desativa o Agente de IA ativo no lead.', icon: '▣' },
 

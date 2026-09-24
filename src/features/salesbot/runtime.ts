@@ -106,6 +106,7 @@ export const unconfiguredSalesBotRuntimeDependencies: SalesBotRuntimeDependencie
   chain: {
     start: async () => notConfiguredResult('Encadeamento ainda não conectado ao runtime.'),
     pause: async () => notConfiguredResult('Encadeamento ainda não conectado ao runtime.'),
+    pauseForLead: async () => notConfiguredResult('Encadeamento ainda não conectado ao runtime.'),
     resume: async () => notConfiguredResult('Encadeamento ainda não conectado ao runtime.'),
     getStatus: async () => 'not_found',
   },

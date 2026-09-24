@@ -550,7 +550,7 @@ async function enqueueDuePipelineTimeEvents(
 async function callF05Runtime(
   supabaseUrl: string,
   serverKey: string,
-  action: 'start_salesbot' | 'invoke_ai' | 'pause_ai',
+  action: 'start_salesbot' | 'pause_salesbot' | 'invoke_ai' | 'pause_ai',
   payload: Json,
 ): Promise<ActionResult> {
   try {
@@ -675,6 +675,14 @@ Deno.serve(async (req) => {
                 ? { status: 'rejected', reason: 'SalesBot da automação não informado.' }
                 : await callF05Runtime(supabaseUrl, serverKey, 'start_salesbot', {
                     botId,
+                    leadId: event.lead_id,
+                    conversationId: event.conversation_id,
+                    context: event.payload ?? {},
+                  });
+            } else if (action.type === 'pause_salesbot') {
+              result = !event.lead_id
+                ? { status: 'rejected', reason: 'Evento não possui lead para pausar SalesBots.' }
+                : await callF05Runtime(supabaseUrl, serverKey, 'pause_salesbot', {
                     leadId: event.lead_id,
                     conversationId: event.conversation_id,
                     context: event.payload ?? {},

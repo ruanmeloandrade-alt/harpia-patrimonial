@@ -40,6 +40,7 @@ export const unconfiguredAutomationEngineDependencies: AutomationEngineDependenc
   salesbot: {
     start: async () => notConfiguredResult('SalesBot ainda não conectado ao Automatize.'),
     pause: async () => notConfiguredResult('SalesBot ainda não conectado ao Automatize.'),
+    pauseForLead: async () => notConfiguredResult('SalesBot ainda não conectado ao Automatize.'),
     resume: async () => notConfiguredResult('SalesBot ainda não conectado ao Automatize.'),
     getStatus: async () => 'not_found',
   },
@@ -220,6 +221,9 @@ async function executeAction(
   switch (action.type) {
     case 'start_salesbot':
       return deps.salesbot.start({ botId: configString(action, 'botId'), leadId, conversationId: event.conversationId, context: event.payload });
+    case 'pause_salesbot':
+      if (!leadId) return { status: 'rejected', reason: 'Evento não possui lead para pausar SalesBots.' };
+      return deps.salesbot.pauseForLead({ leadId, reason: 'SalesBots pausados pela automação da pipeline.' });
     case 'invoke_ai':
       return deps.ai.invoke({ agentId: configString(action, 'agentId'), leadId, conversationId: event.conversationId, context: event.payload });
     case 'create_task':
