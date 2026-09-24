@@ -215,6 +215,7 @@ export function CalendarWorkspace({ assignees, canManage }: CalendarWorkspacePro
         startAt: start.toISOString(),
         endAt: end.toISOString(),
         assigneeId: draft.assigneeId || undefined,
+        assigneeLabel: draft.assigneeId ? assigneeNames.get(draft.assigneeId) : undefined,
         guestEmails,
         location: draft.location,
         syncToGoogle: wantsGoogle,
@@ -371,7 +372,7 @@ export function CalendarWorkspace({ assignees, canManage }: CalendarWorkspacePro
                   </div>
                   <h3>{item.title}</h3>
                   <p>{formatDateTime(item.startAt)} · {durationLabel(item)}</p>
-                  <small>{item.assigneeId ? assigneeNames.get(item.assigneeId) ?? 'Responsável não encontrado' : 'Sem responsável'}</small>
+                  <small>{item.assigneeId ? assigneeNames.get(item.assigneeId) ?? item.assigneeLabel ?? 'Responsável não encontrado' : item.assigneeLabel ?? 'Sem responsável'}</small>
                   {item.googleMeetUrl ? <a href={item.googleMeetUrl} target="_blank" rel="noreferrer">Entrar no Google Meet</a> : null}
                 </div>
                 {canManage ? <div className="calendar-agenda-actions">
