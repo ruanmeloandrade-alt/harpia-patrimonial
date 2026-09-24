@@ -36,8 +36,8 @@ interface CatalogRow {
   typology: string | null;
   purpose: CatalogItem['purpose'];
   description: string;
-  city: string;
-  neighborhood: string;
+  city: string | null;
+  neighborhood: string | null;
   condominium: string | null;
   address: string | null;
   price: number | null;
@@ -96,8 +96,8 @@ function fromRow(row: CatalogRow): CatalogItem {
     purpose: row.purpose,
     description: row.description,
     location: {
-      city: row.city,
-      neighborhood: row.neighborhood,
+      city: row.city ?? '',
+      neighborhood: row.neighborhood ?? '',
       condominium: row.condominium ?? undefined,
       address: row.address ?? undefined,
     },
@@ -191,7 +191,7 @@ export class SupabaseCatalogRepository implements CatalogRepository {
   constructor(private readonly client: CatalogSupabaseClient) {}
 
   private async validateUnitParent(input: CatalogItemDraft, currentParentId?: string) {
-    if (input.kind !== 'unit' || !input.parentId) return;
+    if (input.itemType !== 'property' || input.kind !== 'unit' || !input.parentId) return;
     const parent = await this.getById(input.parentId);
     if (!parent || parent.kind !== 'development') {
       throw new Error('O empreendimento selecionado não está disponível.');
