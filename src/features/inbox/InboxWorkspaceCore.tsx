@@ -1,4 +1,4 @@
-import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from 'react';
+import { ChangeEvent, FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import {
   UnavailableInboxAutomationPort,
 } from '../crm/contracts';
@@ -11,6 +11,7 @@ import { CrmService } from '../crm/service';
 import type { AssigneeOption } from '../crm/CrmWorkspace';
 import { BrowserInboxRepository } from './repository';
 import { InboxService } from './service';
+import { uploadInboxMedia } from './mediaStorage';
 import type { InboxConversation, InboxState, MessageType } from './domain';
 import { formatRuntimeDateTime, formatRuntimeTime } from '../settings/runtime-preferences';
 import styles from './inbox.module.css';
@@ -68,6 +69,13 @@ export function InboxWorkspace({
   const [feedback, setFeedback] = useState('');
   const [mediaBusy, setMediaBusy] = useState(false);
   const [textBusy, setTextBusy] = useState(false);
+  const [recording, setRecording] = useState(false);
+  const [recordingSeconds, setRecordingSeconds] = useState(0);
+  const recorderRef = useRef<MediaRecorder | null>(null);
+  const recordingStreamRef = useRef<MediaStream | null>(null);
+  const recordingChunksRef = useRef<Blob[]>([]);
+  const recordingTimerRef = useRef<number | null>(null);
+  const messageEndRef = useRef<HTMLDivElement | null>(null);
   const [conversationQuery, setConversationQuery] = useState('');
   const [profileVisible, setProfileVisible] = useState(true);
   const [automationPicker, setAutomationPicker] = useState<'salesbot' | 'agent' | null>(null);
@@ -85,7 +93,11 @@ export function InboxWorkspace({
     (conversation) => conversation.id === selectedConversationId,
   );
   const selectedLead = crmState.leads.find((lead) => lead.id === selectedConversation?.leadId);
-  const messages = selectedConversation ? inboxService.getMessages(selectedConversation.id) : [];
+  const messages = selectedConversation
+    ? inboxState.messages
+      .filter((message) => message.conversationId === selectedConversation.id)
+      .sort((a, b) => a.createdAt.localeCompare(b.createdAt))
+    : [];
   const selectedBotId = selectedConversationId
     ? selectedBotByConversation[selectedConversationId] ?? ''
     : '';
@@ -115,12 +127,29 @@ export function InboxWorkspace({
   };
 
   useEffect(() => {
-    if (!requestedLeadId) return;
-    const conversation = inboxState.conversations.find((item) => item.leadId === requestedLeadId);
-    if (conversation && conversation.id !== selectedConversationId) {
-      setSelectedConversationId(conversation.id);
-    }
-  }, [inboxState.conversations, requestedLeadId, selectedConversationId]);
+    const snapshot = inboxService.snapshot();
+    setInboxState(snapshot);
+    setSelectedConversationId((current) => {
+      if (current && snapshot.conversations.some((conversation) => conversation.id === current)) {
+        return current;
+      }
+      return snapshot.conversations.find((conversation) => conversation.leadId === requestedLeadId)?.id
+        ?? snapshot.conversations[0]?.id;
+    });
+  }, [inboxService, requestedLeadId]);
+
+  useEffect(() => {
+    setCrmState(crmService.snapshot());
+  }, [crmService]);
+
+  useEffect(() => {
+    messageEndRef.current?.scrollIntoView({ block: 'end', behavior: 'auto' });
+  }, [selectedConversationId, messages.length]);
+
+  useEffect(() => () => {
+    if (recordingTimerRef.current !== null) window.clearInterval(recordingTimerRef.current);
+    recordingStreamRef.current?.getTracks().forEach((track) => track.stop());
+  }, []);
 
   useEffect(() => {
     if (!selectedConversation) {
@@ -148,6 +177,13 @@ export function InboxWorkspace({
     };
   }, [automationPort, selectedAgentId, selectedBotId, selectedConversation]);
 
+  const selectConversation = (conversationId: string) => {
+    setSelectedConversationId(conversationId);
+    if (typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('lead')) {
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  };
+
   const openInternalSession = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
@@ -155,7 +191,7 @@ export function InboxWorkspace({
     if (!leadId) return;
     try {
       const conversation = inboxService.createConversation(leadId);
-      setSelectedConversationId(conversation.id);
+      selectConversation(conversation.id);
       refresh();
       setFeedback('Sessão interna aberta. Canal externo continua não conectado.');
     } catch (error) {
@@ -291,25 +327,148 @@ export function InboxWorkspace({
       setTextBusy(false);
     }
   };
+  const sendMediaFile = async (
+    file: File,
+    forcedType?: Exclude<MessageType, 'text' | 'form' | 'internal_note'>,
+  ) => {
+    if (!selectedConversation) return;
+    const type = forcedType ?? mediaTypeFromMime(file.type);
+    if (!type) throw new Error('Formato de arquivo não suportado pela Inbox.');
+
+    setMediaBusy(true);
+    setFeedback(`Enviando ${messageTypeLabel(type).toLowerCase()}...`);
+    try {
+      const uploaded = await uploadInboxMedia(file);
+      await inboxService.sendMessage({
+        conversationId: selectedConversation.id,
+        type,
+        attachment: {
+          name: uploaded.name,
+          mimeType: uploaded.mimeType,
+          size: uploaded.size,
+          url: uploaded.url,
+        },
+      });
+      refresh();
+      setFeedback(`${messageTypeLabel(type)} enviado pelo WhatsApp.`);
+    } catch (error) {
+      refresh();
+      setFeedback(error instanceof Error ? error.message : 'Não foi possível enviar o arquivo.');
+      throw error;
+    } finally {
+      setMediaBusy(false);
+    }
+  };
+
   const submitMedia = async (event: ChangeEvent<HTMLInputElement>) => {
     const input = event.currentTarget;
     const file = input.files?.[0];
     if (!file || !selectedConversation) return;
 
-    const type = mediaTypeFromMime(file.type);
-    if (!type) {
-      setFeedback('Formato de arquivo não suportado pela Inbox.');
+    try {
+      await sendMediaFile(file);
+    } catch {
+      // O feedback já foi exibido por sendMediaFile.
+    } finally {
       input.value = '';
+    }
+  };
+
+  const stopRecordingTimer = () => {
+    if (recordingTimerRef.current !== null) {
+      window.clearInterval(recordingTimerRef.current);
+      recordingTimerRef.current = null;
+    }
+  };
+
+  const stopRecording = () => {
+    const recorder = recorderRef.current;
+    if (recorder && recorder.state !== 'inactive') recorder.stop();
+  };
+
+  const startRecording = async () => {
+    if (!selectedConversation || mediaBusy || textBusy) return;
+    if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === 'undefined') {
+      setFeedback('Este navegador não permite gravar áudio pela Inbox.');
       return;
     }
 
-    setMediaBusy(true);
     try {
-      setFeedback(`Envio de ${messageTypeLabel(type).toLowerCase()} ainda depende do adaptador de upload do transporte WhatsApp. Nenhum arquivo foi enviado.`);
-    } finally {
-      setMediaBusy(false);
-      input.value = '';
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mimeType = [
+        'audio/ogg;codecs=opus',
+        'audio/webm;codecs=opus',
+        'audio/mp4',
+      ].find((candidate) => MediaRecorder.isTypeSupported(candidate)) || '';
+
+      const recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
+      recorderRef.current = recorder;
+      recordingStreamRef.current = stream;
+      recordingChunksRef.current = [];
+      setRecordingSeconds(0);
+
+      recorder.ondataavailable = (event) => {
+        if (event.data.size > 0) recordingChunksRef.current.push(event.data);
+      };
+
+      recorder.onerror = () => {
+        stopRecordingTimer();
+        stream.getTracks().forEach((track) => track.stop());
+        recorderRef.current = null;
+        recordingStreamRef.current = null;
+        recordingChunksRef.current = [];
+        setRecording(false);
+        setFeedback('Não foi possível gravar o áudio.');
+      };
+
+      recorder.onstop = async () => {
+        stopRecordingTimer();
+        stream.getTracks().forEach((track) => track.stop());
+        recorderRef.current = null;
+        recordingStreamRef.current = null;
+        setRecording(false);
+
+        const chunks = recordingChunksRef.current;
+        recordingChunksRef.current = [];
+        if (chunks.length === 0) {
+          setFeedback('Nenhum áudio foi gravado.');
+          return;
+        }
+
+        const type = recorder.mimeType || chunks[0]?.type || 'audio/webm';
+        const blob = new Blob(chunks, { type });
+        const extension = type.includes('ogg') ? 'ogg' : type.includes('mp4') ? 'm4a' : 'webm';
+        const file = new File([blob], `audio-${Date.now()}.${extension}`, { type });
+
+        try {
+          await sendMediaFile(file, 'audio');
+        } catch {
+          // O feedback já foi exibido por sendMediaFile.
+        }
+      };
+
+      recorder.start(250);
+      setRecording(true);
+      setFeedback('Gravando áudio...');
+      recordingTimerRef.current = window.setInterval(() => {
+        setRecordingSeconds((seconds) => seconds + 1);
+      }, 1000);
+    } catch (error) {
+      stopRecordingTimer();
+      recordingStreamRef.current?.getTracks().forEach((track) => track.stop());
+      recordingStreamRef.current = null;
+      recorderRef.current = null;
+      setRecording(false);
+      setFeedback(error instanceof Error ? error.message : 'Permissão de microfone não concedida.');
     }
+  };
+
+  const toggleRecording = () => {
+    if (recording) {
+      stopRecording();
+      return;
+    }
+    void startRecording();
   };
 
 
@@ -473,7 +632,10 @@ export function InboxWorkspace({
           ) : (
             filteredConversations.map((conversation) => {
               const lead = crmState.leads.find((item) => item.id === conversation.leadId);
-              const lastMessage = inboxService.getMessages(conversation.id).slice(-1)[0];
+              const lastMessage = inboxState.messages
+                .filter((message) => message.conversationId === conversation.id)
+                .sort((a, b) => a.createdAt.localeCompare(b.createdAt))
+                .slice(-1)[0];
               return (
                 <ConversationButton
                   key={conversation.id}
@@ -482,7 +644,7 @@ export function InboxWorkspace({
                   contact={lead?.whatsapp || lead?.email}
                   preview={lastMessage?.text || (lastMessage ? messageTypeLabel(lastMessage.type) : 'Sem mensagens ainda')}
                   selected={conversation.id === selectedConversationId}
-                  onClick={() => setSelectedConversationId(conversation.id)}
+                  onClick={() => selectConversation(conversation.id)}
                 />
               );
             })
@@ -718,19 +880,30 @@ export function InboxWorkspace({
                       </>
                     )}
                     {message.attachment?.url ? (
-                      <a href={message.attachment.url} target="_blank" rel="noreferrer">
-                        {message.attachment.name || 'Abrir arquivo'}
-                      </a>
+                      message.type === 'audio' ? (
+                        <audio className={styles.messageAudio} controls preload="metadata" src={message.attachment.url} />
+                      ) : message.type === 'image' ? (
+                        <a href={message.attachment.url} target="_blank" rel="noreferrer">
+                          <img className={styles.messageImage} src={message.attachment.url} alt={message.attachment.name || 'Imagem recebida'} />
+                        </a>
+                      ) : message.type === 'video' ? (
+                        <video className={styles.messageVideo} controls preload="metadata" src={message.attachment.url} />
+                      ) : (
+                        <a href={message.attachment.url} target="_blank" rel="noreferrer">
+                          {message.attachment.name || 'Abrir arquivo'}
+                        </a>
+                      )
                     ) : message.attachment?.name ? (
                       <strong>{message.attachment.name}</strong>
                     ) : null}
                     <footer>
-                      <span>{messageTypeLabel(message.type)}</span>
+                      <span>{messageTypeLabel(message.type)} · {deliveryStatusLabel(message.deliveryStatus)}</span>
                       <small>{formatRuntimeTime(message.createdAt)}</small>
                     </footer>
                   </article>
                 ))
               )}
+              <div ref={messageEndRef} />
             </div>
 
             <div className={styles.composerArea}>
@@ -739,7 +912,7 @@ export function InboxWorkspace({
                   <span>{mediaBusy ? 'Enviando…' : 'Anexar'}</span>
                   <input
                     type="file"
-                    accept="image/jpeg,image/png,image/webp,audio/ogg,audio/mpeg,audio/mp4,video/mp4,application/pdf,text/plain,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation,application/zip,application/octet-stream"
+                    accept="image/jpeg,image/png,image/webp,audio/ogg,audio/webm,audio/mpeg,audio/mp4,video/mp4,application/pdf,text/plain,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation,application/zip,application/octet-stream"
                     disabled={mediaBusy}
                     onChange={(event) => { void submitMedia(event); }}
                   />
@@ -842,8 +1015,20 @@ export function InboxWorkspace({
                   name="message"
                   rows={2}
                   placeholder="Digite uma mensagem…"
+                  disabled={recording}
                 />
-                <button type="submit" disabled={mediaBusy || textBusy}>{textBusy ? 'Enviando...' : 'Enviar'}</button>
+                <button
+                  type="button"
+                  className={recording ? `${styles.micButton} ${styles.micButtonRecording}` : styles.micButton}
+                  onClick={toggleRecording}
+                  disabled={mediaBusy || textBusy}
+                  aria-label={recording ? 'Parar e enviar áudio' : 'Gravar áudio'}
+                  title={recording ? 'Parar e enviar áudio' : 'Gravar áudio'}
+                >
+                  <span aria-hidden="true">{recording ? '■' : '🎙'}</span>
+                  {recording ? <small>{formatRecordingTime(recordingSeconds)}</small> : null}
+                </button>
+                <button type="submit" disabled={mediaBusy || textBusy || recording}>{textBusy ? 'Enviando...' : 'Enviar'}</button>
               </form>
 
             </div>
@@ -1048,7 +1233,23 @@ function AutomationControl({
   );
 }
 
-function mediaTypeFromMime(mimeType: string): Exclude<MessageType, 'text' | 'form'> | null {
+function formatRecordingTime(seconds: number) {
+  const minutes = Math.floor(seconds / 60).toString().padStart(2, '0');
+  const remaining = (seconds % 60).toString().padStart(2, '0');
+  return `${minutes}:${remaining}`;
+}
+
+function deliveryStatusLabel(status: string) {
+  const labels: Record<string, string> = {
+    received: 'Recebida',
+    pending: 'Enviando',
+    sent: 'Enviada',
+    failed: 'Falhou',
+  };
+  return labels[status] ?? status;
+}
+
+function mediaTypeFromMime(mimeType: string): Exclude<MessageType, 'text' | 'form' | 'internal_note'> | null {
   if (mimeType.startsWith('image/')) return 'image';
   if (mimeType.startsWith('audio/')) return 'audio';
   if (mimeType === 'video/mp4') return 'video';
