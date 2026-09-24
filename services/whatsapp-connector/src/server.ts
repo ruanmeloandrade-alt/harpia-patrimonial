@@ -1,11 +1,27 @@
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
-import { createHash, timingSafeEqual } from 'node:crypto';
+import { createHash, randomUUID, timingSafeEqual } from 'node:crypto';
 import { config } from './config.js';
 import { WhatsAppConnector } from './connector.js';
 import { logger } from './logger.js';
+import {
+  ensureConnection,
+  getConversationSessionId,
+  listWhatsAppSessions,
+} from './repository.js';
 
-const connector = new WhatsAppConnector();
+const connectors = new Map<string, WhatsAppConnector>();
 const PAIRING_TOKEN_SHA256 = '91e7fd19410906389f111a731792d38486da6374917112d2b055dc41f8ffc321';
+
+function connectorFor(sessionId: string) {
+  const clean = sessionId.trim();
+  if (!clean) throw new Error('sessionId é obrigatório.');
+  let connector = connectors.get(clean);
+  if (!connector) {
+    connector = new WhatsAppConnector(clean);
+    connectors.set(clean, connector);
+  }
+  return connector;
+}
 
 function sendJson(
   response: ServerResponse,
@@ -64,17 +80,57 @@ function requireControlToken(request: IncomingMessage, response: ServerResponse)
   return false;
 }
 
+async function sessionIdFromBodyOrUrl(request: IncomingMessage, url: URL) {
+  const fromUrl = url.searchParams.get('sessionId')?.trim();
+  if (fromUrl) return { sessionId: fromUrl, body: undefined as Record<string, unknown> | undefined };
+
+  if (request.method === 'POST') {
+    const body = await readJson(request);
+    const fromBody = String(body.sessionId || '').trim();
+    return { sessionId: fromBody || config.sessionId, body };
+  }
+
+  return { sessionId: config.sessionId, body: undefined as Record<string, unknown> | undefined };
+}
+
+async function listSessionPayload() {
+  const rows = await listWhatsAppSessions();
+  return rows.map((row) => {
+    const sessionId = String(row.external_account_id || '');
+    const memory = connectors.get(sessionId)?.snapshot();
+    const metadata = row.metadata && typeof row.metadata === 'object'
+      ? row.metadata as Record<string, unknown>
+      : {};
+    return {
+      sessionId,
+      status: memory?.status ?? row.status,
+      qrAvailable: memory?.qrAvailable ?? Boolean(metadata.qrAvailable),
+      phoneNumber: memory?.phoneNumber,
+      accountLabel: row.account_label,
+      connectedAt: row.connected_at,
+      lastHealthAt: row.last_health_at,
+      lastEventAt: row.last_event_at,
+      lastErrorAt: row.last_error_at,
+      lastErrorCode: row.last_error_code,
+    };
+  });
+}
+
 async function handleRequest(request: IncomingMessage, response: ServerResponse) {
   const method = request.method || 'GET';
   const url = new URL(request.url || '/', 'http://localhost');
 
   if (url.pathname === '/health' && method === 'GET') {
-    const snapshot = connector.snapshot();
+    const sessions = await listSessionPayload().catch(() => []);
+    const connected = sessions.filter((item) => item.status === 'connected').length;
+    const connecting = sessions.filter((item) => item.status === 'connecting').length;
     sendJson(response, 200, {
       ok: true,
       process: 'up',
-      connectorStatus: snapshot.status,
-      qrAvailable: snapshot.qrAvailable,
+      connectorStatus: connected > 0 ? 'connected' : connecting > 0 ? 'connecting' : 'not_connected',
+      connectedSessions: connected,
+      sessionCount: sessions.length,
+      qrAvailable: sessions.some((item) => item.qrAvailable),
     });
     return;
   }
@@ -87,10 +143,11 @@ async function handleRequest(request: IncomingMessage, response: ServerResponse)
       return;
     }
 
-    const qr = connector.currentQr();
+    const sessionId = url.searchParams.get('sessionId')?.trim() || config.sessionId;
+    const qr = connectorFor(sessionId).currentQr();
     sendJson(response, qr ? 200 : 404, qr
-      ? { ok: true, qr }
-      : { ok: false, message: 'QR indisponível neste momento.' });
+      ? { ok: true, sessionId, qr }
+      : { ok: false, sessionId, message: 'QR indisponível neste momento.' });
     return;
   }
 
@@ -101,44 +158,66 @@ async function handleRequest(request: IncomingMessage, response: ServerResponse)
 
   if (!requireControlToken(request, response)) return;
 
+  if (url.pathname === '/v1/sessions' && method === 'GET') {
+    sendJson(response, 200, { ok: true, sessions: await listSessionPayload() });
+    return;
+  }
+
+  if (url.pathname === '/v1/sessions' && method === 'POST') {
+    const body = await readJson(request);
+    const requestedId = String(body.sessionId || '').trim();
+    const sessionId = requestedId || `wa_${randomUUID()}`;
+    await ensureConnection(sessionId);
+    const connector = connectorFor(sessionId);
+    const snapshot = await connector.start();
+    sendJson(response, 201, { ok: true, sessionId, ...snapshot });
+    return;
+  }
+
   if (url.pathname === '/v1/status' && method === 'GET') {
+    const sessionId = url.searchParams.get('sessionId')?.trim() || config.sessionId;
     sendJson(response, 200, {
       ok: true,
-      ...connector.snapshot(),
+      sessionId,
+      ...connectorFor(sessionId).snapshot(),
     });
     return;
   }
 
   if (url.pathname === '/v1/qr' && method === 'GET') {
-    const qr = connector.currentQr();
+    const sessionId = url.searchParams.get('sessionId')?.trim() || config.sessionId;
+    const qr = connectorFor(sessionId).currentQr();
     sendJson(response, qr ? 200 : 404, qr
-      ? { ok: true, qr }
-      : { ok: false, message: 'QR indisponível neste momento.' });
+      ? { ok: true, sessionId, qr }
+      : { ok: false, sessionId, message: 'QR indisponível neste momento.' });
     return;
   }
 
-  if (url.pathname === '/v1/connect' && method === 'POST') {
-    const snapshot = await connector.start();
-    sendJson(response, 202, { ok: true, ...snapshot });
-    return;
-  }
+  if (['/v1/connect', '/v1/reconnect', '/v1/disconnect'].includes(url.pathname) && method === 'POST') {
+    const { sessionId, body } = await sessionIdFromBodyOrUrl(request, url);
+    const connector = connectorFor(sessionId);
 
-  if (url.pathname === '/v1/reconnect' && method === 'POST') {
-    const snapshot = await connector.reconnect();
-    sendJson(response, 202, { ok: true, ...snapshot });
-    return;
-  }
+    if (url.pathname === '/v1/connect') {
+      const snapshot = await connector.start();
+      sendJson(response, 202, { ok: true, sessionId, ...snapshot });
+      return;
+    }
+    if (url.pathname === '/v1/reconnect') {
+      const snapshot = await connector.reconnect();
+      sendJson(response, 202, { ok: true, sessionId, ...snapshot });
+      return;
+    }
 
-  if (url.pathname === '/v1/disconnect' && method === 'POST') {
+    void body;
     await connector.disconnect();
-    sendJson(response, 200, { ok: true, ...connector.snapshot() });
+    sendJson(response, 200, { ok: true, sessionId, ...connector.snapshot() });
     return;
   }
 
   if (url.pathname === '/v1/send' && method === 'POST') {
     const body = await readJson(request);
     const conversationId = String(body.conversationId || '').trim();
-    const type = String(body.type || 'text') as 'text' | 'audio' | 'image' | 'video' | 'document' | 'form';
+    const type = String(body.type || 'text') as 'text' | 'audio' | 'image' | 'video' | 'document';
     const text = typeof body.text === 'string' ? body.text : undefined;
     const rawAttachment = body.attachment && typeof body.attachment === 'object' && !Array.isArray(body.attachment)
       ? body.attachment as Record<string, unknown>
@@ -158,7 +237,13 @@ async function handleRequest(request: IncomingMessage, response: ServerResponse)
       return;
     }
 
-    const result = await connector.send({
+    const sessionId = await getConversationSessionId(conversationId);
+    if (!sessionId) {
+      sendJson(response, 409, { ok: false, message: 'A conversa não está vinculada a uma conta WhatsApp.' });
+      return;
+    }
+
+    const result = await connectorFor(sessionId).send({
       conversationId,
       type,
       text,
@@ -167,12 +252,58 @@ async function handleRequest(request: IncomingMessage, response: ServerResponse)
 
     sendJson(response, 200, {
       ok: true,
+      sessionId,
       ...result,
     });
     return;
   }
 
+  if (url.pathname === '/v1/group' && method === 'POST') {
+    const body = await readJson(request);
+    const conversationId = String(body.conversationId || '').trim();
+    const subject = String(body.subject || '').trim();
+
+    if (!conversationId || !subject) {
+      sendJson(response, 400, { ok: false, message: 'conversationId e nome do grupo são obrigatórios.' });
+      return;
+    }
+
+    const sessionId = await getConversationSessionId(conversationId);
+    if (!sessionId) {
+      sendJson(response, 409, { ok: false, message: 'A conversa não está vinculada a uma conta WhatsApp.' });
+      return;
+    }
+
+    const result = await connectorFor(sessionId).createGroup(conversationId, subject);
+    sendJson(response, 200, { ok: true, sessionId, ...result });
+    return;
+  }
+
   sendJson(response, 405, { ok: false, message: 'Método não permitido.' });
+}
+
+async function bootstrapConnectors() {
+  const rows = await listWhatsAppSessions();
+  const known = rows.length > 0 ? rows : [await ensureConnection(config.sessionId)];
+
+  await Promise.all(known.map(async (row) => {
+    const sessionId = String(row.external_account_id || config.sessionId);
+    const metadata = row.metadata && typeof row.metadata === 'object'
+      ? row.metadata as Record<string, unknown>
+      : {};
+    const explicitlyDisconnected = metadata.disconnectedByUser === true;
+
+    if (explicitlyDisconnected) {
+      connectorFor(sessionId);
+      return;
+    }
+
+    try {
+      await connectorFor(sessionId).start();
+    } catch (error) {
+      logger.error({ error, sessionId }, 'Sessão WhatsApp iniciou sem conexão ativa.');
+    }
+  }));
 }
 
 const server = createServer((request, response) => {
@@ -192,9 +323,9 @@ const server = createServer((request, response) => {
 });
 
 server.listen(config.port, '0.0.0.0', () => {
-  logger.info({ port: config.port }, 'WhatsApp connector iniciado.');
-  void connector.start().catch((error) => {
-    logger.error({ error }, 'Conector iniciou sem sessão ativa.');
+  logger.info({ port: config.port }, 'WhatsApp connector multi-sessão iniciado.');
+  void bootstrapConnectors().catch((error) => {
+    logger.error({ error }, 'Falha ao restaurar sessões WhatsApp.');
   });
 });
 
@@ -207,7 +338,7 @@ async function shutdown(signal: string) {
   logger.info({ signal }, 'Encerrando WhatsApp connector.');
   server.close();
 
-  await connector.shutdown();
+  await Promise.all([...connectors.values()].map((connector) => connector.shutdown()));
 
   const timer = setTimeout(() => process.exit(1), 10_000);
   timer.unref();
