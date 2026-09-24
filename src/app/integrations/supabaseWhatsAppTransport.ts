@@ -43,28 +43,12 @@ function safeFileName(name: string) {
     .slice(-120) || 'arquivo';
 }
 
-async function invokeWhatsAppMessage(message: OutgoingTransportMessage): Promise<WhatsAppSendResult> {
+async function invokeWhatsAppTransport(body: Record<string, unknown>): Promise<WhatsAppSendResult> {
   const supabase = requireSupabase();
-  const { data, error } = await supabase.functions.invoke('whatsapp-transport', {
-    body: {
-      action: 'send',
-      conversationId: message.conversationId,
-      type: message.type,
-      text: message.text,
-      attachment: message.attachment
-        ? {
-          name: message.attachment.name,
-          mimeType: message.attachment.mimeType,
-          size: message.attachment.size,
-          storageBucket: message.attachment.storageBucket,
-          storagePath: message.attachment.storagePath,
-        }
-        : undefined,
-    },
-  });
+  const { data, error } = await supabase.functions.invoke('whatsapp-transport', { body });
 
   if (error) {
-    throw new Error(error.message || 'Falha ao enviar pelo WhatsApp Web.');
+    throw new Error(error.message || 'Falha ao operar o WhatsApp Web.');
   }
 
   if (!data || typeof data !== 'object') {
@@ -72,6 +56,24 @@ async function invokeWhatsAppMessage(message: OutgoingTransportMessage): Promise
   }
 
   return data as WhatsAppSendResult;
+}
+
+async function invokeWhatsAppMessage(message: OutgoingTransportMessage): Promise<WhatsAppSendResult> {
+  return invokeWhatsAppTransport({
+    action: 'send',
+    conversationId: message.conversationId,
+    type: message.type,
+    text: message.text,
+    attachment: message.attachment
+      ? {
+        name: message.attachment.name,
+        mimeType: message.attachment.mimeType,
+        size: message.attachment.size,
+        storageBucket: message.attachment.storageBucket,
+        storagePath: message.attachment.storagePath,
+      }
+      : undefined,
+  });
 }
 
 function isTransportUnavailable(message: string) {
@@ -107,6 +109,23 @@ export class SupabaseWhatsAppTransport implements InboxTransportPort {
     }
 
     return { externalThreadId: result.threadId };
+  }
+
+  async createGroup(conversationId: string, subject: string): Promise<{ groupId: string; subject: string }> {
+    const result = await invokeWhatsAppTransport({
+      action: 'group',
+      conversationId,
+      subject,
+    }) as WhatsAppSendResult & { groupId?: string; subject?: string };
+
+    if (!result.ok || !result.groupId) {
+      throw new Error(result.message || 'O WhatsApp não confirmou a criação do grupo.');
+    }
+
+    return {
+      groupId: result.groupId,
+      subject: result.subject || subject,
+    };
   }
 
   async uploadAttachment(input: MessageAttachmentUpload): Promise<MessageAttachment> {
