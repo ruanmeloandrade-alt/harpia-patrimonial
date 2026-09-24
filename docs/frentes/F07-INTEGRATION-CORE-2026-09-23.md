@@ -70,7 +70,7 @@ Motivo: o ambiente de shell disponível não conseguiu resolver `github.com` par
 
 ## Pendências da F07
 
-* Normalização incremental do CRM ainda não executada.
+* Normalização incremental do CRM: concluída em 24/09/2026.
 * Fazer teste autenticado de RLS com usuário viewer e manager.
 * Rodar typecheck e build em checkout com acesso à rede.
 * Executar E2E da Inbox normalizada.
@@ -96,3 +96,80 @@ A `main` continua usando `platform_module_state`. As tabelas novas são aditivas
 * `f89f44d003ab9f5267fdaed610f1c289a3875a64` Realtime da Inbox
 * `109a8b06b87e4583f2718a159cc6c18357f01680` status de integrações pelo backend
 * `6813749ae5ae7022c9e2f2993021dc09b5dda78a` saúde real na tela de Integrações
+
+
+## Atualização 24/09/2026
+
+### CRM normalizado
+
+A F07 passou a retirar também o CRM do documento JSONB monolítico.
+
+Criadas tabelas normalizadas:
+
+* `crm_pipelines`
+* `crm_pipeline_stages`
+* `crm_leads`
+* `crm_tags`
+* `crm_lead_tags`
+* `crm_custom_fields`
+* `crm_lead_custom_field_values`
+* `crm_tasks`
+* `crm_history`
+
+O adapter `SupabaseNormalizedCrmRepository` foi criado e `hydrateSharedCrmRepository()` passou a hidratar o CRM pelas tabelas normalizadas.
+
+O runtime passou a observar as tabelas normalizadas do CRM por Realtime.
+
+### Compatibilidade durante transição
+
+O documento legado `platform_module_state.crm` não foi removido.
+
+A RPC `admin_ingest_public_lead` passou a fazer dual write durante a transição:
+
+* grava o lead e o histórico nas tabelas normalizadas;
+* mantém a gravação no JSON legado para preservar compatibilidade com a `main` atual.
+
+Nenhum dado real do CRM precisou ser migrado: no momento da normalização o estado continha 0 funis, 0 etapas, 0 leads, 0 tags, 0 campos personalizados, 0 tarefas e 0 entradas de histórico.
+
+### Banco e performance
+
+Migrations aplicadas:
+
+* `f07_crm_normalization_and_fk_indexes`
+* `f07_crm_lead_tag_position`
+
+Também foram adicionados os índices de FK que o Performance Advisor havia apontado em:
+
+* `inbox_channel_accounts.connection_id`
+* `inbox_conversations.channel_account_id`
+* `integration_events.connection_id`
+
+Após a correção, o Advisor não aponta mais foreign keys sem índice. Permanecem apenas avisos INFO de índices ainda não utilizados, compatíveis com a base ainda vazia.
+
+### Validações executadas em 24/09/2026
+
+* Security Advisor: 0 lints.
+* Smoke transacional completo do CRM normalizado: pipeline, etapa, lead, tag, campo personalizado, tarefa e histórico, com rollback.
+* Smoke da RPC pública em dual write: normalizado + legado confirmados na mesma transação, com rollback.
+* Resíduo de QA após os testes: 0 linhas.
+* Realtime configurado para as tabelas normalizadas do CRM.
+* Tipos TypeScript do Supabase regenerados após a normalização.
+
+### Ainda NÃO VERIFICADO
+
+* `npm run typecheck`
+* `npm run build`
+* navegação autenticada em navegador
+* duas sessões autenticadas observando Realtime simultaneamente
+* RLS end to end com perfis reais viewer e manager
+* persistência real pela UI em sessão autenticada
+
+O ambiente de shell disponível continua sem resolver `github.com`, portanto o checkout com dependências para build/typecheck não pôde ser executado. O projeto Supabase também ainda não possui perfis internos reais para um teste end to end de RLS sem criar usuário fictício.
+
+### Commits da continuação
+
+* `3954e50b7d5d0ae68ea1a83fe836bbdaf064b48c` adapter normalizado do CRM
+* `786c18b93a413f04df81751e121bea760612bfa1` hidratação normalizada do CRM
+* `d45a5ee726cf822642317da59ea942548fe213bc` Realtime das tabelas normalizadas do CRM
+* `39e59f127b931fa6da039a78b58386e72b707213` tipos Supabase sincronizados
+* `b17a4fc63b36ce7acfa204c88467b4c21ceda7cf` schema CRM normalizado versionado
