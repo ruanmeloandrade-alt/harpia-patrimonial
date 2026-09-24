@@ -282,7 +282,47 @@ export function PlatformRuntimeProvider({ children }: PropsWithChildren) {
       .channel(`harpia-operational-state-${auth.user?.id ?? 'internal'}`)
       .on(
         'postgres_changes',
-        { event: 'UPDATE', schema: 'public', table: 'platform_module_state' },
+        { event: '*', schema: 'public', table: 'crm_pipelines' },
+        () => { void installOperationalRuntime(false); },
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'crm_pipeline_stages' },
+        () => { void installOperationalRuntime(false); },
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'crm_leads' },
+        () => { void installOperationalRuntime(false); },
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'crm_tags' },
+        () => { void installOperationalRuntime(false); },
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'crm_lead_tags' },
+        () => { void installOperationalRuntime(false); },
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'crm_custom_fields' },
+        () => { void installOperationalRuntime(false); },
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'crm_lead_custom_field_values' },
+        () => { void installOperationalRuntime(false); },
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'crm_tasks' },
+        () => { void installOperationalRuntime(false); },
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'crm_history' },
         () => { void installOperationalRuntime(false); },
       )
       .on(
