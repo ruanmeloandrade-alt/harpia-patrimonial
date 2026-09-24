@@ -361,6 +361,8 @@ export function InboxWorkspace({
           mimeType: uploaded.mimeType,
           size: uploaded.size,
           url: uploaded.url,
+          storageBucket: uploaded.storageBucket,
+          storagePath: uploaded.storagePath,
         },
       });
       refresh();
