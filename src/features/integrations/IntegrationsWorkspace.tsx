@@ -92,7 +92,7 @@ export function IntegrationsWorkspace({ credentialVault, canManage = false }: In
           <span className={`f05-status f05-status--${displayStatus}`}>{STATUS_LABELS[displayStatus]}</span>
         </div>
 
-        <fieldset className="f05-readonly-fieldset" disabled={!canManage}>
+        <fieldset className="f05-readonly-fieldset" disabled={!canManage || phaseTwo}>
           <textarea
             rows={3}
             value={item.notes}
