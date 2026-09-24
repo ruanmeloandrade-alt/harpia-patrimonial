@@ -1,0 +1,108 @@
+name: Deploy internal Hárpia preserving homepage
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+concurrency:
+  group: harpia-internal-production
+  cancel-in-progress: true
+
+jobs:
+  build-and-deploy-internal:
+    runs-on: ubuntu-latest
+    env:
+      VITE_SUPABASE_URL: https://desxomqvtjaymwwxivwq.supabase.co
+      VITE_SUPABASE_PUBLISHABLE_KEY: sb_publishable_wWUVxjkMDMXLOrzE0y3Y_w_k9jXf88B
+
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.12.0
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Build
+        run: npm run build
+
+      - name: Prepare current gh-pages worktree
+        run: |
+          git fetch origin gh-pages
+          git worktree add -b deploy-gh-pages /tmp/harpia-pages origin/gh-pages
+
+      - name: Overlay internal application only
+        run: |
+          set -euo pipefail
+
+          rm -rf /tmp/harpia-pages/assets
+          rm -rf /tmp/harpia-pages/interno
+          rm -rf /tmp/harpia-pages/entrar /tmp/harpia-pages/cadastro /tmp/harpia-pages/recuperar-senha
+          rm -rf /tmp/harpia-pages/nova-senha /tmp/harpia-pages/conta /tmp/harpia-pages/cliente
+          cp -R dist/assets /tmp/harpia-pages/assets
+
+          cp dist/index.html /tmp/harpia-pages/404.html
+
+          routes=(
+            interno
+            interno/entrar
+            interno/catalogo
+            interno/crm
+            interno/calendario
+            interno/inbox
+            interno/salesbot
+            interno/automatize
+            interno/agentes-ia
+            interno/execucoes
+            interno/marketing
+            interno/integracoes
+            interno/usuarios
+            interno/permissoes
+            interno/configuracoes
+            entrar
+            cadastro
+            recuperar-senha
+            nova-senha
+            conta
+            cliente
+          )
+
+          for route in "${routes[@]}"; do
+            mkdir -p "/tmp/harpia-pages/${route}"
+            cp dist/index.html "/tmp/harpia-pages/${route}/index.html"
+          done
+
+          if [ -f dist/harpia-logo-white.svg ]; then
+            cp dist/harpia-logo-white.svg /tmp/harpia-pages/harpia-logo-white.svg
+          fi
+
+          test -f /tmp/harpia-pages/index.html
+          grep -q 'class="hero"' /tmp/harpia-pages/index.html
+
+      - name: Publish internal update
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          cd /tmp/harpia-pages
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add assets 404.html interno entrar cadastro recuperar-senha nova-senha conta cliente harpia-logo-white.svg
+          if git diff --cached --quiet; then
+            echo "No internal changes to publish."
+            exit 0
+          fi
+          git commit -m "deploy: internal Hárpia ${GITHUB_SHA}"
+          git push origin HEAD:gh-pages
