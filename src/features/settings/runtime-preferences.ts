@@ -244,3 +244,16 @@ export function formatRuntimeDate(value: string | number | Date) {
   }
   return new Intl.DateTimeFormat(p.locale, { ...dateParts(p.dateFormat), timeZone: p.timezone }).format(date);
 }
+
+
+export function formatRuntimeTime(value: string | number | Date) {
+  const p = readRuntimeRegionalPreferences();
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return String(value);
+  return new Intl.DateTimeFormat(p.locale, {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: p.timeFormat === '12h',
+    timeZone: p.timezone,
+  }).format(date);
+}
