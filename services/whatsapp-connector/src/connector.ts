@@ -543,17 +543,23 @@ export class WhatsAppConnector {
     socket.ev.on('chats.upsert', async (chats) => {
       if (generation !== this.socketGeneration) return;
       this.lastProtocolEventAt = new Date().toISOString();
-      const recent = chats
+      const candidates = chats
         .filter((chat) => typeof chat.id === 'string' && chat.id && !chat.id.endsWith('@g.us') && !chat.id.endsWith('@newsletter'))
-        .slice(0, 250)
-        .map((chat) => ({
+        .slice(0, 250);
+
+      const recent = await Promise.all(candidates.map(async (chat) => {
+        const pnJid = await resolvePnJid(socket, chat.id);
+        return {
           id: chat.id,
+          phone: pnJid ? phoneFromPnJid(pnJid) : null,
+          pnJid: pnJid ?? null,
           name: typeof chat.name === 'string' ? chat.name : undefined,
           conversationTimestamp: chat.conversationTimestamp?.toString?.() ?? null,
           lastMessageRecvTimestamp: chat.lastMessageRecvTimestamp ?? null,
           unreadCount: chat.unreadCount ?? null,
           fields: Object.keys(chat).slice(0, 40),
-        }));
+        };
+      }));
 
       if (recent.length > 0) {
         await recordIntegrationEvent(this.sessionId, {
