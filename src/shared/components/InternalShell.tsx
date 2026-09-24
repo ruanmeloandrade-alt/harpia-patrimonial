@@ -2,6 +2,7 @@ import { PropsWithChildren, useEffect, useState } from 'react';
 import { useAuth } from '../../core/auth/AuthProvider';
 import { PERMISSIONS } from '../../core/auth/permissions';
 import { AppLink, useAppRouter } from '../../core/router/router';
+import { applyOrganizationPreferences, getOrganizationSettings, normalizeOrganizationPreferences } from '../../features/settings/core/settings-service';
 import './internal-shell.css';
 
 type NavItem = {
@@ -33,10 +34,20 @@ const links: NavItem[] = [
       PERMISSIONS.AI_MANAGE,
     ],
   },
-  { href: '/interno/integracoes', label: 'Integrações', permissions: [PERMISSIONS.INTEGRATIONS_VIEW, PERMISSIONS.INTEGRATIONS_MANAGE] },
-  { href: '/interno/usuarios', label: 'Usuários', permission: PERMISSIONS.USERS_VIEW },
-  { href: '/interno/permissoes', label: 'Funções e permissões', permission: PERMISSIONS.ROLES_VIEW },
-  { href: '/interno/configuracoes', label: 'Configurações', permission: PERMISSIONS.SETTINGS_VIEW },
+  {
+    href: '/interno/configuracoes',
+    label: 'Configurações',
+    permissions: [
+      PERMISSIONS.SETTINGS_VIEW,
+      PERMISSIONS.SETTINGS_MANAGE,
+      PERMISSIONS.USERS_VIEW,
+      PERMISSIONS.USERS_MANAGE,
+      PERMISSIONS.ROLES_VIEW,
+      PERMISSIONS.ROLES_MANAGE,
+      PERMISSIONS.INTEGRATIONS_VIEW,
+      PERMISSIONS.INTEGRATIONS_MANAGE,
+    ],
+  },
 ];
 
 export function InternalShell({ children }: PropsWithChildren) {
@@ -47,6 +58,29 @@ export function InternalShell({ children }: PropsWithChildren) {
   useEffect(() => {
     setMobileOpen(false);
   }, [pathname]);
+
+  useEffect(() => {
+    let mounted = true;
+    let media: MediaQueryList | null = null;
+    let handleChange: (() => void) | null = null;
+
+    void getOrganizationSettings().then((settings) => {
+      if (!mounted) return;
+      applyOrganizationPreferences(settings.preferences);
+      if (normalizeOrganizationPreferences(settings.preferences).appearance.theme === 'system' && typeof window !== 'undefined') {
+        media = window.matchMedia('(prefers-color-scheme: dark)');
+        handleChange = () => applyOrganizationPreferences(settings.preferences);
+        media.addEventListener('change', handleChange);
+      }
+    }).catch(() => {
+      // Mantém o tema padrão quando a preferência não puder ser carregada.
+    });
+
+    return () => {
+      mounted = false;
+      if (media && handleChange) media.removeEventListener('change', handleChange);
+    };
+  }, []);
 
   const canSee = (item: NavItem) => {
     if (item.permissions?.length) return item.permissions.some(auth.hasPermission);
@@ -89,7 +123,10 @@ export function InternalShell({ children }: PropsWithChildren) {
             <AppLink
               key={item.href}
               href={item.href}
-              className={pathname === item.href ? 'nav-link active' : 'nav-link'}
+              className={(
+                pathname === item.href
+                || (item.href === '/interno/configuracoes' && ['/interno/integracoes', '/interno/usuarios', '/interno/permissoes'].includes(pathname))
+              ) ? 'nav-link active' : 'nav-link'}
               onClick={() => setMobileOpen(false)}
             >
               <span>{item.label}</span>
