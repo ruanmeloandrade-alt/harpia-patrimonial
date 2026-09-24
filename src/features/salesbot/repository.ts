@@ -12,29 +12,58 @@ const makeStartBlock = (): SalesBotBlock => ({
   type: 'trigger',
   label: 'Iniciar SalesBot',
   config: { event: 'manual' },
+  x: 80,
+  y: 90,
+  nextBlockId: null,
+  falseNextBlockId: null,
+  routes: {},
 });
+
+const withCanvasDefaults = (blocks: SalesBotBlock[]): SalesBotBlock[] => {
+  const normalized = blocks.map((block, index) => ({
+    ...block,
+    x: Number.isFinite(block.x) ? block.x : 80 + (index % 4) * 270,
+    y: Number.isFinite(block.y) ? block.y : 90 + Math.floor(index / 4) * 180,
+    nextBlockId: block.nextBlockId ?? null,
+    falseNextBlockId: block.falseNextBlockId ?? null,
+    routes: block.routes ?? {},
+  }));
+  const ids = new Set(normalized.map((block) => block.id));
+  return normalized.map((block, index) => {
+    const explicitNext = block.nextBlockId && ids.has(block.nextBlockId) ? block.nextBlockId : null;
+    const fallbackNext = block.type !== 'finish' ? normalized[index + 1]?.id ?? null : null;
+    return {
+      ...block,
+      nextBlockId: explicitNext ?? fallbackNext,
+      falseNextBlockId: block.falseNextBlockId && ids.has(block.falseNextBlockId) ? block.falseNextBlockId : null,
+      routes: Object.fromEntries(Object.entries(block.routes ?? {}).filter(([, target]) => !target || ids.has(target))),
+    };
+  });
+};
 
 const normalizeBot = (bot: SalesBotDefinition): SalesBotDefinition => {
   const startIndex = bot.blocks.findIndex((block) => block.type === 'trigger');
   if (startIndex === 0) {
     const start = bot.blocks[0];
-    if (start.label === 'Iniciar SalesBot' && start.config.event) return bot;
     return {
       ...bot,
-      blocks: [{ ...start, label: 'Iniciar SalesBot', config: { ...start.config, event: start.config.event || 'manual' } }, ...bot.blocks.slice(1)],
+      blocks: withCanvasDefaults([
+        { ...start, label: 'Iniciar SalesBot', config: { ...start.config, event: start.config.event || 'manual' } },
+        ...bot.blocks.slice(1),
+      ]),
     };
   }
   if (startIndex > 0) {
     const start = bot.blocks[startIndex];
     return {
       ...bot,
-      blocks: [
+      blocks: withCanvasDefaults([
         { ...start, label: 'Iniciar SalesBot', config: { ...start.config, event: start.config.event || 'manual' } },
         ...bot.blocks.filter((_, index) => index !== startIndex),
-      ],
+      ]),
     };
   }
-  return { ...bot, blocks: [makeStartBlock(), ...bot.blocks] };
+  return { ...bot, blocks: withCanvasDefaults([makeStartBlock(), ...bot.blocks]) };
 };
 
 export function listSalesBots(): SalesBotDefinition[] {
@@ -216,8 +245,18 @@ export function insertSalesBotBlockAfter(id: string, afterBlockId: string, block
   if (!current) throw new Error('SalesBot não encontrado.');
   const afterIndex = current.blocks.findIndex((item) => item.id === afterBlockId);
   if (afterIndex < 0) throw new Error('Bloco de origem não encontrado.');
-  const nextBlock = { ...block, id: createF05Id('block') };
-  const blocks = [...current.blocks];
+  const source = current.blocks[afterIndex];
+  const oldNext = source.nextBlockId ?? current.blocks[afterIndex + 1]?.id ?? null;
+  const nextBlock: SalesBotBlock = {
+    ...block,
+    id: createF05Id('block'),
+    x: (source.x ?? 80) + 270,
+    y: source.y ?? 90,
+    nextBlockId: oldNext,
+    falseNextBlockId: null,
+    routes: {},
+  };
+  const blocks = current.blocks.map((item) => item.id === source.id ? { ...item, nextBlockId: nextBlock.id } : item);
   blocks.splice(afterIndex + 1, 0, nextBlock);
   return updateSalesBot(id, { blocks });
 }
@@ -234,7 +273,7 @@ export function duplicateSalesBotBlock(id: string, blockId: string): SalesBotDef
 export function updateSalesBotBlock(
   id: string,
   blockId: string,
-  patch: Partial<Pick<SalesBotBlock, 'label' | 'config'>>,
+  patch: Partial<Pick<SalesBotBlock, 'label' | 'config' | 'x' | 'y' | 'nextBlockId' | 'falseNextBlockId' | 'routes'>>,
 ): SalesBotDefinition {
   const current = getSalesBot(id);
   if (!current) throw new Error('SalesBot não encontrado.');
@@ -251,7 +290,16 @@ export function removeSalesBotBlock(id: string, blockId: string): SalesBotDefini
   const block = current.blocks.find((item) => item.id === blockId);
   if (!block) throw new Error('Bloco não encontrado.');
   if (block.type === 'trigger') return current;
-  return updateSalesBot(id, { blocks: current.blocks.filter((item) => item.id !== blockId) });
+  const replacement = block.nextBlockId ?? null;
+  const blocks = current.blocks
+    .filter((item) => item.id !== blockId)
+    .map((item) => ({
+      ...item,
+      nextBlockId: item.nextBlockId === blockId ? replacement : item.nextBlockId,
+      falseNextBlockId: item.falseNextBlockId === blockId ? null : item.falseNextBlockId,
+      routes: Object.fromEntries(Object.entries(item.routes ?? {}).map(([key, target]) => [key, target === blockId ? null : target])),
+    }));
+  return updateSalesBot(id, { blocks });
 }
 
 export function moveSalesBotBlock(id: string, blockId: string, direction: -1 | 1): SalesBotDefinition {
