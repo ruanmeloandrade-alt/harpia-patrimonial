@@ -30,7 +30,6 @@ interface PublicExperienceProps {
 const navigation = [
   { label: 'Início', path: '/' },
   { label: 'Imóveis', path: '/imoveis' },
-  { label: 'Produtos', path: '/produtos' },
   { label: 'Sobre', path: '/sobre' },
   { label: 'Investimentos', path: '/investimentos' },
   { label: 'Leilões', path: '/leiloes' },
