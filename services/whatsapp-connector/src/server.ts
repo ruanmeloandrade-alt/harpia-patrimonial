@@ -56,7 +56,8 @@ function safeTokenMatch(received: string | undefined) {
 
   const candidate = received.slice(prefix.length);
   return constantTimeMatch(candidate, config.controlToken)
-    || constantTimeMatch(candidate, derivedControlToken());
+    || constantTimeMatch(candidate, derivedControlToken())
+    || constantTimeMatch(candidate, config.supabaseServiceRoleKey);
 }
 
 async function readJson(request: IncomingMessage, maxBytes = 128 * 1024) {
@@ -131,6 +132,7 @@ async function handleRequest(request: IncomingMessage, response: ServerResponse)
       connectedSessions: connected,
       sessionCount: sessions.length,
       qrAvailable: sessions.some((item) => item.qrAvailable),
+      controlAuthVersion: 2,
     });
     return;
   }
