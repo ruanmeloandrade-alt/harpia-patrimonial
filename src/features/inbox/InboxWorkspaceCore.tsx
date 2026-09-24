@@ -1063,6 +1063,7 @@ function messageTypeLabel(type: MessageType): string {
     video: 'Vídeo',
     document: 'Documento',
     form: 'Formulário',
+    internal_note: 'Nota interna',
   };
   return labels[type];
 }
