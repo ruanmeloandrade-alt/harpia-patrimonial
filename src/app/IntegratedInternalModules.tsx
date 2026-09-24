@@ -130,7 +130,17 @@ function Front05Module({ children }: { children: ReactNode }) {
 
 export function IntegratedSalesBot() {
   const auth = useAuth();
-  return <Front05Module><SalesBotWorkspace canManage={auth.hasPermission(PERMISSIONS.SALESBOT_MANAGE)} /></Front05Module>;
+  const runtime = usePlatformRuntime();
+  return (
+    <Front05Module>
+      <SalesBotWorkspace
+        canManage={auth.hasPermission(PERMISSIONS.SALESBOT_MANAGE)}
+        crmState={runtime.crmService?.snapshot() ?? null}
+        assignees={runtime.assignees}
+        catalogRepository={runtime.catalogRepository}
+      />
+    </Front05Module>
+  );
 }
 
 export function IntegratedAutomations() {
