@@ -38,6 +38,7 @@ interface ProductFormState {
   code: string;
   name: string;
   description: string;
+  visibleOnSite: boolean;
   price: string;
   discountType: '' | CatalogDiscountType;
   discountValue: string;
@@ -66,6 +67,7 @@ const emptyProductForm = (catalogId: string | null): ProductFormState => ({
   code: '',
   name: '',
   description: '',
+  visibleOnSite: false,
   price: '',
   discountType: '',
   discountValue: '',
@@ -134,6 +136,7 @@ function productFormFromItem(item: CatalogItem): ProductFormState {
     code: item.code,
     name: item.name,
     description: item.description,
+    visibleOnSite: item.status === 'published',
     price: item.price === null ? '' : String(item.price),
     discountType: item.discountType ?? '',
     discountValue: item.discountValue === undefined ? '' : String(item.discountValue),
@@ -390,9 +393,19 @@ export function CatalogAdminPage({ access, repository, mediaStorage }: CatalogAd
 
     await runAction(async () => {
       if (editingProductId) {
-        await productRepository.update(editingProductId, draft);
+        const updated = await productRepository.update(editingProductId, draft);
+        if (current?.status !== 'sold') {
+          if (productForm.visibleOnSite && updated.status !== 'published') {
+            await productRepository.setStatus(updated.id, 'published');
+          } else if (!productForm.visibleOnSite && updated.status === 'published') {
+            await productRepository.setStatus(updated.id, 'paused');
+          }
+        }
       } else {
-        await productRepository.create(draft);
+        const created = await productRepository.create(draft);
+        if (productForm.visibleOnSite) {
+          await productRepository.setStatus(created.id, 'published');
+        }
       }
       await cleanupUploads([...unusedPendingUploads, ...removedStoredMedia]);
       resetProductForm();
@@ -564,20 +577,38 @@ export function CatalogAdminPage({ access, repository, mediaStorage }: CatalogAd
         </label>
       </div>
 
+      <div className="f03-card" style={{ padding: 14 }}>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <input
+            type="checkbox"
+            checked={productForm.visibleOnSite}
+            disabled={editingProductId ? items.find((item) => item.id === editingProductId)?.status === 'sold' : false}
+            onChange={(event) => setProductForm({ ...productForm, visibleOnSite: event.target.checked })}
+          />
+          <span>
+            <strong>Visível no site</strong>
+            <small style={{ display: 'block' }}>
+              Quando ativado, o produto entra na vitrine pública. Desativado, permanece somente na área interna.
+            </small>
+          </span>
+        </label>
+      </div>
+
       <label>
-        Descrição
+        Descrição completa
         <textarea
-          rows={3}
+          rows={6}
           value={productForm.description}
           onChange={(event) => setProductForm({ ...productForm, description: event.target.value })}
+          placeholder="Apresente o produto com todas as informações que o cliente final precisa ver."
         />
       </label>
 
       <div className="f03-media-box">
-        <strong>Mídia</strong>
+        <strong>Fotos, vídeos e documentos</strong>
         {mediaStorage && (
           <label>
-            Enviar fotos
+            Adicionar fotos
             <input
               type="file"
               accept="image/jpeg,image/png,image/webp,image/gif"
@@ -588,7 +619,7 @@ export function CatalogAdminPage({ access, repository, mediaStorage }: CatalogAd
           </label>
         )}
         <label>
-          Fotos, uma URL por linha
+          URLs adicionais de fotos, uma por linha
           <textarea
             rows={3}
             value={productForm.imageUrls}
@@ -598,7 +629,7 @@ export function CatalogAdminPage({ access, repository, mediaStorage }: CatalogAd
 
         {mediaStorage && (
           <label>
-            Enviar vídeos
+            Adicionar vídeos
             <input
               type="file"
               accept="video/mp4,video/webm"
@@ -609,7 +640,7 @@ export function CatalogAdminPage({ access, repository, mediaStorage }: CatalogAd
           </label>
         )}
         <label>
-          Vídeos, uma URL por linha
+          URLs adicionais de vídeos, uma por linha
           <textarea
             rows={3}
             value={productForm.videoUrls}
@@ -619,7 +650,7 @@ export function CatalogAdminPage({ access, repository, mediaStorage }: CatalogAd
 
         {mediaStorage && (
           <label>
-            Enviar documentos
+            Adicionar documentos
             <input
               type="file"
               accept="application/pdf,image/jpeg,image/png,image/webp"
@@ -630,7 +661,7 @@ export function CatalogAdminPage({ access, repository, mediaStorage }: CatalogAd
           </label>
         )}
         <label>
-          Documentos, uma URL por linha
+          URLs adicionais de documentos, uma por linha
           <textarea
             rows={3}
             value={productForm.documentUrls}
