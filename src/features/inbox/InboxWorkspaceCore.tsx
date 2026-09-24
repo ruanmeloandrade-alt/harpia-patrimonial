@@ -225,7 +225,7 @@ export function InboxWorkspace({
   const activateWhatsApp = async () => {
     if (!selectedConversation || !selectedLead?.whatsapp) return;
     try {
-      await inboxService.connectTransport(selectedConversation.id);
+      inboxService.setTransportConnected(selectedConversation.id, true);
       refresh();
       setFeedback('WhatsApp ativado para esta conversa.');
     } catch (error) {
@@ -265,21 +265,7 @@ export function InboxWorkspace({
 
     setMediaBusy(true);
     try {
-      const attachment = await inboxService.uploadAttachment({
-        name: file.name,
-        mimeType: file.type || 'application/octet-stream',
-        size: file.size,
-        body: file,
-      });
-      await inboxService.sendMessage({
-        conversationId: selectedConversation.id,
-        type,
-        attachment,
-      });
-      refresh();
-      setFeedback('Mídia enviada pelo transporte conectado.');
-    } catch (error) {
-      setFeedback(error instanceof Error ? error.message : 'Não foi possível enviar a mídia.');
+      setFeedback(`Envio de ${messageTypeLabel(type).toLowerCase()} ainda depende do adaptador de upload do transporte WhatsApp. Nenhum arquivo foi enviado.`);
     } finally {
       setMediaBusy(false);
       input.value = '';
