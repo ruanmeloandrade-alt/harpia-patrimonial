@@ -1,0 +1,468 @@
+/* Dark mode global da area interna.
+   Carregado por ultimo para neutralizar cores claras hardcoded dos modulos. */
+
+[data-theme="dark"] {
+  color-scheme: dark;
+  --ink: #f3f1ea;
+  --muted: #a9b0a8;
+  --paper: #101410;
+  --surface: #191e19;
+  --surface-2: #202620;
+  --surface-3: #272e27;
+  --line: #343d35;
+  --line-strong: #465148;
+  --deep: #090d0a;
+  --gold: #cbb073;
+  --danger: #ef968b;
+  --success: #8fcca0;
+}
+
+[data-theme="dark"] body,
+[data-theme="dark"] #root,
+[data-theme="dark"] .internal-layout,
+[data-theme="dark"] .internal-main {
+  background: var(--paper) !important;
+  color: var(--ink) !important;
+}
+
+[data-theme="dark"] .internal-main {
+  min-height: 100vh;
+}
+
+/* Tipografia e divisores */
+[data-theme="dark"] .internal-main :is(h1,h2,h3,h4,h5,h6,strong,b,label,dt,dd) {
+  color: var(--ink);
+}
+
+[data-theme="dark"] .internal-main :is(p,small,.muted,.tiny,.note,.helper,.description) {
+  color: var(--muted);
+}
+
+[data-theme="dark"] .internal-main :is(hr,table,tr,th,td) {
+  border-color: var(--line) !important;
+}
+
+[data-theme="dark"] .internal-main th {
+  color: #c7ccc6 !important;
+}
+
+/* Controles nativos */
+[data-theme="dark"] .internal-main :is(input,textarea,select) {
+  background: #151a15 !important;
+  color: var(--ink) !important;
+  border-color: var(--line) !important;
+  caret-color: var(--ink);
+}
+
+[data-theme="dark"] .internal-main :is(input,textarea,select):focus {
+  border-color: #9d895b !important;
+  box-shadow: 0 0 0 3px rgba(203,176,115,.13) !important;
+}
+
+[data-theme="dark"] .internal-main :is(input,textarea)::placeholder {
+  color: #7f8980 !important;
+  opacity: 1;
+}
+
+[data-theme="dark"] .internal-main input[type="checkbox"],
+[data-theme="dark"] .internal-main input[type="radio"] {
+  accent-color: var(--gold);
+}
+
+/* Superficies globais */
+[data-theme="dark"] .internal-main :is(
+  .panel,
+  .card,
+  .info-card,
+  .metric-card,
+  .settings-section,
+  .settings-summary,
+  .settings-tabs,
+  .settings-toggle,
+  .settings-inline-note,
+  .business-hours-row,
+  .list-card,
+  .check-card,
+  .permission-module,
+  .access-editor,
+  .notification-center__bell,
+  .notification-center__panel,
+  .notification-toast
+) {
+  background: var(--surface) !important;
+  color: var(--ink) !important;
+  border-color: var(--line) !important;
+}
+
+[data-theme="dark"] .internal-main :is(.button-light,.button-ghost-dark) {
+  background: var(--surface-2) !important;
+  color: var(--ink) !important;
+  border-color: var(--line) !important;
+}
+
+[data-theme="dark"] .internal-main .button-dark {
+  background: #080c09 !important;
+  color: #fff !important;
+}
+
+[data-theme="dark"] .internal-main .text-button {
+  color: #dec483 !important;
+}
+
+[data-theme="dark"] .internal-main :is(.empty-state,.empty) {
+  background: #151a15 !important;
+  color: var(--muted) !important;
+  border-color: var(--line) !important;
+}
+
+[data-theme="dark"] .internal-main .status.neutral {
+  background: #2b322c !important;
+  color: #c8cec8 !important;
+}
+
+[data-theme="dark"] .internal-main .status.success {
+  background: #203a28 !important;
+  color: #a1dbb0 !important;
+}
+
+/* Dashboard */
+[data-theme="dark"] .f03-dashboard {
+  --dash-ink: #f2f4f1;
+  --dash-muted: #a6aea8;
+  --dash-line: #354039;
+  --dash-panel: #191f1b;
+  --dash-soft: #202720;
+  --dash-deep: #0b100d;
+  --dash-accent: #71866b;
+  --dash-gold: #ccb073;
+  color: var(--dash-ink) !important;
+}
+
+[data-theme="dark"] .f03-dashboard :is(
+  .f03-metric-card,
+  .f03-dashboard-panel,
+  .f03-commercial-summary > div,
+  .f03-inventory-status > div,
+  .f03-pipeline-step,
+  .f03-kpi-empty,
+  .f03-kpi-modal
+) {
+  background: var(--dash-panel) !important;
+  color: var(--dash-ink) !important;
+  border-color: var(--dash-line) !important;
+  box-shadow: none !important;
+}
+
+[data-theme="dark"] .f03-dashboard :is(.f03-metric-card--accent,.f03-inventory-total) {
+  background: #0b100d !important;
+  border-color: #26312a !important;
+  color: #fff !important;
+}
+
+[data-theme="dark"] .f03-dashboard :is(
+  .f03-dashboard-notice,
+  .f03-source-pill,
+  .f03-panel-badge,
+  .f03-empty-visual
+) {
+  background: #202620 !important;
+  color: #c8b989 !important;
+  border-color: var(--dash-line) !important;
+}
+
+[data-theme="dark"] .f03-dashboard :is(.f03-panel-heading h2,.f03-panel-heading h3,.f03-action-row span,.f03-distribution__label span) {
+  color: var(--dash-ink) !important;
+}
+
+[data-theme="dark"] .f03-dashboard :is(.f03-pipeline-visual,.f03-pipeline-step,.f03-action-row) {
+  border-color: var(--dash-line) !important;
+}
+
+[data-theme="dark"] .f03-dashboard .f03-distribution__track {
+  background: #2b332c !important;
+}
+
+[data-theme="dark"] .f03-dashboard .f03-customize-button.secondary {
+  background: var(--dash-panel) !important;
+  color: var(--dash-ink) !important;
+  border-color: var(--dash-line) !important;
+}
+
+/* CSS Modules: CRM, Inbox e outros workspaces compilam classes com sufixo hash. */
+[data-theme="dark"] .internal-main [class*="_workspace_"] {
+  background: var(--paper) !important;
+  color: var(--ink) !important;
+}
+
+[data-theme="dark"] .internal-main :is(
+  [class*="_headerBadge_"],
+  [class*="_pipelineBar_"],
+  [class*="_cardForm_"],
+  [class*="_column_"],
+  [class*="_columnHeader_"],
+  [class*="_leadCard_"],
+  [class*="_drawer_"],
+  [class*="_drawerHeader_"],
+  [class*="_detailSection_"],
+  [class*="_emptyState_"],
+  [class*="_conversation_"],
+  [class*="_thread_"],
+  [class*="_threadList_"],
+  [class*="_messagePane_"],
+  [class*="_details_"],
+  [class*="_sidePanel_"],
+  [class*="_profile_"],
+  [class*="_toolbar_"],
+  [class*="_modal_"],
+  [class*="_popover_"]
+) {
+  background: var(--surface) !important;
+  color: var(--ink) !important;
+  border-color: var(--line) !important;
+  box-shadow: none !important;
+}
+
+[data-theme="dark"] .internal-main :is(
+  [class*="_column_"],
+  [class*="_threadList_"],
+  [class*="_sidePanel_"],
+  [class*="_details_"]
+) {
+  background: #151a16 !important;
+}
+
+[data-theme="dark"] .internal-main :is(
+  [class*="_leadCard_"],
+  [class*="_thread_"],
+  [class*="_message_"],
+  [class*="_profileCard_"],
+  [class*="_task_"],
+  [class*="_history_"]
+) {
+  background: var(--surface-2) !important;
+  color: var(--ink) !important;
+  border-color: var(--line) !important;
+}
+
+[data-theme="dark"] .internal-main :is(
+  [class*="_header_"] p,
+  [class*="_muted_"],
+  [class*="_leadCard_"] span,
+  [class*="_leadCard_"] small,
+  [class*="_detailSection_"] small,
+  [class*="_detailsList_"] dt,
+  [class*="_historyList_"] span,
+  [class*="_taskList_"] span
+) {
+  color: var(--muted) !important;
+}
+
+[data-theme="dark"] .internal-main :is(
+  [class*="_detailsList_"] dd,
+  [class*="_emptyState_"] h2,
+  [class*="_pipelineSummary_"] strong,
+  [class*="_toolbarActions_"] button,
+  [class*="_sectionTitleRow_"] button
+) {
+  color: var(--ink) !important;
+}
+
+[data-theme="dark"] .internal-main :is(
+  [class*="_inlineForm_"] input,
+  [class*="_cardForm_"] input,
+  [class*="_cardForm_"] select,
+  [class*="_detailSection_"] input,
+  [class*="_detailSection_"] select,
+  [class*="_detailSection_"] textarea,
+  [class*="_taskForm_"] input,
+  [class*="_taskForm_"] select
+) {
+  background: #111611 !important;
+  color: var(--ink) !important;
+  border-color: var(--line) !important;
+}
+
+[data-theme="dark"] .internal-main [class*="_pipelineSummary_"] span,
+[data-theme="dark"] .internal-main [class*="_tagRow_"] em,
+[data-theme="dark"] .internal-main [class*="_tagManager_"] button {
+  background: #293129 !important;
+  color: #c9d0ca !important;
+  border-color: var(--line) !important;
+}
+
+/* Calendario */
+[data-theme="dark"] .calendar-workspace,
+[data-theme="dark"] .calendar-page {
+  background: var(--paper) !important;
+  color: var(--ink) !important;
+}
+
+[data-theme="dark"] .internal-main :is(
+  .calendar-panel,
+  .calendar-card,
+  .calendar-sidebar,
+  .calendar-grid,
+  .calendar-toolbar,
+  .calendar-event,
+  .calendar-modal
+) {
+  background: var(--surface) !important;
+  color: var(--ink) !important;
+  border-color: var(--line) !important;
+}
+
+/* Catalogo */
+[data-theme="dark"] .catalog-admin,
+[data-theme="dark"] .catalog-workspace,
+[data-theme="dark"] .catalog-page {
+  background: var(--paper) !important;
+  color: var(--ink) !important;
+}
+
+[data-theme="dark"] .internal-main :is(
+  .catalog-card,
+  .catalog-panel,
+  .catalog-item,
+  .catalog-form,
+  .catalog-toolbar,
+  .catalog-modal,
+  .property-card,
+  .product-card
+) {
+  background: var(--surface) !important;
+  color: var(--ink) !important;
+  border-color: var(--line) !important;
+}
+
+/* Marketing */
+[data-theme="dark"] .marketing-workspace {
+  background: var(--paper) !important;
+  color: var(--ink) !important;
+}
+
+[data-theme="dark"] .internal-main :is(
+  .marketing-panel,
+  .marketing-metric,
+  .marketing-integration-card,
+  .marketing-tracking-card,
+  .marketing-planner-card,
+  .marketing-channel-card
+) {
+  background: var(--surface) !important;
+  color: var(--ink) !important;
+  border-color: var(--line) !important;
+  box-shadow: none !important;
+}
+
+/* Front 05: SalesBot, Automatize, Agentes IA, Integracoes */
+[data-theme="dark"] .f05-shell {
+  background: var(--paper) !important;
+  color: var(--ink) !important;
+}
+
+[data-theme="dark"] .internal-main :is(
+  .f05-card,
+  .f05-editor,
+  .f05-list-item,
+  .f05-readiness,
+  .f05-sidebar,
+  .f05-panel,
+  .f05-canvas,
+  .f05-node,
+  .f05-modal,
+  .salesbot-builder,
+  .salesbot-toolbar,
+  .salesbot-sidebar,
+  .salesbot-canvas,
+  .salesbot-block
+) {
+  background: var(--surface) !important;
+  color: var(--ink) !important;
+  border-color: var(--line) !important;
+  box-shadow: none !important;
+}
+
+[data-theme="dark"] .internal-main :is(.f05-kicker,.f05-shell__intro p,.f05-card p,.f05-list-item p) {
+  color: var(--muted) !important;
+}
+
+[data-theme="dark"] .internal-main .f05-readonly-fieldset :is(input,textarea,select) {
+  background: #111611 !important;
+  color: var(--ink) !important;
+  border-color: var(--line) !important;
+}
+
+/* Configuracoes */
+[data-theme="dark"] .settings-workspace {
+  background: var(--paper) !important;
+  color: var(--ink) !important;
+}
+
+[data-theme="dark"] .settings-tabs button {
+  color: #bec5bf !important;
+}
+
+[data-theme="dark"] .settings-tabs button.is-active {
+  background: #293129 !important;
+  color: #fff !important;
+}
+
+[data-theme="dark"] .settings-system-grid > div,
+[data-theme="dark"] .settings-inline-note,
+[data-theme="dark"] .settings-toggle {
+  background: var(--surface-2) !important;
+  border-color: var(--line) !important;
+}
+
+/* Menus, dropdowns e overlays */
+[data-theme="dark"] .internal-main :is(
+  [role="dialog"],
+  [role="menu"],
+  [role="listbox"],
+  .dropdown,
+  .menu,
+  .popover,
+  .modal,
+  .drawer
+) {
+  color: var(--ink);
+  border-color: var(--line);
+}
+
+[data-theme="dark"] .internal-main :is(option,optgroup) {
+  background: #171c17;
+  color: var(--ink);
+}
+
+/* Scrollbars */
+[data-theme="dark"] .internal-main * {
+  scrollbar-color: #465047 #151a15;
+}
+
+[data-theme="dark"] .internal-main *::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+[data-theme="dark"] .internal-main *::-webkit-scrollbar-track {
+  background: #151a15;
+}
+
+[data-theme="dark"] .internal-main *::-webkit-scrollbar-thumb {
+  background: #465047;
+  border: 2px solid #151a15;
+  border-radius: 999px;
+}
+
+/* Mantem contraste nos estados de feedback */
+[data-theme="dark"] .alert-error {
+  background: #3a2220 !important;
+  color: #f3aaa1 !important;
+  border-color: #633631 !important;
+}
+
+[data-theme="dark"] .alert-success {
+  background: #203526 !important;
+  color: #a2d7ae !important;
+  border-color: #365942 !important;
+}
