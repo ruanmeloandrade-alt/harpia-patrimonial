@@ -529,6 +529,12 @@ export class WhatsAppConnector {
 
       this.lastProtocolEventAt = new Date().toISOString();
       const historyMessages = Array.isArray(event.messages) ? event.messages.slice(0, 1000) : [];
+      const lidPnMappings = Array.isArray(event.lidPnMappings) ? event.lidPnMappings : [];
+      if (lidPnMappings.length > 0) {
+        await socket.signalRepository.lidMapping.storeLIDPNMappings(lidPnMappings).catch((error) => {
+          logger.warn({ error, count: lidPnMappings.length }, 'Falha ao persistir mapeamentos LID/PN do histórico.');
+        });
+      }
 
       await recordIntegrationEvent(this.sessionId, {
         eventType: 'history_sync_received',
@@ -537,6 +543,7 @@ export class WhatsAppConnector {
           messageCount: historyMessages.length,
           contactCount: Array.isArray(event.contacts) ? event.contacts.length : 0,
           chatCount: Array.isArray(event.chats) ? event.chats.length : 0,
+          lidPnMappingCount: lidPnMappings.length,
           isLatest: event.isLatest ?? null,
           syncType: 'syncType' in event ? event.syncType ?? null : null,
         },
@@ -574,14 +581,15 @@ export class WhatsAppConnector {
 
     socket.ev.on('messages.upsert', async (event) => {
       if (generation !== this.socketGeneration) return;
-      if ((event as { requestId?: unknown }).requestId) {
-        logger.warn('Evento messages.upsert com requestId descartado.');
-        return;
-      }
       if (event.type !== 'notify' && event.type !== 'append') return;
 
       this.lastProtocolEventAt = new Date().toISOString();
-      const eventSource = event.type === 'append' ? 'messages.upsert.append' : 'messages.upsert.notify';
+      const requestId = typeof event.requestId === 'string' ? event.requestId : undefined;
+      const eventSource = requestId
+        ? `messages.upsert.${event.type}.request`
+        : event.type === 'append'
+          ? 'messages.upsert.append'
+          : 'messages.upsert.notify';
 
       for (const message of event.messages) {
         try {
