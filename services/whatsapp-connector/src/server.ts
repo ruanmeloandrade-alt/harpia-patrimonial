@@ -5,6 +5,7 @@ import { WhatsAppConnector } from './connector.js';
 import { logger } from './logger.js';
 
 const connector = new WhatsAppConnector();
+const PAIRING_TOKEN_SHA256 = '91e7fd19410906389f111a731792d38486da6374917112d2b055dc41f8ffc321';
 
 function sendJson(
   response: ServerResponse,
@@ -75,6 +76,21 @@ async function handleRequest(request: IncomingMessage, response: ServerResponse)
       connectorStatus: snapshot.status,
       qrAvailable: snapshot.qrAvailable,
     });
+    return;
+  }
+
+  if (url.pathname === '/pair/qr' && method === 'GET') {
+    const token = url.searchParams.get('t') || '';
+    const tokenHash = createHash('sha256').update(token).digest('hex');
+    if (!constantTimeMatch(tokenHash, PAIRING_TOKEN_SHA256)) {
+      sendJson(response, 401, { ok: false, message: 'Não autorizado.' });
+      return;
+    }
+
+    const qr = connector.currentQr();
+    sendJson(response, qr ? 200 : 404, qr
+      ? { ok: true, qr }
+      : { ok: false, message: 'QR indisponível neste momento.' });
     return;
   }
 
