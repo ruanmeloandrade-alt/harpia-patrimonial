@@ -33,7 +33,7 @@ as $function$
 declare
   value text;
 begin
-  if coalesce(current_setting('request.jwt.claim.role', true), '') <> 'service_role' then
+  if coalesce((nullif(current_setting('request.jwt.claims', true), '')::jsonb ->> 'role'), '') <> 'service_role' then
     raise exception 'service_role required';
   end if;
 
@@ -58,7 +58,7 @@ security definer
 set search_path = ''
 as $function$
 begin
-  if coalesce(current_setting('request.jwt.claim.role', true), '') <> 'service_role' then
+  if coalesce((nullif(current_setting('request.jwt.claims', true), '')::jsonb ->> 'role'), '') <> 'service_role' then
     raise exception 'service_role required';
   end if;
 
@@ -98,7 +98,7 @@ as $function$
 declare
   deleted_count bigint;
 begin
-  if coalesce(current_setting('request.jwt.claim.role', true), '') <> 'service_role' then
+  if coalesce((nullif(current_setting('request.jwt.claims', true), '')::jsonb ->> 'role'), '') <> 'service_role' then
     raise exception 'service_role required';
   end if;
 
@@ -189,7 +189,7 @@ declare
   v_lead_id text;
   current_state jsonb;
 begin
-  if coalesce(current_setting('request.jwt.claim.role', true), '') <> 'service_role' then
+  if coalesce((nullif(current_setting('request.jwt.claims', true), '')::jsonb ->> 'role'), '') <> 'service_role' then
     raise exception 'service_role required';
   end if;
 
@@ -250,7 +250,7 @@ declare
   received_at timestamptz := coalesce(p_received_at, now());
   inserted_message boolean := false;
 begin
-  if coalesce(current_setting('request.jwt.claim.role', true), '') <> 'service_role' then
+  if coalesce((nullif(current_setting('request.jwt.claims', true), '')::jsonb ->> 'role'), '') <> 'service_role' then
     raise exception 'service_role required';
   end if;
 
