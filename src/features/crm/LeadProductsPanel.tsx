@@ -17,6 +17,7 @@ interface LeadProductsPanelProps {
   canManage: boolean;
   onChanged: (message: string) => void;
   onError: (message: string) => void;
+  waitForCrmPersistence?: () => Promise<void>;
 }
 
 const relationshipLabel: Record<LeadProductRelationship, string> = {
@@ -52,6 +53,7 @@ export function LeadProductsPanel({
   canManage,
   onChanged,
   onError,
+  waitForCrmPersistence,
 }: LeadProductsPanelProps) {
   const [items, setItems] = useState<CatalogItem[]>([]);
   const [associations, setAssociations] = useState<LeadProductAssociation[]>([]);
@@ -110,6 +112,7 @@ export function LeadProductsPanel({
 
     try {
       setBusy(true);
+      await waitForCrmPersistence?.();
       await saveLeadProductAssociation({
         leadId,
         catalogItemId,
