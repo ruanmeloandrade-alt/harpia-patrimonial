@@ -50,6 +50,7 @@ export interface Lead {
   assigneeId?: string;
   pipelineId?: CrmId;
   stageId?: CrmId;
+  stageEnteredAt?: IsoDateTime;
   tagIds: CrmId[];
   customFields: Record<CrmId, CustomFieldValue>;
   notes?: string;
