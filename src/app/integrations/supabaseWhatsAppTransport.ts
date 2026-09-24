@@ -33,6 +33,8 @@ export class SupabaseWhatsAppTransport implements InboxTransportPort {
               mimeType: message.attachment.mimeType,
               size: message.attachment.size,
               url: message.attachment.url,
+              storageBucket: message.attachment.storageBucket,
+              storagePath: message.attachment.storagePath,
             }
           : undefined,
         formPayload: message.formPayload,
