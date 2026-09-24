@@ -518,3 +518,19 @@ export async function listWhatsAppHistoryRecoveryThreads(sessionId: string) {
     return [{ pnJid, externalMessageId, failedAt }];
   });
 }
+
+
+export async function consumeControlNonce(tokenHash: string, action: string) {
+  const now = new Date().toISOString();
+  const { data, error } = await db
+    .from('whatsapp_control_nonces')
+    .delete()
+    .eq('token_hash', tokenHash)
+    .eq('action', action)
+    .gt('expires_at', now)
+    .select('token_hash')
+    .maybeSingle();
+
+  if (error) throw error;
+  return Boolean(data?.token_hash);
+}
