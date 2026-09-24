@@ -9,6 +9,7 @@ import type { AssigneeOption } from './CrmWorkspaceCore';
 import { PersistenceErrorNotice } from './PersistenceErrorNotice';
 import { createReadOnlyCrmService } from './readOnlyAccess';
 import type { CatalogRepository } from '../catalog/catalogRepository';
+import type { InboxService } from '../inbox/service';
 
 export type { AssigneeOption } from './CrmWorkspaceCore';
 export { isCrmIntegrityError };
@@ -18,6 +19,7 @@ export interface CrmWorkspaceProps {
   assignees?: AssigneeOption[];
   canManage?: boolean;
   catalogRepository?: CatalogRepository;
+  inboxService?: InboxService;
 }
 
 export function CrmWorkspace({
@@ -25,6 +27,7 @@ export function CrmWorkspace({
   assignees = [],
   canManage = true,
   catalogRepository,
+  inboxService,
 }: CrmWorkspaceProps) {
   const baseService = useMemo(
     () => injectedService ?? new CrmService(new BrowserCrmRepository()),
@@ -77,6 +80,7 @@ export function CrmWorkspace({
         assignees={assignees}
         canManage={canManage}
         catalogRepository={catalogRepository}
+        inboxService={inboxService}
       />
     </>
   );
