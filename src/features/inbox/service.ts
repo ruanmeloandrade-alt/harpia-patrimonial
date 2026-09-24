@@ -85,6 +85,16 @@ export class InboxService {
     return this.transport.uploadAttachment(input);
   }
 
+  async createGroup(conversationId: CrmId, subject: string) {
+    this.requireConversation(conversationId);
+    const cleanSubject = subject.trim();
+    if (!cleanSubject) throw new InboxIntegrityError('Informe o nome do grupo.');
+    if (!this.transport?.createGroup) {
+      throw new InboxIntegrityError('Criação de grupo ainda não está disponível neste transporte.');
+    }
+    return this.transport.createGroup(conversationId, cleanSubject);
+  }
+
   ingestIncomingMessage(input: IncomingTransportMessage): InboxMessage {
     const conversation = this.requireConversation(input.conversationId);
     if (input.externalMessageId) {
