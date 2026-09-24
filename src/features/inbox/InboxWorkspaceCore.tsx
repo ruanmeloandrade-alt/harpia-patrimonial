@@ -63,6 +63,7 @@ export function InboxWorkspace({
   const [feedback, setFeedback] = useState('');
   const [mediaBusy, setMediaBusy] = useState(false);
   const [conversationQuery, setConversationQuery] = useState('');
+  const [profileVisible, setProfileVisible] = useState(true);
   const [automationStatus, setAutomationStatus] = useState<ConversationAutomationStatus>({
     salesBot: 'unavailable',
     aiAgent: 'unavailable',
@@ -221,17 +222,6 @@ export function InboxWorkspace({
       setFeedback('Agente IA pausado.');
     } catch (error) {
       setFeedback(error instanceof Error ? error.message : 'Não foi possível pausar o agente IA.');
-    }
-  };
-
-  const activateWhatsApp = async () => {
-    if (!selectedConversation || !selectedLead?.whatsapp) return;
-    try {
-      inboxService.setTransportConnected(selectedConversation.id, true);
-      refresh();
-      setFeedback('WhatsApp ativado para esta conversa.');
-    } catch (error) {
-      setFeedback(error instanceof Error ? error.message : 'Não foi possível ativar o WhatsApp nesta conversa.');
     }
   };
 
@@ -397,7 +387,61 @@ export function InboxWorkspace({
         </div>
       )}
 
-      <aside className={styles.contextPane} aria-label="Perfil do cliente">
+      <aside className={styles.conversationList} aria-label="Lista de conversas">
+        <header>
+          <div>
+            <span className={styles.kicker}>INBOX</span>
+            <h1>Conversas</h1>
+          </div>
+          <span className={styles.count}>{inboxState.conversations.length}</span>
+        </header>
+
+        <div className={styles.conversationSearch}>
+          <input
+            value={conversationQuery}
+            onChange={(event) => setConversationQuery(event.target.value)}
+            placeholder="Buscar cliente ou telefone"
+            aria-label="Buscar conversa"
+          />
+        </div>
+
+        <form className={styles.sessionForm} onSubmit={openInternalSession}>
+          <label htmlFor="inbox-lead-select">Nova conversa</label>
+          <select id="inbox-lead-select" name="leadId" defaultValue="">
+            <option value="">Selecione um lead</option>
+            {crmState.leads.map((lead) => (
+              <option key={lead.id} value={lead.id}>{lead.name}</option>
+            ))}
+          </select>
+          <button type="submit">Abrir conversa</button>
+        </form>
+
+        <div className={styles.conversations}>
+          {filteredConversations.length === 0 ? (
+            <div className={styles.conversationEmpty}>
+              <strong>{inboxState.conversations.length === 0 ? 'Nenhuma conversa ainda' : 'Nenhuma conversa encontrada'}</strong>
+              <p>{inboxState.conversations.length === 0 ? 'Abra uma conversa com um lead ou aguarde a entrada pelo WhatsApp.' : 'Tente outro termo de busca.'}</p>
+            </div>
+          ) : (
+            filteredConversations.map((conversation) => {
+              const lead = crmState.leads.find((item) => item.id === conversation.leadId);
+              const lastMessage = inboxService.getMessages(conversation.id).slice(-1)[0];
+              return (
+                <ConversationButton
+                  key={conversation.id}
+                  conversation={conversation}
+                  leadName={lead?.name}
+                  contact={lead?.whatsapp || lead?.email}
+                  preview={lastMessage?.text || (lastMessage ? messageTypeLabel(lastMessage.type) : 'Sem mensagens ainda')}
+                  selected={conversation.id === selectedConversationId}
+                  onClick={() => setSelectedConversationId(conversation.id)}
+                />
+              );
+            })
+          )}
+        </div>
+      </aside>
+      <aside className={profileVisible ? styles.contextPane : styles.contextPaneHidden} aria-label="Perfil do cliente">
         {selectedLead && selectedConversation ? (
           <>
             <header className={styles.profileHeader}>
@@ -597,23 +641,6 @@ export function InboxWorkspace({
               </div>
             </header>
 
-            <div className={styles.chatToolbar} aria-label="Ações do atendimento">
-              <button
-                type="button"
-                onClick={() => automationStatus.salesBot === 'running' ? void pauseSalesBot() : void startSalesBot()}
-              >
-                {automationStatus.salesBot === 'running' ? 'Pausar SalesBot' : 'SalesBot'}
-              </button>
-              <button
-                type="button"
-                onClick={() => automationStatus.aiAgent === 'running' ? void pauseAiAgent() : void startAiAgent()}
-              >
-                {automationStatus.aiAgent === 'running' ? 'Pausar IA' : 'Agente IA'}
-              </button>
-              <button type="button" onClick={() => explainUnsupportedTransportAction('Envio de formulário')}>Formulário</button>
-              <button type="button" onClick={() => explainUnsupportedTransportAction('Criação de grupo')}>Criar grupo</button>
-            </div>
-
             <div className={styles.messageArea}>
               {messages.length === 0 ? (
                 <div className={styles.chatEmpty}>
@@ -651,30 +678,43 @@ export function InboxWorkspace({
                   <input
                     type="file"
                     accept="image/jpeg,image/png,image/webp,audio/ogg,audio/mpeg,audio/mp4,video/mp4,application/pdf,text/plain,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation,application/zip,application/octet-stream"
-                    disabled={selectedConversation.transportStatus !== 'connected' || mediaBusy}
+                    disabled={mediaBusy}
                     onChange={(event) => { void submitMedia(event); }}
                   />
                 </label>
-                <span className={styles.composerHint}>
-                  {selectedConversation.transportStatus === 'connected' ? 'WhatsApp conectado' : 'WhatsApp ainda não conectado'}
-                </span>
+                <button
+                  className={styles.composerAction}
+                  type="button"
+                  onClick={() => automationStatus.salesBot === 'running' ? void pauseSalesBot() : void startSalesBot()}
+                >
+                  {automationStatus.salesBot === 'running' ? 'Pausar SalesBot' : 'Enviar SalesBot'}
+                </button>
+                <button
+                  className={styles.composerAction}
+                  type="button"
+                  onClick={() => automationStatus.aiAgent === 'running' ? void pauseAiAgent() : void startAiAgent()}
+                >
+                  {automationStatus.aiAgent === 'running' ? 'Pausar Agente IA' : 'Enviar Agente IA'}
+                </button>
+                <button
+                  className={profileVisible ? `${styles.composerAction} ${styles.composerActionActive}` : styles.composerAction}
+                  type="button"
+                  onClick={() => setProfileVisible((value) => !value)}
+                  aria-pressed={profileVisible}
+                >
+                  Perfil do cliente
+                </button>
+                <span className={styles.composerHint}>WhatsApp</span>
               </div>
-
               <form className={styles.composer} onSubmit={submitText}>
                 <textarea
                   name="message"
                   rows={2}
-                  placeholder={selectedConversation.transportStatus === 'connected' ? 'Digite uma mensagem…' : 'Conecte o WhatsApp para enviar mensagens'}
-                  disabled={selectedConversation.transportStatus !== 'connected'}
+                  placeholder="Digite uma mensagem…"
                 />
-                <button type="submit" disabled={selectedConversation.transportStatus !== 'connected' || mediaBusy}>Enviar</button>
+                <button type="submit" disabled={mediaBusy}>Enviar</button>
               </form>
 
-              {selectedConversation.transportStatus !== 'connected' && selectedLead.whatsapp && (
-                <button className={styles.connectButton} type="button" onClick={() => { void activateWhatsApp(); }}>
-                  Conectar conversa ao WhatsApp
-                </button>
-              )}
             </div>
           </>
         ) : (
@@ -684,7 +724,7 @@ export function InboxWorkspace({
                 <div className={styles.chatAvatar}>H</div>
                 <div>
                   <strong>Chat da Inbox</strong>
-                  <span>Selecione uma conversa na lateral direita</span>
+                  <span>Selecione uma conversa na lista à esquerda</span>
                 </div>
               </div>
               <span className={styles.transportBadge}>Aguardando conversa</span>
@@ -693,7 +733,7 @@ export function InboxWorkspace({
               <div className={styles.chatEmpty}>
                 <div className={styles.chatEmptyIcon}>💬</div>
                 <strong>Selecione uma conversa</strong>
-                <p>O histórico de mensagens ficará no centro da tela e o perfil comercial do lead continuará visível à esquerda.</p>
+                <p>O histórico de mensagens ficará no chat e o perfil comercial pode ser aberto ou fechado pelo botão abaixo.</p>
               </div>
             </div>
             <div className={styles.composerArea}>
@@ -706,60 +746,6 @@ export function InboxWorkspace({
         )}
       </main>
 
-      <aside className={styles.conversationList} aria-label="Lista de conversas">
-        <header>
-          <div>
-            <span className={styles.kicker}>INBOX</span>
-            <h1>Conversas</h1>
-          </div>
-          <span className={styles.count}>{inboxState.conversations.length}</span>
-        </header>
-
-        <div className={styles.conversationSearch}>
-          <input
-            value={conversationQuery}
-            onChange={(event) => setConversationQuery(event.target.value)}
-            placeholder="Buscar cliente ou telefone"
-            aria-label="Buscar conversa"
-          />
-        </div>
-
-        <form className={styles.sessionForm} onSubmit={openInternalSession}>
-          <label htmlFor="inbox-lead-select">Nova conversa</label>
-          <select id="inbox-lead-select" name="leadId" defaultValue="">
-            <option value="">Selecione um lead</option>
-            {crmState.leads.map((lead) => (
-              <option key={lead.id} value={lead.id}>{lead.name}</option>
-            ))}
-          </select>
-          <button type="submit">Abrir conversa</button>
-        </form>
-
-        <div className={styles.conversations}>
-          {filteredConversations.length === 0 ? (
-            <div className={styles.conversationEmpty}>
-              <strong>{inboxState.conversations.length === 0 ? 'Nenhuma conversa ainda' : 'Nenhuma conversa encontrada'}</strong>
-              <p>{inboxState.conversations.length === 0 ? 'Abra uma conversa com um lead ou aguarde a entrada pelo WhatsApp.' : 'Tente outro termo de busca.'}</p>
-            </div>
-          ) : (
-            filteredConversations.map((conversation) => {
-              const lead = crmState.leads.find((item) => item.id === conversation.leadId);
-              const lastMessage = inboxService.getMessages(conversation.id).slice(-1)[0];
-              return (
-                <ConversationButton
-                  key={conversation.id}
-                  conversation={conversation}
-                  leadName={lead?.name}
-                  contact={lead?.whatsapp || lead?.email}
-                  preview={lastMessage?.text || (lastMessage ? messageTypeLabel(lastMessage.type) : 'Sem mensagens ainda')}
-                  selected={conversation.id === selectedConversationId}
-                  onClick={() => setSelectedConversationId(conversation.id)}
-                />
-              );
-            })
-          )}
-        </div>
-      </aside>
     </section>
   );
 }
