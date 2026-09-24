@@ -22,6 +22,8 @@ export interface MessageAttachment {
   mimeType?: string;
   url?: string;
   size?: number;
+  storageBucket?: string;
+  storagePath?: string;
 }
 
 export interface InboxMessage {
