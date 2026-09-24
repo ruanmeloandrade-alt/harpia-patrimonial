@@ -3,7 +3,7 @@ import { CrmId, IsoDateTime, createCrmId, nowIso } from '../crm/domain';
 export type ConversationChannel = 'whatsapp' | 'email' | 'other';
 export type TransportStatus = 'not_connected' | 'connected' | 'error';
 export type MessageDirection = 'inbound' | 'outbound';
-export type MessageType = 'text' | 'audio' | 'image' | 'video' | 'document' | 'form';
+export type MessageType = 'text' | 'audio' | 'image' | 'video' | 'document' | 'form' | 'internal_note';
 export type MessageDeliveryStatus = 'received' | 'sent' | 'failed' | 'pending';
 
 export interface InboxConversation {
