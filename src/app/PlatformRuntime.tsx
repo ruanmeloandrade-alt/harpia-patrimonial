@@ -21,6 +21,9 @@ import {
 } from '../features/dashboard/crmMetricsAdapter';
 import type { CommercialMetricsProvider } from '../features/dashboard/dashboardService';
 import { InboxService } from '../features/inbox/service';
+import { buildAIBrainRuntimeContext } from '../features/ai-agents/brainRepository';
+import { listSalesBots } from '../features/salesbot/repository';
+import { getDashboardSnapshot } from '../features/dashboard/dashboardService';
 import {
   createAIAgentCommandPort,
   createSalesBotCommandPort,
@@ -218,7 +221,20 @@ export function PlatformRuntimeProvider({ children }: PropsWithChildren) {
         const inbox = inboxRepository ? new InboxService(inboxRepository, whatsappTransport) : null;
         const waitForCrmPersistence = () => crmRepository.waitForLastSave?.() ?? Promise.resolve();
         const crmActions = createFront05CrmActionPort(crm, waitForCrmPersistence);
-        const aiCommandPort = createAIAgentCommandPort(aiModelRuntime);
+        const crmMetricsProvider = new CrmSnapshotMetricsProvider(
+          new CrmRepositorySnapshotSource(crmRepository),
+          catalogRepository,
+        );
+        const aiCommandPort = createAIAgentCommandPort(aiModelRuntime, async () => ({
+          brain: await buildAIBrainRuntimeContext(),
+          dashboard: await getDashboardSnapshot(catalogRepository, crmMetricsProvider),
+          catalog: await catalogRepository.list(),
+          crm: crm.snapshot(),
+          inbox: inbox?.snapshot() ?? null,
+          salesBots: listSalesBots(),
+          automations: listAutomations(),
+          internalAssignees: assigneeRows,
+        }));
         const baseSalesBotCommandPort = createSalesBotCommandPort({
           ...unconfiguredSalesBotRuntimeDependencies,
           crm: crmActions,
@@ -356,9 +372,7 @@ export function PlatformRuntimeProvider({ children }: PropsWithChildren) {
         setCrmService(crm);
         setInboxService(inbox);
         setInboxAutomationPort(canUseInbox ? automationPort : null);
-        setCommercialMetricsProvider(
-          new CrmSnapshotMetricsProvider(new CrmRepositorySnapshotSource(crmRepository), catalogRepository),
-        );
+        setCommercialMetricsProvider(crmMetricsProvider);
         setAssignees(assigneeRows);
         setOperationalRevision((value) => value + 1);
       } catch (error) {
