@@ -32,6 +32,7 @@ export interface InboxWorkspaceProps {
 
 const botSelectionMemory = new Map<string, string>();
 const agentSelectionMemory = new Map<string, string>();
+const selectedConversationStorageKey = 'harpia:inbox:selected-conversation';
 
 export function InboxWorkspace({
   crmService,
@@ -57,8 +58,12 @@ export function InboxWorkspace({
     : undefined;
   const [selectedConversationId, setSelectedConversationId] = useState<string | undefined>(() => {
     const snapshot = inboxService.snapshot();
-    return snapshot.conversations.find((conversation) => conversation.leadId === requestedLeadId)?.id
-      ?? snapshot.conversations[0]?.id;
+    const requested = snapshot.conversations.find((conversation) => conversation.leadId === requestedLeadId)?.id;
+    const remembered = typeof window !== 'undefined'
+      ? window.sessionStorage.getItem(selectedConversationStorageKey) || undefined
+      : undefined;
+    const rememberedExists = remembered && snapshot.conversations.some((conversation) => conversation.id === remembered);
+    return requested ?? (rememberedExists ? remembered : undefined) ?? snapshot.conversations[0]?.id;
   });
   const [selectedBotByConversation, setSelectedBotByConversation] = useState<Record<string, string>>(
     () => Object.fromEntries(botSelectionMemory),
@@ -133,6 +138,12 @@ export function InboxWorkspace({
       if (current && snapshot.conversations.some((conversation) => conversation.id === current)) {
         return current;
       }
+      const remembered = typeof window !== 'undefined'
+        ? window.sessionStorage.getItem(selectedConversationStorageKey) || undefined
+        : undefined;
+      if (remembered && snapshot.conversations.some((conversation) => conversation.id === remembered)) {
+        return remembered;
+      }
       return snapshot.conversations.find((conversation) => conversation.leadId === requestedLeadId)?.id
         ?? snapshot.conversations[0]?.id;
     });
@@ -179,8 +190,11 @@ export function InboxWorkspace({
 
   const selectConversation = (conversationId: string) => {
     setSelectedConversationId(conversationId);
-    if (typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('lead')) {
-      window.history.replaceState({}, '', window.location.pathname);
+    if (typeof window !== 'undefined') {
+      window.sessionStorage.setItem(selectedConversationStorageKey, conversationId);
+      if (new URLSearchParams(window.location.search).has('lead')) {
+        window.history.replaceState({}, '', window.location.pathname);
+      }
     }
   };
 
@@ -531,6 +545,25 @@ export function InboxWorkspace({
     }
   };
 
+  const createAndApplyTag = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!selectedLead) return;
+    const formElement = event.currentTarget;
+    const form = new FormData(formElement);
+    const name = String(form.get('tagName') ?? '').trim();
+    if (!name) return;
+
+    try {
+      const tag = crmService.createTag(name);
+      crmService.addTagToLead(selectedLead.id, tag.id);
+      formElement.reset();
+      refresh();
+      setFeedback('Tag criada e aplicada ao cliente.');
+    } catch (error) {
+      setFeedback(error instanceof Error ? error.message : 'Não foi possível criar a tag.');
+    }
+  };
+
   const createCustomFieldDefinition = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
@@ -715,10 +748,14 @@ export function InboxWorkspace({
               </div>
               {availableTags.length > 0 && (
                 <select value="" onChange={(event) => addTag(event.target.value)}>
-                  <option value="">Adicionar tag…</option>
+                  <option value="">Adicionar tag existente…</option>
                   {availableTags.map((tag) => <option key={tag.id} value={tag.id}>{tag.name}</option>)}
                 </select>
               )}
+              <form className={styles.inlineCreator} onSubmit={createAndApplyTag}>
+                <input name="tagName" required placeholder="Criar nova tag" />
+                <button type="submit">Criar</button>
+              </form>
             </section>
 
             <section className={styles.contextSection}>
@@ -748,10 +785,12 @@ export function InboxWorkspace({
                   <select name="type" defaultValue="text">
                     <option value="text">Texto</option>
                     <option value="number">Número</option>
+                    <option value="currency">Valor</option>
                     <option value="date">Data</option>
+                    <option value="datetime">Data e hora</option>
                     <option value="boolean">Sim/Não</option>
-                    <option value="select">Lista</option>
-                    <option value="multiselect">Múltipla escolha</option>
+                    <option value="select">Lista, uma opção</option>
+                    <option value="multiselect">Lista, múltiplas opções</option>
                   </select>
                   <input name="options" placeholder="Opções separadas por vírgula" />
                   <button type="submit">Criar campo</button>
@@ -929,12 +968,6 @@ export function InboxWorkspace({
                       setFeedback('Nenhum SalesBot ativo disponível.');
                       return;
                     }
-                    if (salesBots.length === 1) {
-                      setSelectedBotId(salesBots[0].id);
-                      setAutomationPicker(null);
-                      void startSalesBot(salesBots[0].id);
-                      return;
-                    }
                     setAutomationPicker((current) => current === 'salesbot' ? null : 'salesbot');
                   }}
                 >
@@ -950,12 +983,6 @@ export function InboxWorkspace({
                     }
                     if (aiAgents.length === 0) {
                       setFeedback('Nenhum agente IA ativo disponível.');
-                      return;
-                    }
-                    if (aiAgents.length === 1) {
-                      setSelectedAgentId(aiAgents[0].id);
-                      setAutomationPicker(null);
-                      void startAiAgent(aiAgents[0].id);
                       return;
                     }
                     setAutomationPicker((current) => current === 'agent' ? null : 'agent');
@@ -1129,14 +1156,23 @@ function InboxCustomFieldEditor({
     <label className={styles.customField}>
       <span>{field.name}</span>
       <input
-        type={field.type === 'number' ? 'number' : field.type === 'date' ? 'date' : 'text'}
+        type={field.type === 'number' || field.type === 'currency'
+          ? 'number'
+          : field.type === 'date'
+            ? 'date'
+            : field.type === 'datetime'
+              ? 'datetime-local'
+              : 'text'}
+        step={field.type === 'currency' ? '0.01' : undefined}
         value={typeof value === 'string' || typeof value === 'number' ? value : ''}
         onChange={(event) => {
           if (!event.target.value) {
             onChange(null);
             return;
           }
-          onChange(field.type === 'number' ? Number(event.target.value) : event.target.value);
+          onChange(field.type === 'number' || field.type === 'currency'
+            ? Number(event.target.value)
+            : event.target.value);
         }}
       />
     </label>
