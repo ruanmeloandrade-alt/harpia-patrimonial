@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { useAuth } from '../core/auth/AuthProvider';
 import { PERMISSIONS } from '../core/auth/permissions';
 import { CatalogAdminPage } from '../features/catalog/CatalogAdminPage';
+import { CalendarWorkspace } from '../features/calendar/CalendarWorkspace';
 import { CrmWorkspace } from '../features/crm/CrmWorkspace';
 import { DashboardPage } from '../features/dashboard/DashboardPage';
 import { InboxWorkspace } from '../features/inbox/InboxWorkspace';
@@ -70,6 +71,17 @@ export function IntegratedCrm() {
         )
         : <FullPageState title="CRM indisponível" description="A persistência compartilhada não foi carregada." />}
     </OperationalGate>
+  );
+}
+
+export function IntegratedCalendar() {
+  const auth = useAuth();
+  const runtime = usePlatformRuntime();
+  return (
+    <CalendarWorkspace
+      assignees={runtime.assignees}
+      canManage={auth.hasPermission(PERMISSIONS.CALENDAR_MANAGE)}
+    />
   );
 }
 
