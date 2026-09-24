@@ -494,3 +494,27 @@ export async function listWhatsAppRecoveryCandidates(sessionId: string) {
     }];
   });
 }
+
+
+export async function listWhatsAppHistoryRecoveryThreads(sessionId: string) {
+  const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+  const { data, error } = await db.rpc('admin_list_whatsapp_history_recovery_threads', {
+    p_session_id: sessionId,
+    p_since: since,
+    p_limit: 10,
+  });
+
+  if (error) throw error;
+
+  return ((data ?? []) as Array<{
+    pn_jid?: string | null;
+    external_message_id?: string | null;
+    failed_at?: string | null;
+  }>).flatMap((row) => {
+    const pnJid = String(row.pn_jid || '').trim();
+    const externalMessageId = String(row.external_message_id || '').trim();
+    const failedAt = String(row.failed_at || '').trim();
+    if (!pnJid || !externalMessageId || !failedAt) return [];
+    return [{ pnJid, externalMessageId, failedAt }];
+  });
+}
