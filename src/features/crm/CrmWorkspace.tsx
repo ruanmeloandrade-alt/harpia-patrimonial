@@ -8,7 +8,6 @@ import {
 import type { AssigneeOption } from './CrmWorkspaceCore';
 import { PersistenceErrorNotice } from './PersistenceErrorNotice';
 import { createReadOnlyCrmService } from './readOnlyAccess';
-import { UnassignedLeadsQueue } from './UnassignedLeadsQueue';
 import type { CatalogRepository } from '../catalog/catalogRepository';
 
 export type { AssigneeOption } from './CrmWorkspaceCore';
@@ -72,12 +71,6 @@ export function CrmWorkspace({
         </div>
       )}
       <PersistenceErrorNotice modules={['crm']} />
-      <UnassignedLeadsQueue
-        key={`queue-${revision}`}
-        service={service}
-        canManage={canManage}
-        onChanged={() => setRevision((value) => value + 1)}
-      />
       <CrmWorkspaceCore
         key={`crm-${revision}`}
         service={service}
