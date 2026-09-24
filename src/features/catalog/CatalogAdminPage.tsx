@@ -497,7 +497,7 @@ export function CatalogAdminPage({ access, repository, mediaStorage }: CatalogAd
   };
 
   const productFormBlock = showProductForm && access.canManage ? (
-    <form className="f03-form" onSubmit={submitProduct}>
+    <form className="f03-card f03-form" onSubmit={submitProduct}>
       <div className="f03-card-heading">
         <div>
           <p className="f03-kicker">{editingProductId ? 'Edição' : 'Novo produto'}</p>
@@ -842,13 +842,14 @@ export function CatalogAdminPage({ access, repository, mediaStorage }: CatalogAd
         {error && <div className="f03-alert f03-alert-error">{error}</div>}
         {notice && <div className="f03-alert f03-alert-success">{notice}</div>}
 
-        <section className="f03-card">
+        <section className="f03-card f03-section-card">
           <div className="f03-card-heading">
             <div>
               <p className="f03-kicker">Produtos do catálogo</p>
               <h2>{selectedCatalog.name}</h2>
+              <p>Cadastre, edite e organize os produtos deste catálogo.</p>
             </div>
-            {access.canManage && (
+            {access.canManage && !showProductForm && (
               <button
                 type="button"
                 className="f03-button f03-button-primary"
@@ -858,10 +859,14 @@ export function CatalogAdminPage({ access, repository, mediaStorage }: CatalogAd
               </button>
             )}
           </div>
-
-          {productFormBlock}
-          {productListBlock}
         </section>
+
+        <div className={showProductForm && access.canManage ? 'f03-layout' : 'f03-layout f03-layout--single'}>
+          {productFormBlock}
+          <div className="f03-list-column">
+            {productListBlock}
+          </div>
+        </div>
       </section>
     );
   }
@@ -887,11 +892,12 @@ export function CatalogAdminPage({ access, repository, mediaStorage }: CatalogAd
         {error && <div className="f03-alert f03-alert-error">{error}</div>}
         {notice && <div className="f03-alert f03-alert-success">{notice}</div>}
 
-        <section className="f03-card">
+        <section className="f03-card f03-section-card">
           <div className="f03-card-heading">
             <div>
               <p className="f03-kicker">Sem catálogo</p>
               <h2>Produtos avulsos</h2>
+              <p>Cadastre produtos independentes sem vinculá-los a um catálogo.</p>
             </div>
             {access.canManage && !showProductForm && (
               <button
@@ -907,15 +913,89 @@ export function CatalogAdminPage({ access, repository, mediaStorage }: CatalogAd
               </button>
             )}
           </div>
-
-          {productFormBlock}
-          {productListBlock}
         </section>
+
+        <div className={showProductForm && access.canManage ? 'f03-layout' : 'f03-layout f03-layout--single'}>
+          {productFormBlock}
+          <div className="f03-list-column">
+            {productListBlock}
+          </div>
+        </div>
       </section>
     );
   }
 
   const standaloneCount = items.filter((item) => item.catalogId === null).length;
+
+  const catalogListBlock = loading ? (
+    <div className="f03-card f03-empty">Carregando catálogos...</div>
+  ) : catalogs.length === 0 ? (
+    <div className="f03-card f03-empty">
+      <h3>Nenhum catálogo criado</h3>
+      <p>Crie o primeiro catálogo ou use Produto avulso.</p>
+    </div>
+  ) : (
+    <div className="f03-item-list">
+      {catalogs.map((catalog) => {
+        const count = items.filter((item) => item.catalogId === catalog.id).length;
+        return (
+          <article className="f03-card f03-item" key={catalog.id}>
+            <div className="f03-item-top">
+              <div>
+                <h3>{catalog.name}</h3>
+                <p>{catalog.description || 'Sem descrição'}</p>
+              </div>
+              <strong>{count}</strong>
+            </div>
+            <div className="f03-badges">
+              {catalog.tags.map((tag) => (
+                <span key={tag} className="f03-badge f03-badge-muted">{tag}</span>
+              ))}
+            </div>
+            <div className="f03-actions">
+              <button
+                type="button"
+                className="f03-button f03-button-primary"
+                onClick={() => void openCatalog(catalog)}
+              >
+                Abrir catálogo
+              </button>
+              {access.canManage && (
+                <button
+                  type="button"
+                  className="f03-button f03-button-danger"
+                  onClick={() => void deleteCatalog(catalog)}
+                >
+                  Excluir
+                </button>
+              )}
+            </div>
+          </article>
+        );
+      })}
+
+      {standaloneCount > 0 && (
+        <article className="f03-card f03-item">
+          <div className="f03-item-top">
+            <div>
+              <h3>Produtos avulsos</h3>
+              <p>Itens que não pertencem a nenhum catálogo.</p>
+            </div>
+            <strong>{standaloneCount}</strong>
+          </div>
+          <div className="f03-actions">
+            <button
+              type="button"
+              className="f03-button f03-button-ghost"
+              onClick={() => void openStandalone()}
+            >
+              Abrir produtos avulsos
+            </button>
+          </div>
+        </article>
+      )}
+    </div>
+  );
 
   return (
     <section className="f03-shell">
@@ -934,7 +1014,7 @@ export function CatalogAdminPage({ access, repository, mediaStorage }: CatalogAd
       {error && <div className="f03-alert f03-alert-error">{error}</div>}
       {notice && <div className="f03-alert f03-alert-success">{notice}</div>}
 
-      <section className="f03-card">
+      <section className="f03-card f03-section-card">
         <div className="f03-card-heading">
           <div>
             <p className="f03-kicker">Catálogos de produtos</p>
@@ -960,16 +1040,24 @@ export function CatalogAdminPage({ access, repository, mediaStorage }: CatalogAd
             </div>
           )}
         </div>
+      </section>
 
+      <div className={showCatalogForm && access.canManage ? 'f03-layout' : 'f03-layout f03-layout--single'}>
         {showCatalogForm && access.canManage && (
-          <form className="f03-form" onSubmit={submitCatalog}>
+          <form className="f03-card f03-form" onSubmit={submitCatalog}>
+            <div className="f03-card-heading">
+              <div>
+                <p className="f03-kicker">Novo catálogo</p>
+                <h2>Criar catálogo</h2>
+              </div>
+            </div>
             <div className="f03-grid-2">
               <label>
                 Nome do catálogo
                 <input
                   value={catalogForm.name}
                   onChange={(event) => setCatalogForm({ ...catalogForm, name: event.target.value })}
-                  placeholder="Ex.: Planos, Imóveis, Serviços, Linha Premium"
+                  placeholder="Ex.: Planos, Serviços, Linha Premium"
                   required
                 />
               </label>
@@ -985,7 +1073,7 @@ export function CatalogAdminPage({ access, repository, mediaStorage }: CatalogAd
             <label>
               Descrição
               <textarea
-                rows={3}
+                rows={4}
                 value={catalogForm.description}
                 onChange={(event) => setCatalogForm({ ...catalogForm, description: event.target.value })}
               />
@@ -1008,76 +1096,10 @@ export function CatalogAdminPage({ access, repository, mediaStorage }: CatalogAd
           </form>
         )}
 
-        {loading ? (
-          <div className="f03-empty">Carregando catálogos...</div>
-        ) : catalogs.length === 0 ? (
-          <div className="f03-empty">
-            <h3>Nenhum catálogo criado</h3>
-            <p>Crie o primeiro catálogo ou use Produto avulso.</p>
-          </div>
-        ) : (
-          <div className="f03-item-list">
-            {catalogs.map((catalog) => {
-              const count = items.filter((item) => item.catalogId === catalog.id).length;
-              return (
-                <article className="f03-card f03-item" key={catalog.id}>
-                  <div className="f03-item-top">
-                    <div>
-                      <h3>{catalog.name}</h3>
-                      <p>{catalog.description || 'Sem descrição'}</p>
-                    </div>
-                    <strong>{count}</strong>
-                  </div>
-                  <div className="f03-badges">
-                    {catalog.tags.map((tag) => (
-                      <span key={tag} className="f03-badge f03-badge-muted">{tag}</span>
-                    ))}
-                  </div>
-                  <div className="f03-actions">
-                    <button
-                      type="button"
-                      className="f03-button f03-button-primary"
-                      onClick={() => void openCatalog(catalog)}
-                    >
-                      Abrir catálogo
-                    </button>
-                    {access.canManage && (
-                      <button
-                        type="button"
-                        className="f03-button f03-button-danger"
-                        onClick={() => void deleteCatalog(catalog)}
-                      >
-                        Excluir
-                      </button>
-                    )}
-                  </div>
-                </article>
-              );
-            })}
-          </div>
-        )}
-
-        {standaloneCount > 0 && (
-          <article className="f03-card f03-item" style={{ marginTop: 16 }}>
-            <div className="f03-item-top">
-              <div>
-                <h3>Produtos avulsos</h3>
-                <p>Itens que não pertencem a nenhum catálogo.</p>
-              </div>
-              <strong>{standaloneCount}</strong>
-            </div>
-            <div className="f03-actions">
-              <button
-                type="button"
-                className="f03-button f03-button-ghost"
-                onClick={() => void openStandalone()}
-              >
-                Abrir produtos avulsos
-              </button>
-            </div>
-          </article>
-        )}
-      </section>
+        <div className="f03-list-column">
+          {catalogListBlock}
+        </div>
+      </div>
     </section>
   );
 }
