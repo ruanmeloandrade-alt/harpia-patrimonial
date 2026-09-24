@@ -312,6 +312,19 @@ export class CrmService {
     this.publish('lead.assignee_changed', lead.id, {
       previousAssigneeId,
       assigneeId: lead.assigneeId ?? null,
+      pipelineId: lead.pipelineId ?? null,
+      stageId: lead.stageId ?? null,
+      source: lead.source ?? null,
+      lead: {
+        id: lead.id,
+        name: lead.name,
+        email: lead.email ?? null,
+        whatsapp: lead.whatsapp ?? null,
+        source: lead.source ?? null,
+        assigneeId: lead.assigneeId ?? null,
+        pipelineId: lead.pipelineId ?? null,
+        stageId: lead.stageId ?? null,
+      },
     });
     return lead;
   }
