@@ -50,6 +50,7 @@ function toPublicItem(item: RepositoryItem, allPublishedItems: RepositoryItem[])
     id: item.id,
     code: item.code,
     name: item.name,
+    itemType: item.itemType,
     kind: item.kind,
     parentId: item.parentId,
     typology: item.typology,
@@ -57,6 +58,9 @@ function toPublicItem(item: RepositoryItem, allPublishedItems: RepositoryItem[])
     description: item.description,
     location: item.location,
     price: publicDisplayPrice(item, allPublishedItems),
+    discountType: item.discountType,
+    discountValue: item.discountValue,
+    tags: item.tags,
     isLaunch: item.isLaunch,
     features: item.features,
     lifestyleTags: item.lifestyleTags,
@@ -84,6 +88,7 @@ function applyPublicFilters(
   allPublishedItems = items,
 ) {
   return items
+    .filter((item) => !filters.itemType || item.itemType === filters.itemType)
     .filter((item) => !filters.purpose || item.purpose === filters.purpose)
     .filter((item) => !filters.city || item.location.city === filters.city)
     .filter((item) => {
@@ -94,7 +99,8 @@ function applyPublicFilters(
     })
     .filter((item) => filters.isLaunch === undefined || item.isLaunch === filters.isLaunch)
     .filter((item) => matchesPriceFilter(item, allPublishedItems, filters))
-    .filter((item) => !filters.lifestyleTag || item.lifestyleTags.includes(filters.lifestyleTag));
+    .filter((item) => !filters.lifestyleTag || item.lifestyleTags.includes(filters.lifestyleTag))
+    .filter((item) => !filters.tag || item.tags.includes(filters.tag));
 }
 
 export class PublicCatalogService {
