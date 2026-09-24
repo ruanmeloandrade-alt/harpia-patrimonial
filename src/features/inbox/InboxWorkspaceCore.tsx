@@ -64,6 +64,7 @@ export function InboxWorkspace({
   const [mediaBusy, setMediaBusy] = useState(false);
   const [conversationQuery, setConversationQuery] = useState('');
   const [profileVisible, setProfileVisible] = useState(true);
+  const [automationPicker, setAutomationPicker] = useState<'salesbot' | 'agent' | null>(null);
   const [automationStatus, setAutomationStatus] = useState<ConversationAutomationStatus>({
     salesBot: 'unavailable',
     aiAgent: 'unavailable',
@@ -159,9 +160,9 @@ export function InboxWorkspace({
     setAutomationStatus(status);
   };
 
-  const startSalesBot = async () => {
+  const startSalesBot = async (botId = selectedBotId) => {
     if (!selectedConversation) return;
-    if (!selectedBotId) {
+    if (!botId) {
       setFeedback('Selecione um SalesBot ativo antes de iniciar.');
       return;
     }
@@ -169,7 +170,7 @@ export function InboxWorkspace({
       await automationPort.startSalesBot({
         leadId: selectedConversation.leadId,
         conversationId: selectedConversation.id,
-        botId: selectedBotId,
+        botId,
       });
       await refreshAutomationStatus();
       setFeedback('SalesBot selecionado iniciado pela integração da Frente05.');
@@ -192,9 +193,9 @@ export function InboxWorkspace({
     }
   };
 
-  const startAiAgent = async () => {
+  const startAiAgent = async (agentId = selectedAgentId) => {
     if (!selectedConversation) return;
-    if (!selectedAgentId) {
+    if (!agentId) {
       setFeedback('Selecione um agente IA ativo antes de iniciar.');
       return;
     }
@@ -202,7 +203,7 @@ export function InboxWorkspace({
       await automationPort.startAiAgent({
         leadId: selectedConversation.leadId,
         conversationId: selectedConversation.id,
-        agentId: selectedAgentId,
+        agentId,
       });
       await refreshAutomationStatus();
       setFeedback('Agente IA selecionado iniciado pela integração da Frente05.');
@@ -685,14 +686,46 @@ export function InboxWorkspace({
                 <button
                   className={styles.composerAction}
                   type="button"
-                  onClick={() => automationStatus.salesBot === 'running' ? void pauseSalesBot() : void startSalesBot()}
+                  onClick={() => {
+                    if (automationStatus.salesBot === 'running') {
+                      void pauseSalesBot();
+                      return;
+                    }
+                    if (salesBots.length === 0) {
+                      setFeedback('Nenhum SalesBot ativo disponível.');
+                      return;
+                    }
+                    if (salesBots.length === 1) {
+                      setSelectedBotId(salesBots[0].id);
+                      setAutomationPicker(null);
+                      void startSalesBot(salesBots[0].id);
+                      return;
+                    }
+                    setAutomationPicker((current) => current === 'salesbot' ? null : 'salesbot');
+                  }}
                 >
                   {automationStatus.salesBot === 'running' ? 'Pausar SalesBot' : 'Enviar SalesBot'}
                 </button>
                 <button
                   className={styles.composerAction}
                   type="button"
-                  onClick={() => automationStatus.aiAgent === 'running' ? void pauseAiAgent() : void startAiAgent()}
+                  onClick={() => {
+                    if (automationStatus.aiAgent === 'running') {
+                      void pauseAiAgent();
+                      return;
+                    }
+                    if (aiAgents.length === 0) {
+                      setFeedback('Nenhum agente IA ativo disponível.');
+                      return;
+                    }
+                    if (aiAgents.length === 1) {
+                      setSelectedAgentId(aiAgents[0].id);
+                      setAutomationPicker(null);
+                      void startAiAgent(aiAgents[0].id);
+                      return;
+                    }
+                    setAutomationPicker((current) => current === 'agent' ? null : 'agent');
+                  }}
                 >
                   {automationStatus.aiAgent === 'running' ? 'Pausar Agente IA' : 'Enviar Agente IA'}
                 </button>
@@ -706,6 +739,43 @@ export function InboxWorkspace({
                 </button>
                 <span className={styles.composerHint}>WhatsApp</span>
               </div>
+              {automationPicker === 'salesbot' && (
+                <div className={styles.automationPicker}>
+                  <strong>Escolha o SalesBot</strong>
+                  {salesBots.map((bot) => (
+                    <button
+                      key={bot.id}
+                      type="button"
+                      onClick={() => {
+                        setSelectedBotId(bot.id);
+                        setAutomationPicker(null);
+                        void startSalesBot(bot.id);
+                      }}
+                    >
+                      {bot.name}
+                    </button>
+                  ))}
+                </div>
+              )}
+              {automationPicker === 'agent' && (
+                <div className={styles.automationPicker}>
+                  <strong>Escolha o Agente IA</strong>
+                  {aiAgents.map((agent) => (
+                    <button
+                      key={agent.id}
+                      type="button"
+                      onClick={() => {
+                        setSelectedAgentId(agent.id);
+                        setAutomationPicker(null);
+                        void startAiAgent(agent.id);
+                      }}
+                    >
+                      {agent.name}
+                    </button>
+                  ))}
+                </div>
+              )}
+
               <form className={styles.composer} onSubmit={submitText}>
                 <textarea
                   name="message"
