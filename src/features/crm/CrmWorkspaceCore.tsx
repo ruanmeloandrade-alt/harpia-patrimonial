@@ -1,6 +1,7 @@
 import {
   DragEvent as ReactDragEvent,
   FormEvent,
+  useEffect,
   useMemo,
   useState,
 } from 'react';
@@ -19,6 +20,14 @@ import type { CatalogRepository } from '../catalog/catalogRepository';
 import type { InboxService } from '../inbox/service';
 import { useAppRouter } from '../../core/router/router';
 import { LeadProductsPanel } from './LeadProductsPanel';
+import { PipelineTriggerPicker } from './PipelineTriggerPicker';
+import {
+  findPipelineActionCatalogItem,
+  isWebhookPipelineAction,
+  pipelineActionCatalog,
+  pipelineActionLabel,
+  type PipelineActionCatalogItem,
+} from '../automations/pipelineActionCatalog';
 import { listSalesBots } from '../salesbot/repository';
 import { listAIAgents } from '../ai-agents/repository';
 import {
@@ -76,12 +85,7 @@ const pipelineTriggerEventLabels: Record<PipelineTriggerEvent, string> = {
   ai_done: 'Agente IA concluiu o serviço',
   tag_added: 'Tag adicionada',
   field_changed: 'Campo personalizado alterado',
-};
-
-const pipelineTriggerActionLabels: Record<PipelineTriggerAction, string> = {
-  move_stage: 'Mover lead para etapa',
-  salesbot: 'Iniciar SalesBot',
-  ai: 'Iniciar Agente IA',
+  inbound_webhook: 'Webhook recebido',
 };
 
 export function CrmWorkspace({
@@ -116,8 +120,31 @@ export function CrmWorkspace({
   const [triggerAction, setTriggerAction] = useState<PipelineTriggerAction>('move_stage');
   const [triggerResourceId, setTriggerResourceId] = useState('');
   const [triggerTargetStageId, setTriggerTargetStageId] = useState('');
+  const [triggerActionConfig, setTriggerActionConfig] = useState<Record<string, string>>({});
+  const [triggerPickerStageId, setTriggerPickerStageId] = useState('');
+  const [triggerPickerSearch, setTriggerPickerSearch] = useState('');
+  const [triggerCatalogSelection, setTriggerCatalogSelection] = useState('');
+  const [catalogChoices, setCatalogChoices] = useState<Array<{ id: string; label: string }>>([]);
 
   useF05StorageListener(() => setAutomationRevision((value) => value + 1));
+
+  useEffect(() => {
+    let active = true;
+    if (!catalogRepository) {
+      setCatalogChoices([]);
+      return () => { active = false; };
+    }
+    catalogRepository.list({}).then((items) => {
+      if (!active) return;
+      setCatalogChoices(items.filter((item) => !item.deletedAt).map((item) => ({
+        id: item.id,
+        label: item.code ? `${item.name} · ${item.code}` : item.name,
+      })));
+    }).catch(() => {
+      if (active) setCatalogChoices([]);
+    });
+    return () => { active = false; };
+  }, [catalogRepository]);
 
   const refresh = (message?: string) => {
     const snapshot = service.snapshot();
@@ -180,6 +207,11 @@ export function CrmWorkspace({
     }
   };
 
+  const openTriggerPicker = (stageId: string) => {
+    setTriggerPickerStageId(stageId);
+    setTriggerPickerSearch('');
+  };
+
   const openTriggerModal = (stageId: string, triggerId?: string) => {
     const current = triggerId ? pipelineTriggers.find((item) => item.id === triggerId) : undefined;
     const meta = current?.pipeline;
@@ -191,15 +223,54 @@ export function CrmWorkspace({
     setTriggerResourceId(meta?.resourceId ?? '');
     setTriggerTargetStageId(meta?.targetStageId ?? '');
     setTriggerValue(meta?.event === 'time' ? '' : meta?.value ?? '');
+    setTriggerActionConfig(Object.fromEntries(
+      Object.entries(meta?.actionConfig ?? {}).map(([key, value]) => [key, String(value ?? '')]),
+    ));
+    setTriggerCatalogSelection(meta?.event === 'inbound_webhook' ? 'receive_webhook' : meta?.action ?? 'move_stage');
 
     const duration = meta?.event === 'time' ? String(meta.value ?? '30m').match(/^(\d+)\s*([mhd])/i) : null;
     setTriggerDurationAmount(duration?.[1] ?? '30');
     setTriggerDurationUnit((duration?.[2]?.toLowerCase() as 'm' | 'h' | 'd') ?? 'm');
   };
 
+  const selectTriggerCatalogItem = (item: PipelineActionCatalogItem) => {
+    const stageId = triggerPickerStageId;
+    if (!stageId) return;
+    setTriggerPickerStageId('');
+    setTriggerPickerSearch('');
+    setTriggerModalStageId(stageId);
+    setEditingTriggerId('');
+    setTriggerCatalogSelection(item.id);
+    setTriggerActionConfig({});
+    setTriggerResourceId('');
+    setTriggerTargetStageId('');
+    setTriggerDurationAmount('30');
+    setTriggerDurationUnit('m');
+
+    if (item.id === 'receive_webhook') {
+      const cryptoApi = globalThis.crypto;
+      const token = cryptoApi?.randomUUID
+        ? cryptoApi.randomUUID()
+        : `${Date.now()}_${Math.random().toString(36).slice(2, 14)}`;
+      setTriggerEvent('inbound_webhook');
+      setTriggerValue(token);
+      setTriggerAction('move_stage');
+    } else {
+      setTriggerEvent('created_or_moved');
+      setTriggerValue('');
+      setTriggerAction(item.id as PipelineTriggerAction);
+    }
+  };
+
+  const setTriggerConfig = (key: string, value: string) => {
+    setTriggerActionConfig((current) => ({ ...current, [key]: value }));
+  };
+
   const closeTriggerModal = () => {
     setTriggerModalStageId('');
     setEditingTriggerId('');
+    setTriggerCatalogSelection('');
+    setTriggerActionConfig({});
   };
 
   const handleAddTrigger = (event: FormEvent<HTMLFormElement>) => {
@@ -218,6 +289,7 @@ export function CrmWorkspace({
       action: triggerAction,
       targetStageId: triggerTargetStageId,
       resourceId: triggerResourceId,
+      actionConfig: triggerActionConfig,
     };
 
     try {
@@ -518,7 +590,7 @@ export function CrmWorkspace({
                                   <strong>{pipelineTriggerEventLabels[meta.event]}</strong>
                                   {conditionName ? <small>{conditionName}</small> : null}
                                   <i>ENTÃO</i>
-                                  <b>{pipelineTriggerActionLabels[meta.action]}</b>
+                                  <b>{pipelineActionLabel(meta.action)}</b>
                                   {actionDetail ? <small>{actionDetail}</small> : null}
                                 </div>
                                 {canManage ? (
