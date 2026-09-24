@@ -202,7 +202,8 @@ export function CatalogAdminPage({ access, repository, mediaStorage }: CatalogAd
 
   const editingItem = editingId ? items.find((item) => item.id === editingId) : undefined;
   const developments = items.filter(
-    (item) => item.kind === 'development'
+    (item) => item.itemType === 'property'
+      && item.kind === 'development'
       && (item.status !== 'sold' || (editingItem?.kind === 'unit' && editingItem.parentId === item.id)),
   );
   const normalizedSearch = search.trim().toLocaleLowerCase('pt-BR');
@@ -392,16 +393,16 @@ export function CatalogAdminPage({ access, repository, mediaStorage }: CatalogAd
             <div className="f03-media-box">
               <div><strong>Mídia</strong><p>{mediaStorage ? 'Envie arquivos diretamente para o Storage ou informe URLs permanentes. A primeira foto da lista é tratada como capa.' : 'Informe URLs permanentes. O adapter de Storage pode ser injetado para habilitar upload direto. A primeira foto da lista é tratada como capa.'}</p></div>
               {mediaStorage && <label>Enviar fotos<input type="file" accept="image/jpeg,image/png,image/webp,image/gif" multiple disabled={uploadingType !== null} onChange={(event) => void uploadFiles(event, 'image', 'imageUrls')} /></label>}
-              <label>Fotos — uma URL por linha<textarea rows={3} value={form.imageUrls} onChange={(event) => setForm({ ...form, imageUrls: event.target.value })} /></label>
+              <label>Fotos - uma URL por linha<textarea rows={3} value={form.imageUrls} onChange={(event) => setForm({ ...form, imageUrls: event.target.value })} /></label>
               {mediaStorage && <label>Enviar vídeos<input type="file" accept="video/mp4,video/webm" multiple disabled={uploadingType !== null} onChange={(event) => void uploadFiles(event, 'video', 'videoUrls')} /></label>}
-              <label>Vídeos — uma URL por linha<textarea rows={3} value={form.videoUrls} onChange={(event) => setForm({ ...form, videoUrls: event.target.value })} /></label>
+              <label>Vídeos - uma URL por linha<textarea rows={3} value={form.videoUrls} onChange={(event) => setForm({ ...form, videoUrls: event.target.value })} /></label>
               {mediaStorage && <label>Enviar plantas<input type="file" accept="application/pdf,image/jpeg,image/png,image/webp" multiple disabled={uploadingType !== null} onChange={(event) => void uploadFiles(event, 'floorplan', 'floorplanUrls')} /></label>}
-              <label>Plantas — uma URL por linha<textarea rows={3} value={form.floorplanUrls} onChange={(event) => setForm({ ...form, floorplanUrls: event.target.value })} /></label>
+              <label>Plantas - uma URL por linha<textarea rows={3} value={form.floorplanUrls} onChange={(event) => setForm({ ...form, floorplanUrls: event.target.value })} /></label>
               {mediaStorage && <label>Enviar documentos<input type="file" accept="application/pdf,image/jpeg,image/png,image/webp" multiple disabled={uploadingType !== null} onChange={(event) => void uploadFiles(event, 'document', 'documentUrls')} /></label>}
-              <label>Documentos — uma URL por linha<textarea rows={3} value={form.documentUrls} onChange={(event) => setForm({ ...form, documentUrls: event.target.value })} /></label>
-              {uploadingType && <p>Enviando mídia…</p>}
+              <label>Documentos - uma URL por linha<textarea rows={3} value={form.documentUrls} onChange={(event) => setForm({ ...form, documentUrls: event.target.value })} /></label>
+              {uploadingType && <p>Enviando mídia...</p>}
             </div>
-            <button className="f03-button f03-button-primary" type="submit" disabled={busy || uploadingType !== null}>{busy ? 'Salvando…' : editingId ? 'Salvar alterações' : 'Criar rascunho'}</button>
+            <button className="f03-button f03-button-primary" type="submit" disabled={busy || uploadingType !== null}>{busy ? 'Salvando...' : editingId ? 'Salvar alterações' : 'Criar rascunho'}</button>
           </form>
         ) : (
           <aside className="f03-card f03-form">
@@ -422,9 +423,9 @@ export function CatalogAdminPage({ access, repository, mediaStorage }: CatalogAd
             <select value={kindFilter} onChange={(event) => setKindFilter(event.target.value)}><option value="all">Todos os subtipos</option><option value="development">Empreendimentos</option><option value="unit">Unidades</option><option value="standalone">Avulsos / gerais</option></select>
           </div>
 
-          {loading ? <div className="f03-card f03-empty"><h2>Carregando catálogo…</h2><p>Buscando os dados reais do repositório.</p></div> : visibleItems.length === 0 ? <div className="f03-card f03-empty"><div className="f03-empty-icon">0</div><h2>Nenhum item encontrado</h2><p>O catálogo começa vazio e só exibe dados realmente cadastrados.</p></div> : (
+          {loading ? <div className="f03-card f03-empty"><h2>Carregando catálogo...</h2><p>Buscando os dados reais do repositório.</p></div> : visibleItems.length === 0 ? <div className="f03-card f03-empty"><div className="f03-empty-icon">0</div><h2>Nenhum item encontrado</h2><p>O catálogo começa vazio e só exibe dados realmente cadastrados.</p></div> : (
             <div className="f03-item-list">{visibleItems.map((item) => {
-              const soldBlockedByUnits = item.kind === 'development' && developmentHasUnsoldUnits(item.id);
+              const soldBlockedByUnits = item.itemType === 'property' && item.kind === 'development' && developmentHasUnsoldUnits(item.id);
               return (
               <article className="f03-card f03-item" key={item.id}>
                 <div className="f03-item-top"><div><div className="f03-badges"><span className={`f03-badge status-${item.status}`}>{item.itemType === 'property' && item.status === 'sold' ? 'Vendido' : statusLabel[item.status]}</span><span className="f03-badge f03-badge-muted">{itemTypeLabel[item.itemType]}</span>{item.itemType === 'property' && <span className="f03-badge f03-badge-muted">{kindLabel[item.kind]}</span>}{item.typology && <span className="f03-badge f03-badge-muted">{item.typology}</span>}{item.tags.map((tag) => <span key={tag} className="f03-badge f03-badge-muted">{tag}</span>)}</div><h3>{item.name}</h3><p>{item.code}{item.itemType === 'property' && item.location.city ? ` · ${item.location.city}${item.location.neighborhood ? ` / ${item.location.neighborhood}` : ''}` : ''}</p></div><div><strong>{money(discountedPrice(item))}</strong>{item.discountType && item.price !== null && <small style={{ display: 'block', textAlign: 'right' }}>de {money(item.price)}</small>}</div></div>
