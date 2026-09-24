@@ -82,7 +82,7 @@ export function IntegrationsWorkspace({ credentialVault, canManage = false, show
 
     <div className="f05-card-grid">
       {externalItems.map((item) => {
-        const phaseTwo = item.id === 'meta' || item.id === 'email';
+        const phaseTwo = ['meta', 'email', 'sms', 'analytics', 'tag_manager'].includes(item.id);
         const displayStatus = phaseTwo ? 'future' : item.status;
         return <article className="f05-card" key={item.id}>
         <div className="f05-card__top">
@@ -120,8 +120,14 @@ export function IntegrationsWorkspace({ credentialVault, canManage = false, show
             : item.id === 'meta'
               ? 'Meta Ads, Lead Ads, Facebook e Instagram ficam preparados visualmente e serão ativados somente na segunda fase.'
               : item.id === 'email'
-                ? 'A conexão de e-mail para campanhas e jornadas será ativada somente na segunda fase.'
-                : 'Integração ainda planejada para uma etapa posterior.'}
+                ? 'Gmail e Google Workspace ficam preparados para campanhas e jornadas da segunda fase.'
+                : item.id === 'sms'
+                  ? 'O gateway de SMS será definido e conectado somente na segunda fase.'
+                  : item.id === 'analytics'
+                    ? 'Google Analytics fica visível agora e será conectado na segunda fase.'
+                    : item.id === 'tag_manager'
+                      ? 'Google Tag Manager fica visível agora e será conectado na segunda fase.'
+                      : 'Integração ainda planejada para uma etapa posterior.'}
         </small>
       </article>;
       })}
