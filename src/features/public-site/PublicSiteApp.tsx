@@ -8,7 +8,6 @@ import {
   type PublicCatalogReader,
 } from '../public-catalog/contracts';
 import { hasCatalogFilters, readCatalogFilters, writeCatalogFilters } from './catalogQuery';
-import { HomeCatalogSearch } from './HomeCatalogSearch';
 import {
   emitFront02LocationChange,
   FRONT02_LOCATION_EVENT,
@@ -342,7 +341,7 @@ export default function PublicSiteApp({ catalog = emptyPublicCatalogReader, auth
   return (
     <div className="harpia-public">
       <header className="public-header">
-        <a className="brand" href="/" onClick={intercept('/')} aria-label="Hárpia Patrimonial - início"><span className="brand-mark">H</span><span><strong>HÁRPIA</strong><small>PATRIMONIAL & CO.</small></span></a>
+        <a className="brand" href="/imoveis" onClick={intercept('/imoveis')} aria-label="Hárpia Patrimonial - catálogo"><span className="brand-mark">H</span><span><strong>HÁRPIA</strong><small>PATRIMONIAL & CO.</small></span></a>
         <nav className="public-nav" aria-label="Navegação principal">
           <a href="/sobre" onClick={intercept('/sobre')}>Sobre</a><a href="/investimentos" onClick={intercept('/investimentos')}>Investimentos</a><a href="/leiloes" onClick={intercept('/leiloes')}>Leilões</a><a href="/assessoria-juridica" onClick={intercept('/assessoria-juridica')}>Assessoria Jurídica</a><a href="/arquitetura" onClick={intercept('/arquitetura')}>Arquitetura</a>
         </nav>
@@ -354,8 +353,6 @@ export default function PublicSiteApp({ catalog = emptyPublicCatalogReader, auth
       </header>
 
       {notice && <div className="integration-notice" role="status"><span>{notice}</span><button type="button" onClick={() => setNotice('')} aria-label="Fechar aviso">×</button></div>}
-
-      {route === '/' && <HomePage items={items} loading={loading} error={catalogError} filterOptions={filterOptions} onNavigate={navigate} onService={requestService} onRetry={reloadCatalog} onFavorite={(item) => { if (!auth?.currentClient) return requestLogin('favoritar-imovel'); if (!favorites) return setNotice('Persistência de favoritos aguarda integração da conta com o catálogo real.'); return favorites.toggle(item); }} isFavorite={(id) => favorites?.isFavorite(id) ?? false} />}
 
       {route === '/imoveis' && <CatalogPage items={items} loading={loading} error={catalogError} filters={filters} options={filterOptions} onFilters={setFilters} onOpen={(slug) => navigate(`/imoveis/${encodeURIComponent(slug)}`)} onRetry={reloadCatalog} onFavorite={(item) => { if (!auth?.currentClient) return requestLogin('favoritar-imovel'); if (!favorites) return setNotice('Persistência de favoritos aguarda integração da conta com o catálogo real.'); return favorites.toggle(item); }} isFavorite={(id) => favorites?.isFavorite(id) ?? false} />}
 
@@ -379,20 +376,6 @@ export default function PublicSiteApp({ catalog = emptyPublicCatalogReader, auth
 
       {retentionOpen && <RetentionDialog onClose={() => setRetentionOpen(false)} onAccept={() => { setRetentionOpen(false); requestService('Retenção de comprador'); }} />}
     </div>
-  );
-}
-
-function HomePage({ items, loading, error, filterOptions, onNavigate, onService, onRetry, onFavorite, isFavorite }: { items: PublicCatalogItem[]; loading: boolean; error: string; filterOptions: PublicCatalogFilterOptions; onNavigate: (path: string) => void; onService: (service: string) => void; onRetry: () => void; onFavorite: (item: PublicCatalogItem) => void | Promise<void>; isFavorite: (id: string) => boolean; }) {
-  return (
-    <main>
-      <section className="hero section-shell"><div className="hero-copy"><p className="hero-kicker">Inteligência patrimonial · tradição desde 1986</p><h1>Decisões imobiliárias pensadas para o presente e para o que permanece.</h1><p>A Hárpia orienta negócios imobiliários, investimentos e decisões patrimoniais com uma visão que vai além da transação.</p><div className="hero-actions"><button className="primary-button" type="button" onClick={() => onNavigate('/imoveis')}>Explorar imóveis</button><button className="secondary-button" type="button" onClick={() => onService('Atendimento consultivo')}>Falar com a Hárpia</button></div></div><aside className="hero-search" aria-label="Busca de imóveis"><HomeCatalogSearch options={filterOptions} onNavigate={onNavigate} /></aside></section>
-      <section className="manifesto section-shell"><p className="section-kicker">Hárpia Patrimonial & Co.</p><blockquote>“Enquanto o mercado negocia imóveis, nós orientamos e gerimos decisões.”</blockquote><p>Patrimônio é mais do que o que se possui. É a capacidade de transformar recursos em liberdade, escolhas em legado e imóveis em ativos que atravessam gerações.</p></section>
-      <section className="section-shell"><div className="section-heading"><div><p className="section-kicker">Catálogo</p><h2>Imóveis e oportunidades publicados</h2></div><button className="text-button" type="button" onClick={() => onNavigate('/imoveis')}>Ver catálogo completo</button></div><PropertyGrid items={items.slice(0, 6)} loading={loading} error={error} onOpen={(slug) => onNavigate(`/imoveis/${encodeURIComponent(slug)}`)} onRetry={onRetry} onFavorite={onFavorite} isFavorite={isFavorite} /></section>
-      <section className="lifestyle-section section-shell"><div className="section-heading"><div><p className="section-kicker">Encontre pelo estilo de vida</p><h2>O imóvel certo também depende de como você quer viver.</h2></div></div>{filterOptions.lifestyleTags.length === 0 ? <div className="empty-state"><strong>As categorias aparecerão com o catálogo real.</strong><p>A experiência já está preparada para usar classificações reais dos imóveis publicados, sem categorias fictícias.</p></div> : <div className="lifestyle-tags">{filterOptions.lifestyleTags.map((tag) => <button key={tag} type="button" onClick={() => onNavigate(`/imoveis?estilo=${encodeURIComponent(tag)}`)}>{tag}</button>)}</div>}</section>
-      <section className="service-grid section-shell">{[['Investimentos', 'Estratégia imobiliária dentro de uma visão patrimonial.', '/investimentos'], ['Leilões & flipping', 'Aquisição, transformação e operação de ativos imobiliários.', '/leiloes'], ['Assessoria Jurídica', 'Apoio jurídico integrado à jornada imobiliária.', '/assessoria-juridica'], ['Arquitetura', 'Arquitetura, reformas e soluções ligadas ao bem viver.', '/arquitetura']].map(([title, copy, path]) => <article className="service-card" key={title}><p className="section-kicker">Serviço</p><h3>{title}</h3><p>{copy}</p><button className="text-button" type="button" onClick={() => onNavigate(path)}>Conhecer <span>→</span></button></article>)}</section>
-      <section className="duo-section section-shell"><article><p className="section-kicker">DUMU Arquitetura</p><h2>Patrimônio, espaço e bem viver.</h2><p>A experiência está preparada para destacar a parceria com a DUMU Arquitetura assim que as imagens e materiais finais forem incorporados.</p><button className="text-button" type="button" onClick={() => onNavigate('/arquitetura')}>Ver arquitetura</button></article><article><p className="section-kicker">Atendimento consultivo</p><h2>Não é só encontrar um imóvel. É entender a decisão.</h2><p>A principal proposta da Hárpia é orientar o cliente com visão integrada dos aspectos imobiliários, patrimoniais e dos serviços envolvidos.</p><button className="primary-button" type="button" onClick={() => onService('Atendimento consultivo')}>Ser atendido agora</button></article></section>
-      <section className="owner-strip section-shell"><div><p className="section-kicker">Proprietários</p><h2>Quer vender ou alugar um imóvel?</h2><p>Envie os dados iniciais e a equipe assume o atendimento manual.</p></div><div className="hero-actions"><button className="secondary-button" type="button" onClick={() => onNavigate('/vender')}>Quero vender</button><button className="secondary-button" type="button" onClick={() => onNavigate('/alugar')}>Quero alugar</button></div></section>
-    </main>
   );
 }
 
