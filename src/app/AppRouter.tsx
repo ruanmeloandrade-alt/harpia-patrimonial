@@ -54,6 +54,7 @@ export function AppRouter() {
     );
   }
   if (pathname === '/interno/entrar') return <LoginPage internal />;
+  if (pathname === '/') return <Navigate to="/interno" />;
 
   if (matchesFront02PublicRoute(pathname)) return <IntegratedPublicExperience />;
 
