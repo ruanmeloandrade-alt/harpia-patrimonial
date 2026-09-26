@@ -1,7 +1,6 @@
 export const FRONT02_LOCATION_EVENT = 'harpia:locationchange';
 
 export const publicRouteManifest = [
-  '/',
   '/sobre',
   '/investimentos',
   '/leiloes',
