@@ -210,7 +210,7 @@ function RetentionDialog({ onClose, onAccept }: { onClose: () => void; onAccept:
   );
 }
 
-export default function PublicSiteApp({ catalog = emptyPublicCatalogReader, auth, favorites, onConversion, internalAreaHref = '/interno' }: PublicSiteAppProps) {
+export default function PublicSiteApp({ catalog = emptyPublicCatalogReader, auth, favorites, onConversion, internalAreaHref = '/sistema' }: PublicSiteAppProps) {
   const initialLocation = currentLocation();
   const [route, setRoute] = useState(initialLocation.pathname);
   const [items, setItems] = useState<PublicCatalogItem[]>([]);
@@ -341,18 +341,20 @@ export default function PublicSiteApp({ catalog = emptyPublicCatalogReader, auth
   return (
     <div className="harpia-public">
       <header className="public-header">
-        <a className="brand" href="/imoveis" onClick={intercept('/imoveis')} aria-label="Hárpia Patrimonial - catálogo"><span className="brand-mark">H</span><span><strong>HÁRPIA</strong><small>PATRIMONIAL & CO.</small></span></a>
+        <a className="brand" href="/" onClick={intercept('/')} aria-label="Hárpia Patrimonial - início"><span className="brand-mark">H</span><span><strong>HÁRPIA</strong><small>PATRIMONIAL & CO.</small></span></a>
         <nav className="public-nav" aria-label="Navegação principal">
-          <a href="/sobre" onClick={intercept('/sobre')}>Sobre</a><a href="/investimentos" onClick={intercept('/investimentos')}>Investimentos</a><a href="/leiloes" onClick={intercept('/leiloes')}>Leilões</a><a href="/assessoria-juridica" onClick={intercept('/assessoria-juridica')}>Assessoria Jurídica</a><a href="/arquitetura" onClick={intercept('/arquitetura')}>Arquitetura</a>
+          <a href="/sobre" onClick={intercept('/sobre')}>Sobre</a>
+          <a href="/investimentos" onClick={intercept('/investimentos')}>Investimentos</a>
+          <a href="/leiloes" onClick={intercept('/leiloes')}>Leilões</a>
+          <a href="/assessoria-juridica" onClick={intercept('/assessoria-juridica')}>Assessoria Jurídica</a>
+          <a href="/arquitetura" onClick={intercept('/arquitetura')}>Arquitetura</a>
+          <a href={internalAreaHref} onClick={internalAreaHref.startsWith('/') ? intercept(internalAreaHref) : undefined}>Área Interna</a>
         </nav>
-        <div className="header-actions">
-          <a className="quiet-link" href="/cliente" onClick={intercept('/cliente')}>Minha conta</a>
-          <a className="quiet-link" href={internalAreaHref}>Área Interna</a>
-          <button className="header-cta" type="button" onClick={() => requestService('Atendimento consultivo')}>Ser Atendido Agora!</button>
-        </div>
       </header>
 
       {notice && <div className="integration-notice" role="status"><span>{notice}</span><button type="button" onClick={() => setNotice('')} aria-label="Fechar aviso">×</button></div>}
+
+      {route === '/' && <main className="homepage-stage" aria-label="Página inicial da Hárpia Patrimonial" />}
 
       {route === '/imoveis' && <CatalogPage items={items} loading={loading} error={catalogError} filters={filters} options={filterOptions} onFilters={setFilters} onOpen={(slug) => navigate(`/imoveis/${encodeURIComponent(slug)}`)} onRetry={reloadCatalog} onFavorite={(item) => { if (!auth?.currentClient) return requestLogin('favoritar-imovel'); if (!favorites) return setNotice('Persistência de favoritos aguarda integração da conta com o catálogo real.'); return favorites.toggle(item); }} isFavorite={(id) => favorites?.isFavorite(id) ?? false} />}
 
@@ -370,7 +372,9 @@ export default function PublicSiteApp({ catalog = emptyPublicCatalogReader, auth
 
       {(route === '/vender' || route === '/alugar') && <OwnerCapture intent={route === '/vender' ? 'vender' : 'alugar'} onSubmit={(payload) => emitConversion({ source: 'captacao-proprietario', action: payload.intent, page: route, service: payload.intent === 'vender' ? 'Venda de imóvel' : 'Locação de imóvel', contact: payload.contact, metadata: { city: payload.city, propertyType: payload.propertyType } })} />}
 
-      {route === '/cliente' && <ClientArea profile={auth?.currentClient ?? null} favorites={favorites?.items ?? []} onRequestLogin={() => requestLogin('area-do-cliente')} onOpenProperty={(slug) => navigate(`/imoveis/${encodeURIComponent(slug)}`)} onGoToCatalog={() => navigate('/imoveis')} onRequestService={requestService} />}
+      {(route === '/cliente' || route === '/sistema') && <ClientArea profile={auth?.currentClient ?? null} favorites={favorites?.items ?? []} onRequestLogin={() => requestLogin('area-do-cliente')} onOpenProperty={(slug) => navigate(`/imoveis/${encodeURIComponent(slug)}`)} onGoToCatalog={() => navigate('/imoveis')} onRequestService={requestService} />}
+
+      <button className="floating-chat-button" type="button" onClick={() => requestService('Atendimento consultivo')} aria-label="Ser atendido agora">Ser atendido agora!</button>
 
       <footer className="public-footer"><div><strong>HÁRPIA PATRIMONIAL & CO.</strong><p>Inteligência patrimonial especializada em negócios imobiliários.</p></div><div className="footer-links"><a href="/imoveis" onClick={intercept('/imoveis')}>Imóveis</a><a href="/vender" onClick={intercept('/vender')}>Quero vender meu imóvel</a><a href="/alugar" onClick={intercept('/alugar')}>Quero alugar meu imóvel</a><a href="/cliente" onClick={intercept('/cliente')}>Área do cliente</a></div></footer>
 
