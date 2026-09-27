@@ -22,7 +22,7 @@ function parsePurpose(value: string | null) {
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '');
 
-  if (normalized === 'venda' || normalized === 'sale') return 'Venda';
+  if (normalized === 'compra' || normalized === 'buy' || normalized === 'venda' || normalized === 'sale') return 'Venda';
   if (normalized === 'locacao' || normalized === 'rent') return 'Locação';
   return undefined;
 }
