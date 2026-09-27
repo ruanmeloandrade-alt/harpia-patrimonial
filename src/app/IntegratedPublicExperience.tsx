@@ -57,7 +57,7 @@ export function IntegratedPublicExperience() {
       favoritesStore={runtime.favoritesStore}
       clientAreaDataSource={clientAreaDataSource}
       whatsappPhone={whatsappPhone}
-      internalAreaHref="/interno"
+      internalAreaHref="/sistema"
     />
   );
 }
