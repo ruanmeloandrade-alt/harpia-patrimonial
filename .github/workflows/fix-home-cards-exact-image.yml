@@ -1,0 +1,46 @@
+name: Fix exact home cards image
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/fix-home-cards-exact-image.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  fix-home-cards:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout gh-pages
+        uses: actions/checkout@v4
+        with:
+          ref: gh-pages
+          fetch-depth: 0
+
+      - name: Replace broken embedded card images with exact uploaded photo
+        shell: python
+        run: |
+          from pathlib import Path
+          import re
+
+          path = Path('index.html')
+          html = path.read_text(encoding='utf-8')
+
+          replacement = '''<section class="home-exact-cards"><div class="wrap"><div style="position:relative;display:block;max-width:1080px;margin:0 auto"><img src="/harpia-cards.jpeg" alt="Assessoria Jurídica Imobiliária e Arquitetura, Reformas e Obras" style="display:block;width:100%;height:auto;border-radius:28px;box-shadow:0 12px 36px rgba(0,0,0,.06)"><a href="/assessoria-juridica/" aria-label="Conhecer Assessoria Jurídica Imobiliária" style="position:absolute;left:0;right:0;top:0;height:50%;display:block"></a><a href="/arquitetura/" aria-label="Conhecer Arquitetura, Reformas e Obras" style="position:absolute;left:0;right:0;bottom:0;height:50%;display:block"></a></div></div></section>'''
+
+          updated, count = re.subn(r'<section class="home-exact-cards">.*?</section>', replacement, html, count=1, flags=re.S)
+          if count != 1:
+              raise SystemExit(f'home-exact-cards section not found exactly once: {count}')
+
+          path.write_text(updated, encoding='utf-8')
+
+      - name: Commit and push gh-pages
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          git diff --cached --quiet && exit 0
+          git commit -m "fix: usa imagem exata enviada nos cards da homepage"
+          git push origin gh-pages
