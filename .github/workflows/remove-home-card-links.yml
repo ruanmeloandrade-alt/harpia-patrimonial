@@ -1,0 +1,39 @@
+name: Remove home card links
+
+on:
+  push:
+    paths:
+      - '.github/workflows/remove-home-card-links.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout gh-pages
+        uses: actions/checkout@v4
+        with:
+          ref: gh-pages
+          fetch-depth: 0
+
+      - name: Remove card links only
+        shell: python
+        run: |
+          from pathlib import Path
+          p = Path('index.html')
+          s = p.read_text(encoding='utf-8')
+          old = '<section class="home-exact-cards"><div class="wrap"><div style="position:relative;display:block;max-width:1080px;margin:0 auto"><img src="/harpia-cards.jpeg" alt="Assessoria Jurídica Imobiliária e Arquitetura, Reformas e Obras" style="display:block;width:100%;height:auto;border-radius:28px;box-shadow:0 12px 36px rgba(0,0,0,.06)"><a href="/assessoria-juridica/" aria-label="Conhecer Assessoria Jurídica Imobiliária" style="position:absolute;left:0;right:0;top:0;height:50%;display:block"></a><a href="/arquitetura/" aria-label="Conhecer Arquitetura, Reformas e Obras" style="position:absolute;left:0;right:0;bottom:0;height:50%;display:block"></a></div></div></section>'
+          new = '<section class="home-exact-cards"><div class="wrap"><div style="display:block;max-width:1080px;margin:0 auto"><img src="/harpia-cards.jpeg" alt="Assessoria Jurídica Imobiliária e Arquitetura, Reformas e Obras" style="display:block;width:100%;height:auto;border-radius:28px;box-shadow:0 12px 36px rgba(0,0,0,.06)"></div></div></section>'
+          if old not in s:
+              raise SystemExit('Bloco esperado não encontrado')
+          p.write_text(s.replace(old, new, 1), encoding='utf-8')
+
+      - name: Commit and push
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add index.html
+          git commit -m 'fix: deixa cards da home sem redirecionamento'
+          git push origin gh-pages
