@@ -61,13 +61,15 @@ type InstitutionalPage = {
 
 const institutionalPages: Record<InstitutionalPageKey, InstitutionalPage> = {
   sobre: {
-    kicker: 'Desde 1986',
+    kicker: 'Tradição familiar desde 1986',
     title: 'Inteligência patrimonial para decisões que atravessam gerações.',
-    lead: 'A Hárpia Patrimonial & Co. é um escritório de inteligência patrimonial especializado em negócios imobiliários.',
+    lead: 'A Hárpia Patrimonial & Co. é um escritório de inteligência patrimonial especializado em negócios imobiliários e investimento patrimonial. Mais do que um departamento, representa a preservação, expansão e perpetuação do patrimônio.',
     body: [
-      'Enquanto o mercado negocia imóveis, a Hárpia orienta e gere decisões. O patrimônio é tratado como um organismo vivo, construído ao longo do tempo e transmitido através das escolhas certas.',
-      'O compromisso é aconselhar e recomendar a decisão mais adequada, não apenas viabilizar a venda de um imóvel.',
-      'A marca une inteligência patrimonial, bem viver, espírito explorador e tradição para construir relações duradouras e patrimônios que permanecem.',
+      'Enquanto o mercado negocia imóveis, nós orientamos e gerimos decisões. Não é somente sobre ativos, mas também sobre gerações. Entendemos que patrimônio é um organismo vivo, construído ao longo do tempo e transmitido através das escolhas certas.',
+      'A Hárpia acredita que o verdadeiro patrimônio não está apenas no que se possui, mas na capacidade de transformar recursos em liberdade, escolhas em legado e imóveis em ativos que atravessam gerações.',
+      'Desde 1986, nossa tradição não é medida pelo número de negócios realizados, mas pela confiança construída ao lado de famílias e empresários que compreendem que as decisões mais importantes não pertencem apenas ao presente. Elas moldam o futuro.',
+      'Essa é a essência da Hárpia, uma marca que une inteligência patrimonial, bem viver, espírito explorador e tradição para construir relações duradouras e patrimônios que permanecem.',
+      'Nosso compromisso é aconselhar e recomendar a decisão mais adequada, não apenas viabilizar a venda de um imóvel.',
     ],
   },
   investimentos: {
