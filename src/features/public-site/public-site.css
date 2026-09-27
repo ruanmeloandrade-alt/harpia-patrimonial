@@ -198,3 +198,44 @@
   .client-panel--wide { grid-column: auto; }
   .public-footer { padding-inline: 20px; }
 }
+
+.homepage-stage {
+  min-height: calc(100vh - 78px);
+  background: var(--paper);
+}
+
+.floating-chat-button {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  z-index: 70;
+  min-height: 52px;
+  padding: 0 22px;
+  border: 1px solid rgba(217,195,156,.55);
+  border-radius: 999px;
+  background: var(--forest-deep);
+  color: white;
+  font: inherit;
+  font-size: .84rem;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 0 18px 50px rgba(17,38,31,.24);
+  transition: transform .18s ease, box-shadow .18s ease, background .18s ease;
+}
+
+.floating-chat-button:hover {
+  transform: translateY(-2px);
+  background: var(--forest);
+  box-shadow: 0 22px 60px rgba(17,38,31,.3);
+}
+
+@media (max-width: 760px) {
+  .homepage-stage { min-height: calc(100vh - 68px); }
+  .floating-chat-button {
+    right: 14px;
+    bottom: 14px;
+    min-height: 48px;
+    padding-inline: 18px;
+    font-size: .78rem;
+  }
+}
