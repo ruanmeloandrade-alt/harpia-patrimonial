@@ -5,6 +5,8 @@ import { PERMISSIONS } from './permissions';
 import type { AuthContextValue, AuthResult, SignInInput, SignUpClientInput, UserProfile } from './types';
 
 const AuthContext = createContext<AuthContextValue | null>(null);
+const AUTH_TIMEOUT_MS = 18000;
+const AUTH_TIMEOUT_MESSAGE = 'A conexão com o backend demorou mais do que o esperado. Tente novamente em alguns segundos.';
 const LOCAL_INTERNAL_USER = {
   id: 'local-internal-user',
   email: 'equipe@harpiapatrimonial.com',
@@ -19,6 +21,19 @@ const LOCAL_INTERNAL_PROFILE: UserProfile = {
   updated_at: new Date(0).toISOString(),
 };
 const ALL_INTERNAL_PERMISSIONS = new Set<string>(Object.values(PERMISSIONS));
+
+async function withAuthTimeout<T>(operation: Promise<T>): Promise<T> {
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timeoutId = setTimeout(() => reject(new Error(AUTH_TIMEOUT_MESSAGE)), AUTH_TIMEOUT_MS);
+  });
+
+  try {
+    return await Promise.race([operation, timeout]);
+  } finally {
+    if (timeoutId) clearTimeout(timeoutId);
+  }
+}
 
 function normalizeError(error: unknown) {
   if (error instanceof Error) return error.message;
@@ -40,10 +55,10 @@ export function AuthProvider({ children }: PropsWithChildren) {
       return;
     }
 
-    const [{ data: profileData, error: profileError }, { data: permissionData, error: permissionError }] = await Promise.all([
+    const [{ data: profileData, error: profileError }, { data: permissionData, error: permissionError }] = await withAuthTimeout(Promise.all([
       supabase.from('user_profiles').select('id,full_name,whatsapp,account_type,is_active,created_at,updated_at').eq('id', nextUser.id).maybeSingle(),
       supabase.from('current_user_permissions').select('permission_key'),
-    ]);
+    ]));
 
     if (profileError) throw profileError;
     if (permissionError) throw permissionError;
@@ -75,7 +90,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
 
     async function bootstrap() {
       try {
-        const { data, error } = await supabase!.auth.getSession();
+        const { data, error } = await withAuthTimeout(supabase!.auth.getSession());
         if (error) throw error;
         if (!active) return;
         await adoptSession(data.session);
@@ -112,7 +127,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
   const signUpClient = useCallback(async (input: SignUpClientInput): Promise<AuthResult> => {
     if (!supabase) return { ok: true, message: 'Cadastro recebido. O backend dedicado será conectado na próxima fase.' };
     try {
-      const { data, error } = await supabase.auth.signUp({
+      const { data, error } = await withAuthTimeout(supabase.auth.signUp({
         email: input.email.trim().toLowerCase(),
         password: input.password,
         options: {
@@ -122,7 +137,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
           },
           emailRedirectTo: `${window.location.origin}/cliente`,
         },
-      });
+      }));
       if (error) throw error;
       if (data.session) await adoptSession(data.session);
       return {
@@ -143,10 +158,10 @@ export function AuthProvider({ children }: PropsWithChildren) {
       return { ok: true };
     }
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
+      const { data, error } = await withAuthTimeout(supabase.auth.signInWithPassword({
         email: input.email.trim().toLowerCase(),
         password: input.password,
-      });
+      }));
       if (error) throw error;
       await adoptSession(data.session);
       return { ok: true };
@@ -157,7 +172,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
 
   const signOut = useCallback(async () => {
     if (!supabase) return;
-    const { error } = await supabase.auth.signOut();
+    const { error } = await withAuthTimeout(supabase.auth.signOut());
     if (error) throw error;
     setRecoveryMode(false);
     await adoptSession(null);
@@ -166,9 +181,9 @@ export function AuthProvider({ children }: PropsWithChildren) {
   const requestPasswordReset = useCallback(async (email: string): Promise<AuthResult> => {
     if (!supabase) return { ok: false, message: 'Backend ainda não conectado.' };
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase(), {
+      const { error } = await withAuthTimeout(supabase.auth.resetPasswordForEmail(email.trim().toLowerCase(), {
         redirectTo: `${window.location.origin}/nova-senha`,
-      });
+      }));
       if (error) throw error;
       return { ok: true, message: 'Enviamos as instruções de recuperação para o seu e-mail.' };
     } catch (error) {
@@ -180,7 +195,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
     if (!supabase) return { ok: false, message: 'Backend ainda não conectado.' };
     if (password.length < 8) return { ok: false, message: 'A nova senha precisa ter pelo menos 8 caracteres.' };
     try {
-      const { error } = await supabase.auth.updateUser({ password });
+      const { error } = await withAuthTimeout(supabase.auth.updateUser({ password }));
       if (error) throw error;
       setRecoveryMode(false);
       return { ok: true, message: 'Senha atualizada com sucesso.' };
