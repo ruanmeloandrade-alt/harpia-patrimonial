@@ -1,4 +1,4 @@
-import { requireSupabase } from '../../core/supabase/client';
+import { isSupabaseConfigured, requireSupabase } from '../../core/supabase/client';
 import type { ProductCatalog } from './types';
 
 interface ProductCatalogRow {
@@ -27,7 +27,29 @@ function fromRow(row: ProductCatalogRow): ProductCatalog {
   };
 }
 
+const LOCAL_PRODUCT_CATALOGS_KEY = 'harpia.local.product-catalogs';
+
+function readLocalCatalogs(): ProductCatalog[] {
+  if (typeof window === 'undefined') return [];
+  try {
+    const raw = window.localStorage.getItem(LOCAL_PRODUCT_CATALOGS_KEY);
+    return raw ? JSON.parse(raw) as ProductCatalog[] : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeLocalCatalogs(catalogs: ProductCatalog[]) {
+  if (typeof window === 'undefined') return;
+  window.localStorage.setItem(LOCAL_PRODUCT_CATALOGS_KEY, JSON.stringify(catalogs));
+}
+
 export async function listProductCatalogs(): Promise<ProductCatalog[]> {
+  if (!isSupabaseConfigured) {
+    return readLocalCatalogs().filter((catalog) => !catalog.deletedAt).sort((left, right) => (
+      left.sortOrder - right.sortOrder || left.createdAt.localeCompare(right.createdAt)
+    ));
+  }
   const supabase = requireSupabase() as any;
   const { data, error } = await supabase
     .from('product_catalogs')
@@ -47,6 +69,23 @@ export async function createProductCatalog(input: {
 }): Promise<ProductCatalog> {
   const name = input.name.trim();
   if (!name) throw new Error('Informe o nome do catálogo.');
+
+  if (!isSupabaseConfigured) {
+    const now = new Date().toISOString();
+    const catalogs = readLocalCatalogs();
+    const catalog: ProductCatalog = {
+      id: `local-catalog-${Date.now()}`,
+      name,
+      description: input.description?.trim() || undefined,
+      tags: input.tags ?? [],
+      isActive: true,
+      sortOrder: catalogs.length,
+      createdAt: now,
+      updatedAt: now,
+    };
+    writeLocalCatalogs([...catalogs, catalog]);
+    return catalog;
+  }
 
   const supabase = requireSupabase() as any;
   const { data, error } = await supabase
@@ -70,6 +109,22 @@ export async function updateProductCatalog(
   const name = input.name.trim();
   if (!name) throw new Error('Informe o nome do catálogo.');
 
+  if (!isSupabaseConfigured) {
+    const catalogs = readLocalCatalogs();
+    const next = catalogs.map((catalog) => catalog.id === id ? {
+      ...catalog,
+      name,
+      description: input.description?.trim() || undefined,
+      tags: input.tags ?? catalog.tags,
+      isActive: input.isActive ?? catalog.isActive,
+      updatedAt: new Date().toISOString(),
+    } : catalog);
+    writeLocalCatalogs(next);
+    const updated = next.find((catalog) => catalog.id === id);
+    if (!updated) throw new Error('Catálogo não encontrado.');
+    return updated;
+  }
+
   const supabase = requireSupabase() as any;
   const { data, error } = await supabase
     .from('product_catalogs')
@@ -89,6 +144,14 @@ export async function updateProductCatalog(
 }
 
 export async function removeProductCatalog(id: string): Promise<void> {
+  if (!isSupabaseConfigured) {
+    writeLocalCatalogs(readLocalCatalogs().map((catalog) => catalog.id === id ? {
+      ...catalog,
+      deletedAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    } : catalog));
+    return;
+  }
   const supabase = requireSupabase() as any;
 
   const { count, error: countError } = await supabase

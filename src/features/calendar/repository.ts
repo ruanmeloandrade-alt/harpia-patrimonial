@@ -51,6 +51,29 @@ export interface GoogleCalendarConnection {
   oauthReady: boolean;
 }
 
+const LOCAL_CALENDAR_ITEMS_KEY = 'harpia.local.calendar-items';
+
+function canUseLocalStorage() {
+  return typeof window !== 'undefined' && typeof window.localStorage !== 'undefined';
+}
+
+function readLocalCalendarItems(): CalendarItem[] {
+  if (!canUseLocalStorage()) return [];
+  try {
+    const raw = window.localStorage.getItem(LOCAL_CALENDAR_ITEMS_KEY);
+    const items = raw ? JSON.parse(raw) : [];
+    return Array.isArray(items) ? items : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeLocalCalendarItems(items: CalendarItem[]) {
+  if (!canUseLocalStorage()) return;
+  window.localStorage.setItem(LOCAL_CALENDAR_ITEMS_KEY, JSON.stringify(items));
+  window.dispatchEvent(new CustomEvent('harpia:calendar-updated'));
+}
+
 function mapItem(row: any): CalendarItem {
   return {
     id: row.id,
@@ -80,6 +103,12 @@ function mapItem(row: any): CalendarItem {
 }
 
 export async function listCalendarItems(fromIso: string, toIso: string): Promise<CalendarItem[]> {
+  if (!isSupabaseConfigured) {
+    return readLocalCalendarItems()
+      .filter((item) => item.startAt < toIso && item.endAt > fromIso)
+      .sort((a, b) => a.startAt.localeCompare(b.startAt));
+  }
+
   const client = requireSupabase() as any;
   const { data, error } = await client
     .from('calendar_items')
@@ -93,6 +122,31 @@ export async function listCalendarItems(fromIso: string, toIso: string): Promise
 }
 
 export async function createCalendarItem(input: CalendarItemInput): Promise<CalendarItem> {
+  if (!isSupabaseConfigured) {
+    const now = new Date().toISOString();
+    const item: CalendarItem = {
+      id: `local-calendar-${Date.now()}`,
+      kind: input.kind,
+      title: input.title.trim(),
+      description: input.description?.trim() ?? '',
+      startAt: input.startAt,
+      endAt: input.endAt,
+      allDay: false,
+      assigneeId: input.assigneeId || undefined,
+      assigneeLabel: input.assigneeLabel?.trim() || undefined,
+      guestEmails: input.guestEmails ?? [],
+      location: input.location?.trim() || undefined,
+      status: 'open',
+      source: 'manual',
+      syncToGoogle: Boolean(input.syncToGoogle),
+      googleSyncStatus: input.googleSyncStatus ?? (input.syncToGoogle ? 'not_connected' : 'not_requested'),
+      createdAt: now,
+      updatedAt: now,
+    };
+    writeLocalCalendarItems([item, ...readLocalCalendarItems()]);
+    return item;
+  }
+
   const client = requireSupabase() as any;
   const { data, error } = await client
     .from('calendar_items')
@@ -119,6 +173,13 @@ export async function createCalendarItem(input: CalendarItemInput): Promise<Cale
 }
 
 export async function setCalendarItemStatus(id: string, status: CalendarItemStatus): Promise<void> {
+  if (!isSupabaseConfigured) {
+    writeLocalCalendarItems(readLocalCalendarItems().map((item) => (
+      item.id === id ? { ...item, status, updatedAt: new Date().toISOString() } : item
+    )));
+    return;
+  }
+
   const client = requireSupabase() as any;
   const { error } = await client
     .from('calendar_items')
@@ -128,12 +189,19 @@ export async function setCalendarItemStatus(id: string, status: CalendarItemStat
 }
 
 export async function deleteCalendarItem(id: string): Promise<void> {
+  if (!isSupabaseConfigured) {
+    writeLocalCalendarItems(readLocalCalendarItems().filter((item) => item.id !== id));
+    return;
+  }
+
   const client = requireSupabase() as any;
   const { error } = await client.from('calendar_items').delete().eq('id', id);
   if (error) throw error;
 }
 
 export async function loadGoogleCalendarConnection(): Promise<GoogleCalendarConnection> {
+  if (!isSupabaseConfigured) return { status: 'not_connected', oauthReady: false };
+
   const client = requireSupabase() as any;
   const { data, error } = await client
     .from('integration_connections')
@@ -155,6 +223,16 @@ export async function loadGoogleCalendarConnection(): Promise<GoogleCalendarConn
 }
 
 export async function requestGoogleCalendarSync(itemId: string): Promise<void> {
+  if (!isSupabaseConfigured) {
+    const items = readLocalCalendarItems();
+    writeLocalCalendarItems(items.map((item) => (
+      item.id === itemId
+        ? { ...item, googleSyncStatus: 'not_connected', googleSyncError: 'Google Calendar depende de OAuth configurado.', updatedAt: new Date().toISOString() }
+        : item
+    )));
+    throw new Error('Google Calendar depende de OAuth configurado.');
+  }
+
   const client = requireSupabase() as any;
   const { error } = await client.functions.invoke('calendar-google-sync', {
     body: { itemId },

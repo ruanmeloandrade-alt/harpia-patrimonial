@@ -39,7 +39,7 @@ export async function controlWhatsApp(
 ): Promise<WhatsAppControlResult> {
   if (!isSupabaseConfigured) {
     if (action === 'list') return { ok: true, sessions: [] };
-    throw new Error('Conector WhatsApp em 2ª fase: depende do Supabase dedicado e da Edge Function.');
+    throw new Error('Build sem variáveis do Supabase. Publique com VITE_SUPABASE_URL e VITE_SUPABASE_PUBLISHABLE_KEY para usar o conector WhatsApp já configurado.');
   }
   const supabase = requireSupabase();
 

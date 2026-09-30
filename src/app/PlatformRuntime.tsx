@@ -8,6 +8,7 @@ import { LocalCatalogRepository } from '../features/catalog/catalogRepository';
 import type { CatalogRepository } from '../features/catalog/catalogRepository';
 import { PublicCatalogService } from '../features/catalog/publicCatalog';
 import { CrmService } from '../features/crm/service';
+import { BrowserCrmRepository } from '../features/crm/repository';
 import type { AssigneeOption } from '../features/crm/CrmWorkspace';
 import type { InboxAutomationPort } from '../features/crm/contracts';
 import { saveLeadProductAssociation } from '../features/crm/leadProductRepository';
@@ -22,6 +23,7 @@ import {
 } from '../features/dashboard/crmMetricsAdapter';
 import type { CommercialMetricsProvider } from '../features/dashboard/dashboardService';
 import { InboxService } from '../features/inbox/service';
+import { BrowserInboxRepository } from '../features/inbox/repository';
 import { listSalesBotExecutions } from '../features/salesbot/executionRepository';
 import type { SalesBotCommandPort } from '../features/automations/contracts';
 import {
@@ -162,11 +164,19 @@ export function PlatformRuntimeProvider({ children }: PropsWithChildren) {
       }
     };
 
-    if (!canUseF05 || !isSupabaseConfigured || !supabase) {
+    if (!canUseF05) {
       resetF05SharedStorage();
       setF05Ready(false);
       setF05Loading(false);
       setF05Error('');
+      return () => undefined;
+    }
+
+    if (!isSupabaseConfigured || !supabase) {
+      setF05Ready(true);
+      setF05Loading(false);
+      setF05Error('');
+      setF05Revision((value) => value + 1);
       return () => undefined;
     }
 
@@ -205,11 +215,18 @@ export function PlatformRuntimeProvider({ children }: PropsWithChildren) {
       setOperationalError('');
 
       try {
-        const [crmRepository, inboxRepository, assigneeRows] = await Promise.all([
-          hydrateSharedCrmRepository(),
-          canUseInbox ? hydrateSharedInboxRepository() : Promise.resolve(null),
-          loadInternalAssignees(),
-        ]);
+        const useLocalRuntime = !isSupabaseConfigured || !supabase;
+        const [crmRepository, inboxRepository, assigneeRows] = useLocalRuntime
+          ? [
+            new BrowserCrmRepository(),
+            canUseInbox ? new BrowserInboxRepository() : null,
+            [] as AssigneeOption[],
+          ] as const
+          : await Promise.all([
+            hydrateSharedCrmRepository(),
+            canUseInbox ? hydrateSharedInboxRepository() : Promise.resolve(null),
+            loadInternalAssignees(),
+          ]);
         if (!active) return;
 
         unsubscribeEvents?.();
@@ -434,7 +451,7 @@ export function PlatformRuntimeProvider({ children }: PropsWithChildren) {
       }
     };
 
-    if (!canUseCrm || !isSupabaseConfigured || !supabase) {
+    if (!canUseCrm) {
       setCrmService(null);
       setInboxService(null);
       setInboxAutomationPort(null);
@@ -447,6 +464,13 @@ export function PlatformRuntimeProvider({ children }: PropsWithChildren) {
     }
 
     void installOperationalRuntime(true);
+
+    if (!isSupabaseConfigured || !supabase) {
+      return () => {
+        active = false;
+        unsubscribeEvents?.();
+      };
+    }
 
     channel = supabase
       .channel(`harpia-operational-state-${auth.user?.id ?? 'internal'}`)
