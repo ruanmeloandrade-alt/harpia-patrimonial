@@ -152,7 +152,7 @@
 <button type="submit">Receber curadoria</button>
 </form></div></section>
 </main>
-<a class="chat-float" href="https://wa.me/5521990135757?text=Ol%C3%A1%2C%20vim%20pelo%20site%20da%20H%C3%A1rpia%20Patrimonial%20e%20quero%20atendimento." target="_blank" rel="noopener">Ser atendido agora!</a>
+<a class="chat-float" href="https://wa.me/5521990135757?text=Ol%C3%A1%2C%20vim%20pelo%20site%20da%20H%C3%A1rpia%20Patrimonial%20e%20quero%20atendimento." target="_blank" rel="noopener" data-require-client>Ser atendido agora!</a>
 <footer class="site-footer" id="rodape">
   <div class="wrap footer-shell">
     <div class="footer-top">
@@ -163,7 +163,7 @@
         <p>Curadoria de imóveis, investimentos, leilões, assessoria jurídica imobiliária e arquitetura para quem quer comprar, vender, proteger e valorizar patrimônio com clareza.</p>
       </div>
       <div class="footer-actions" aria-label="Canais de atendimento">
-        <a class="footer-button primary whatsapp" href="https://wa.me/5521990135757?text=Ol%C3%A1%2C%20vim%20pelo%20site%20da%20H%C3%A1rpia%20Patrimonial%20e%20quero%20atendimento." target="_blank" rel="noopener" aria-label="WhatsApp"><img src="https://raw.githubusercontent.com/ruanmeloandrade-alt/harpia-patrimonial/gh-pages/social-whatsapp-v2.png" alt=""></a>
+        <a class="footer-button primary whatsapp" href="https://wa.me/5521990135757?text=Ol%C3%A1%2C%20vim%20pelo%20site%20da%20H%C3%A1rpia%20Patrimonial%20e%20quero%20atendimento." target="_blank" rel="noopener" aria-label="WhatsApp" data-require-client><img src="https://raw.githubusercontent.com/ruanmeloandrade-alt/harpia-patrimonial/gh-pages/social-whatsapp-v2.png" alt=""></a>
         <a class="footer-button instagram" href="https://www.instagram.com/harpiapatrimonial/" target="_blank" rel="noopener" aria-label="Instagram"><img src="https://raw.githubusercontent.com/ruanmeloandrade-alt/harpia-patrimonial/gh-pages/social-instagram-v2.png" alt=""></a>
         <a class="footer-button facebook" href="https://www.facebook.com/harpiapatrimonial/" target="_blank" rel="noopener" aria-label="Facebook"><img src="https://raw.githubusercontent.com/ruanmeloandrade-alt/harpia-patrimonial/gh-pages/social-facebook-v2.png" alt=""></a>
         <a class="footer-button youtube" href="https://www.youtube.com/@harpiapatrimonial" target="_blank" rel="noopener" aria-label="YouTube"><img src="https://raw.githubusercontent.com/ruanmeloandrade-alt/harpia-patrimonial/gh-pages/social-youtube-v2.png" alt=""></a>
@@ -258,7 +258,7 @@
       <label>Faixa<select name="faixa"><option>Até R$ 5 mi</option><option>R$ 5 mi a R$ 10 mi</option><option>R$ 10 mi a R$ 20 mi</option><option>Acima de R$ 20 mi</option></select></label>
     </form>
     <div class="drawer-actions">
-      <a class="drawer-action" href="https://wa.me/5521990135757?text=Ol%C3%A1%2C%20quero%20uma%20busca%20premium%20de%20im%C3%B3veis%20pela%20H%C3%A1rpia." target="_blank" rel="noopener">Enviar briefing no WhatsApp</a>
+      <a class="drawer-action" href="https://wa.me/5521990135757?text=Ol%C3%A1%2C%20quero%20uma%20busca%20premium%20de%20im%C3%B3veis%20pela%20H%C3%A1rpia." target="_blank" rel="noopener" data-require-client>Enviar briefing no WhatsApp</a>
       <button class="drawer-action secondary" type="button" id="show-curated-results">Ver curadoria inicial</button>
     </div>
     <div class="result-list" id="search-results"></div>
@@ -277,6 +277,15 @@
       const propertyDrawer = document.getElementById('property-drawer');
       const searchDrawer = document.getElementById('search-drawer');
       const clientAccess = document.getElementById('client-access');
+      const clientStorageKey = 'harpiaClientAccount';
+      function getClientAccount(){try{return JSON.parse(localStorage.getItem(clientStorageKey)||'null')}catch(error){return null}}
+      function isClientLogged(){return Boolean(getClientAccount())}
+      function saveClientAccount(form){
+        const data = new FormData(form);
+        const email = data.get('email');
+        const existing = getClientAccount() || {};
+        localStorage.setItem(clientStorageKey, JSON.stringify({name:data.get('nome') || existing.name || 'Cliente Hárpia', email, whatsapp:data.get('whatsapp') || existing.whatsapp || '', loggedAt:new Date().toISOString()}));
+      }
       function openDrawer(drawer){document.body.style.overflow='hidden';backdrop.classList.add('open');drawer.classList.add('open');drawer.setAttribute('aria-hidden','false')}
       function closeDrawers(){document.body.style.overflow='';backdrop.classList.remove('open');[propertyDrawer,searchDrawer,clientAccess].forEach(d=>{d.classList.remove('open');d.setAttribute('aria-hidden','true')})}
       function openClientAccess(){openDrawer(clientAccess)}
@@ -286,12 +295,13 @@
         clientAccess.querySelector('.client-intro h2').textContent = mode==='login' ? 'Entre na sua área interna.' : 'Crie seu acesso à área interna.';
       }
       function openProperty(id){
+        if(!isClientLogged()){setAccessMode('signup');openClientAccess();return}
         const item = properties[id];
         if(!item) return;
         searchDrawer.classList.remove('open');
         searchDrawer.setAttribute('aria-hidden','true');
         const gallery = [item.image,item.image.replace('w=1200','w=1000'),item.image.replace('q=85','q=75')];
-        document.getElementById('property-drawer-body').innerHTML = `<article class="property-view"><div class="property-gallery"><div class="property-main-photo" style="background-image:url('${item.image}')"></div><div class="property-thumbs">${gallery.map((photo,index)=>`<div class="property-thumb ${index===2?'video':''}" style="background-image:url('${photo}')"></div>`).join('')}</div></div><div class="property-content"><span class="drawer-kicker">${item.tag}</span><h2>${item.title}</h2><p>${item.desc} A apresentação completa deste ativo pode reunir galeria de fotos, vídeo, histórico do imóvel, análise de documentação, potencial de reforma e comparação com oportunidades semelhantes.</p><div class="specs"><div class="spec"><span>Localização</span><strong>${item.loc}</strong></div><div class="spec"><span>Valor</span><strong>${item.price}</strong></div><div class="spec"><span>Perfil</span><strong>${item.meta.join(' · ')}</strong></div></div><div class="property-points">${item.points.map(point=>`<div><strong>${point}</strong><p>Curadoria, risco e potencial avaliados pela Hárpia para apoiar a decisão.</p></div>`).join('')}</div><div class="property-actions"><a class="drawer-action" href="https://wa.me/5521990135757?text=${encodeURIComponent('Olá, quero detalhes sobre: '+item.title)}" target="_blank" rel="noopener">Quero detalhes no WhatsApp</a><button class="drawer-action secondary" type="button" data-open-search>Comparar com outros imóveis</button></div></div></article>`;
+        document.getElementById('property-drawer-body').innerHTML = `<article class="property-view"><div class="property-gallery"><div class="property-main-photo" style="background-image:url('${item.image}')"></div><div class="property-thumbs">${gallery.map((photo,index)=>`<div class="property-thumb ${index===2?'video':''}" style="background-image:url('${photo}')"></div>`).join('')}</div></div><div class="property-content"><span class="drawer-kicker">${item.tag}</span><h2>${item.title}</h2><p>${item.desc} A apresentação completa deste ativo pode reunir galeria de fotos, vídeo, histórico do imóvel, análise de documentação, potencial de reforma e comparação com oportunidades semelhantes.</p><div class="specs"><div class="spec"><span>Localização</span><strong>${item.loc}</strong></div><div class="spec"><span>Valor</span><strong>${item.price}</strong></div><div class="spec"><span>Perfil</span><strong>${item.meta.join(' · ')}</strong></div></div><div class="property-points">${item.points.map(point=>`<div><strong>${point}</strong><p>Curadoria, risco e potencial avaliados pela Hárpia para apoiar a decisão.</p></div>`).join('')}</div><div class="property-actions"><a class="drawer-action" href="https://wa.me/5521990135757?text=${encodeURIComponent('Olá, quero detalhes sobre: '+item.title)}" target="_blank" rel="noopener" data-require-client>Quero detalhes no WhatsApp</a><button class="drawer-action secondary" type="button" data-open-search>Comparar com outros imóveis</button></div></div></article>`;
         openDrawer(propertyDrawer);
       }
       function renderResults(){
@@ -314,6 +324,7 @@
       }
       function enviarLeadHome(event){
         event.preventDefault();
+        if(!isClientLogged()){setAccessMode('signup');openClientAccess();return false}
         const data = new FormData(event.currentTarget);
         const texto = `Olá, vim pelo site da Hárpia. Meu nome é ${data.get('nome')}. Meu WhatsApp é ${data.get('whatsapp')}. Tenho interesse em ${data.get('interesse')} na região: ${data.get('bairro')}.`;
         window.open(`https://wa.me/5521990135757?text=${encodeURIComponent(texto)}`,'_blank','noopener');
@@ -324,7 +335,9 @@
         if(event.target.matches('[data-close-drawers]')) closeDrawers();
         if(event.target.matches('[data-open-search]')) openSearch();
         const clientLink = event.target.closest('[data-open-client]');
-        if(clientLink){event.preventDefault();setAccessMode('signup');openClientAccess()}
+        if(clientLink){event.preventDefault();if(isClientLogged()){window.location.href='/cliente/'}else{setAccessMode('signup');openClientAccess()}}
+        const protectedAction = event.target.closest('[data-require-client]');
+        if(protectedAction && !isClientLogged()){event.preventDefault();setAccessMode('signup');openClientAccess()}
         const accessMode = event.target.closest('[data-access-mode]');
         if(accessMode){event.preventDefault();setAccessMode(accessMode.dataset.accessMode)}
         if(event.target.id === 'show-curated-results') renderResults();
@@ -336,10 +349,12 @@
       });
       document.getElementById('client-signup').addEventListener('submit',event=>{
         event.preventDefault();
+        saveClientAccount(event.currentTarget);
         window.location.href='/cliente/';
       });
       document.getElementById('client-login').addEventListener('submit',event=>{
         event.preventDefault();
+        saveClientAccount(event.currentTarget);
         window.location.href='/cliente/';
       });
       document.addEventListener('keydown',event=>{if(event.key==='Escape') closeDrawers()});

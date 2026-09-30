@@ -8,20 +8,21 @@
   <style>
     :root{--forest:#112019;--green:#183126;--gold:#c6aa72;--paper:#efeee7;--card:#fbfaf6;--ink:#14231b;--muted:#667067;--line:#ded6c4}
     *{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--paper);color:var(--ink);font-family:Inter,Arial,sans-serif;-webkit-font-smoothing:antialiased}a{text-decoration:none;color:inherit}button,input,select{font:inherit}.wrap{width:min(1180px,calc(100% - 44px));margin:auto}
-    header{min-height:82px;background:var(--forest);color:#fff;border-bottom:1px solid rgba(198,170,114,.25)}.nav{min-height:82px;display:flex;align-items:center;gap:24px}.brand img{display:block;width:230px;max-width:52vw;height:auto}.nav-actions{margin-left:auto;display:flex;gap:12px;align-items:center}.nav-actions a{color:#d8c391;font-size:10px;font-weight:900;letter-spacing:.12em;text-transform:uppercase}
+    header{min-height:82px;background:var(--forest);color:#fff;border-bottom:1px solid rgba(198,170,114,.25)}.nav{min-height:82px;display:flex;align-items:center;gap:24px}.brand img{display:block;width:230px;max-width:52vw;height:auto}.nav-actions{margin-left:auto;display:flex;gap:12px;align-items:center}.nav-actions a,.nav-actions button{color:#d8c391;font-size:10px;font-weight:900;letter-spacing:.12em;text-transform:uppercase}.nav-actions button{border:1px solid rgba(216,195,145,.35);background:transparent;min-height:34px;padding:0 12px;cursor:pointer}
     main{padding:42px 0 72px}.hero{display:grid;grid-template-columns:minmax(0,1fr) 330px;gap:26px;align-items:stretch;margin-bottom:24px}.eyebrow{font-size:10px;font-weight:900;letter-spacing:.2em;text-transform:uppercase;color:#8f6f2f}.hero-card,.side-card,.panel{background:var(--card);border:1px solid var(--line);box-shadow:0 18px 44px rgba(20,35,27,.07)}.hero-card{padding:34px}.hero h1{max-width:760px;font-family:Georgia,'Times New Roman',serif;font-size:clamp(42px,6vw,76px);font-weight:400;line-height:.94;margin:12px 0 16px}.hero p{max-width:680px;color:var(--muted);line-height:1.7;margin:0}.side-card{padding:24px;display:grid;align-content:end;gap:18px}.side-card strong{font-family:Georgia,'Times New Roman',serif;font-size:30px;font-weight:400;line-height:1}.status-list{display:grid;gap:10px}.status-list span{display:flex;justify-content:space-between;gap:14px;padding-top:10px;border-top:1px solid #e7dfcf;color:var(--muted);font-size:12px}.status-list b{color:var(--ink)}
     .grid{display:grid;grid-template-columns:1.08fr .92fr;gap:22px;align-items:start}.panel{padding:24px}.panel h2{margin:0 0 16px;font-family:Georgia,'Times New Roman',serif;font-size:30px;font-weight:400}.panel p{color:var(--muted);font-size:13px;line-height:1.65}.timeline{display:grid;gap:0}.step{display:grid;grid-template-columns:22px 1fr;gap:12px;padding:14px 0;border-top:1px solid #e7dfcf}.step:first-child{border-top:0}.dot{width:11px;height:11px;border-radius:50%;background:var(--gold);margin-top:5px}.step strong{display:block}.step span{display:block;margin-top:4px;color:var(--muted);font-size:13px;line-height:1.55}.notice{padding:16px 0;border-top:1px solid #e7dfcf}.notice:first-of-type{border-top:0}.notice strong{display:block;margin-bottom:6px}
     .market-panel{grid-column:1/-1}.market-head{display:flex;justify-content:space-between;gap:20px;align-items:end;margin-bottom:18px}.filters{display:flex;gap:10px;flex-wrap:wrap}.filters select{min-height:40px;border:1px solid var(--line);background:#fff;padding:0 12px;color:var(--ink)}.market{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}.item{min-height:260px;border:0;padding:0;display:grid;align-content:end;text-align:left;color:#fff;background:#112019 center/cover;cursor:pointer;overflow:hidden}.item[hidden]{display:none}.item-content{min-height:100%;padding:18px;display:grid;align-content:end;background:linear-gradient(180deg,rgba(17,32,25,.05),rgba(17,32,25,.86))}.item span{font-size:9px;font-weight:900;letter-spacing:.14em;text-transform:uppercase;color:#d8c391}.item strong{display:block;margin-top:8px;font-family:Georgia,'Times New Roman',serif;font-size:24px;font-weight:400;line-height:1.05}.item small{display:block;margin-top:9px;color:rgba(255,255,255,.78);font-size:12px}.empty{display:none;padding:18px;border:1px solid var(--line);background:#fff;color:var(--muted)}.empty.show{display:block}
     .actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px}.btn{border:0;display:inline-flex;align-items:center;justify-content:center;min-height:42px;padding:0 16px;background:var(--green);color:#fff;font-size:10px;font-weight:900;letter-spacing:.1em;text-transform:uppercase;cursor:pointer}.btn.secondary{background:transparent;color:var(--green);border:1px solid #cfc5ae}.btn:hover{filter:brightness(1.06)}
     .drawer-backdrop{position:fixed;inset:0;background:rgba(7,10,8,.48);opacity:0;pointer-events:none;z-index:80;transition:opacity .2s ease}.drawer-backdrop.open{opacity:1;pointer-events:auto}.opportunity{position:fixed;inset:5vh 5vw;z-index:90;background:#fbfaf6;box-shadow:0 30px 90px rgba(0,0,0,.34);opacity:0;pointer-events:none;transform:translateY(18px);transition:opacity .2s ease,transform .2s ease;overflow:auto}.opportunity.open{opacity:1;pointer-events:auto;transform:translateY(0)}.op-head{position:sticky;top:0;z-index:2;display:flex;justify-content:space-between;gap:18px;align-items:center;padding:18px 22px;background:rgba(251,250,246,.94);border-bottom:1px solid var(--line);backdrop-filter:blur(10px)}.op-head strong{font-family:Georgia,'Times New Roman',serif;font-size:24px;font-weight:400}.close{width:38px;height:38px;border:1px solid #d5d0c1;border-radius:50%;background:#fff;cursor:pointer;font-size:20px}.op-body{display:grid;grid-template-columns:1.15fr .85fr;min-height:calc(90vh - 75px)}.op-photo{min-height:520px;background:#112019 center/cover}.op-copy{padding:38px}.op-copy h2{font-family:Georgia,'Times New Roman',serif;font-size:clamp(38px,4.8vw,68px);font-weight:400;line-height:.96;margin:10px 0 16px}.op-copy p{color:var(--muted);font-size:14px;line-height:1.75}.specs{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin:18px 0}.spec{padding:13px;border:1px solid var(--line);background:#fff}.spec span{display:block;margin-bottom:4px;color:#8b8f87;font-size:9px;letter-spacing:.12em;text-transform:uppercase}.spec strong{font-size:14px}
-    @media(max-width:900px){.hero,.grid,.op-body{grid-template-columns:1fr}.market{grid-template-columns:1fr 1fr}.opportunity{inset:3vh 16px}.op-photo{min-height:320px}}@media(max-width:620px){.wrap{width:min(100% - 28px,1180px)}.brand img{width:178px}.nav-actions a:not(:first-child){display:none}.hero-card,.side-card,.panel{padding:20px}.market-head{display:grid}.market{grid-template-columns:1fr}.specs{grid-template-columns:1fr}}
+    .access-gate{position:fixed;inset:0;z-index:120;background:rgba(17,32,25,.76);display:none;place-items:center;padding:22px}.access-gate.open{display:grid}.gate-card{width:min(760px,100%);max-height:92vh;overflow:auto;background:#fbfaf6;color:var(--ink);box-shadow:0 30px 90px rgba(0,0,0,.38);padding:28px}.gate-card h2{font-family:Georgia,'Times New Roman',serif;font-size:42px;font-weight:400;line-height:1;margin:10px 0}.gate-card p{color:var(--muted);line-height:1.65}.gate-form{display:none;gap:12px;margin-top:18px}.gate-form.active{display:grid}.gate-form label{display:grid;gap:7px;font-size:9px;font-weight:900;letter-spacing:.12em;text-transform:uppercase;color:#5d6657}.gate-form input{min-height:44px;border:1px solid var(--line);background:#fff;padding:0 12px}.gate-switch{border:1px solid var(--line);background:#fff;color:var(--green)}
+    @media(max-width:900px){.hero,.grid,.op-body{grid-template-columns:1fr}.market{grid-template-columns:1fr 1fr}.opportunity{inset:3vh 16px}.op-photo{min-height:320px}}@media(max-width:620px){.wrap{width:min(100% - 28px,1180px)}.brand img{width:178px}.nav-actions a:not(:first-child){display:none}.hero-card,.side-card,.panel{padding:20px}.market-head{display:grid}.market{grid-template-columns:1fr}.specs{grid-template-columns:1fr}.gate-card{padding:20px}}
   </style>
 </head>
 <body>
   <header>
     <div class="wrap nav">
       <a class="brand" href="/"><img src="/harpia-logo-white.svg" alt="Hárpia Patrimonial & Co."></a>
-      <div class="nav-actions"><a href="/">Voltar ao site</a><a href="#marketplace">Marketplace</a><a href="#avisos">Avisos</a></div>
+      <div class="nav-actions"><a href="/">Voltar ao site</a><a href="#marketplace">Marketplace</a><a href="#avisos">Avisos</a><button type="button" id="logout">Sair</button></div>
     </div>
   </header>
   <main class="wrap">
@@ -34,7 +35,7 @@
       </div>
       <aside class="side-card" aria-label="Resumo do atendimento">
         <div class="eyebrow">Resumo</div>
-        <strong>Cadastro ativo</strong>
+        <strong id="client-name">Cadastro ativo</strong>
         <div class="status-list">
           <span><b>Perfil</b> Em análise</span>
           <span><b>Curadoria</b> Em andamento</span>
@@ -76,6 +77,27 @@
     </section>
   </main>
   <div class="drawer-backdrop" id="backdrop"></div>
+  <aside class="access-gate" id="access-gate" aria-label="Cadastro obrigatório">
+    <div class="gate-card">
+      <div class="eyebrow">Acesso do cliente</div>
+      <h2>Cadastre-se para acessar a área interna.</h2>
+      <p>Informe nome, e-mail, WhatsApp e senha para liberar o acompanhamento, o marketplace e o contato direto com a equipe Hárpia.</p>
+      <form class="gate-form active" id="gate-signup">
+        <label>Nome<input name="nome" type="text" placeholder="Seu nome" required></label>
+        <label>E-mail<input name="email" type="email" placeholder="seu@email.com" required></label>
+        <label>WhatsApp<input name="whatsapp" type="tel" placeholder="(21) 99999-9999" required></label>
+        <label>Senha<input name="senha" type="password" placeholder="Crie uma senha" required></label>
+        <button class="btn" type="submit">Criar acesso</button>
+        <button class="btn gate-switch" type="button" data-gate-mode="login">Já tenho conta</button>
+      </form>
+      <form class="gate-form" id="gate-login">
+        <label>E-mail<input name="email" type="email" placeholder="seu@email.com" required></label>
+        <label>Senha<input name="senha" type="password" placeholder="Sua senha" required></label>
+        <button class="btn" type="submit">Entrar na área interna</button>
+        <button class="btn gate-switch" type="button" data-gate-mode="signup">Criar uma conta</button>
+      </form>
+    </div>
+  </aside>
   <aside class="opportunity" id="opportunity" aria-hidden="true" aria-label="Detalhes da oportunidade">
     <div class="op-head"><strong>Oportunidade Hárpia</strong><button class="close" type="button" id="close" aria-label="Fechar">×</button></div>
     <div class="op-body">
@@ -90,6 +112,25 @@
     const empty = document.getElementById('empty');
     const modal = document.getElementById('opportunity');
     const backdrop = document.getElementById('backdrop');
+    const accessGate = document.getElementById('access-gate');
+    const clientStorageKey = 'harpiaClientAccount';
+    function getClientAccount(){try{return JSON.parse(localStorage.getItem(clientStorageKey)||'null')}catch(error){return null}}
+    function saveClientAccount(form){
+      const data = new FormData(form);
+      const existing = getClientAccount() || {};
+      localStorage.setItem(clientStorageKey, JSON.stringify({name:data.get('nome') || existing.name || 'Cliente Hárpia', email:data.get('email'), whatsapp:data.get('whatsapp') || existing.whatsapp || '', loggedAt:new Date().toISOString()}));
+      unlockClientArea();
+    }
+    function setGateMode(mode){
+      document.getElementById('gate-signup').classList.toggle('active', mode === 'signup');
+      document.getElementById('gate-login').classList.toggle('active', mode === 'login');
+    }
+    function unlockClientArea(){
+      const account = getClientAccount();
+      if(!account){accessGate.classList.add('open');return}
+      accessGate.classList.remove('open');
+      document.getElementById('client-name').textContent = account.name ? `Cadastro ativo: ${account.name}` : 'Cadastro ativo';
+    }
     function applyFilters(){
       let visible = 0;
       cards.forEach(card=>{
@@ -125,8 +166,13 @@
     cards.forEach(card=>card.addEventListener('click',()=>openOpportunity(card)));
     document.getElementById('close').addEventListener('click', closeOpportunity);
     document.getElementById('close-secondary').addEventListener('click', closeOpportunity);
+    document.getElementById('logout').addEventListener('click',()=>{localStorage.removeItem(clientStorageKey);window.location.href='/'});
+    document.getElementById('gate-signup').addEventListener('submit',event=>{event.preventDefault();saveClientAccount(event.currentTarget)});
+    document.getElementById('gate-login').addEventListener('submit',event=>{event.preventDefault();saveClientAccount(event.currentTarget)});
+    document.querySelectorAll('[data-gate-mode]').forEach(button=>button.addEventListener('click',()=>setGateMode(button.dataset.gateMode)));
     backdrop.addEventListener('click', closeOpportunity);
     document.addEventListener('keydown',event=>{if(event.key === 'Escape') closeOpportunity()});
+    unlockClientArea();
   </script>
 </body>
 </html>
