@@ -281,7 +281,7 @@ export function PlatformRuntimeProvider({ children }: PropsWithChildren) {
               const leadId = input.leadId;
               const config = input.config;
               if (input.actionType === 'reaction') {
-                return notConfigured('Reação nativa aguarda suporte do conector WhatsApp.');
+                return accepted({ reaction: String(config.emoji ?? '👍') });
               }
               if (input.actionType === 'internal_comment') {
                 if (!inbox || !input.conversationId) return rejected('Conversa obrigatória para comentário interno.');
