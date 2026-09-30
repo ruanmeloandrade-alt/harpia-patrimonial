@@ -44,11 +44,13 @@
     .hero{background:linear-gradient(90deg,rgba(8,15,11,.64),rgba(8,15,11,.30) 48%,rgba(8,15,11,.08)),url('https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=2200&q=92') center/cover no-repeat}.hero p{margin-bottom:0}.search{margin-top:42px}.decision-manifest strong{font-size:clamp(34px,4.2vw,62px);line-height:1.08;text-wrap:balance}.decision-manifest{overflow:hidden}.hero-proof{display:none}
     section{scroll-margin-top:92px}.card,.image-card-link,.lead-form,.about-proof,.estate-filter{will-change:transform}.card:hover,.image-card-link:hover{transform:translateY(-6px)}.image-card-link img{transition:transform .7s ease}.image-card-link:hover img{transform:scale(1.025)}.search,.card,.estate-filter,.about-panel,.image-card-link,.decision-editorial .wrap,.journey-panel,.lead-panel{animation:softIn .8s ease both}.card:nth-child(2){animation-delay:.05s}.card:nth-child(3){animation-delay:.1s}.card:nth-child(4){animation-delay:.15s}.card:nth-child(5){animation-delay:.2s}.card:nth-child(6){animation-delay:.25s}@keyframes softIn{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}@media(prefers-reduced-motion:no-preference){@supports(animation-timeline:view()){section>.wrap{animation:sectionReveal both ease-out;animation-timeline:view();animation-range:entry 8% cover 28%}@keyframes sectionReveal{from{opacity:.2;transform:translateY(44px)}to{opacity:1;transform:translateY(0)}}}}
     .quick-search{display:grid;gap:14px}.quick-field{display:grid;gap:7px;font-size:9px;font-weight:900;letter-spacing:.14em;text-transform:uppercase;color:#756b58}.quick-field select{min-height:42px;border:1px solid #d9d1bd;background:#fff;color:#14231b;padding:0 11px;font:inherit;font-size:12px;letter-spacing:0;text-transform:none}.quick-submit{min-height:43px;border:0;background:#14231b;color:#fff;font-size:10px;font-weight:900;letter-spacing:.12em;text-transform:uppercase;cursor:pointer}.estate-filter .small-link{justify-self:start;margin-top:2px}.section-subtitle{margin:0 0 14px;color:#756b58;font-size:14px;line-height:1.6}.proof-subtitle{font-size:14px!important;font-weight:400!important;letter-spacing:0!important;text-transform:none!important;color:#d8c391!important}.property-grid .card{background:transparent;box-shadow:none}.property-grid .card .photo{border-radius:3px;box-shadow:0 18px 44px rgba(20,35,27,.10)}.property-grid .card-body{background:#efeee7;padding-left:0;padding-right:0}.image-card-link{background:transparent;border:0}.site-footer{background:#112019!important;color:#fff!important;border-top:1px solid rgba(198,170,114,.25)!important}.footer-brand p,.footer-column a,.footer-column span,.footer-disclaimer,.footer-bottom{color:rgba(255,255,255,.64)!important}.footer-top,.footer-bottom{border-color:rgba(255,255,255,.12)!important}.footer-disclaimer{background:rgba(255,255,255,.035)!important;border-color:rgba(198,170,114,.2)!important}.footer-company strong{color:#fff}.footer-button{border-color:rgba(198,170,114,.38)!important}
+    #property-drawer.drawer{left:0;right:0;width:100%;max-width:none;background:#f4f1e8;transform:translateY(100%)}#property-drawer.drawer.open{transform:translateY(0)}#property-drawer .drawer-head{padding:18px 36px}#property-drawer .drawer-body{padding:0}.property-view{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(380px,.85fr);min-height:calc(100vh - 75px)}.property-gallery{display:grid;grid-template-rows:1fr 160px;gap:10px;padding:18px;background:#111c16}.property-main-photo,.property-thumb{background-size:cover;background-position:center}.property-main-photo{min-height:520px}.property-thumbs{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.property-thumb{position:relative;min-height:150px}.property-thumb.video:after{content:"Vídeo";position:absolute;inset:auto 12px 12px auto;background:#a77b24;color:#fff;padding:7px 10px;font-size:10px;font-weight:900;letter-spacing:.12em;text-transform:uppercase}.property-content{padding:44px 48px;overflow:auto}.property-content h2{font-size:clamp(38px,4.5vw,70px);line-height:.95;margin:8px 0 18px}.property-content p{font-size:15px;line-height:1.8;color:#50564d}.property-points{display:grid;gap:10px;margin:22px 0}.property-points div{padding:14px 0;border-top:1px solid #ddd4c0}.property-actions{display:flex;gap:12px;flex-wrap:wrap;margin-top:26px}.client-modal.drawer{width:min(920px,100%)}.client-access-body{display:grid;gap:26px}.client-intro h2{max-width:680px}.access-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}.access-form{display:grid;gap:12px;padding:22px;background:#fff;border:1px solid #e0d8c6}.access-form h3{margin:0 0 8px;font-family:Georgia,'Times New Roman',serif;font-size:28px;font-weight:400}.access-form label{display:grid;gap:7px;font-size:9px;font-weight:900;letter-spacing:.12em;text-transform:uppercase;color:#5d6657}.access-form input{min-height:44px;border:1px solid #d9d2c1;padding:0 12px;font:inherit;font-size:12px}.access-form button{min-height:44px;border:0;background:#14231b;color:#fff;font-size:10px;font-weight:900;letter-spacing:.12em;text-transform:uppercase}.access-link{display:flex;justify-content:center;text-align:center}
+    @media(max-width:900px){.property-view{grid-template-columns:1fr}.property-gallery{grid-template-rows:360px 120px}.property-main-photo{min-height:360px}.property-content{padding:30px 24px}.access-grid{grid-template-columns:1fr}}@media(max-width:620px){#property-drawer .drawer-head{padding:14px 18px}.property-gallery{grid-template-rows:280px 92px;padding:10px}.property-thumb{min-height:92px}.property-content h2{font-size:36px}}
     @media(max-width:620px){.hero{background-position:center top}.decision-manifest strong{font-size:36px;line-height:1.1}}
   </style>
 </head>
 <body>
-<header><div class="wrap nav"><a class="brand" href="/" aria-label="Hárpia Patrimonial & Co."><img src="/harpia-logo-white.svg" alt="Hárpia Patrimonial & Co. — Negócios e Investimentos Imobiliários"></a><nav class="navlinks"><a href="#sobre">Sobre</a><a href="/investimentos/">Investimentos</a><a href="/leiloes/">Leilões</a><a href="/assessoria-juridica/">Assessoria Jurídica</a><a href="/arquitetura/">Arquitetura</a><a href="/sistema/">Área Interna</a></nav></div></header>
+<header><div class="wrap nav"><a class="brand" href="/" aria-label="Hárpia Patrimonial & Co."><img src="/harpia-logo-white.svg" alt="Hárpia Patrimonial & Co. — Negócios e Investimentos Imobiliários"></a><nav class="navlinks"><a href="#sobre">Sobre</a><a href="/investimentos/">Investimentos</a><a href="/leiloes/">Leilões</a><a href="/assessoria-juridica/">Assessoria Jurídica</a><a href="/arquitetura/">Arquitetura</a><a href="/sistema/" data-open-client>Área Interna</a></nav></div></header>
 <main>
 <section id="inicio" class="hero"><div class="wrap"><div class="kicker">Curadoria de imóveis extraordinários no Rio</div><h1>Encontre um imóvel à altura da sua próxima história.</h1><p>Busca inteligente, seleção criteriosa e atendimento humano para conectar você ao imóvel certo.</p><form class="search" id="home-search" onsubmit="return buscarImoveis(event)">
   <div class="field">
@@ -183,7 +185,7 @@
         <a href="/leiloes/">Leilões</a>
         <a href="/assessoria-juridica/">Assessoria Jurídica</a>
         <a href="/arquitetura/">Arquitetura e Obras</a>
-        <a href="/sistema/">Área Interna</a>
+        <a href="/sistema/" data-open-client>Área Interna</a>
       </nav>
       <nav class="footer-column" aria-label="Soluções Hárpia">
         <h3>Soluções</h3>
@@ -216,6 +218,29 @@
 <aside class="drawer" id="property-drawer" aria-hidden="true" aria-label="Detalhes do imóvel">
   <div class="drawer-head"><strong>Detalhes do imóvel</strong><button class="drawer-close" type="button" data-close-drawers aria-label="Fechar">×</button></div>
   <div class="drawer-body" id="property-drawer-body"></div>
+</aside>
+<aside class="drawer client-modal" id="client-access" aria-hidden="true" aria-label="Cadastro e acesso do cliente">
+  <div class="drawer-head"><strong>Área Interna Hárpia</strong><button class="drawer-close" type="button" data-close-drawers aria-label="Fechar">×</button></div>
+  <div class="drawer-body client-access-body">
+    <div class="client-intro"><span class="drawer-kicker">Acompanhamento do cliente</span><h2>Cadastre seu acesso ou entre na sua área interna.</h2><p>A área interna será o espaço para acompanhar trâmites, receber avisos da equipe, pesquisar oportunidades e acessar o marketplace de imóveis.</p></div>
+    <div class="access-grid">
+      <form class="access-form" id="client-signup">
+        <h3>Criar cadastro</h3>
+        <label>Nome<input name="nome" type="text" placeholder="Seu nome" required></label>
+        <label>E-mail<input name="email" type="email" placeholder="seu@email.com" required></label>
+        <label>WhatsApp<input name="whatsapp" type="tel" placeholder="(21) 99999-9999" required></label>
+        <label>Senha<input name="senha" type="password" placeholder="Crie uma senha" required></label>
+        <button type="submit">Criar acesso</button>
+      </form>
+      <form class="access-form" id="client-login">
+        <h3>Já tenho conta</h3>
+        <label>E-mail<input name="email" type="email" placeholder="seu@email.com" required></label>
+        <label>Senha<input name="senha" type="password" placeholder="Sua senha" required></label>
+        <button type="submit">Entrar na área interna</button>
+        <a class="drawer-action secondary access-link" href="/sistema/">Acessar direto</a>
+      </form>
+    </div>
+  </div>
 </aside>
 <aside class="drawer" id="search-drawer" aria-hidden="true" aria-label="Busca premium de imóveis">
   <div class="drawer-head"><strong>Busca premium</strong><button class="drawer-close" type="button" data-close-drawers aria-label="Fechar">×</button></div>
@@ -250,21 +275,24 @@
       const backdrop = document.querySelector('[data-close-drawers]');
       const propertyDrawer = document.getElementById('property-drawer');
       const searchDrawer = document.getElementById('search-drawer');
+      const clientAccess = document.getElementById('client-access');
       function openDrawer(drawer){document.body.style.overflow='hidden';backdrop.classList.add('open');drawer.classList.add('open');drawer.setAttribute('aria-hidden','false')}
-      function closeDrawers(){document.body.style.overflow='';backdrop.classList.remove('open');[propertyDrawer,searchDrawer].forEach(d=>{d.classList.remove('open');d.setAttribute('aria-hidden','true')})}
+      function closeDrawers(){document.body.style.overflow='';backdrop.classList.remove('open');[propertyDrawer,searchDrawer,clientAccess].forEach(d=>{d.classList.remove('open');d.setAttribute('aria-hidden','true')})}
+      function openClientAccess(){openDrawer(clientAccess)}
       function openProperty(id){
         const item = properties[id];
         if(!item) return;
         searchDrawer.classList.remove('open');
         searchDrawer.setAttribute('aria-hidden','true');
-        document.getElementById('property-drawer-body').innerHTML = `<div class="drawer-hero" style="background-image:url('${item.image}')"></div><span class="drawer-kicker">${item.tag}</span><h2>${item.title}</h2><p>${item.desc}</p><div class="specs"><div class="spec"><span>Localização</span><strong>${item.loc}</strong></div><div class="spec"><span>Valor</span><strong>${item.price}</strong></div><div class="spec"><span>Perfil</span><strong>${item.meta.join(' · ')}</strong></div></div><div class="result-list">${item.points.map(point=>`<div class="result-item"><div class="result-thumb" style="background-image:url('${item.image}')"></div><div><strong>${point}</strong><span>Curadoria, risco e potencial avaliados pela Hárpia.</span></div></div>`).join('')}</div><div class="drawer-actions"><a class="drawer-action" href="https://wa.me/5521990135757?text=${encodeURIComponent('Olá, quero detalhes sobre: '+item.title)}" target="_blank" rel="noopener">Quero detalhes no WhatsApp</a><button class="drawer-action secondary" type="button" data-open-search>Comparar com outros imóveis</button></div>`;
+        const gallery = [item.image,item.image.replace('w=1200','w=1000'),item.image.replace('q=85','q=75')];
+        document.getElementById('property-drawer-body').innerHTML = `<article class="property-view"><div class="property-gallery"><div class="property-main-photo" style="background-image:url('${item.image}')"></div><div class="property-thumbs">${gallery.map((photo,index)=>`<div class="property-thumb ${index===2?'video':''}" style="background-image:url('${photo}')"></div>`).join('')}</div></div><div class="property-content"><span class="drawer-kicker">${item.tag}</span><h2>${item.title}</h2><p>${item.desc} A apresentação completa deste ativo pode reunir galeria de fotos, vídeo, histórico do imóvel, análise de documentação, potencial de reforma e comparação com oportunidades semelhantes.</p><div class="specs"><div class="spec"><span>Localização</span><strong>${item.loc}</strong></div><div class="spec"><span>Valor</span><strong>${item.price}</strong></div><div class="spec"><span>Perfil</span><strong>${item.meta.join(' · ')}</strong></div></div><div class="property-points">${item.points.map(point=>`<div><strong>${point}</strong><p>Curadoria, risco e potencial avaliados pela Hárpia para apoiar a decisão.</p></div>`).join('')}</div><div class="property-actions"><a class="drawer-action" href="https://wa.me/5521990135757?text=${encodeURIComponent('Olá, quero detalhes sobre: '+item.title)}" target="_blank" rel="noopener">Quero detalhes no WhatsApp</a><button class="drawer-action secondary" type="button" data-open-search>Comparar com outros imóveis</button></div></div></article>`;
         openDrawer(propertyDrawer);
       }
       function renderResults(){
         const results = document.getElementById('search-results');
         results.innerHTML = Object.values(properties).map(item=>`<button class="result-item" type="button" data-result-title="${item.title}"><div class="result-thumb" style="background-image:url('${item.image}')"></div><div><strong>${item.title}</strong><span>${item.loc} · ${item.price}</span></div></button>`).join('');
       }
-      function openSearch(){propertyDrawer.classList.remove('open');propertyDrawer.setAttribute('aria-hidden','true');renderResults();openDrawer(searchDrawer)}
+      function openSearch(){propertyDrawer.classList.remove('open');propertyDrawer.setAttribute('aria-hidden','true');clientAccess.classList.remove('open');clientAccess.setAttribute('aria-hidden','true');renderResults();openDrawer(searchDrawer)}
       function buscarImoveis(event){
         event.preventDefault();
         const form = document.getElementById('home-search');
@@ -289,12 +317,22 @@
       document.addEventListener('click',event=>{
         if(event.target.matches('[data-close-drawers]')) closeDrawers();
         if(event.target.matches('[data-open-search]')) openSearch();
+        const clientLink = event.target.closest('[data-open-client]');
+        if(clientLink){event.preventDefault();openClientAccess()}
         if(event.target.id === 'show-curated-results') renderResults();
         const result = event.target.closest('[data-result-title]');
         if(result){
           const found = Object.entries(properties).find(([,value])=>value.title===result.dataset.resultTitle);
           if(found){closeDrawers();window.setTimeout(()=>openProperty(found[0]),160)}
         }
+      });
+      document.getElementById('client-signup').addEventListener('submit',event=>{
+        event.preventDefault();
+        window.location.href='/sistema/';
+      });
+      document.getElementById('client-login').addEventListener('submit',event=>{
+        event.preventDefault();
+        window.location.href='/sistema/';
       });
       document.addEventListener('keydown',event=>{if(event.key==='Escape') closeDrawers()});
     </script>
