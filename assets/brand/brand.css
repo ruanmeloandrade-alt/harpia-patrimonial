@@ -1,0 +1,11 @@
+@font-face{font-family:"Harpia Mermaid";src:url("/assets/fonts/Mermaid1001.ttf") format("truetype");font-weight:400;font-style:normal;font-display:swap}
+@font-face{font-family:"Harpia Inter";src:url("/assets/fonts/Inter-Regular.ttf") format("truetype");font-weight:400;font-style:normal;font-display:swap}
+@font-face{font-family:"Harpia Inter";src:url("/assets/fonts/Inter-SemiBold.ttf") format("truetype");font-weight:600;font-style:normal;font-display:swap}
+@font-face{font-family:"Harpia Inter";src:url("/assets/fonts/Inter-Bold.ttf") format("truetype");font-weight:700;font-style:normal;font-display:swap}
+:root{--harpia-font-display:"Harpia Mermaid",Georgia,"Times New Roman",serif;--harpia-font-sans:"Harpia Inter",Inter,Arial,sans-serif;--harpia-green:#112019;--harpia-light-green:#d6ddbd}
+body,button,input,select,textarea{font-family:var(--harpia-font-sans)!important}
+h1,h2,.title,.hero h1,.section-title,.card h2,.card h3,.drawer h2,.drawer-head strong,.panel h2,.op-head strong,.op-copy h2,.gate-card h2,.summary-card strong,.action-card strong,.footer-brand h2,.footer-company strong,.footer-map-copy strong,.decision-unified strong,.journey-emphasis{font-family:var(--harpia-font-display)!important}
+.brand img{width:260px;max-width:36vw;height:auto;object-fit:contain}
+.site-footer .footer-brand img,.footer-brand img{width:230px;max-width:62vw;height:auto;object-fit:contain}
+header .brand img{display:block}
+@media(max-width:720px){.brand img{width:196px!important;max-width:74vw!important}.site-footer .footer-brand img,.footer-brand img{width:184px!important;max-width:74vw!important}}
