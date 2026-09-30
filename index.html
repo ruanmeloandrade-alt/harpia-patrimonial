@@ -50,7 +50,7 @@
   </style>
 </head>
 <body>
-<header><div class="wrap nav"><a class="brand" href="/" aria-label="Hárpia Patrimonial & Co."><img src="/harpia-logo-white.svg" alt="Hárpia Patrimonial & Co. — Negócios e Investimentos Imobiliários"></a><nav class="navlinks"><a href="#sobre">Sobre</a><a href="/investimentos/">Investimentos</a><a href="/leiloes/">Leilões</a><a href="/assessoria-juridica/">Assessoria Jurídica</a><a href="/arquitetura/">Arquitetura</a><a href="/sistema/" data-open-client>Área Interna</a></nav></div></header>
+<header><div class="wrap nav"><a class="brand" href="/" aria-label="Hárpia Patrimonial & Co."><img src="/harpia-logo-white.svg" alt="Hárpia Patrimonial & Co. — Negócios e Investimentos Imobiliários"></a><nav class="navlinks"><a href="#sobre">Sobre</a><a href="/investimentos/">Investimentos</a><a href="/leiloes/">Leilões</a><a href="/assessoria-juridica/">Assessoria Jurídica</a><a href="/arquitetura/">Arquitetura</a><a href="/cliente/" data-open-client>Área Interna</a></nav></div></header>
 <main>
 <section id="inicio" class="hero"><div class="wrap"><div class="kicker">Curadoria de imóveis extraordinários no Rio</div><h1>Encontre um imóvel à altura da sua próxima história.</h1><p>Busca inteligente, seleção criteriosa e atendimento humano para conectar você ao imóvel certo.</p><form class="search" id="home-search" onsubmit="return buscarImoveis(event)">
   <div class="field">
@@ -185,7 +185,7 @@
         <a href="/leiloes/">Leilões</a>
         <a href="/assessoria-juridica/">Assessoria Jurídica</a>
         <a href="/arquitetura/">Arquitetura e Obras</a>
-        <a href="/sistema/" data-open-client>Área Interna</a>
+        <a href="/cliente/" data-open-client>Área Interna</a>
       </nav>
       <nav class="footer-column" aria-label="Soluções Hárpia">
         <h3>Soluções</h3>
@@ -336,11 +336,11 @@
       });
       document.getElementById('client-signup').addEventListener('submit',event=>{
         event.preventDefault();
-        window.location.href='/sistema/';
+        window.location.href='/cliente/';
       });
       document.getElementById('client-login').addEventListener('submit',event=>{
         event.preventDefault();
-        window.location.href='/sistema/';
+        window.location.href='/cliente/';
       });
       document.addEventListener('keydown',event=>{if(event.key==='Escape') closeDrawers()});
     </script>

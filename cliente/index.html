@@ -1,14 +1,132 @@
 <!doctype html>
 <html lang="pt-BR">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#0b0b0b" />
-    <title>Hárpia Patrimonial & Co.</title>
-    <script type="module" crossorigin src="/assets/index-EQChC-vm.js"></script>
-    <link rel="stylesheet" crossorigin href="/assets/index-CRh8aVNZ.css">
-  </head>
-  <body>
-    <div id="root"></div>
-  </body>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#112019" />
+  <title>Área Interna do Cliente | Hárpia Patrimonial & Co.</title>
+  <style>
+    :root{--forest:#112019;--green:#183126;--gold:#c6aa72;--paper:#efeee7;--card:#fbfaf6;--ink:#14231b;--muted:#667067;--line:#ded6c4}
+    *{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--paper);color:var(--ink);font-family:Inter,Arial,sans-serif;-webkit-font-smoothing:antialiased}a{text-decoration:none;color:inherit}button,input,select{font:inherit}.wrap{width:min(1180px,calc(100% - 44px));margin:auto}
+    header{min-height:82px;background:var(--forest);color:#fff;border-bottom:1px solid rgba(198,170,114,.25)}.nav{min-height:82px;display:flex;align-items:center;gap:24px}.brand img{display:block;width:230px;max-width:52vw;height:auto}.nav-actions{margin-left:auto;display:flex;gap:12px;align-items:center}.nav-actions a{color:#d8c391;font-size:10px;font-weight:900;letter-spacing:.12em;text-transform:uppercase}
+    main{padding:42px 0 72px}.hero{display:grid;grid-template-columns:minmax(0,1fr) 330px;gap:26px;align-items:stretch;margin-bottom:24px}.eyebrow{font-size:10px;font-weight:900;letter-spacing:.2em;text-transform:uppercase;color:#8f6f2f}.hero-card,.side-card,.panel{background:var(--card);border:1px solid var(--line);box-shadow:0 18px 44px rgba(20,35,27,.07)}.hero-card{padding:34px}.hero h1{max-width:760px;font-family:Georgia,'Times New Roman',serif;font-size:clamp(42px,6vw,76px);font-weight:400;line-height:.94;margin:12px 0 16px}.hero p{max-width:680px;color:var(--muted);line-height:1.7;margin:0}.side-card{padding:24px;display:grid;align-content:end;gap:18px}.side-card strong{font-family:Georgia,'Times New Roman',serif;font-size:30px;font-weight:400;line-height:1}.status-list{display:grid;gap:10px}.status-list span{display:flex;justify-content:space-between;gap:14px;padding-top:10px;border-top:1px solid #e7dfcf;color:var(--muted);font-size:12px}.status-list b{color:var(--ink)}
+    .grid{display:grid;grid-template-columns:1.08fr .92fr;gap:22px;align-items:start}.panel{padding:24px}.panel h2{margin:0 0 16px;font-family:Georgia,'Times New Roman',serif;font-size:30px;font-weight:400}.panel p{color:var(--muted);font-size:13px;line-height:1.65}.timeline{display:grid;gap:0}.step{display:grid;grid-template-columns:22px 1fr;gap:12px;padding:14px 0;border-top:1px solid #e7dfcf}.step:first-child{border-top:0}.dot{width:11px;height:11px;border-radius:50%;background:var(--gold);margin-top:5px}.step strong{display:block}.step span{display:block;margin-top:4px;color:var(--muted);font-size:13px;line-height:1.55}.notice{padding:16px 0;border-top:1px solid #e7dfcf}.notice:first-of-type{border-top:0}.notice strong{display:block;margin-bottom:6px}
+    .market-panel{grid-column:1/-1}.market-head{display:flex;justify-content:space-between;gap:20px;align-items:end;margin-bottom:18px}.filters{display:flex;gap:10px;flex-wrap:wrap}.filters select{min-height:40px;border:1px solid var(--line);background:#fff;padding:0 12px;color:var(--ink)}.market{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}.item{min-height:260px;border:0;padding:0;display:grid;align-content:end;text-align:left;color:#fff;background:#112019 center/cover;cursor:pointer;overflow:hidden}.item[hidden]{display:none}.item-content{min-height:100%;padding:18px;display:grid;align-content:end;background:linear-gradient(180deg,rgba(17,32,25,.05),rgba(17,32,25,.86))}.item span{font-size:9px;font-weight:900;letter-spacing:.14em;text-transform:uppercase;color:#d8c391}.item strong{display:block;margin-top:8px;font-family:Georgia,'Times New Roman',serif;font-size:24px;font-weight:400;line-height:1.05}.item small{display:block;margin-top:9px;color:rgba(255,255,255,.78);font-size:12px}.empty{display:none;padding:18px;border:1px solid var(--line);background:#fff;color:var(--muted)}.empty.show{display:block}
+    .actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px}.btn{border:0;display:inline-flex;align-items:center;justify-content:center;min-height:42px;padding:0 16px;background:var(--green);color:#fff;font-size:10px;font-weight:900;letter-spacing:.1em;text-transform:uppercase;cursor:pointer}.btn.secondary{background:transparent;color:var(--green);border:1px solid #cfc5ae}.btn:hover{filter:brightness(1.06)}
+    .drawer-backdrop{position:fixed;inset:0;background:rgba(7,10,8,.48);opacity:0;pointer-events:none;z-index:80;transition:opacity .2s ease}.drawer-backdrop.open{opacity:1;pointer-events:auto}.opportunity{position:fixed;inset:5vh 5vw;z-index:90;background:#fbfaf6;box-shadow:0 30px 90px rgba(0,0,0,.34);opacity:0;pointer-events:none;transform:translateY(18px);transition:opacity .2s ease,transform .2s ease;overflow:auto}.opportunity.open{opacity:1;pointer-events:auto;transform:translateY(0)}.op-head{position:sticky;top:0;z-index:2;display:flex;justify-content:space-between;gap:18px;align-items:center;padding:18px 22px;background:rgba(251,250,246,.94);border-bottom:1px solid var(--line);backdrop-filter:blur(10px)}.op-head strong{font-family:Georgia,'Times New Roman',serif;font-size:24px;font-weight:400}.close{width:38px;height:38px;border:1px solid #d5d0c1;border-radius:50%;background:#fff;cursor:pointer;font-size:20px}.op-body{display:grid;grid-template-columns:1.15fr .85fr;min-height:calc(90vh - 75px)}.op-photo{min-height:520px;background:#112019 center/cover}.op-copy{padding:38px}.op-copy h2{font-family:Georgia,'Times New Roman',serif;font-size:clamp(38px,4.8vw,68px);font-weight:400;line-height:.96;margin:10px 0 16px}.op-copy p{color:var(--muted);font-size:14px;line-height:1.75}.specs{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin:18px 0}.spec{padding:13px;border:1px solid var(--line);background:#fff}.spec span{display:block;margin-bottom:4px;color:#8b8f87;font-size:9px;letter-spacing:.12em;text-transform:uppercase}.spec strong{font-size:14px}
+    @media(max-width:900px){.hero,.grid,.op-body{grid-template-columns:1fr}.market{grid-template-columns:1fr 1fr}.opportunity{inset:3vh 16px}.op-photo{min-height:320px}}@media(max-width:620px){.wrap{width:min(100% - 28px,1180px)}.brand img{width:178px}.nav-actions a:not(:first-child){display:none}.hero-card,.side-card,.panel{padding:20px}.market-head{display:grid}.market{grid-template-columns:1fr}.specs{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+  <header>
+    <div class="wrap nav">
+      <a class="brand" href="/"><img src="/harpia-logo-white.svg" alt="Hárpia Patrimonial & Co."></a>
+      <div class="nav-actions"><a href="/">Voltar ao site</a><a href="#marketplace">Marketplace</a><a href="#avisos">Avisos</a></div>
+    </div>
+  </header>
+  <main class="wrap">
+    <section class="hero">
+      <div class="hero-card">
+        <div class="eyebrow">Área interna do cliente</div>
+        <h1>Seu acompanhamento patrimonial em um só lugar.</h1>
+        <p>Acompanhe o andamento do atendimento, receba avisos da equipe e consulte oportunidades selecionadas conforme o seu perfil de compra, venda ou investimento.</p>
+        <div class="actions"><a class="btn" href="#marketplace">Ver oportunidades</a><a class="btn secondary" href="https://wa.me/5521990135757?text=Ol%C3%A1%2C%20estou%20na%20%C3%A1rea%20interna%20e%20quero%20falar%20com%20a%20H%C3%A1rpia." target="_blank" rel="noopener">Falar com a equipe</a></div>
+      </div>
+      <aside class="side-card" aria-label="Resumo do atendimento">
+        <div class="eyebrow">Resumo</div>
+        <strong>Cadastro ativo</strong>
+        <div class="status-list">
+          <span><b>Perfil</b> Em análise</span>
+          <span><b>Curadoria</b> Em andamento</span>
+          <span><b>Próximo passo</b> Contato consultivo</span>
+        </div>
+      </aside>
+    </section>
+    <section class="grid">
+      <div class="panel">
+        <h2>Trâmites do processo</h2>
+        <div class="timeline">
+          <div class="step"><i class="dot"></i><div><strong>Cadastro recebido</strong><span>Dados iniciais registrados para orientar o atendimento e a curadoria.</span></div></div>
+          <div class="step"><i class="dot"></i><div><strong>Leitura de perfil</strong><span>Objetivo, bairros, faixa de investimento e momento de compra entram na análise.</span></div></div>
+          <div class="step"><i class="dot"></i><div><strong>Curadoria Hárpia</strong><span>Oportunidades compatíveis são organizadas para avaliação com a equipe.</span></div></div>
+          <div class="step"><i class="dot"></i><div><strong>Decisão acompanhada</strong><span>Visita, proposta, documentação, crédito e próximos passos ficam centralizados.</span></div></div>
+        </div>
+      </div>
+      <div class="panel" id="avisos">
+        <h2>Avisos</h2>
+        <div class="notice"><strong>Bem-vindo à área interna.</strong><p>Use este espaço para acompanhar os recados e próximos passos do atendimento Hárpia.</p></div>
+        <div class="notice"><strong>Atualização de preferências</strong><p>Se bairro, faixa ou objetivo mudarem, fale com a equipe para recalibrar a curadoria.</p></div>
+        <div class="notice"><strong>Marketplace Hárpia</strong><p>As oportunidades abaixo podem ser abertas em tela ampla para leitura completa do ativo.</p></div>
+      </div>
+      <div class="panel market-panel" id="marketplace">
+        <div class="market-head">
+          <div><div class="eyebrow">Marketplace</div><h2>Oportunidades selecionadas</h2></div>
+          <div class="filters" aria-label="Filtros do marketplace">
+            <select id="bairro"><option value="todos">Todos os bairros</option><option value="peninsula">Península</option><option value="leblon">Leblon</option><option value="joa">Joá</option></select>
+            <select id="perfil"><option value="todos">Todos os perfis</option><option value="moradia">Moradia</option><option value="investimento">Investimento</option><option value="vista">Vista mar</option></select>
+          </div>
+        </div>
+        <div class="market" id="cards">
+          <button class="item" type="button" data-bairro="peninsula" data-perfil="moradia investimento" data-title="Apartamento contemporâneo na Península" data-price="R$ 4.850.000" data-meta="4 quartos · 242 m² · 3 vagas" data-image="https://images.unsplash.com/photo-1600566753086-00f18fb6b3ea?auto=format&fit=crop&w=1400&q=88" style="background-image:url('https://images.unsplash.com/photo-1600566753086-00f18fb6b3ea?auto=format&fit=crop&w=900&q=85')"><span class="item-content"><span>Península</span><strong>Apartamento contemporâneo</strong><small>Moradia e investimento · R$ 4.850.000</small></span></button>
+          <button class="item" type="button" data-bairro="leblon" data-perfil="moradia vista" data-title="Cobertura com vista para o mar no Leblon" data-price="R$ 12.900.000" data-meta="4 quartos · 380 m² · vista mar" data-image="https://images.unsplash.com/photo-1600607688969-a5bfcd646154?auto=format&fit=crop&w=1400&q=88" style="background-image:url('https://images.unsplash.com/photo-1600607688969-a5bfcd646154?auto=format&fit=crop&w=900&q=85')"><span class="item-content"><span>Leblon</span><strong>Cobertura com vista mar</strong><small>Vista mar · R$ 12.900.000</small></span></button>
+          <button class="item" type="button" data-bairro="joa" data-perfil="moradia vista" data-title="Casa contemporânea no Joá" data-price="R$ 15.500.000" data-meta="5 suítes · 650 m² · vista mar" data-image="https://images.unsplash.com/photo-1600585154526-990dced4db0d?auto=format&fit=crop&w=1400&q=88" style="background-image:url('https://images.unsplash.com/photo-1600585154526-990dced4db0d?auto=format&fit=crop&w=900&q=85')"><span class="item-content"><span>Joá</span><strong>Casa contemporânea</strong><small>Vista mar · R$ 15.500.000</small></span></button>
+        </div>
+        <div class="empty" id="empty">Nenhuma oportunidade encontrada para esses filtros. Ajuste a busca ou fale com a equipe para uma curadoria sob medida.</div>
+      </div>
+    </section>
+  </main>
+  <div class="drawer-backdrop" id="backdrop"></div>
+  <aside class="opportunity" id="opportunity" aria-hidden="true" aria-label="Detalhes da oportunidade">
+    <div class="op-head"><strong>Oportunidade Hárpia</strong><button class="close" type="button" id="close" aria-label="Fechar">×</button></div>
+    <div class="op-body">
+      <div class="op-photo" id="op-photo"></div>
+      <div class="op-copy"><div class="eyebrow" id="op-kicker">Marketplace</div><h2 id="op-title"></h2><p id="op-desc"></p><div class="specs"><div class="spec"><span>Valor</span><strong id="op-price"></strong></div><div class="spec"><span>Perfil</span><strong id="op-meta"></strong></div></div><div class="actions"><a class="btn" id="op-whatsapp" target="_blank" rel="noopener">Quero detalhes</a><button class="btn secondary" type="button" id="close-secondary">Voltar ao marketplace</button></div></div>
+    </div>
+  </aside>
+  <script>
+    const cards = Array.from(document.querySelectorAll('.item'));
+    const bairro = document.getElementById('bairro');
+    const perfil = document.getElementById('perfil');
+    const empty = document.getElementById('empty');
+    const modal = document.getElementById('opportunity');
+    const backdrop = document.getElementById('backdrop');
+    function applyFilters(){
+      let visible = 0;
+      cards.forEach(card=>{
+        const matchBairro = bairro.value === 'todos' || card.dataset.bairro === bairro.value;
+        const matchPerfil = perfil.value === 'todos' || card.dataset.perfil.includes(perfil.value);
+        const show = matchBairro && matchPerfil;
+        card.hidden = !show;
+        if(show) visible += 1;
+      });
+      empty.classList.toggle('show', visible === 0);
+    }
+    function openOpportunity(card){
+      document.getElementById('op-photo').style.backgroundImage = `url('${card.dataset.image}')`;
+      document.getElementById('op-kicker').textContent = card.querySelector('.item-content span').textContent;
+      document.getElementById('op-title').textContent = card.dataset.title;
+      document.getElementById('op-price').textContent = card.dataset.price;
+      document.getElementById('op-meta').textContent = card.dataset.meta;
+      document.getElementById('op-desc').textContent = 'Esta oportunidade pode reunir galeria completa, vídeos, documentação, potencial de negociação, análise jurídica e próximos passos conduzidos pela equipe Hárpia.';
+      document.getElementById('op-whatsapp').href = `https://wa.me/5521990135757?text=${encodeURIComponent('Olá, estou na área interna e quero detalhes sobre: ' + card.dataset.title)}`;
+      document.body.style.overflow = 'hidden';
+      backdrop.classList.add('open');
+      modal.classList.add('open');
+      modal.setAttribute('aria-hidden','false');
+    }
+    function closeOpportunity(){
+      document.body.style.overflow = '';
+      backdrop.classList.remove('open');
+      modal.classList.remove('open');
+      modal.setAttribute('aria-hidden','true');
+    }
+    bairro.addEventListener('change', applyFilters);
+    perfil.addEventListener('change', applyFilters);
+    cards.forEach(card=>card.addEventListener('click',()=>openOpportunity(card)));
+    document.getElementById('close').addEventListener('click', closeOpportunity);
+    document.getElementById('close-secondary').addEventListener('click', closeOpportunity);
+    backdrop.addEventListener('click', closeOpportunity);
+    document.addEventListener('keydown',event=>{if(event.key === 'Escape') closeOpportunity()});
+  </script>
+</body>
 </html>
