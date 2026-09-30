@@ -6,7 +6,6 @@ import { FullPageState } from '../../shared/components/FullPageState';
 export function ClientRoute({ children }: PropsWithChildren) {
   const auth = useAuth();
   if (auth.loading) return <FullPageState title="Carregando sua conta" />;
-  if (!auth.configurationReady) return <FullPageState eyebrow="CONFIGURAÇÃO" title="Backend ainda não conectado" description="A interface está pronta para receber o projeto Supabase dedicado da Hárpia." />;
   if (!auth.isAuthenticated) return <Navigate to="/entrar" />;
   if (!auth.profile) return <FullPageState title="Carregando perfil" />;
   if (auth.profile.account_type === 'internal') return <Navigate to="/interno" />;
@@ -26,7 +25,6 @@ export function InternalRoute({
 }>) {
   const auth = useAuth();
   if (auth.loading) return <FullPageState title="Validando acesso" />;
-  if (!auth.configurationReady) return <FullPageState eyebrow="CONFIGURAÇÃO" title="Backend ainda não conectado" description="A área interna será liberada assim que o projeto Supabase dedicado estiver configurado." />;
   if (!auth.isAuthenticated) return <Navigate to="/interno/entrar" />;
   if (!auth.profile) return <FullPageState title="Carregando perfil" />;
   if (!auth.isInternalUser) return <FullPageState eyebrow="ACESSO RESTRITO" title="Esta conta não possui acesso interno" description="Use a área do cliente ou entre com uma conta da equipe Hárpia." actionHref="/cliente" actionLabel="Ir para minha conta" />;
