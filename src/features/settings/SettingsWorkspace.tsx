@@ -30,6 +30,7 @@ export type SettingsTab =
   | 'general'
   | 'preferences'
   | 'users'
+  | 'permissions'
   | 'integrations'
   | 'ai'
   | 'crm'
@@ -49,7 +50,8 @@ type TabArea = 'personal' | 'settings' | 'users' | 'integrations';
 const tabs: Array<{ id: SettingsTab; label: string; area: TabArea; phaseTwo?: boolean }> = [
   { id: 'general', label: 'Geral', area: 'settings' },
   { id: 'preferences', label: 'Preferências', area: 'personal' },
-  { id: 'users', label: 'Usuários e acessos', area: 'users' },
+  { id: 'users', label: 'Usuários', area: 'users' },
+  { id: 'permissions', label: 'Permissões', area: 'users' },
   { id: 'integrations', label: 'Integrações', area: 'integrations' },
   { id: 'ai', label: 'IA', area: 'integrations' },
   { id: 'crm', label: 'CRM e atendimento', area: 'settings' },
@@ -113,6 +115,12 @@ export function SettingsWorkspace({ credentialVault, initialTab = 'preferences' 
     if (tab.area === 'integrations') return canViewIntegrations;
     return canViewSettings;
   }), [canViewIntegrations, canViewSettings, canViewUsers]);
+
+  useEffect(() => {
+    setActiveTab(initialTab);
+    setNotice(null);
+    setError(null);
+  }, [initialTab]);
 
   useEffect(() => {
     if (!visibleTabs.some((tab) => tab.id === activeTab)) {
@@ -538,6 +546,11 @@ export function SettingsWorkspace({ credentialVault, initialTab = 'preferences' 
       {activeTab === 'users' && (
         <div className="settings-user-access-stack">
           <UsersPage embedded />
+        </div>
+      )}
+
+      {activeTab === 'permissions' && (
+        <div className="settings-user-access-stack">
           <PermissionsPage embedded />
         </div>
       )}

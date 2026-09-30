@@ -106,10 +106,14 @@ export function AppRouter() {
       page = <IntegratedSettings initialTab="integrations" />;
       permission = undefined;
       permissions = [PERMISSIONS.INTEGRATIONS_VIEW, PERMISSIONS.INTEGRATIONS_MANAGE];
-    } else if (pathname === '/interno/usuarios' || pathname === '/interno/permissoes') {
+    } else if (pathname === '/interno/usuarios') {
       page = <IntegratedSettings initialTab="users" />;
       permission = undefined;
       permissions = [PERMISSIONS.USERS_VIEW, PERMISSIONS.USERS_MANAGE, PERMISSIONS.ROLES_VIEW, PERMISSIONS.ROLES_MANAGE];
+    } else if (pathname === '/interno/permissoes') {
+      page = <IntegratedSettings initialTab="permissions" />;
+      permission = undefined;
+      permissions = [PERMISSIONS.ROLES_VIEW, PERMISSIONS.ROLES_MANAGE, PERMISSIONS.USERS_VIEW, PERMISSIONS.USERS_MANAGE];
     } else if (pathname === '/interno/configuracoes') {
       page = <IntegratedSettings />;
       permission = undefined;
