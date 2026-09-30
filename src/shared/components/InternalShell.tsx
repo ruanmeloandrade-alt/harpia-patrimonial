@@ -109,8 +109,8 @@ export function InternalShell({ children }: PropsWithChildren) {
         <div className="sidebar-mobile-heading">
           <div className="sidebar-brand-row">
             <AppLink href="/interno" className="sidebar-brand-link" title="Hárpia Patrimonial">
-              <img className="sidebar-logo" src="/harpia-logo-white.svg" alt="Hárpia Patrimonial & Co." />
-              <span className="sidebar-brand-mark" aria-hidden="true">H</span>
+              <img className="sidebar-logo" src="/assets/brand/harpia-logo-horizontal-white-cropped.png" alt="Hárpia Patrimonial & Co." />
+              <img className="sidebar-brand-mark" src="/assets/brand/harpia-icon-white-cropped.png" alt="" aria-hidden="true" />
             </AppLink>
             <button
               className="sidebar-collapse-toggle"

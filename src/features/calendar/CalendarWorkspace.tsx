@@ -152,7 +152,7 @@ function parseGuestEmails(value: string) {
 }
 
 function connectionLabel(connection: GoogleCalendarConnection | null) {
-  if (!connection || connection.status !== 'connected' || !connection.oauthReady) return 'Google Calendar não conectado';
+  if (!connection || connection.status !== 'connected' || !connection.oauthReady) return 'Google Calendar · 2ª fase';
   return connection.accountLabel ? `Google: ${connection.accountLabel}` : 'Google Calendar conectado';
 }
 
@@ -367,15 +367,17 @@ export function CalendarWorkspace({ assignees, canManage }: CalendarWorkspacePro
         <div>
           <span className="calendar-kicker">Agenda operacional</span>
           <h1>Calendário</h1>
-          <p>Tarefas internas, reuniões, responsáveis, duração e preparação para Google Calendar e Google Meet.</p>
+          <p>Tarefas internas, reuniões, responsáveis e duração. Google Calendar e Meet ficam sinalizados para a segunda fase de OAuth.</p>
         </div>
         <div className="calendar-header-actions">
           <a className={connection?.status === 'connected' && connection.oauthReady ? 'calendar-google calendar-google--ready' : 'calendar-google'} href="/interno/integracoes">
             <span className="calendar-google-dot" />
             {connectionLabel(connection)}
           </a>
-          {canManage ? <button className="button button-ghost-dark" type="button" onClick={() => openCreate('meeting')}>+ Nova reunião</button> : null}
-          {canManage ? <button className="button button-primary" type="button" onClick={() => openCreate('task')}>+ Nova tarefa</button> : null}
+          <div className="calendar-create-actions">
+            {canManage ? <button className="button button-ghost-dark" type="button" onClick={() => openCreate('meeting')}>+ Nova reunião</button> : null}
+            {canManage ? <button className="button button-primary" type="button" onClick={() => openCreate('task')}>+ Nova tarefa</button> : null}
+          </div>
         </div>
       </header>
 
@@ -529,8 +531,8 @@ export function CalendarWorkspace({ assignees, canManage }: CalendarWorkspacePro
           </div>
 
           <div className="calendar-google-note">
-            <strong>Google Calendar + Meet</strong>
-            <p>O calendário já guarda convidados, IDs do evento, link do Meet e status de sincronização. Quando o OAuth do Google for concluído, os compromissos marcados para sincronizar usarão essa mesma estrutura.</p>
+            <strong>Google Calendar + Meet <span>2ª fase</span></strong>
+            <p>O calendário interno já funciona. A criação automática de eventos externos e links do Meet depende da conexão OAuth do Google.</p>
           </div>
         </aside>
       </div>
