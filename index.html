@@ -412,13 +412,16 @@
       const aiChatBody = document.getElementById('ai-chat-body');
       const taxAlert = document.getElementById('tax-alert');
       const clientStorageKey = 'harpiaClientAccount';
-      function getClientAccount(){try{return JSON.parse(localStorage.getItem(clientStorageKey)||'null')}catch(error){return null}}
+      const legacyClientStorageKey = 'harpia.client.account';
+      function readClientAccount(key){try{return JSON.parse(localStorage.getItem(key)||'null')}catch(error){return null}}
+      function getClientAccount(){return readClientAccount(clientStorageKey) || readClientAccount(legacyClientStorageKey)}
+      function setClientAccount(account){localStorage.setItem(clientStorageKey, JSON.stringify(account));localStorage.setItem(legacyClientStorageKey, JSON.stringify(account))}
       function isClientLogged(){return Boolean(getClientAccount())}
       function saveClientAccount(form){
         const data = new FormData(form);
         const email = data.get('email');
         const existing = getClientAccount() || {};
-        localStorage.setItem(clientStorageKey, JSON.stringify({name:data.get('nome') || existing.name || 'Cliente Hárpia', email, whatsapp:data.get('whatsapp') || existing.whatsapp || '', loggedAt:new Date().toISOString()}));
+        setClientAccount({name:data.get('nome') || existing.name || 'Cliente Hárpia', email, whatsapp:data.get('whatsapp') || existing.whatsapp || '', loggedAt:new Date().toISOString()});
       }
       function openDrawer(drawer){document.body.style.overflow='hidden';backdrop.classList.add('open');drawer.classList.add('open');drawer.setAttribute('aria-hidden','false')}
       function closeDrawers(){document.body.style.overflow='';backdrop.classList.remove('open');[propertyDrawer,searchDrawer,clientAccess].forEach(d=>{d.classList.remove('open');d.setAttribute('aria-hidden','true')})}

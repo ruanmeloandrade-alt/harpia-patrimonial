@@ -129,6 +129,7 @@
   </aside>
   <script>
     const clientStorageKey = 'harpiaClientAccount';
+    const legacyClientStorageKey = 'harpia.client.account';
     const profileStorageKey = 'harpiaClientProfile';
     const docsStorageKey = 'harpiaClientDocuments';
     const opportunities = [
@@ -145,14 +146,16 @@
     const filters = ['bairro','tipo','perfil','faixa'].reduce((acc,key)=>({...acc,[key]:document.getElementById(`filter-${key}`)}),{});
     function getJson(key){try{return JSON.parse(localStorage.getItem(key)||'null')}catch(error){return null}}
     function setJson(key,value){localStorage.setItem(key,JSON.stringify(value))}
-    function getClientAccount(){return getJson(clientStorageKey)}
+    function getClientAccount(){return getJson(clientStorageKey) || getJson(legacyClientStorageKey)}
+    function setClientAccount(account){setJson(clientStorageKey,account);setJson(legacyClientStorageKey,account)}
+    function clearClientAccount(){localStorage.removeItem(clientStorageKey);localStorage.removeItem(legacyClientStorageKey)}
     function getProfile(){return getJson(profileStorageKey) || {}}
     function getDocuments(){return getJson(docsStorageKey) || {profile:[],process:[]}}
     function saveClientAccount(form){
       const data = new FormData(form);
       const existing = getClientAccount() || {};
       const account = {name:data.get('nome') || existing.name || 'Cliente Hárpia',email:data.get('email') || existing.email,whatsapp:data.get('whatsapp') || existing.whatsapp || '',loggedAt:new Date().toISOString()};
-      setJson(clientStorageKey,account);
+      setClientAccount(account);
       const profile = getProfile();
       setJson(profileStorageKey,{...profile,nome:account.name,email:account.email,whatsapp:account.whatsapp});
       unlockClientArea();
@@ -184,7 +187,7 @@
       const profile = Object.fromEntries(data.entries());
       setJson(profileStorageKey,profile);
       const account = getClientAccount() || {};
-      setJson(clientStorageKey,{...account,name:profile.nome || account.name,email:profile.email || account.email,whatsapp:profile.whatsapp || account.whatsapp});
+      setClientAccount({...account,name:profile.nome || account.name,email:profile.email || account.email,whatsapp:profile.whatsapp || account.whatsapp});
       document.getElementById('saved-note').classList.add('show');
       window.setTimeout(()=>document.getElementById('saved-note').classList.remove('show'),2200);
       unlockClientArea();
@@ -267,7 +270,7 @@
     document.getElementById('close').addEventListener('click',closeOpportunity);
     document.getElementById('close-secondary').addEventListener('click',closeOpportunity);
     backdrop.addEventListener('click',closeOpportunity);
-    document.getElementById('logout').addEventListener('click',()=>{localStorage.removeItem(clientStorageKey);window.location.href='/'});
+    document.getElementById('logout').addEventListener('click',()=>{clearClientAccount();window.location.href='/'});
     document.getElementById('gate-signup').addEventListener('submit',event=>{event.preventDefault();saveClientAccount(event.currentTarget)});
     document.getElementById('gate-login').addEventListener('submit',event=>{event.preventDefault();saveClientAccount(event.currentTarget)});
     document.querySelectorAll('[data-gate-mode]').forEach(button=>button.addEventListener('click',()=>setGateMode(button.dataset.gateMode)));
