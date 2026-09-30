@@ -139,12 +139,7 @@
   <button type="submit">⌕ Buscar imóveis</button>
 </form></div></section>
 <section id="imoveis" class="estate-section"><div class="wrap"><div class="section-top"><div><h2 class="title">Imóveis escolhidos para quem<br>procura mais do que metragem.</h2></div><button class="small-link" type="button" data-open-search>Ver todos os imóveis →</button></div><div class="estate-stage"><aside class="estate-filter" aria-label="Busca rápida de imóveis"><h3>Busca refinada para alto padrão.</h3><form class="quick-search" onsubmit="openSearch();return false"><label class="quick-field">Bairro<select name="bairro"><option>Todos</option><option>Barra da Tijuca</option><option>Península</option><option>Leblon</option><option>Ipanema</option><option>Jardim Botânico</option><option>Joá</option></select></label><label class="quick-field">Perfil<select name="perfil"><option>Todos</option><option>Alto padrão</option><option>Vista mar</option><option>Pronto para morar</option><option>Potencial de reforma</option></select></label><label class="quick-field">Faixa<select name="faixa"><option>R$ 3 mi — R$ 20 mi+</option><option>Até R$ 5 mi</option><option>R$ 5 mi a R$ 10 mi</option><option>R$ 10 mi a R$ 20 mi</option><option>Acima de R$ 20 mi</option></select></label><button class="quick-submit" type="submit">Buscar rápido</button><button class="small-link" type="button" data-open-search>Pesquisa premium →</button></form></aside><div class="grid property-grid">
-<button class="card property-card" type="button" data-property="peninsula"><div class="photo" style="background-image:url('https://images.unsplash.com/photo-1600566753086-00f18fb6b3ea?auto=format&fit=crop&w=800&q=85')"><span class="badge">DESTAQUE</span><span class="fav">♡</span></div><div class="card-body"><div class="loc">Península · Rio de Janeiro</div><h3>Apartamento contemporâneo na Península</h3><div class="meta"><span>4 quartos</span><span>242 m²</span></div><div class="price-row"><span class="price">R$ 4.850.000</span><span class="view">Ver imóvel →</span></div></div></button>
-<button class="card property-card" type="button" data-property="leblon"><div class="photo" style="background-image:url('https://images.unsplash.com/photo-1600607688969-a5bfcd646154?auto=format&fit=crop&w=800&q=85')"><span class="badge">EXCLUSIVO</span><span class="fav">♡</span></div><div class="card-body"><div class="loc">Leblon · Rio de Janeiro</div><h3>Cobertura com vista para o mar no Leblon</h3><div class="meta"><span>4 quartos</span><span>380 m²</span></div><div class="price-row"><span class="price">R$ 12.900.000</span><span class="view">Ver imóvel →</span></div></div></button>
-<button class="card property-card" type="button" data-property="jardim"><div class="photo" style="background-image:url('https://images.unsplash.com/photo-1600585152915-d208bec867a1?auto=format&fit=crop&w=800&q=85')"><span class="badge">CURADORIA HÁRPIA</span><span class="fav">♡</span></div><div class="card-body"><div class="loc">Jardim Botânico · Rio de Janeiro</div><h3>Residência assinada no Jardim Botânico</h3><div class="meta"><span>4 suítes</span><span>420 m²</span></div><div class="price-row"><span class="price">R$ 8.600.000</span><span class="view">Ver imóvel →</span></div></div></button>
-<button class="card property-card" type="button" data-property="barra"><div class="photo" style="background-image:url('https://images.unsplash.com/photo-1600566753190-17f0baa2a6c3?auto=format&fit=crop&w=800&q=85')"><span class="badge">LANÇAMENTO</span><span class="fav">♡</span></div><div class="card-body"><div class="loc">Barra da Tijuca · Rio de Janeiro</div><h3>Lançamento wellness na Barra da Tijuca</h3><div class="meta"><span>alto padrão</span><span>wellness</span></div><div class="price-row"><span class="price">A partir de R$ 3.290.000</span><span class="view">Ver imóvel →</span></div></div></button>
-<button class="card property-card" type="button" data-property="ipanema"><div class="photo" style="background-image:url('https://images.unsplash.com/photo-1600210492486-724fe5c67fb0?auto=format&fit=crop&w=800&q=85')"><span class="badge">PRONTO PARA MORAR</span><span class="fav">♡</span></div><div class="card-body"><div class="loc">Ipanema · Rio de Janeiro</div><h3>Apartamento reformado em Ipanema</h3><div class="meta"><span>3 quartos</span><span>210 m²</span></div><div class="price-row"><span class="price">R$ 6.750.000</span><span class="view">Ver imóvel →</span></div></div></button>
-<button class="card property-card" type="button" data-property="joa"><div class="photo" style="background-image:url('https://images.unsplash.com/photo-1600585154526-990dced4db0d?auto=format&fit=crop&w=800&q=85')"><span class="badge">VISTA MAR</span><span class="fav">♡</span></div><div class="card-body"><div class="loc">Joá · Rio de Janeiro</div><h3>Casa contemporânea no Joá</h3><div class="meta"><span>5 suítes</span><span>650 m²</span></div><div class="price-row"><span class="price">R$ 15.500.000</span><span class="view">Ver imóvel →</span></div></div></button>
+<div class="catalog-loading" id="catalog-loading">Carregando imóveis publicados...</div>
 </div></div></div></section>
 
 <section class="about-home" id="sobre"><div class="wrap about-panel"><figure class="about-media"><img src="/harpia-sobre-equipe.jpeg" alt="Equipe Hárpia Patrimonial & Co."></figure><div class="about-copy"><p class="section-subtitle">Sobre nós</p><h2 class="title">Negócios imobiliários e gestão patrimonial.</h2><p><strong>Construída a partir de uma tradição familiar desde 1986.</strong> A Hárpia Patrimonial & Co. é mais do que um escritório especializado em negócios imobiliários e investimento patrimonial: é uma atuação voltada à preservação, expansão e perpetuação do patrimônio.</p><p>Enquanto o mercado negocia imóveis, nós orientamos e gerimos decisões. Não se trata somente de ativos, mas de gerações. Entendemos que patrimônio é um organismo vivo, construído ao longo do tempo e transmitido por meio das escolhas certas.</p><p>Acreditamos que o verdadeiro patrimônio não está apenas no que se possui, mas na capacidade de transformar recursos em liberdade, escolhas em legado e imóveis em ativos que atravessam gerações.</p><p>Desde 1986, nossa tradição não é medida pelo número de negócios realizados, mas pela confiança construída ao lado de famílias e empresários que compreendem que as decisões mais importantes não pertencem apenas ao presente. Elas moldam o futuro.</p><p>Essa é a essência da Hárpia: unir inteligência patrimonial, bem viver, espírito explorador e tradição para construir relações duradouras e patrimônios que permanecem. Nosso compromisso é aconselhar e recomendar a decisão mais adequada, não apenas viabilizar a venda de um imóvel.</p><div class="about-metrics"><span><strong>1986</strong> Tradição familiar em negócios imobiliários</span><span><strong>01</strong> Inteligência patrimonial aplicada à decisão</span><span><strong>03</strong> Patrimônio pensado para atravessar gerações</span></div></div></div></section>
@@ -289,14 +284,126 @@
   </div>
 </aside>
 <script>
-      const properties = {
-        peninsula:{title:'Apartamento contemporâneo na Península',loc:'Península · Rio de Janeiro',price:'R$ 4.850.000',meta:['4 quartos','242 m²','3 vagas'],image:'https://images.unsplash.com/photo-1600566753086-00f18fb6b3ea?auto=format&fit=crop&w=1200&q=85',tag:'Destaque',desc:'Apartamento com planta generosa, acabamento contemporâneo e posição estratégica para quem busca conforto, segurança e liquidez na Barra.',points:['Condomínio completo com estrutura familiar','Boa relação entre metragem, localização e liquidez','Ideal para moradia principal com leitura patrimonial']},
-        leblon:{title:'Cobertura com vista para o mar no Leblon',loc:'Leblon · Rio de Janeiro',price:'R$ 12.900.000',meta:['4 quartos','380 m²','Vista mar'],image:'https://images.unsplash.com/photo-1600607688969-a5bfcd646154?auto=format&fit=crop&w=1200&q=85',tag:'Exclusivo',desc:'Cobertura para um comprador que procura endereço, vista e escassez. O foco aqui é experiência, privacidade e preservação de valor.',points:['Vista e localização com alta barreira de entrada','Potencial para projeto de interiores sob medida','Ativo voltado para uso próprio ou reserva patrimonial']},
-        jardim:{title:'Residência assinada no Jardim Botânico',loc:'Jardim Botânico · Rio de Janeiro',price:'R$ 8.600.000',meta:['4 suítes','420 m²','Casa'],image:'https://images.unsplash.com/photo-1600585152915-d208bec867a1?auto=format&fit=crop&w=1200&q=85',tag:'Curadoria Hárpia',desc:'Casa com arquitetura forte e relação direta com verde, pensada para quem quer morar bem sem abrir mão de uma tese de valorização.',points:['Projeto com identidade e apelo de revenda','Perfil raro para famílias e compradores autorais','Boa sinergia com reforma, decoração e valorização']},
-        barra:{title:'Lançamento wellness na Barra da Tijuca',loc:'Barra da Tijuca · Rio de Janeiro',price:'A partir de R$ 3.290.000',meta:['alto padrão','wellness','lançamento'],image:'https://images.unsplash.com/photo-1600566753190-17f0baa2a6c3?auto=format&fit=crop&w=1200&q=85',tag:'Lançamento',desc:'Empreendimento para quem busca infraestrutura, lazer e tese de compra em fase inicial com acompanhamento consultivo.',points:['Produto com narrativa de wellness e conveniência','Entrada planejada conforme tabela e disponibilidade','Análise de crédito e estruturação podem ser avaliadas']},
-        ipanema:{title:'Apartamento reformado em Ipanema',loc:'Ipanema · Rio de Janeiro',price:'R$ 6.750.000',meta:['3 quartos','210 m²','Pronto'],image:'https://images.unsplash.com/photo-1600210492486-724fe5c67fb0?auto=format&fit=crop&w=1200&q=85',tag:'Pronto para morar',desc:'Apartamento pronto para uso, com reforma já absorvida no produto e endereço de alta procura na Zona Sul.',points:['Menor fricção para mudança imediata','Endereço com demanda constante','Produto bom para quem valoriza tempo e acabamento']},
-        joa:{title:'Casa contemporânea no Joá',loc:'Joá · Rio de Janeiro',price:'R$ 15.500.000',meta:['5 suítes','650 m²','Vista mar'],image:'https://images.unsplash.com/photo-1600585154526-990dced4db0d?auto=format&fit=crop&w=1200&q=85',tag:'Vista mar',desc:'Casa de presença, com escala, vista e privacidade. Produto para uma decisão emocional, mas que precisa de análise técnica bem feita.',points:['Alto impacto visual e experiência de moradia','Perfil indicado para negociação consultiva','Documentação e manutenção devem ser analisadas com cuidado']}
-      };
+      const SUPABASE_URL = 'https://desxomqvtjaymwwxivwq.supabase.co';
+      const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_wWUVxjkMDMXLOrzE0y3Y_w_k9jXf88B';
+      const providedCatalogItems = [
+        {
+          id:'harpia-botafogo-easy-95m2',
+          code:'BOT-EASY-95',
+          name:'Apartamento Botafogo Easy',
+          description:'Apartamento em Botafogo, Rio de Janeiro, com excelente iluminação natural, ótima localização, área externa com piscina, salão de jogos, parque infantil e coworking.',
+          location:{city:'Rio de Janeiro',neighborhood:'Botafogo',condominium:'Easy'},
+          price:1631000,
+          tags:['Botafogo','Easy','Imóvel avulso'],
+          features:['95 m²','1 suíte','1 quarto','Piscina','Salão de jogos','Parque infantil','Coworking'],
+          bedrooms:1,
+          suites:1,
+          bathrooms:2,
+          private_area_m2:95,
+          media:[{url:'/assets/catalog/botafogo-easy/sala-cozinha-01.jpg',isCover:true}]
+        },
+        {
+          id:'harpia-botafogo-easy-147m2',
+          code:'BOT-EASY-147',
+          name:'Apartamento Botafogo Easy 147 m²',
+          description:'Imóvel espetacular em Botafogo, no Easy, com iluminação natural, excelente vista, área externa com piscina, salão de jogos, parque infantil e coworking.',
+          location:{city:'Rio de Janeiro',neighborhood:'Botafogo',condominium:'Easy'},
+          price:2708000,
+          tags:['Botafogo','Easy','Imóvel avulso'],
+          features:['147 m²','2 suítes','1 quarto','2 vagas','Excelente vista','Piscina','Coworking'],
+          bedrooms:1,
+          suites:2,
+          bathrooms:3,
+          parking_spaces:2,
+          private_area_m2:147,
+          media:[{url:'/assets/catalog/botafogo-easy-147/sala-01.jpg',isCover:true}]
+        },
+        {
+          id:'harpia-barra-orygem-acqua-home-venice-151m2',
+          code:'BAR-ORYGEM-151',
+          name:'Apartamento Venice Orygem Acqua Home 151 m²',
+          description:'Apartamento na Barra da Tijuca, no Edifício Venice do Orygem Acqua Home, com excelente vista e localização, balsa exclusiva para a praia e área externa de alto padrão com lazer completo.',
+          location:{city:'Rio de Janeiro',neighborhood:'Barra da Tijuca',condominium:'Orygem Acqua Home - Edifício Venice'},
+          price:2293158,
+          tags:['Barra da Tijuca','Orygem Acqua Home','Edifício Venice','Imóvel avulso'],
+          features:['151 m²','3 suítes','2 vagas','Excelente vista','Balsa exclusiva para a praia','Piscina','Academia','Quadra de tênis'],
+          bedrooms:3,
+          suites:3,
+          parking_spaces:2,
+          private_area_m2:151,
+          media:[{url:'/assets/catalog/orygem-acqua-home-venice-151/sala-01.jpg',isCover:true}]
+        }
+      ];
+      let properties = {};
+      function formatMoney(value){return typeof value === 'number' ? value.toLocaleString('pt-BR',{style:'currency',currency:'BRL',maximumFractionDigits:0}) : 'Valor sob consulta'}
+      function asArray(value){return Array.isArray(value) ? value : []}
+      function itemLocation(item){
+        const location = item.location || {};
+        return [location.neighborhood, location.city].filter(Boolean).join(' · ') || 'Rio de Janeiro';
+      }
+      function itemCover(item){
+        const media = asArray(item.media);
+        return (media.find(photo=>photo.isCover) || media[0] || {}).url || '/assets/catalog/botafogo-easy/sala-cozinha-01.jpg';
+      }
+      function itemMeta(item){
+        const meta = [];
+        const area = item.privateAreaM2 || item.private_area_m2;
+        const suites = item.suites;
+        const bedrooms = item.bedrooms;
+        const parking = item.parkingSpaces || item.parking_spaces;
+        if(area) meta.push(`${area} m²`);
+        if(suites) meta.push(`${suites} suíte${suites > 1 ? 's' : ''}`);
+        if(bedrooms) meta.push(`${bedrooms} quarto${bedrooms > 1 ? 's' : ''}`);
+        if(parking) meta.push(`${parking} vaga${parking > 1 ? 's' : ''}`);
+        return meta.length ? meta : asArray(item.features).slice(0,3);
+      }
+      function toProperty(item){
+        const features = asArray(item.features);
+        return {
+          id:item.id,
+          title:item.name,
+          loc:itemLocation(item),
+          price:formatMoney(item.price),
+          meta:itemMeta(item),
+          image:itemCover(item),
+          tag:(asArray(item.tags)[0] || item.code || 'Catálogo Hárpia'),
+          desc:item.description || 'Imóvel do catálogo Hárpia Patrimonial.',
+          points:(features.length ? features : ['Curadoria Hárpia','Análise patrimonial','Atendimento consultivo']).slice(0,4)
+        };
+      }
+      function renderPropertyGrid(){
+        const grid = document.querySelector('.property-grid');
+        if(!grid) return;
+        const items = Object.values(properties);
+        grid.innerHTML = items.map(item=>`<button class="card property-card" type="button" data-property="${item.id}"><div class="photo" style="background-image:url('${item.image}')"><span class="badge">${item.tag}</span><span class="fav">♡</span></div><div class="card-body"><div class="loc">${item.loc}</div><h3>${item.title}</h3><div class="meta">${item.meta.slice(0,2).map(meta=>`<span>${meta}</span>`).join('')}</div><div class="price-row"><span class="price">${item.price}</span><span class="view">Ver imóvel →</span></div></div></button>`).join('');
+        document.querySelectorAll('.property-card').forEach(card=>card.addEventListener('click',()=>openProperty(card.dataset.property)));
+      }
+      function setCatalogItems(items){
+        properties = Object.fromEntries(items.map(item=>[item.id,toProperty(item)]));
+        renderPropertyGrid();
+      }
+      function mergeCatalogItems(liveItems){
+        const seen = new Set();
+        return [...liveItems,...providedCatalogItems].filter(item=>{
+          const key = String(item.id || item.code || item.name).toLocaleLowerCase('pt-BR');
+          if(seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        });
+      }
+      async function loadCatalogItems(){
+        setCatalogItems(providedCatalogItems);
+        try{
+          const response = await fetch(`${SUPABASE_URL}/rest/v1/catalog_items?select=*&status=eq.published&deleted_at=is.null&order=updated_at.desc`,{
+            headers:{apikey:SUPABASE_PUBLISHABLE_KEY,Authorization:`Bearer ${SUPABASE_PUBLISHABLE_KEY}`}
+          });
+          if(!response.ok) return;
+          const liveItems = await response.json();
+          if(Array.isArray(liveItems) && liveItems.length) setCatalogItems(mergeCatalogItems(liveItems));
+        }catch(error){
+          console.warn('Catálogo público indisponível, exibindo itens locais publicados.', error);
+        }
+      }
       const backdrop = document.querySelector('[data-close-drawers]');
       const propertyDrawer = document.getElementById('property-drawer');
       const searchDrawer = document.getElementById('search-drawer');
@@ -405,6 +512,7 @@
         saveClientAccount(event.currentTarget);
         window.location.href='/cliente/';
       });
+      loadCatalogItems();
       document.addEventListener('keydown',event=>{if(event.key==='Escape'){closeDrawers();closeAiChat()}});
     </script>
 </body>
