@@ -162,8 +162,8 @@
 </form></div></section>
 </main>
 <button class="chat-float" type="button" id="ai-chat-open">Ser atendido agora!</button>
-<aside class="ai-chat" id="ai-chat" aria-hidden="true" aria-label="Chat com IA Hárpia">
-  <div class="ai-chat-head"><strong>IA Hárpia</strong><button class="ai-chat-close" type="button" id="ai-chat-close" aria-label="Fechar chat">×</button></div>
+<aside class="ai-chat" id="ai-chat" aria-hidden="true" aria-label="Chat com Consultor Hárpia">
+  <div class="ai-chat-head"><strong>Consultor Hárpia</strong><button class="ai-chat-close" type="button" id="ai-chat-close" aria-label="Fechar chat">×</button></div>
   <div class="ai-chat-body" id="ai-chat-body">
     <div class="ai-message bot">Olá. Sou a IA da Hárpia. Posso iniciar seu atendimento, entender seu objetivo e direcionar sua solicitação para imóveis, investimento, jurídico, leilões ou arquitetura.</div>
   </div>
@@ -377,7 +377,7 @@
         if(!text) return;
         addAiMessage(text,'lead');
         input.value = '';
-        window.setTimeout(()=>addAiMessage('Recebi sua mensagem. A IA Hárpia vai conduzir esse atendimento por aqui e a configuração completa será administrada no sistema interno da Hárpia. Para continuar agora, me diga se seu foco é compra, investimento, jurídico, leilão ou arquitetura.','bot'),300);
+        window.setTimeout(()=>addAiMessage('Recebi sua mensagem. O Consultor Hárpia vai conduzir esse atendimento por aqui e a configuração completa será administrada no sistema interno da Hárpia. Para continuar agora, me diga se seu foco é compra, investimento, jurídico, leilão ou arquitetura.','bot'),300);
       });
       document.addEventListener('click',event=>{
         if(event.target.matches('[data-close-drawers]')) closeDrawers();
