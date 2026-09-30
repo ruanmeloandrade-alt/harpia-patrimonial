@@ -1,4 +1,4 @@
-import { requireSupabase } from '../../../core/supabase/client';
+import { isSupabaseConfigured, requireSupabase } from '../../../core/supabase/client';
 import type { Json } from '../../../core/supabase/database.types';
 import { applyRuntimeRegionalPreferences } from '../runtime-preferences';
 
@@ -177,6 +177,38 @@ export const DEFAULT_ORGANIZATION_PREFERENCES: NormalizedOrganizationPreferences
   },
 };
 
+const LOCAL_ORGANIZATION_SETTINGS_KEY = 'harpia.local.organization-settings';
+
+function defaultOrganizationSettings(): OrganizationSettings {
+  return {
+    id: 1,
+    company_name: 'Hárpia Patrimonial & Co.',
+    legal_name: 'Hárpia Patrimonial & Co.',
+    document: '31118466/0001-10',
+    phone: '+55 21 99013-5757',
+    email: 'contato@harpiapatrimonial.com',
+    website: 'https://harpiapatrimonial.com',
+    city: 'Rio de Janeiro',
+    state: 'RJ',
+    preferences: DEFAULT_ORGANIZATION_PREFERENCES,
+  };
+}
+
+function loadLocalOrganizationSettings(): OrganizationSettings {
+  if (typeof window === 'undefined') return defaultOrganizationSettings();
+  try {
+    const raw = window.localStorage.getItem(LOCAL_ORGANIZATION_SETTINGS_KEY);
+    return raw ? { ...defaultOrganizationSettings(), ...JSON.parse(raw) } : defaultOrganizationSettings();
+  } catch {
+    return defaultOrganizationSettings();
+  }
+}
+
+function saveLocalOrganizationSettings(settings: OrganizationSettings) {
+  if (typeof window === 'undefined') return;
+  window.localStorage.setItem(LOCAL_ORGANIZATION_SETTINGS_KEY, JSON.stringify(settings));
+}
+
 function normalizeBusinessHours(crm: OrganizationPreferences['crm']): BusinessHoursSchedule {
   const legacyStart = crm?.businessHoursStart || '09:00';
   const legacyEnd = crm?.businessHoursEnd || '18:00';
@@ -249,6 +281,7 @@ export function applyOrganizationRegionalPreferences(preferences: OrganizationPr
 export const applyOrganizationPreferences = applyOrganizationRegionalPreferences;
 
 export async function getOrganizationSettings() {
+  if (!isSupabaseConfigured) return loadLocalOrganizationSettings();
   const supabase = requireSupabase();
   const { data, error } = await supabase
     .from('organization_settings')
@@ -262,12 +295,22 @@ export async function getOrganizationSettings() {
 }
 
 export async function updateOrganizationSettings(input: Omit<OrganizationSettings, 'id' | 'preferences'>) {
+  if (!isSupabaseConfigured) {
+    saveLocalOrganizationSettings({ ...loadLocalOrganizationSettings(), ...input });
+    return;
+  }
   const supabase = requireSupabase();
   const { error } = await supabase.from('organization_settings').update(input).eq('id', 1);
   if (error) throw error;
 }
 
 export async function updateOrganizationPreferences(preferences: OrganizationPreferences) {
+  if (!isSupabaseConfigured) {
+    const settings = loadLocalOrganizationSettings();
+    saveLocalOrganizationSettings({ ...settings, preferences });
+    applyOrganizationRegionalPreferences(preferences);
+    return;
+  }
   const supabase = requireSupabase();
   const { error } = await supabase
     .from('organization_settings')

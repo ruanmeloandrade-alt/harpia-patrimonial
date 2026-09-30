@@ -1,4 +1,4 @@
-import { requireSupabase } from '../../core/supabase/client';
+import { isSupabaseConfigured, requireSupabase } from '../../core/supabase/client';
 
 export type UserThemePreference = 'light' | 'dark' | 'system';
 
@@ -28,6 +28,23 @@ export const DEFAULT_USER_PREFERENCES: UserPreferences = {
   notify_integration_failure: true,
 };
 
+const LOCAL_USER_PREFERENCES_KEY = 'harpia.local.user-preferences';
+
+function loadLocalUserPreferences(): UserPreferences {
+  if (typeof window === 'undefined') return { ...DEFAULT_USER_PREFERENCES };
+  try {
+    const raw = window.localStorage.getItem(LOCAL_USER_PREFERENCES_KEY);
+    return raw ? { ...DEFAULT_USER_PREFERENCES, ...JSON.parse(raw) } : { ...DEFAULT_USER_PREFERENCES };
+  } catch {
+    return { ...DEFAULT_USER_PREFERENCES };
+  }
+}
+
+function saveLocalUserPreferences(preferences: UserPreferences) {
+  if (typeof window === 'undefined') return;
+  window.localStorage.setItem(LOCAL_USER_PREFERENCES_KEY, JSON.stringify(preferences));
+}
+
 export function applyUserAppearance(preferences: Pick<UserPreferences, 'theme' | 'compact_mode'>) {
   if (typeof document === 'undefined') return;
   const prefersDark = typeof window !== 'undefined' && window.matchMedia?.('(prefers-color-scheme: dark)').matches;
@@ -39,6 +56,7 @@ export function applyUserAppearance(preferences: Pick<UserPreferences, 'theme' |
 }
 
 export async function getUserPreferences(userId: string): Promise<UserPreferences> {
+  if (!isSupabaseConfigured) return loadLocalUserPreferences();
   const supabase = requireSupabase() as any;
   const { data, error } = await supabase
     .from('user_preferences')
@@ -58,6 +76,15 @@ export async function getUserPreferences(userId: string): Promise<UserPreference
 }
 
 export async function updateUserPreferences(userId: string, patch: Partial<UserPreferences>): Promise<UserPreferences> {
+  if (!isSupabaseConfigured) {
+    const next = { ...loadLocalUserPreferences(), ...patch };
+    saveLocalUserPreferences(next);
+    applyUserAppearance(next);
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('harpia:user-preferences-updated', { detail: next }));
+    }
+    return next;
+  }
   const supabase = requireSupabase() as any;
   const current = await getUserPreferences(userId);
   const next = { ...current, ...patch };

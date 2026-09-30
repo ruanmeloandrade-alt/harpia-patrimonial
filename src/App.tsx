@@ -55,14 +55,14 @@ export default function App() {
   useGlobalInteractionFeedback();
 
   return (
-    <AppErrorBoundary>
-      <RouterProvider>
+    <RouterProvider>
+      <AppErrorBoundary>
         <AuthProvider>
           <PlatformRuntimeProvider>
             <AppRouter />
           </PlatformRuntimeProvider>
         </AuthProvider>
-      </RouterProvider>
-    </AppErrorBoundary>
+      </AppErrorBoundary>
+    </RouterProvider>
   );
 }

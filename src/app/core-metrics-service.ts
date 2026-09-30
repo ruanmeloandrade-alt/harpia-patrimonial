@@ -1,8 +1,9 @@
-import { requireSupabase } from '../core/supabase/client';
+import { isSupabaseConfigured, requireSupabase } from '../core/supabase/client';
 
 export type CoreMetrics = { internalUsers: number; customGroups: number };
 
 export async function getCoreMetrics(): Promise<CoreMetrics> {
+  if (!isSupabaseConfigured) return { internalUsers: 1, customGroups: 0 };
   const supabase = requireSupabase();
   const [{ count: internalUsers, error: usersError }, { count: customGroups, error: groupsError }] = await Promise.all([
     supabase.from('user_profiles').select('id', { count: 'exact', head: true }).eq('account_type', 'internal'),

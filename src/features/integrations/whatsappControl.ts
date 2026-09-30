@@ -1,4 +1,4 @@
-import { requireSupabase } from '../../core/supabase/client';
+import { isSupabaseConfigured, requireSupabase } from '../../core/supabase/client';
 
 export type WhatsAppControlAction =
   | 'list'
@@ -37,6 +37,10 @@ export async function controlWhatsApp(
   action: WhatsAppControlAction,
   sessionId?: string,
 ): Promise<WhatsAppControlResult> {
+  if (!isSupabaseConfigured) {
+    if (action === 'list') return { ok: true, sessions: [] };
+    throw new Error('Conector WhatsApp em 2ª fase: depende do Supabase dedicado e da Edge Function.');
+  }
   const supabase = requireSupabase();
 
   const { data, error } = await supabase.functions.invoke('whatsapp-connector-control', {

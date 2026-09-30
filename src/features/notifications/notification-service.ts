@@ -1,4 +1,4 @@
-import { requireSupabase } from '../../core/supabase/client';
+import { isSupabaseConfigured, requireSupabase } from '../../core/supabase/client';
 
 export type UserNotificationKind =
   | 'new_lead'
@@ -20,6 +20,7 @@ export type UserNotification = {
 };
 
 export async function listUnreadNotifications(userId: string): Promise<UserNotification[]> {
+  if (!isSupabaseConfigured) return [];
   const supabase = requireSupabase() as any;
   const { data, error } = await supabase
     .from('user_notifications')
@@ -33,6 +34,7 @@ export async function listUnreadNotifications(userId: string): Promise<UserNotif
 }
 
 export async function markNotificationRead(notificationId: string) {
+  if (!isSupabaseConfigured) return;
   const supabase = requireSupabase() as any;
   const { error } = await supabase
     .from('user_notifications')
@@ -42,6 +44,7 @@ export async function markNotificationRead(notificationId: string) {
 }
 
 export function subscribeUserNotifications(userId: string, listener: (notification: UserNotification) => void) {
+  if (!isSupabaseConfigured) return () => undefined;
   const supabase = requireSupabase() as any;
   const channel = supabase
     .channel(`harpia-user-notifications-${userId}`)

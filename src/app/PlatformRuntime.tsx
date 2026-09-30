@@ -37,6 +37,7 @@ import { SupabaseAIModelRuntime } from './integrations/supabaseAIModelRuntime';
 import { SupabaseAutomationWebhook } from './integrations/supabaseAutomationWebhook';
 import { SupabaseWhatsAppTransport } from './integrations/supabaseWhatsAppTransport';
 import { SupabaseFavoritesStore } from './integrations/supabaseFavoritesStore';
+import { createUserProvidedCatalogRepository } from '../features/public-catalog/userProvidedCatalogItems';
 import { loadInternalAssignees } from './integrations/internalAssignees';
 import { salesBotConditionEvaluator } from './integrations/salesBotConditionEvaluator';
 import { hydrateSharedF05Storage } from './integrations/sharedF05Storage';
@@ -75,7 +76,7 @@ export function PlatformRuntimeProvider({ children }: PropsWithChildren) {
     return null;
   }, []);
   const catalogRepository = useMemo<CatalogRepository>(
-    () => catalogRuntime?.repository ?? new LocalCatalogRepository(),
+    () => createUserProvidedCatalogRepository(catalogRuntime?.repository ?? new LocalCatalogRepository()),
     [catalogRuntime],
   );
   const publicCatalogService = useMemo(

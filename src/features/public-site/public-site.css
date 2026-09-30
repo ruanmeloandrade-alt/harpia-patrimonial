@@ -201,7 +201,30 @@
 
 .homepage-stage {
   min-height: calc(100vh - 78px);
+  padding-bottom: 110px;
   background: var(--paper);
+}
+
+.home-hero {
+  min-height: 430px;
+  padding-block: 90px 56px;
+  display: grid;
+  align-items: end;
+}
+
+.home-hero > div {
+  max-width: 920px;
+}
+
+.home-hero p:not(.hero-kicker) {
+  max-width: 700px;
+  color: var(--muted);
+  font-size: 1.12rem;
+  line-height: 1.75;
+}
+
+.home-featured {
+  padding-top: 28px;
 }
 
 .floating-chat-button {
@@ -230,7 +253,8 @@
 }
 
 @media (max-width: 760px) {
-  .homepage-stage { min-height: calc(100vh - 68px); }
+  .homepage-stage { min-height: calc(100vh - 68px); padding-bottom: 72px; }
+  .home-hero { min-height: 360px; padding-block: 62px 34px; }
   .floating-chat-button {
     right: 14px;
     bottom: 14px;

@@ -356,7 +356,7 @@ export default function PublicSiteApp({ catalog = emptyPublicCatalogReader, auth
 
       {notice && <div className="integration-notice" role="status"><span>{notice}</span><button type="button" onClick={() => setNotice('')} aria-label="Fechar aviso">×</button></div>}
 
-      {route === '/' && <main className="homepage-stage" aria-label="Página inicial da Hárpia Patrimonial" />}
+      {route === '/' && <HomePage items={items} loading={loading} error={catalogError} onCatalog={() => navigate('/imoveis')} onOpen={(slug) => navigate(`/imoveis/${encodeURIComponent(slug)}`)} onRetry={reloadCatalog} onFavorite={(item) => { if (!auth?.currentClient) return requestLogin('favoritar-imovel'); if (!favorites) return setNotice('Persistência de favoritos aguarda integração da conta com o catálogo real.'); return favorites.toggle(item); }} isFavorite={(id) => favorites?.isFavorite(id) ?? false} />}
 
       {route === '/imoveis' && <CatalogPage items={items} loading={loading} error={catalogError} filters={filters} options={filterOptions} onFilters={setFilters} onOpen={(slug) => navigate(`/imoveis/${encodeURIComponent(slug)}`)} onRetry={reloadCatalog} onFavorite={(item) => { if (!auth?.currentClient) return requestLogin('favoritar-imovel'); if (!favorites) return setNotice('Persistência de favoritos aguarda integração da conta com o catálogo real.'); return favorites.toggle(item); }} isFavorite={(id) => favorites?.isFavorite(id) ?? false} />}
 
@@ -382,6 +382,34 @@ export default function PublicSiteApp({ catalog = emptyPublicCatalogReader, auth
 
       {retentionOpen && <RetentionDialog onClose={() => setRetentionOpen(false)} onAccept={() => { setRetentionOpen(false); requestService('Retenção de comprador'); }} />}
     </div>
+  );
+}
+
+function HomePage({ items, loading, error, onCatalog, onOpen, onRetry, onFavorite, isFavorite }: { items: PublicCatalogItem[]; loading: boolean; error: string; onCatalog: () => void; onOpen: (slug: string) => void; onRetry: () => void; onFavorite: (item: PublicCatalogItem) => void | Promise<void>; isFavorite: (id: string) => boolean; }) {
+  return (
+    <main className="homepage-stage" aria-label="Página inicial da Hárpia Patrimonial">
+      <section className="home-hero section-shell">
+        <div>
+          <p className="hero-kicker">Hárpia Patrimonial & Co.</p>
+          <h1>Inteligência patrimonial aplicada a imóveis reais.</h1>
+          <p>A vitrine da Home usa somente imóveis publicados no catálogo. Sem mockups, sem cards fictícios.</p>
+          <div className="hero-actions">
+            <button className="primary-button" type="button" onClick={onCatalog}>Ver imóveis</button>
+          </div>
+        </div>
+      </section>
+
+      <section className="home-featured section-shell" aria-labelledby="home-featured-title">
+        <div className="section-heading">
+          <div>
+            <p className="section-kicker">Imóveis publicados</p>
+            <h2 id="home-featured-title">Vitrine da Hárpia</h2>
+          </div>
+          <button className="text-button" type="button" onClick={onCatalog}>Abrir catálogo →</button>
+        </div>
+        <PropertyGrid items={items} loading={loading} error={error} onOpen={onOpen} onRetry={onRetry} onFavorite={onFavorite} isFavorite={isFavorite} />
+      </section>
+    </main>
   );
 }
 
