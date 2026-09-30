@@ -43,6 +43,26 @@ export class InboxService {
     return conversation;
   }
 
+  removeConversationByLeadId(leadId: CrmId): void {
+    this.removeConversationsByLeadIds([leadId]);
+  }
+
+  removeConversationsByLeadIds(leadIds: CrmId[]): void {
+    const leadIdSet = new Set(leadIds);
+    if (leadIdSet.size === 0) return;
+
+    const conversationIds = this.state.conversations
+      .filter((conversation) => leadIdSet.has(conversation.leadId))
+      .map((conversation) => conversation.id);
+
+    if (conversationIds.length === 0) return;
+
+    const conversationIdSet = new Set(conversationIds);
+    this.state.messages = this.state.messages.filter((message) => !conversationIdSet.has(message.conversationId));
+    this.state.conversations = this.state.conversations.filter((conversation) => !conversationIdSet.has(conversation.id));
+    this.persist();
+  }
+
   setTransportConnected(conversationId: CrmId, connected: boolean, externalThreadId?: string): InboxConversation {
     const conversation = this.requireConversation(conversationId);
     if (connected && !this.transport) {

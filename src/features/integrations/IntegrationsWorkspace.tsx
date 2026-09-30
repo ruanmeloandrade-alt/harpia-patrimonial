@@ -27,6 +27,10 @@ const STATUS_LABELS = {
   future: 'Segunda fase',
 } as const;
 
+const WHATSAPP_PAIRING_VISIBILITY_MS = 10 * 60 * 1000;
+const WHATSAPP_ACTIVE_STATUSES = new Set(['connected', 'open']);
+const WHATSAPP_PAIRING_STATUSES = new Set(['connecting', 'pending', 'qr', 'qrcode', 'pairing']);
+
 interface IntegrationsWorkspaceProps {
   credentialVault?: AICredentialVaultPort;
   canManage?: boolean;
@@ -48,6 +52,26 @@ function statusTone(status: string) {
   if (status === 'connecting' || status === 'pending') return 'pending';
   if (status === 'future') return 'future';
   return 'not_connected';
+}
+
+function whatsappSessionTimestamp(session: WhatsAppSession) {
+  const raw = session.lastHealthAt ?? session.lastEventAt ?? session.connectedAt ?? session.createdAt;
+  if (!raw) return undefined;
+  const timestamp = new Date(raw).getTime();
+  return Number.isNaN(timestamp) ? undefined : timestamp;
+}
+
+function shouldShowWhatsAppSession(session: WhatsAppSession) {
+  const status = session.status.toLowerCase();
+  if (WHATSAPP_ACTIVE_STATUSES.has(status)) return true;
+  if (!WHATSAPP_PAIRING_STATUSES.has(status)) return false;
+
+  const timestamp = whatsappSessionTimestamp(session);
+  return !timestamp || Date.now() - timestamp <= WHATSAPP_PAIRING_VISIBILITY_MS;
+}
+
+function visibleWhatsAppSessions(sessions: WhatsAppSession[]) {
+  return sessions.filter(shouldShowWhatsAppSession);
 }
 
 function phaseTwoIntegration(id: string) {
@@ -105,7 +129,7 @@ export function IntegrationsWorkspace({ credentialVault, canManage = false, show
 
   const refreshWhatsApp = useCallback(async () => {
     try {
-      setWhatsappSessions(await listWhatsAppSessions());
+      setWhatsappSessions(visibleWhatsAppSessions(await listWhatsAppSessions()));
       setWhatsappMessage('');
     } catch (error) {
       setWhatsappSessions([]);
@@ -137,7 +161,7 @@ export function IntegrationsWorkspace({ credentialVault, canManage = false, show
       if (action === 'create') {
         const session = await createWhatsAppSession();
         setWhatsappMessage('Número criado. Gere o QR Code para parear o WhatsApp.');
-        setWhatsappSessions((current) => [session, ...current.filter((item) => item.sessionId !== session.sessionId)]);
+        setWhatsappSessions((current) => visibleWhatsAppSessions([{ ...session, createdAt: new Date().toISOString() }, ...current.filter((item) => item.sessionId !== session.sessionId)]));
       } else if (action === 'connect') {
         const svg = await connectAndLoadWhatsAppQr(sessionId);
         setWhatsappQr(svg);
@@ -145,6 +169,9 @@ export function IntegrationsWorkspace({ credentialVault, canManage = false, show
       } else {
         await controlWhatsApp(action, sessionId);
         setWhatsappMessage(action === 'disconnect' ? 'Número desconectado.' : 'Ação enviada ao conector WhatsApp.');
+        if (action === 'disconnect' && sessionId) {
+          setWhatsappSessions((current) => current.filter((item) => item.sessionId !== sessionId));
+        }
       }
 
       await refreshWhatsApp();
@@ -246,7 +273,7 @@ export function IntegrationsWorkspace({ credentialVault, canManage = false, show
                       </button>
                     </div>
                   </div>;
-                }) : <div className="f05-empty">Nenhum número cadastrado no conector. Clique em “Adicionar número”.</div>}
+                }) : <div className="f05-empty">Nenhum número ativo ou aguardando pareamento agora. Clique em “Adicionar número” para iniciar uma nova conexão.</div>}
               </div>
             </div>
           ) : null}

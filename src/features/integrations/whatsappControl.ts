@@ -15,6 +15,7 @@ export type WhatsAppSession = {
   qrAvailable?: boolean;
   phoneNumber?: string;
   accountLabel?: string;
+  createdAt?: string;
   connectedAt?: string;
   lastHealthAt?: string;
   lastEventAt?: string;

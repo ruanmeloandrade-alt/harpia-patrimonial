@@ -1041,6 +1041,12 @@
   color: #21372c;
 }
 
+.crmAutomationTools .automatizeActive {
+  border-color: #b7c47d;
+  background: #c8d49d;
+  color: #21372c;
+}
+
 .crmPipelineTabs {
   display: flex;
   align-items: center;
@@ -1171,6 +1177,82 @@
 .crmAutomationTools .dangerAction {
   color: #9b3f38;
   border-color: #e4c4c1;
+}
+
+.bulkLeadToolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid #dfe3df;
+  border-radius: 13px;
+  background: #fff;
+  box-shadow: 0 8px 24px rgba(25, 39, 32, .045);
+}
+
+.bulkLeadSelects {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex-wrap: wrap;
+}
+
+.bulkLeadToolbar button,
+.bulkLeadToolbar select,
+.stageBulkActions button {
+  min-height: 34px;
+  border: 1px solid #d4dbd5;
+  border-radius: 9px;
+  background: #fff;
+  color: #314239;
+  padding: 7px 10px;
+  font: inherit;
+  font-size: 10px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.bulkLeadToolbar button:disabled {
+  cursor: not-allowed;
+  opacity: .48;
+}
+
+.bulkLeadToolbar .primaryAction {
+  border-color: #314d3f;
+  background: #314d3f;
+  color: #fff;
+}
+
+.bulkLeadToolbar .dangerAction {
+  border-color: #b95a50;
+  background: #b95a50;
+  color: #fff;
+}
+
+.stageBulkActions {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding-bottom: 2px;
+}
+
+.leadSelectControl {
+  display: grid;
+  place-items: center;
+  flex: 0 0 22px;
+  width: 22px;
+  height: 22px;
+  border: 1px solid #cad2cc;
+  border-radius: 7px;
+  background: #f8faf8;
+}
+
+.leadSelectControl input {
+  width: 14px;
+  height: 14px;
+  margin: 0;
+  accent-color: #314d3f;
 }
 
 .automationBody {

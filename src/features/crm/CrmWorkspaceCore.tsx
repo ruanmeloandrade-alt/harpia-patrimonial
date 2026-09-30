@@ -73,6 +73,9 @@ const customFieldTypes: Array<{ value: CustomFieldType; label: string }> = [
   { value: 'multiselect', label: 'Lista, múltiplas opções' },
 ];
 
+type AutomationToolMode = 'triggers' | 'bulk';
+type BulkLeadAction = 'move_stage' | 'move_pipeline' | 'delete' | 'duplicate';
+
 const pipelineTriggerEventLabels: Record<PipelineTriggerEvent, string> = {
   enter: 'Lead entrou na etapa',
   created_or_moved: 'Lead criado ou movido para etapa',
@@ -109,8 +112,10 @@ export function CrmWorkspace({
     () => initialSnapshot.pipelines.find((pipeline) => pipeline.active)?.id ?? initialSnapshot.pipelines[0]?.id,
   );
   const [selectedLeadId, setSelectedLeadId] = useState<string | undefined>();
+  const [selectedLeadIds, setSelectedLeadIds] = useState<Set<string>>(() => new Set());
   const [feedback, setFeedback] = useState('');
   const [automationOpen, setAutomationOpen] = useState(false);
+  const [automationToolMode, setAutomationToolMode] = useState<AutomationToolMode>('triggers');
   const [pipelineModalOpen, setPipelineModalOpen] = useState(false);
   const [leadModalOpen, setLeadModalOpen] = useState(false);
   const [automationRevision, setAutomationRevision] = useState(0);
@@ -128,6 +133,9 @@ export function CrmWorkspace({
   const [triggerPickerSearch, setTriggerPickerSearch] = useState('');
   const [triggerCatalogSelection, setTriggerCatalogSelection] = useState('');
   const [catalogChoices, setCatalogChoices] = useState<Array<{ id: string; label: string }>>([]);
+  const [bulkLeadAction, setBulkLeadAction] = useState<BulkLeadAction>('move_stage');
+  const [bulkTargetPipelineId, setBulkTargetPipelineId] = useState('');
+  const [bulkTargetStageId, setBulkTargetStageId] = useState('');
 
   useF05StorageListener(() => setAutomationRevision((value) => value + 1));
 
@@ -160,6 +168,10 @@ export function CrmWorkspace({
     if (selectedLeadId && !snapshot.leads.some((lead) => lead.id === selectedLeadId)) {
       setSelectedLeadId(undefined);
     }
+    setSelectedLeadIds((current) => {
+      const availableIds = new Set(snapshot.leads.map((lead) => lead.id));
+      return new Set([...current].filter((id) => availableIds.has(id)));
+    });
   };
 
   const run = (action: () => void, success: string) => {
@@ -180,6 +192,33 @@ export function CrmWorkspace({
   );
   const salesBots = useMemo(() => listSalesBots(), [automationRevision]);
   const aiAgents = useMemo(() => listAIAgents(), [automationRevision]);
+  const selectedPipelineLeadIds = useMemo(
+    () => selectedPipeline
+      ? state.leads.filter((lead) => lead.pipelineId === selectedPipeline.id).map((lead) => lead.id)
+      : [],
+    [selectedPipeline?.id, state.leads],
+  );
+  const selectedBulkCount = selectedPipelineLeadIds.filter((id) => selectedLeadIds.has(id)).length;
+  const bulkTargetPipeline = state.pipelines.find((pipeline) => pipeline.id === bulkTargetPipelineId) ?? selectedPipeline;
+  const bulkTargetStages = bulkTargetPipeline ? service.getStages(bulkTargetPipeline.id) : [];
+
+  useEffect(() => {
+    if (!selectedPipeline) return;
+    if (!bulkTargetPipelineId || !state.pipelines.some((pipeline) => pipeline.id === bulkTargetPipelineId)) {
+      setBulkTargetPipelineId(selectedPipeline.id);
+    }
+  }, [bulkTargetPipelineId, selectedPipeline?.id, state.pipelines]);
+
+  useEffect(() => {
+    if (bulkLeadAction === 'delete' || bulkLeadAction === 'duplicate') return;
+    if (bulkTargetStages.length === 0) {
+      setBulkTargetStageId('');
+      return;
+    }
+    if (!bulkTargetStageId || !bulkTargetStages.some((stage) => stage.id === bulkTargetStageId)) {
+      setBulkTargetStageId(bulkTargetStages[0].id);
+    }
+  }, [bulkLeadAction, bulkTargetStageId, bulkTargetStages]);
 
   const handleCreatePipeline = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -437,6 +476,76 @@ export function CrmWorkspace({
     }
   };
 
+  const setLeadSelection = (leadId: CrmId, checked: boolean) => {
+    setSelectedLeadIds((current) => {
+      const next = new Set(current);
+      if (checked) next.add(leadId);
+      else next.delete(leadId);
+      return next;
+    });
+  };
+
+  const selectStageLeads = (stageId: CrmId, checked: boolean) => {
+    const stageLeadIds = state.leads
+      .filter((lead) => lead.pipelineId === selectedPipeline?.id && lead.stageId === stageId)
+      .map((lead) => lead.id);
+
+    setSelectedLeadIds((current) => {
+      const next = new Set(current);
+      stageLeadIds.forEach((id) => {
+        if (checked) next.add(id);
+        else next.delete(id);
+      });
+      return next;
+    });
+  };
+
+  const selectPipelineLeads = (checked: boolean) => {
+    setSelectedLeadIds((current) => {
+      const next = new Set(current);
+      selectedPipelineLeadIds.forEach((id) => {
+        if (checked) next.add(id);
+        else next.delete(id);
+      });
+      return next;
+    });
+  };
+
+  const runBulkLeadAction = () => {
+    if (!canManage || selectedBulkCount === 0) return;
+    const leadIds = selectedPipelineLeadIds.filter((id) => selectedLeadIds.has(id));
+
+    try {
+      if (bulkLeadAction === 'delete') {
+        if (!window.confirm(`Apagar ${leadIds.length} lead${leadIds.length === 1 ? '' : 's'} da base inteira, incluindo Inbox?`)) return;
+        service.removeLeads(leadIds);
+        inboxService?.removeConversationsByLeadIds(leadIds);
+        setSelectedLeadId((current) => current && leadIds.includes(current) ? undefined : current);
+        setSelectedLeadIds(new Set());
+        refresh(`${leadIds.length} lead${leadIds.length === 1 ? '' : 's'} apagado${leadIds.length === 1 ? '' : 's'} da base.`);
+        return;
+      }
+
+      if (bulkLeadAction === 'duplicate') {
+        service.duplicateLeads(leadIds);
+        setSelectedLeadIds(new Set());
+        refresh(`${leadIds.length} lead${leadIds.length === 1 ? '' : 's'} duplicado${leadIds.length === 1 ? '' : 's'}.`);
+        return;
+      }
+
+      if (!bulkTargetStageId) {
+        setFeedback('Selecione a etapa de destino.');
+        return;
+      }
+
+      service.moveLeadsToStage(leadIds, bulkTargetStageId);
+      setSelectedLeadIds(new Set());
+      refresh(bulkLeadAction === 'move_pipeline' ? 'Leads movidos para o funil selecionado.' : 'Leads movidos de etapa.');
+    } catch (error) {
+      setFeedback(error instanceof Error ? error.message : 'Não foi possível executar a ação em massa.');
+    }
+  };
+
   const handleDrop = (event: ReactDragEvent<HTMLDivElement>, stageId: CrmId) => {
     event.preventDefault();
     const leadId = event.dataTransfer.getData('text/harpia-lead');
@@ -460,6 +569,7 @@ export function CrmWorkspace({
               onChange={(event) => {
                 setSelectedPipelineId(event.target.value || undefined);
                 setSelectedLeadId(undefined);
+                setSelectedLeadIds(new Set());
               }}
             >
               {state.pipelines.length === 0
@@ -499,6 +609,7 @@ export function CrmWorkspace({
                   onClick={() => {
                     setSelectedPipelineId(pipeline.id);
                     setSelectedLeadId(undefined);
+                    setSelectedLeadIds(new Set());
                   }}
                 >
                   {pipeline.name} · {count}
@@ -514,11 +625,13 @@ export function CrmWorkspace({
               <section className={styles.crmAutomationToolbar}>
                 <div className={styles.crmAutomationToolbarIntro}>
                   <span>MODO AUTOMATIZE</span>
-                  <strong>Gatilhos dentro da própria pipeline</strong>
-                  <small>Os cards abaixo pertencem à etapa onde aparecem.</small>
+                  <strong>{automationToolMode === 'bulk' ? 'Ações em massa nos leads' : 'Gatilhos dentro da própria pipeline'}</strong>
+                  <small>{automationToolMode === 'bulk' ? `${selectedBulkCount} lead${selectedBulkCount === 1 ? '' : 's'} selecionado${selectedBulkCount === 1 ? '' : 's'}` : 'Os cards abaixo pertencem à etapa onde aparecem.'}</small>
                 </div>
                 {canManage ? (
                   <div className={styles.crmAutomationTools}>
+                    <button type="button" className={automationToolMode === 'triggers' ? styles.automatizeActive : undefined} onClick={() => setAutomationToolMode('triggers')}>Gatilhos</button>
+                    <button type="button" className={automationToolMode === 'bulk' ? styles.automatizeActive : undefined} onClick={() => setAutomationToolMode('bulk')}>Ações em massa</button>
                     <button type="button" onClick={() => setPipelineModalOpen(true)}>+ Novo funil</button>
                     <button type="button" onClick={duplicatePipeline}>Duplicar funil</button>
                     <button type="button" onClick={renamePipeline}>Editar funil</button>
@@ -530,6 +643,40 @@ export function CrmWorkspace({
                   </div>
                 ) : null}
                 <button className={styles.crmAutomationClose} type="button" onClick={() => setAutomationOpen(false)}>Fechar Automatize</button>
+              </section>
+            ) : null}
+
+            {automationOpen && automationToolMode === 'bulk' ? (
+              <section className={styles.bulkLeadToolbar}>
+                <div className={styles.bulkLeadSelects}>
+                  <button type="button" onClick={() => selectPipelineLeads(true)} disabled={selectedPipelineLeadIds.length === 0}>Selecionar funil</button>
+                  <button type="button" onClick={() => selectPipelineLeads(false)} disabled={selectedBulkCount === 0}>Limpar seleção</button>
+                  <select value={bulkLeadAction} onChange={(event) => setBulkLeadAction(event.target.value as BulkLeadAction)}>
+                    <option value="move_stage">Mover para etapa</option>
+                    <option value="move_pipeline">Mover para funil</option>
+                    <option value="duplicate">Duplicar leads</option>
+                    <option value="delete">Apagar da base</option>
+                  </select>
+                  {bulkLeadAction === 'move_pipeline' ? (
+                    <select value={bulkTargetPipelineId} onChange={(event) => {
+                      setBulkTargetPipelineId(event.target.value);
+                      const targetStages = service.getStages(event.target.value);
+                      setBulkTargetStageId(targetStages[0]?.id ?? '');
+                    }}>
+                      {state.pipelines.map((pipeline) => <option key={pipeline.id} value={pipeline.id}>{pipeline.name}</option>)}
+                    </select>
+                  ) : null}
+                  {(bulkLeadAction === 'move_stage' || bulkLeadAction === 'move_pipeline') ? (
+                    <select value={bulkTargetStageId} onChange={(event) => setBulkTargetStageId(event.target.value)}>
+                      {bulkTargetStages.length === 0
+                        ? <option value="">Nenhuma etapa</option>
+                        : bulkTargetStages.map((stage) => <option key={stage.id} value={stage.id}>{stage.name}</option>)}
+                    </select>
+                  ) : null}
+                </div>
+                <button type="button" className={bulkLeadAction === 'delete' ? styles.dangerAction : styles.primaryAction} disabled={!canManage || selectedBulkCount === 0} onClick={runBulkLeadAction}>
+                  Aplicar em {selectedBulkCount}
+                </button>
               </section>
             ) : null}
 
@@ -572,7 +719,7 @@ export function CrmWorkspace({
                       ) : null}
                     </div>
 
-                    {automationOpen ? (
+                    {automationOpen && automationToolMode === 'triggers' ? (
                       <div className={styles.stageAutomationBody}>
                         <div className={styles.stageTriggerList}>
                           {stageTriggers.length === 0 ? (
@@ -635,6 +782,12 @@ export function CrmWorkspace({
                       </div>
                     ) : (
                       <div className={styles.leadList}>
+                        {automationOpen && automationToolMode === 'bulk' && leads.length > 0 ? (
+                          <div className={styles.stageBulkActions}>
+                            <button type="button" onClick={() => selectStageLeads(stage.id, true)}>Selecionar etapa</button>
+                            <button type="button" onClick={() => selectStageLeads(stage.id, false)}>Limpar etapa</button>
+                          </div>
+                        ) : null}
                         {leads.length === 0 ? (
                           <div className={styles.columnEmpty}>Arraste um lead para esta etapa ou crie um novo.</div>
                         ) : (
@@ -645,6 +798,9 @@ export function CrmWorkspace({
                               state={state}
                               assignees={assignees}
                               selected={lead.id === selectedLeadId}
+                              selectable={automationOpen && automationToolMode === 'bulk'}
+                              checked={selectedLeadIds.has(lead.id)}
+                              onCheckedChange={(checked) => setLeadSelection(lead.id, checked)}
                               onSelect={() => setSelectedLeadId(lead.id)}
                             />
                           ))
@@ -773,11 +929,14 @@ export function CrmWorkspace({
   );
 }
 
-function LeadCard({ lead, state, assignees, selected, onSelect }: {
+function LeadCard({ lead, state, assignees, selected, selectable = false, checked = false, onCheckedChange, onSelect }: {
   lead: Lead;
   state: CrmState;
   assignees: AssigneeOption[];
   selected: boolean;
+  selectable?: boolean;
+  checked?: boolean;
+  onCheckedChange?: (checked: boolean) => void;
   onSelect: () => void;
 }) {
   const tags = state.tags.filter((tag) => lead.tagIds.includes(tag.id));
@@ -791,6 +950,16 @@ function LeadCard({ lead, state, assignees, selected, onSelect }: {
       onClick={onSelect}
     >
       <div className={styles.leadCardTop}>
+        {selectable ? (
+          <label className={styles.leadSelectControl} onClick={(event) => event.stopPropagation()}>
+            <input
+              type="checkbox"
+              checked={checked}
+              onChange={(event) => onCheckedChange?.(event.target.checked)}
+              aria-label={`Selecionar ${lead.name}`}
+            />
+          </label>
+        ) : null}
         <span className={styles.leadAvatar}>{lead.name.trim().charAt(0).toUpperCase() || 'L'}</span>
         <div className={styles.leadIdentity}>
           <strong>{lead.name}</strong>

@@ -283,6 +283,66 @@ export class CrmService {
     return lead;
   }
 
+  removeLead(leadId: CrmId): void {
+    this.removeLeads([leadId]);
+  }
+
+  removeLeads(leadIds: CrmId[]): void {
+    const uniqueIds = [...new Set(leadIds)];
+    if (uniqueIds.length === 0) return;
+    uniqueIds.forEach((id) => this.requireLead(id));
+
+    const leadIdSet = new Set(uniqueIds);
+    this.state.tasks = this.state.tasks.filter((task) => !leadIdSet.has(task.leadId));
+    this.state.history = this.state.history.filter((entry) => !leadIdSet.has(entry.leadId));
+    this.state.leads = this.state.leads.filter((lead) => !leadIdSet.has(lead.id));
+    this.persist();
+  }
+
+  moveLeadsToStage(leadIds: CrmId[], stageId: CrmId): void {
+    const uniqueIds = [...new Set(leadIds)];
+    if (uniqueIds.length === 0) return;
+    const stage = this.requireStage(stageId);
+    const timestamp = nowIso();
+
+    uniqueIds.forEach((leadId) => {
+      const lead = this.requireLead(leadId);
+      const previousStageId = lead.stageId ?? null;
+      if (lead.stageId === stage.id && lead.pipelineId === stage.pipelineId) return;
+
+      lead.pipelineId = stage.pipelineId;
+      lead.stageId = stage.id;
+      lead.updatedAt = timestamp;
+      this.addHistory(lead.id, 'stage_changed', 'Lead movido por ação em massa.', {
+        previousStageId,
+        stageId: stage.id,
+        pipelineId: stage.pipelineId,
+      });
+    });
+
+    this.persist();
+  }
+
+  duplicateLeads(leadIds: CrmId[]): Lead[] {
+    const timestamp = nowIso();
+    const copies = [...new Set(leadIds)].map((leadId) => {
+      const source = this.requireLead(leadId);
+      const copy: Lead = {
+        ...(JSON.parse(JSON.stringify(source)) as Lead),
+        id: createCrmId('lead'),
+        name: `${source.name} - cópia`,
+        createdAt: timestamp,
+        updatedAt: timestamp,
+      };
+      this.state.leads.push(copy);
+      this.addHistory(copy.id, 'lead_created', 'Lead duplicado por ação em massa.', { sourceLeadId: source.id });
+      return copy;
+    });
+
+    if (copies.length > 0) this.persist();
+    return copies;
+  }
+
   moveLead(leadId: CrmId, stageId: CrmId): Lead {
     const lead = this.requireLead(leadId);
     const stage = this.requireStage(stageId);
