@@ -73,7 +73,8 @@ export function UsersPage({ embedded = false }: { embedded?: boolean }) {
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const form = new FormData(event.currentTarget);
+    const formElement = event.currentTarget;
+    const form = new FormData(formElement);
     try {
       setSaving(true);
       setError(null);
@@ -108,7 +109,7 @@ export function UsersPage({ embedded = false }: { embedded?: boolean }) {
         }
       }
 
-      event.currentTarget.reset();
+      if (formElement.isConnected) formElement.reset();
       setCreateGroups(new Set());
       setCreateOverrides({});
       setShowForm(false);

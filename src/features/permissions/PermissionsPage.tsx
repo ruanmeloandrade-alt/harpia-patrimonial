@@ -47,7 +47,8 @@ export function PermissionsPage({ embedded = false }: { embedded?: boolean }) {
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const form = new FormData(event.currentTarget);
+    const formElement = event.currentTarget;
+    const form = new FormData(formElement);
     try {
       setSaving(true);
       setError(null);
@@ -57,7 +58,7 @@ export function PermissionsPage({ embedded = false }: { embedded?: boolean }) {
         slug: String(form.get('slug') || ''),
         description: String(form.get('description') || ''),
       });
-      event.currentTarget.reset();
+      if (formElement.isConnected) formElement.reset();
       setShowForm(false);
       setNotice('Grupo criado. Agora defina as permissões que ele herda.');
       await load();
