@@ -50,11 +50,16 @@ export interface Front03PublishedItem {
   features: string[];
   lifestyleTags: string[];
   developer?: string;
+  bedrooms?: number;
+  suites?: number;
+  bathrooms?: number;
+  parkingSpaces?: number;
+  privateAreaM2?: number;
   media: Front03Media[];
   status: 'published';
 }
 
-interface Front03Filters {
+export interface Front03Filters {
   itemType?: 'property' | 'product' | 'service';
   purpose?: Front03Purpose;
   city?: string;
@@ -127,6 +132,11 @@ function toPublicItem(item: Front03PublishedItem, parent?: Front03PublishedItem 
     isLaunch: item.isLaunch,
     status: 'published',
     description: item.description,
+    bedrooms: item.bedrooms,
+    suites: item.suites,
+    bathrooms: item.bathrooms,
+    parkingSpaces: item.parkingSpaces,
+    privateAreaM2: item.privateAreaM2,
     lifestyleTags: item.lifestyleTags,
     features: item.features,
     media: item.media

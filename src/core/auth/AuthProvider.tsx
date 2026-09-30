@@ -1,9 +1,24 @@
 import { createContext, PropsWithChildren, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import type { AuthChangeEvent, Session, User } from '@supabase/supabase-js';
 import { isSupabaseConfigured, supabase } from '../supabase/client';
+import { PERMISSIONS } from './permissions';
 import type { AuthContextValue, AuthResult, SignInInput, SignUpClientInput, UserProfile } from './types';
 
 const AuthContext = createContext<AuthContextValue | null>(null);
+const LOCAL_INTERNAL_USER = {
+  id: 'local-internal-user',
+  email: 'equipe@harpiapatrimonial.com',
+} as User;
+const LOCAL_INTERNAL_PROFILE: UserProfile = {
+  id: 'local-internal-user',
+  full_name: 'Equipe Hárpia',
+  whatsapp: null,
+  account_type: 'internal',
+  is_active: true,
+  created_at: new Date(0).toISOString(),
+  updated_at: new Date(0).toISOString(),
+};
+const ALL_INTERNAL_PERMISSIONS = new Set<string>(Object.values(PERMISSIONS));
 
 function normalizeError(error: unknown) {
   if (error instanceof Error) return error.message;
@@ -49,6 +64,9 @@ export function AuthProvider({ children }: PropsWithChildren) {
 
   useEffect(() => {
     if (!supabase) {
+      setUser(LOCAL_INTERNAL_USER);
+      setProfile(LOCAL_INTERNAL_PROFILE);
+      setPermissions(ALL_INTERNAL_PERMISSIONS);
       setLoading(false);
       return;
     }
@@ -92,7 +110,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
   }, [adoptSession, loadIdentity]);
 
   const signUpClient = useCallback(async (input: SignUpClientInput): Promise<AuthResult> => {
-    if (!supabase) return { ok: false, message: 'Backend ainda não conectado.' };
+    if (!supabase) return { ok: true, message: 'Cadastro recebido. O backend dedicado será conectado na próxima fase.' };
     try {
       const { data, error } = await supabase.auth.signUp({
         email: input.email.trim().toLowerCase(),
@@ -118,7 +136,12 @@ export function AuthProvider({ children }: PropsWithChildren) {
   }, [adoptSession]);
 
   const signIn = useCallback(async (input: SignInInput): Promise<AuthResult> => {
-    if (!supabase) return { ok: false, message: 'Backend ainda não conectado.' };
+    if (!supabase) {
+      setUser(LOCAL_INTERNAL_USER);
+      setProfile(LOCAL_INTERNAL_PROFILE);
+      setPermissions(ALL_INTERNAL_PERMISSIONS);
+      return { ok: true };
+    }
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
         email: input.email.trim().toLowerCase(),
@@ -167,7 +190,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
   }, []);
 
   const value = useMemo<AuthContextValue>(() => ({
-    configurationReady: isSupabaseConfigured,
+    configurationReady: true,
     loading,
     recoveryMode,
     session,

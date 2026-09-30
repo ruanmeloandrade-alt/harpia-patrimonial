@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import type { ClientAreaDataState } from '../client-area/ClientArea';
 import { useClientAreaData, type ClientAreaDataSourcePort } from '../client-area/useClientAreaData';
 import { createFront03PublicCatalogReader, type Front03PublicCatalogServicePort } from '../public-catalog/front03Adapter';
+import { createUserProvidedCatalogService } from '../public-catalog/userProvidedCatalogItems';
 import PublicExperience from './PublicExperience';
 import type { PublicSiteConversion } from './PublicSiteApp';
 import { PublicExperienceBoundary } from './PublicExperienceBoundary';
@@ -35,9 +36,14 @@ interface ComposedExperienceProps extends Front02IntegrationShellProps {
 function ComposedExperience(props: ComposedExperienceProps) {
   const [conversionNotice, setConversionNotice] = useState('');
 
-  const catalog = useMemo(
-    () => createFront03PublicCatalogReader(props.catalogService),
+  const catalogService = useMemo(
+    () => createUserProvidedCatalogService(props.catalogService),
     [props.catalogService],
+  );
+
+  const catalog = useMemo(
+    () => createFront03PublicCatalogReader(catalogService),
+    [catalogService],
   );
 
   const authBridge = useMemo(
