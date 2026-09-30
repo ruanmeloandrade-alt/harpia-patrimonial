@@ -3,19 +3,29 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="theme-color" content="#11261f" />
+  <meta name="theme-color" content="#112019" />
   <title>Área Interna | Hárpia Patrimonial & Co.</title>
   <style>
-    :root{--forest:#1f3a31;--forest-deep:#11261f;--gold:#d9c39c;--paper:#f4f0e8;--ink:#17221e}
-    *{box-sizing:border-box}body{margin:0;background:var(--paper);color:var(--ink);font-family:Inter,Arial,sans-serif}
-    a{text-decoration:none;color:inherit}
-    header{min-height:78px;padding:14px max(20px,calc((100vw - 1180px)/2));display:flex;align-items:center;gap:28px;background:var(--forest-deep);color:white}
-    .brand{display:inline-flex;align-items:center;gap:11px}.mark{width:39px;height:39px;display:grid;place-items:center;border:1px solid rgba(217,195,156,.6);border-radius:50%;color:var(--gold);font-family:Georgia,serif;font-size:1.25rem}.copy{display:grid;line-height:1.05}.copy strong{font-size:.92rem;letter-spacing:.18em}.copy small{margin-top:4px;font-size:.54rem;letter-spacing:.14em;color:rgba(255,255,255,.62)}
-    main{min-height:calc(100vh - 78px);display:grid;place-items:center;padding:32px}.card{width:min(680px,100%);padding:42px;border:1px solid rgba(23,34,30,.14);border-radius:24px;background:#fffdf8;box-shadow:0 24px 80px rgba(17,38,31,.08)}h1{font-family:Georgia,serif;font-weight:500;font-size:clamp(2.4rem,6vw,4rem);margin:0 0 18px}.card p{line-height:1.7;color:#68716c}.btn{display:inline-flex;align-items:center;min-height:48px;padding:0 22px;margin-top:10px;border-radius:999px;background:var(--forest);color:white;font-weight:800;font-size:.86rem}
+    :root{--forest:#112019;--green:#183126;--gold:#c6aa72;--paper:#efeee7;--card:#fbfaf6;--ink:#14231b;--muted:#667067}
+    *{box-sizing:border-box}body{margin:0;background:var(--paper);color:var(--ink);font-family:Inter,Arial,sans-serif}a{text-decoration:none;color:inherit}.wrap{width:min(1180px,calc(100% - 44px));margin:auto}
+    header{min-height:82px;background:var(--forest);color:#fff;border-bottom:1px solid rgba(198,170,114,.25)}.nav{min-height:82px;display:flex;align-items:center;gap:24px}.brand img{width:230px;max-width:52vw;height:auto}.nav a:last-child{margin-left:auto;color:#d8c391;font-size:10px;font-weight:900;letter-spacing:.12em;text-transform:uppercase}
+    main{padding:46px 0 70px}.hero{display:grid;grid-template-columns:1fr auto;gap:28px;align-items:end;margin-bottom:28px}.eyebrow{font-size:10px;font-weight:900;letter-spacing:.2em;text-transform:uppercase;color:#8f6f2f}.hero h1{font-family:Georgia,'Times New Roman',serif;font-size:clamp(42px,6vw,74px);font-weight:400;line-height:.94;margin:12px 0}.hero p{max-width:650px;color:var(--muted);line-height:1.7}.status{padding:18px 22px;background:#fff;border:1px solid #ded6c4;color:#344138;font-size:12px}.grid{display:grid;grid-template-columns:1.1fr .9fr;gap:22px}.panel{background:var(--card);border:1px solid #ded6c4;box-shadow:0 18px 44px rgba(20,35,27,.08);padding:24px}.panel h2{margin:0 0 16px;font-family:Georgia,'Times New Roman',serif;font-size:30px;font-weight:400}.timeline{display:grid;gap:14px}.step{display:grid;grid-template-columns:16px 1fr;gap:12px}.dot{width:10px;height:10px;border-radius:50%;background:var(--gold);margin-top:5px}.step strong{display:block}.step span,.panel p{color:var(--muted);font-size:13px;line-height:1.65}.notice{padding:16px 0;border-top:1px solid #e5dece}.notice:first-of-type{border-top:0}.market{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}.item{min-height:170px;padding:16px;display:grid;align-content:end;color:#fff;background:linear-gradient(180deg,rgba(17,32,25,.08),rgba(17,32,25,.82)),url('https://images.unsplash.com/photo-1600566753086-00f18fb6b3ea?auto=format&fit=crop&w=900&q=85') center/cover}.item:nth-child(2){background-image:linear-gradient(180deg,rgba(17,32,25,.08),rgba(17,32,25,.82)),url('https://images.unsplash.com/photo-1600607688969-a5bfcd646154?auto=format&fit=crop&w=900&q=85')}.item span{font-size:10px;font-weight:900;letter-spacing:.12em;text-transform:uppercase;color:#d8c391}.item strong{font-family:Georgia,'Times New Roman',serif;font-size:22px;font-weight:400}.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px}.btn{display:inline-flex;align-items:center;justify-content:center;min-height:42px;padding:0 16px;background:var(--green);color:#fff;font-size:10px;font-weight:900;letter-spacing:.1em;text-transform:uppercase}.btn.secondary{background:transparent;color:var(--green);border:1px solid #cfc5ae}
+    @media(max-width:860px){.hero,.grid{grid-template-columns:1fr}.market{grid-template-columns:1fr}}
   </style>
 </head>
 <body>
-  <header><a class="brand" href="/"><span class="mark">H</span><span class="copy"><strong>HÁRPIA</strong><small>PATRIMONIAL & CO.</small></span></a></header>
-  <main><section class="card"><h1>Área Interna</h1><p>Este endereço será a entrada do cliente para acompanhar processos, trâmites em andamento e histórico. Enquanto a área dedicada é finalizada, o acesso atual continua pela conta do cliente.</p><a class="btn" href="/cliente/">Acessar minha conta</a></section></main>
+  <header><div class="wrap nav"><a class="brand" href="/"><img src="/harpia-logo-white.svg" alt="Hárpia Patrimonial & Co."></a><a href="/">Voltar ao site</a></div></header>
+  <main class="wrap">
+    <section class="hero">
+      <div><div class="eyebrow">Área interna do cliente</div><h1>Seu painel de acompanhamento patrimonial.</h1><p>Acompanhe trâmites, avisos da equipe, documentos em andamento e oportunidades selecionadas pela Hárpia em um só ambiente.</p></div>
+      <div class="status"><strong>Status:</strong> acesso demonstrativo ativo</div>
+    </section>
+    <section class="grid">
+      <div class="panel"><h2>Trâmites do processo</h2><div class="timeline"><div class="step"><i class="dot"></i><div><strong>Cadastro recebido</strong><span>Dados iniciais registrados para atendimento consultivo.</span></div></div><div class="step"><i class="dot"></i><div><strong>Curadoria em análise</strong><span>Equipe avaliando perfil, objetivo, bairros e faixa de investimento.</span></div></div><div class="step"><i class="dot"></i><div><strong>Próximo contato</strong><span>Avisos e atualizações serão adicionados neste painel.</span></div></div></div></div>
+      <div class="panel"><h2>Avisos</h2><div class="notice"><strong>Bem-vindo à área interna.</strong><p>Este espaço concentrará recados, pendências e próximos passos do atendimento.</p></div><div class="notice"><strong>Marketplace Hárpia</strong><p>Oportunidades selecionadas aparecerão aqui conforme o perfil do cliente.</p></div></div>
+      <div class="panel"><h2>Marketplace de oportunidades</h2><div class="market"><div class="item"><span>Imóvel</span><strong>Península contemporâneo</strong></div><div class="item"><span>Oportunidade</span><strong>Cobertura no Leblon</strong></div></div><div class="actions"><a class="btn" href="/#imoveis">Ver imóveis</a><a class="btn secondary" href="https://wa.me/5521990135757?text=Ol%C3%A1%2C%20estou%20na%20%C3%A1rea%20interna%20e%20quero%20falar%20com%20a%20H%C3%A1rpia." target="_blank" rel="noopener">Falar com a equipe</a></div></div>
+      <div class="panel"><h2>Pesquisa rápida</h2><p>Use este painel para organizar preferências de bairro, perfil e objetivo. A busca completa será integrada ao marketplace interno.</p><div class="actions"><a class="btn" href="/#imoveis">Pesquisar oportunidades</a></div></div>
+    </section>
+  </main>
 </body>
 </html>
