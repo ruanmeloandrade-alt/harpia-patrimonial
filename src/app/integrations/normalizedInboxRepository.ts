@@ -59,6 +59,8 @@ type AttachmentRow = {
   mime_type: string | null;
   url: string | null;
   size_bytes: number | null;
+  storage_bucket: string | null;
+  storage_path: string | null;
 };
 
 function conversationFromRow(row: ConversationRow): InboxConversation {
@@ -81,6 +83,8 @@ function attachmentFromRow(row: AttachmentRow | undefined): MessageAttachment | 
     mimeType: row.mime_type ?? undefined,
     url: row.url ?? undefined,
     size: row.size_bytes ?? undefined,
+    storageBucket: row.storage_bucket ?? undefined,
+    storagePath: row.storage_path ?? undefined,
   };
 }
 
@@ -134,6 +138,8 @@ function attachmentToRow(message: InboxMessage) {
     name: message.attachment.name ?? null,
     mime_type: message.attachment.mimeType ?? null,
     url: message.attachment.url ?? null,
+    storage_bucket: message.attachment.storageBucket ?? null,
+    storage_path: message.attachment.storagePath ?? null,
     size_bytes: message.attachment.size ?? null,
   };
 }
@@ -272,7 +278,7 @@ export async function hydrateNormalizedInboxRepository() {
       .order('created_at', { ascending: true }),
     supabase
       .from('inbox_message_attachments')
-      .select('message_id,name,mime_type,url,size_bytes')
+      .select('message_id,name,mime_type,url,size_bytes,storage_bucket,storage_path')
       .order('created_at', { ascending: true }),
   ]);
 
