@@ -44,7 +44,12 @@
     }
     if (hostname === 'vimeo.com' || hostname === 'player.vimeo.com') {
       id = hostname === 'player.vimeo.com' && parts[0] === 'video' ? parts[1] : parts[0];
-      return id && /^\d+$/.test(id) ? { type: 'embed', url:'https://player.vimeo.com/video/' + id, name:'Vimeo' } : null;
+      if (id && /^\d+$/.test(id)) {
+        const hash = u.searchParams.get('h') || (hostname === 'vimeo.com' ? parts[1] : null);
+        const suffix = hash && /^[a-zA-Z0-9]+$/.test(hash) ? '?h=' + hash : '';
+        return { type: 'embed', url:'https://player.vimeo.com/video/' + id + suffix, name:'Vimeo' };
+      }
+      return null;
     }
     return { type: 'file', url: href, name:'Vídeo' };
   }
