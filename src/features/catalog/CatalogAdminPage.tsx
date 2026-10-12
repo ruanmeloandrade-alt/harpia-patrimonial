@@ -1,4 +1,5 @@
 import { HarpiaBrandMark } from '../../shared/components/HarpiaBrandMark';
+import { PropertyPresentationEditor } from './PropertyPresentationEditor';
 import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from 'react';
 import { CATALOG_CHANGED_EVENT, LocalCatalogRepository, type CatalogRepository } from './catalogRepository';
 import type { CatalogMediaStorage } from './catalogMediaStorage';
@@ -1017,6 +1018,13 @@ export function CatalogAdminPage({ access, repository, mediaStorage }: CatalogAd
 
       {error && <div className="f03-alert f03-alert-error">{error}</div>}
       {notice && <div className="f03-alert f03-alert-success">{notice}</div>}
+
+      <PropertyPresentationEditor
+        properties={items.filter(item => item.itemType === 'property' && !item.deletedAt)}
+        repository={productRepository}
+        canManage={access.canManage}
+        onSaved={reload}
+      />
 
       <section className="f03-card f03-section-card">
         <div className="f03-card-heading">
