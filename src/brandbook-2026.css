@@ -1,0 +1,218 @@
+/* HARPIA BRANDBOOK 2026
+   Aplicacao estritamente visual, sem alterar contratos, estados ou comportamento.
+   Paleta: verde claro #C3CE94; verde escuro do brasao #3C4F33;
+   preto #161616; off-white #EEEEF0. Erros mantem destaque semantico.
+   Fontes oficiais ja versionadas em assets/fonts da Harpia.
+*/
+@font-face{font-family:"Harpia Inter";src:url("/assets/fonts/Inter-Regular.ttf") format("truetype");font-style:normal;font-weight:400;font-display:swap}
+@font-face{font-family:"Harpia Inter";src:url("/assets/fonts/Inter-SemiBold.ttf") format("truetype");font-style:normal;font-weight:600;font-display:swap}
+@font-face{font-family:"Harpia Inter";src:url("/assets/fonts/Inter-Bold.ttf") format("truetype");font-style:normal;font-weight:700;font-display:swap}
+@font-face{font-family:"Harpia Mermaid";src:url("/assets/fonts/Mermaid1001.ttf") format("truetype");font-style:normal;font-weight:400 900;font-display:swap}
+:root{
+  --harpia-sage:#C3CE94;
+  --harpia-forest:#3C4F33;
+  --harpia-ink:#161616;
+  --harpia-paper:#EEEEF0;
+  --harpia-heading:"Harpia Mermaid",Georgia,serif;
+  --harpia-body:"Harpia Inter",Inter,Arial,sans-serif;
+  --harpia-focus:#3C4F33;
+  --ink:#161616;
+  --muted:#3C4F33;
+  --paper:#EEEEF0;
+  --surface:#EEEEF0;
+  --line:rgba(60,79,51,.28);
+  --deep:#3C4F33;
+  --gold:#3C4F33;
+  --brand-accent:#C3CE94;
+  --radius:12px;
+}
+html{scroll-padding-top:80px}
+body{color:var(--harpia-ink);font-family:var(--harpia-body)!important}
+body,button,input,select,textarea,option,[role="button"]{font-family:var(--harpia-body)!important}
+body:not([data-theme="dark"]){background-color:var(--harpia-paper)}
+h1,h2,h3,.title,.section-title,.page-heading h1,.auth-brand-panel h1,.brand-title,.client-welcome h1,
+.public-hero h1,.harpia-public h1,.harpia-public h2,.harpia-public h3,.manifesto blockquote,
+.f03-dashboard-header h1,.f03-header h1,.calendar-header h1,.settings-workspace__header h1,
+.f05-shell__intro h1,.marketing-hero h1,.marketing-section-heading h2,.journey-emphasis,
+.footer-brand h2,.decision-unified strong,.drawer-head strong,.drawer h2{
+  font-family:var(--harpia-heading)!important;
+  font-weight:400;
+  letter-spacing:normal;
+}
+button:focus-visible,a:focus-visible,[role="button"]:focus-visible,input:focus-visible,
+textarea:focus-visible,select:focus-visible,[tabindex]:focus-visible{
+  outline:3px solid var(--harpia-focus)!important;
+  outline-offset:3px;
+}
+button:disabled,[aria-disabled="true"]{cursor:not-allowed!important;opacity:.46}
+button:not(:disabled),a,[role="button"]{transition:background-color .18s ease,color .18s ease,border-color .18s ease,box-shadow .18s ease}
+input,textarea,select{accent-color:var(--harpia-forest)}
+input:not([type="checkbox"]):not([type="radio"]),textarea,select{
+  border-color:rgba(60,79,51,.32);
+  color:var(--harpia-ink);
+}
+input:not([type="checkbox"]):not([type="radio"]):focus,textarea:focus,select:focus{
+  border-color:var(--harpia-forest)!important;
+  box-shadow:0 0 0 3px rgba(195,206,148,.45);
+}
+:where(.harpia-public,.f03-dashboard,.f03-shell,.f05-shell,.marketing-shell,.settings-workspace,.internal-main){
+  --ink:#161616;
+  --muted:#3C4F33;
+  --paper:#EEEEF0;
+  --surface:#EEEEF0;
+  --line:rgba(60,79,51,.28);
+  --deep:#3C4F33;
+  --gold:#3C4F33;
+  --forest:#3C4F33;
+  --forest-deep:#3C4F33;
+  --gold-soft:#C3CE94;
+  --dash-ink:#161616;
+  --dash-muted:#3C4F33;
+  --dash-line:rgba(60,79,51,.28);
+  --dash-panel:#EEEEF0;
+  --dash-soft:#EEEEF0;
+  --dash-deep:#3C4F33;
+  --dash-accent:#3C4F33;
+  --dash-gold:#C3CE94;
+  --f03-ink:#161616;
+  --f03-muted:#3C4F33;
+  --f03-line:rgba(60,79,51,.28);
+  --f03-panel:#EEEEF0;
+  --f03-soft:#EEEEF0;
+  --f03-accent:#3C4F33;
+  --f03-accent-2:#C3CE94;
+}
+.harpia-public{background:var(--harpia-paper)!important;color:var(--harpia-ink)!important}
+.harpia-public :is(h1,h2,h3,.section-kicker){color:var(--harpia-forest)}
+.harpia-public :is(.primary-button,.search-launcher){background:var(--harpia-sage)!important;color:var(--harpia-ink)!important;border-color:var(--harpia-sage)!important}
+.harpia-public :is(.primary-button,.search-launcher):not(:disabled):hover{background:var(--harpia-forest)!important;color:var(--harpia-paper)!important;border-color:var(--harpia-forest)!important}
+.harpia-public :is(.public-header,.floating-chat-button){background:var(--harpia-forest)!important}
+.harpia-public .public-header :is(a,small,strong){color:var(--harpia-paper)}
+.harpia-public .brand-mark{width:42px;height:48px;object-fit:contain;border:0;border-radius:0}
+.harpia-public .header-cta{background:var(--harpia-sage)!important;color:var(--harpia-ink)!important;border-color:var(--harpia-sage)!important}
+.harpia-public .header-cta:hover{background:var(--harpia-paper)!important;color:var(--harpia-forest)!important}
+.harpia-public :is(.hero-search,.property-card,.service-card,.owner-strip,.error-state,.empty-state,.loading-state,.public-not-found__card){
+  background:var(--harpia-paper)!important;
+  border-color:rgba(60,79,51,.25)!important;
+  border-radius:12px;
+}
+.harpia-public :is(.section-kicker,.hero-kicker,.property-body small){color:var(--harpia-forest)}
+.harpia-public .secondary-button{border:1px solid var(--harpia-forest)!important;color:var(--harpia-forest)!important;background:transparent!important}
+.harpia-public .secondary-button:hover{background:var(--harpia-sage)!important;color:var(--harpia-ink)!important}
+.harpia-public .floating-chat-button{color:var(--harpia-paper)!important;border:1px solid var(--harpia-sage)!important}
+.internal-layout{background:var(--harpia-paper)!important}
+.sidebar{background:var(--harpia-forest)!important;color:var(--harpia-paper)!important}
+.sidebar-logo{content:url("/assets/brand/harpia-logo-horizontal-white-cropped.png");width:min(215px,100%);max-height:68px;object-fit:contain}
+.sidebar .nav-link:hover,.sidebar .nav-link.active{background:var(--harpia-sage)!important;color:var(--harpia-ink)!important}
+.sidebar .nav-link:hover .nav-icon,.sidebar .nav-link.active .nav-icon{color:var(--harpia-ink)!important}
+.sidebar .brand-kicker{color:var(--harpia-sage)!important}
+.internal-main,.workspace-page,.settings-workspace{background:var(--harpia-paper);color:var(--harpia-ink)}
+.internal-main :is(h1,h2,h3){color:var(--harpia-forest)}
+.internal-main :is(.panel,.info-card,.metric-card,.f05-module,.f05-card,.settings-summary,.settings-tabs,.settings-toggle,.marketing-panel,.marketing-metric,.f03-metric-card,.f03-panel,.f03-card,.sb-library-card,.crmModalCard,.calendar-board,.calendar-agenda){
+  background-color:var(--harpia-paper)!important;
+  border-color:rgba(60,79,51,.25)!important;
+  border-radius:12px;
+}
+.internal-main :is(.empty-state,.empty,.marketing-empty,.inboxDrawerEmpty,.calendar-empty,.f03-empty){
+  background-color:var(--harpia-paper)!important;
+  color:var(--harpia-forest)!important;
+  border-color:rgba(60,79,51,.27)!important;
+}
+.f03-dashboard,.f03-shell,.f05-shell,.marketing-shell{background:var(--harpia-paper)!important;color:var(--harpia-ink)}
+.f03-dashboard :is(.f03-source-pill,.f03-panel-badge),.f03-shell :is(.f03-header-metric),.f05-readiness{
+  border-color:rgba(60,79,51,.25);
+}
+.f05-shell :is(.f05-block,.f05-readiness,.f05-list-item),.marketing-shell :is(.marketing-roadmap>div,.marketing-integration-line){
+  border-color:rgba(60,79,51,.25);
+}
+:is(.f05-shell,.marketing-shell,.settings-workspace) :is(.f05-tabs button.is-active,.marketing-tabs button.is-active,.settings-tabs button.is-active){
+  background:var(--harpia-sage)!important;
+  border-color:var(--harpia-sage)!important;
+  color:var(--harpia-ink)!important;
+}
+:is(.settings-tabs,.marketing-tabs,.pipelineTabs,.crmPipelineTabs) button:focus-visible{outline-offset:2px}
+button:is(.button-primary,.button-dark,.primary-button,.f03-button-primary,.green-btn,.drawer-action):not(.secondary):not(.danger):not(.button-danger),
+a:is(.button-primary,.primary-button,.drawer-action):not(.secondary),
+.button-primary,.btn-primary,.search-launcher,.lead-form button,
+.f03-button-primary,button[class*="primaryAction"],button[class*="connectButton"],
+.f05-shell button:not(.secondary):not(.danger):not(.icon):not(.f05-list-item):not(.sb-next-button):not([aria-pressed="true"]):not(.is-active),
+.marketing-shell button:not(.marketing-button--secondary):not(.marketing-tabs button):not(.danger),
+button[type="submit"]:not(.danger):not([class*="danger"]){
+  background:var(--harpia-sage)!important;
+  border-color:var(--harpia-sage)!important;
+  color:var(--harpia-ink)!important;
+}
+button:is(.button-primary,.button-dark,.primary-button,.f03-button-primary,.green-btn,.drawer-action):not(:disabled):hover,
+a:is(.button-primary,.primary-button,.drawer-action):hover,
+.button-primary:not(:disabled):hover,.btn-primary:not(:disabled):hover,.search-launcher:not(:disabled):hover,
+.lead-form button:not(:disabled):hover,.f03-button-primary:not(:disabled):hover,
+button[class*="primaryAction"]:not(:disabled):hover,button[class*="connectButton"]:not(:disabled):hover,
+.f05-shell button:not(.secondary):not(.danger):not(.icon):not(.f05-list-item):not(:disabled):hover,
+.marketing-shell button:not(.marketing-button--secondary):not(.marketing-tabs button):not(.danger):not(:disabled):hover,
+button[type="submit"]:not(.danger):not([class*="danger"]):not(:disabled):hover{
+  background:var(--harpia-forest)!important;
+  border-color:var(--harpia-forest)!important;
+  color:var(--harpia-paper)!important;
+}
+button:disabled,.button-primary:disabled,[aria-disabled="true"]{opacity:.46!important}
+:is(button,a,[role="button"]):focus-visible{box-shadow:0 0 0 3px rgba(195,206,148,.65)}
+:where(.internal-main,.harpia-public) :is(.panel,.card,.form-panel,.filter-grid,.modal,.drawer,.settings-summary,.f05-module,.marketing-panel) :is(input,select,textarea){
+  max-width:100%;
+}
+:is(.modal,.crmModalCard,[role="dialog"],.drawer,.client-popup){max-width:calc(100vw - 24px)}
+:is(.table-wrap,.f05-table-wrap,.crmTable,.inboxDrawerMessages){max-width:100%;overflow-x:auto}
+:is(.internal-main,.harpia-public) :is(th,td){border-color:rgba(60,79,51,.22)}
+:is(.internal-main,.harpia-public) :is(thead th){background:var(--harpia-sage);color:var(--harpia-ink)}
+:is(.internal-main,.harpia-public) :is(.status.success,.alert-success){border-color:var(--harpia-forest)}
+:is(.settings-toggle,.f05-shell) input[type="checkbox"],input[type="radio"]{accent-color:var(--harpia-forest)}
+/* Paginas estaticas institucionais: mantém a estrutura aprovada. */
+:root{--verde:var(--harpia-forest);--verde-claro:var(--harpia-sage);--preto:var(--harpia-ink);--off:var(--harpia-paper);--branco:var(--harpia-paper)}
+body>header,body>header .nav{background-color:var(--harpia-forest)!important}
+body>header .brand img,.site-footer .footer-brand img{object-fit:contain}
+body>header :is(.pill.light,.header-cta){background:var(--harpia-sage)!important;color:var(--harpia-ink)!important;border-color:var(--harpia-sage)!important}
+body>header :is(.pill.light,.header-cta):hover{background:var(--harpia-paper)!important;color:var(--harpia-forest)!important}
+:is(.green-btn,.search button,.lead-form button,.drawer-action:not(.secondary),.chat-float,.footer-button.primary,.ai-chat-form button,.client-popup button[type="submit"]){
+  background:var(--harpia-sage)!important;
+  color:var(--harpia-ink)!important;
+  border-color:var(--harpia-sage)!important;
+}
+:is(.green-btn,.search button,.lead-form button,.drawer-action:not(.secondary),.chat-float,.footer-button.primary,.ai-chat-form button,.client-popup button[type="submit"]):hover{
+  background:var(--harpia-forest)!important;
+  color:var(--harpia-paper)!important;
+  border-color:var(--harpia-forest)!important;
+}
+:is(.search,.lead-form,.consult-box,.authority-card,.client-popup,.drawer,.result-item,.image-card-link){border-radius:12px}
+body:has(.hero) .hero{padding-top:156px}
+.tax-alert{display:none!important}
+:where(.site-footer,.journey,.ai-chat-head){background-color:var(--harpia-forest)!important}
+:where(.footer-button:not(.primary),.drawer-action.secondary){border-color:var(--harpia-sage)!important}
+:where(.journey,.site-footer) :is(h1,h2,h3,.title){color:var(--harpia-paper)}
+:where(.journey,.site-footer) :is(.kicker,.footer-kicker){color:var(--harpia-sage)}
+@media(max-width:900px){
+  .internal-layout{min-width:0}
+  .internal-main,.workspace-page,.f05-shell,.settings-workspace,.marketing-shell{min-width:0}
+  .harpia-public .hero{gap:28px}
+  body:has(.hero) .hero{padding-top:148px}
+}
+@media(max-width:680px){
+  body:has(.hero) .hero{padding-top:116px}
+  :is(.internal-main,.harpia-public) :is(h1,h2){overflow-wrap:break-word}
+  :is(.internal-main,.harpia-public) :is(.panel,.settings-summary,.f05-module,.marketing-panel){max-width:100%}
+  :is(.harpia-public,.internal-main) :is(input,select,textarea){font-size:16px}
+  .sidebar-logo{max-width:170px}
+  .site-footer,.harpia-public footer{overflow-wrap:anywhere}
+}
+@media(prefers-reduced-motion:reduce){
+  button,a,[role="button"]{transition:none!important}
+}
+[data-theme="dark"]{
+  --ink:#EEEEF0;--muted:#C3CE94;--paper:#161616;--surface:#3C4F33;
+  --deep:#161616;--gold:#C3CE94;--line:rgba(195,206,148,.4);
+  --harpia-focus:#C3CE94;
+}
+[data-theme="dark"] body,[data-theme="dark"] .internal-layout,[data-theme="dark"] .internal-main{background:#161616!important;color:#EEEEF0!important}
+[data-theme="dark"] .internal-main :is(h1,h2,h3){color:#EEEEF0}
+[data-theme="dark"] .internal-main :is(.panel,.info-card,.metric-card,.f05-module,.f05-card,.settings-summary,.settings-tabs,.settings-toggle,.marketing-panel,.marketing-metric,.f03-metric-card,.f03-panel,.f03-card,.sb-library-card,.calendar-board,.calendar-agenda){background:#3C4F33!important;color:#EEEEF0!important;border-color:rgba(195,206,148,.36)!important}
+[data-theme="dark"] .internal-main :is(input,select,textarea){background:#161616!important;color:#EEEEF0!important;border-color:#C3CE94!important}
+[data-theme="dark"] .internal-main :is(thead th){background:#C3CE94!important;color:#161616!important}
+[data-theme="dark"] .internal-main :is(.alert-error,.f03-alert-error){color:#f2b2a9!important}

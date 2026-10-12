@@ -343,7 +343,7 @@ export default function PublicSiteApp({ catalog = emptyPublicCatalogReader, auth
   return (
     <div className="harpia-public">
       <header className="public-header">
-        <a className="brand" href="/" onClick={intercept('/')} aria-label="Hárpia Patrimonial - início"><span className="brand-mark">H</span><span><strong>HÁRPIA</strong><small>PATRIMONIAL & CO.</small></span></a>
+        <a className="brand" href="/" onClick={intercept('/')} aria-label="Hárpia Patrimonial - início"><img src="/assets/brand/harpia-logo-horizontal-white-cropped.png" alt="Hárpia Patrimonial & Co." className="brand-logo-official" /></a>
         <nav className="public-nav" aria-label="Navegação principal">
           <a href="/sobre" onClick={intercept('/sobre')}>Sobre</a>
           <a href="/investimentos" onClick={intercept('/investimentos')}>Investimentos</a>
