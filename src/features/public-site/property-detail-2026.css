@@ -127,3 +127,12 @@
  .hp-property__stage-nav{bottom:8px;right:8px}
 }
 @media(prefers-reduced-motion:reduce){.hp-property__thumb img{transition:none!important}}
+
+/* Navegação estática publicada compartilha exatamente a mesma estrutura visual. */
+.hp-property__breadcrumb a{border:0;padding:7px 0;color:#3c4f33;text-decoration:none;font-size:12px;font-weight:700}
+.hp-property__breadcrumb a:hover{text-decoration:underline;text-underline-offset:3px}
+.hp-property__related-card>a{display:block;width:100%;padding:0;border:0;background:transparent;text-align:left;text-decoration:none;color:#3c4f33}
+.hp-property__related-card>a>img{display:block;width:100%;aspect-ratio:2.15/1;object-fit:cover}
+.hp-property__related-card>a:hover .hp-property__related-text>div>span{text-decoration:underline;text-underline-offset:4px}
+.hp-property__cta{display:inline-flex;align-items:center;justify-content:center;text-decoration:none}
+.hp-property__cta:focus-visible,.hp-property__related-card a:focus-visible{outline:3px solid #3c4f33;outline-offset:3px}
