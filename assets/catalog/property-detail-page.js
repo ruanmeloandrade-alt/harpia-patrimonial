@@ -59,6 +59,10 @@
     const current = Array.isArray(asMedia) ? asMedia : [];
     const incoming = current.filter(m => m && (m.type === 'image' || m.type === 'video' || (!m.type && m.url)) && safeUrl(m.url))
       .map(m => ({type: m.type === 'video' ? 'video' : 'image', url: safeUrl(m.url), label: m.label || m.alt || ''}));
+    const legacyMainVideo = item.source === 'legacy' ? (window.HARPIA_PROPERTY_VIDEO_URLS || {})[item.code] : null;
+    if (typeof legacyMainVideo === 'string' && videoSource(legacyMainVideo) && !incoming.some(m => m.url === safeUrl(legacyMainVideo))) {
+      incoming.unshift({type:'video',url:safeUrl(legacyMainVideo),label:'Vídeo principal'});
+    }
     const published = collection.map(url => ({type:'image',url:safeUrl(url),label:''})).filter(m => m.url);
     const existingUrls = new Set(incoming.map(m => m.url));
     for (const m of published) if (!existingUrls.has(m.url)) incoming.push(m);
