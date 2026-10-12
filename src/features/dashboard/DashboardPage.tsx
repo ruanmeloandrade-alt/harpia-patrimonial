@@ -248,6 +248,7 @@ export function DashboardPage({ catalogRepository, commercialProvider }: Dashboa
         <HarpiaBrandMark />
         <div>
           <p className="f03-dashboard-kicker">Painel operacional</p>
+          <h1>Visão da operação</h1>
           <p>Acompanhe vendas, produtos e relacionamentos com clareza, critério e visão patrimonial de longo prazo.</p>
         </div>
 
