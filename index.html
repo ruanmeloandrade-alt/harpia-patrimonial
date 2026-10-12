@@ -289,57 +289,11 @@
     <div class="result-list" id="search-results"></div>
   </div>
 </aside>
+<script src="/assets/catalog/harpia-existing-properties.js"></script>
 <script>
       const SUPABASE_URL = 'https://desxomqvtjaymwwxivwq.supabase.co';
       const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_wWUVxjkMDMXLOrzE0y3Y_w_k9jXf88B';
-      const providedCatalogItems = [
-        {
-          id:'harpia-botafogo-easy-95m2',
-          code:'BOT-EASY-95',
-          name:'Apartamento Botafogo Easy',
-          description:'Apartamento em Botafogo, Rio de Janeiro, com excelente iluminação natural, ótima localização, área externa com piscina, salão de jogos, parque infantil e coworking.',
-          location:{city:'Rio de Janeiro',neighborhood:'Botafogo',condominium:'Easy'},
-          price:1631000,
-          tags:['Botafogo','Easy','Imóvel avulso'],
-          features:['95 m²','1 suíte','1 quarto','Piscina','Salão de jogos','Parque infantil','Coworking'],
-          bedrooms:1,
-          suites:1,
-          bathrooms:2,
-          private_area_m2:95,
-          media:[{url:'/assets/catalog/botafogo-easy/sala-cozinha-01.jpg',isCover:true}]
-        },
-        {
-          id:'harpia-botafogo-easy-147m2',
-          code:'BOT-EASY-147',
-          name:'Apartamento Botafogo Easy 147 m²',
-          description:'Imóvel espetacular em Botafogo, no Easy, com iluminação natural, excelente vista, área externa com piscina, salão de jogos, parque infantil e coworking.',
-          location:{city:'Rio de Janeiro',neighborhood:'Botafogo',condominium:'Easy'},
-          price:2708000,
-          tags:['Botafogo','Easy','Imóvel avulso'],
-          features:['147 m²','2 suítes','1 quarto','2 vagas','Excelente vista','Piscina','Coworking'],
-          bedrooms:1,
-          suites:2,
-          bathrooms:3,
-          parking_spaces:2,
-          private_area_m2:147,
-          media:[{url:'/assets/catalog/botafogo-easy-147/sala-01.jpg',isCover:true}]
-        },
-        {
-          id:'harpia-barra-orygem-acqua-home-venice-151m2',
-          code:'BAR-ORYGEM-151',
-          name:'Apartamento Venice Orygem Acqua Home 151 m²',
-          description:'Apartamento na Barra da Tijuca, no Edifício Venice do Orygem Acqua Home, com excelente vista e localização, balsa exclusiva para a praia e área externa de alto padrão com lazer completo.',
-          location:{city:'Rio de Janeiro',neighborhood:'Barra da Tijuca',condominium:'Orygem Acqua Home - Edifício Venice'},
-          price:2293158,
-          tags:['Barra da Tijuca','Orygem Acqua Home','Edifício Venice','Imóvel avulso'],
-          features:['151 m²','3 suítes','2 vagas','Excelente vista','Balsa exclusiva para a praia','Piscina','Academia','Quadra de tênis'],
-          bedrooms:3,
-          suites:3,
-          parking_spaces:2,
-          private_area_m2:151,
-          media:[{url:'/assets/catalog/orygem-acqua-home-venice-151/sala-01.jpg',isCover:true}]
-        }
-      ];
+      const providedCatalogItems = Array.isArray(window.HARPIA_EXISTING_PROPERTIES) ? window.HARPIA_EXISTING_PROPERTIES : [];
       let properties = {};
       function formatMoney(value){return typeof value === 'number' ? value.toLocaleString('pt-BR',{style:'currency',currency:'BRL',maximumFractionDigits:0}) : 'Valor sob consulta'}
       function asArray(value){return Array.isArray(value) ? value : []}
@@ -367,6 +321,7 @@
         const features = asArray(item.features);
         return {
           id:item.id,
+          code:item.code || '',
           title:item.name,
           loc:itemLocation(item),
           price:formatMoney(item.price),
@@ -446,18 +401,17 @@
         clientAccess.querySelector('.client-intro h2').textContent = mode==='login' ? 'Entre na sua área interna.' : 'Crie seu acesso à área interna.';
       }
       function openProperty(id){
-        if(!isClientLogged()){setAccessMode('signup');openClientAccess();return}
         const item = properties[id];
         if(!item) return;
-        searchDrawer.classList.remove('open');
-        searchDrawer.setAttribute('aria-hidden','true');
-        const gallery = [item.image,item.image.replace('w=1200','w=1000'),item.image.replace('q=85','q=75')];
-        document.getElementById('property-drawer-body').innerHTML = `<article class="property-view"><div class="property-gallery"><div class="property-main-photo" style="background-image:url('${item.image}')"></div><div class="property-thumbs">${gallery.map((photo,index)=>`<div class="property-thumb ${index===2?'video':''}" style="background-image:url('${photo}')"></div>`).join('')}</div></div><div class="property-content"><span class="drawer-kicker">${item.tag}</span><h2>${item.title}</h2><p>${item.desc} A apresentação completa deste ativo pode reunir galeria de fotos, vídeo, histórico do imóvel, análise de documentação, potencial de reforma e comparação com oportunidades semelhantes.</p><div class="specs"><div class="spec"><span>Localização</span><strong>${item.loc}</strong></div><div class="spec"><span>Valor</span><strong>${item.price}</strong></div><div class="spec"><span>Perfil</span><strong>${item.meta.join(' · ')}</strong></div></div><div class="property-points">${item.points.map(point=>`<div><strong>${point}</strong><p>Curadoria, risco e potencial avaliados pela Hárpia para apoiar a decisão.</p></div>`).join('')}</div><div class="property-actions"><a class="drawer-action" href="https://wa.me/5521990135757?text=${encodeURIComponent('Olá, quero detalhes sobre: '+item.title)}" target="_blank" rel="noopener" data-require-client>Quero detalhes no WhatsApp</a><button class="drawer-action secondary" type="button" data-open-search>Comparar com outros imóveis</button></div></div></article>`;
-        openDrawer(propertyDrawer);
+        // O detalhe e publico: login continua sendo exigido somente para acoes pessoais.
+        const code = item.code || id;
+        window.location.assign('/imoveis/?codigo='+encodeURIComponent(code));
       }
+
       function renderResults(){
         const results = document.getElementById('search-results');
-        results.innerHTML = Object.values(properties).map(item=>`<button class="result-item" type="button" data-result-title="${item.title}"><div class="result-thumb" style="background-image:url('${item.image}')"></div><div><strong>${item.title}</strong><span>${item.loc} · ${item.price}</span></div></button>`).join('');
+        results.innerHTML = Object.values(properties).map(item=>`<button class="result-item" type="button" data-result-id="${item.id}"><div class="result-thumb" style="background-image:url('${item.image}')"></div><div><strong>${item.title}</strong><span>${item.loc} · ${item.price}</span></div></button>`).join('');
+        results.querySelectorAll('[data-result-id]').forEach(button=>button.addEventListener('click',()=>openProperty(button.dataset.resultId)));
       }
       function openSearch(){propertyDrawer.classList.remove('open');propertyDrawer.setAttribute('aria-hidden','true');clientAccess.classList.remove('open');clientAccess.setAttribute('aria-hidden','true');renderResults();openDrawer(searchDrawer)}
       function buscarImoveis(event){
