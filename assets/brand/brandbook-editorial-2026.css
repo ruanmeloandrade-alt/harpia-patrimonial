@@ -348,3 +348,11 @@ body:has(.status) .brandbook-about-emblem{width:45px;height:62px}
     .marketing-hero,.f05-module__header,.sb-builder-top,
     [class*="_crmTopbar_"],[class*="_conversationList_"]>header):not(:has(> .harpia-heritage-mark))::before{width:26px;min-width:26px;height:38px}
 }
+
+/* Ícone original substitui coração textual sem modificar a ação funcional.
+   No bundle antigo, o glifo é ocultado e o SVG oficial permanece acessível pelo aria-label. */
+.favorite-button{font-size:0!important}
+.favorite-button:has(img){background-image:none!important}
+.favorite-button img{display:block;width:21px;height:21px;object-fit:contain}
+.favorite-button[aria-pressed="true"]{background-color:#c3ce94!important;border:1px solid #3c4f33!important}
+.favorite-button[aria-pressed="false"]{background-color:#eeeef0!important;border:1px solid rgba(60,79,51,.25)!important}
