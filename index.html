@@ -56,10 +56,10 @@
   <link rel="icon" type="image/png" href="/assets/brand/harpia-favicon.png" />
   <link rel="apple-touch-icon" href="/assets/brand/harpia-favicon.png" />
   <link rel="stylesheet" href="/assets/brand/brand.css" />
+  <link rel="stylesheet" href="/assets/brand/brandbook-2026.css?v=20261012" />
 </head>
 <body>
 <header><div class="wrap nav"><a class="brand" href="/" aria-label="Hárpia Patrimonial & Co."><img src="/assets/brand/harpia-logo-horizontal-white-cropped.png" alt="Hárpia Patrimonial & Co. — Negócios e Investimentos Imobiliários"></a><nav class="navlinks"><a href="#sobre">Sobre</a><a href="/investimentos/">Investimentos</a><a href="/leiloes/">Leilões</a><a href="/assessoria-juridica/">Assessoria Jurídica</a><a href="/arquitetura/">Arquitetura</a><a href="/cliente/" data-open-client>Área Interna</a></nav></div></header>
-<div class="tax-alert" id="tax-alert"><div class="wrap"><a href="https://wa.me/5521990135757?text=Ol%C3%A1%2C%20vim%20pelo%20site%20da%20H%C3%A1rpia%20e%20quero%20entender%20o%20cadastro%20imobili%C3%A1rio%20obrigat%C3%B3rio%20at%C3%A9%20janeiro%20de%202027%20e%20os%20cuidados%20com%20a%20reforma%20tribut%C3%A1ria." target="_blank" rel="noopener">Cadastro imobiliário obrigatório até janeiro de 2027. Evite riscos com a reforma tributária. <span>Entenda agora.</span></a><button class="tax-alert-close" type="button" id="tax-alert-close" aria-label="Fechar aviso">×</button></div></div>
 <main>
 <section id="inicio" class="hero"><div class="wrap"><div class="kicker">Curadoria de imóveis extraordinários no Rio</div><h1>Encontre um imóvel à altura da sua próxima história.</h1><p>Busca inteligente, seleção criteriosa e atendimento humano para conectar você ao imóvel certo.</p><form class="search" id="home-search" onsubmit="return buscarImoveis(event)">
   <div class="field">
@@ -410,7 +410,6 @@
       const clientAccess = document.getElementById('client-access');
       const aiChat = document.getElementById('ai-chat');
       const aiChatBody = document.getElementById('ai-chat-body');
-      const taxAlert = document.getElementById('tax-alert');
       const clientStorageKey = 'harpiaClientAccount';
       const legacyClientStorageKey = 'harpia.client.account';
       function readClientAccount(key){try{return JSON.parse(localStorage.getItem(key)||'null')}catch(error){return null}}
@@ -477,7 +476,6 @@
         return false;
       }
       document.querySelectorAll('.property-card').forEach(card=>card.addEventListener('click',()=>openProperty(card.dataset.property)));
-      document.getElementById('tax-alert-close').addEventListener('click',()=>{taxAlert.classList.add('is-hidden');document.body.classList.add('alert-dismissed')});
       document.getElementById('ai-chat-open').addEventListener('click',openAiChat);
       document.getElementById('ai-chat-close').addEventListener('click',closeAiChat);
       document.getElementById('ai-chat-form').addEventListener('submit',event=>{
