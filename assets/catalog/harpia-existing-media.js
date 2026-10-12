@@ -1,0 +1,57 @@
+/* Inventario de fotos reais ja presentes no repositorio publicado da Harpia. */
+window.HARPIA_EXISTING_MEDIA = {
+  "BOT-EASY-95": [
+    "/assets/catalog/botafogo-easy/sala-01.jpg",
+    "/assets/catalog/botafogo-easy/sala-cozinha-01.jpg",
+    "/assets/catalog/botafogo-easy/cozinha-01.jpg",
+    "/assets/catalog/botafogo-easy/banheiro-suite-01.jpg",
+    "/assets/catalog/botafogo-easy/suite-01.jpg",
+    "/assets/catalog/botafogo-easy/banheiro-01.jpg",
+    "/assets/catalog/botafogo-easy/banheiro-suite-02.jpg",
+    "/assets/catalog/botafogo-easy/cozinha-02.jpg",
+    "/assets/catalog/botafogo-easy/quarto-01.jpg",
+    "/assets/catalog/botafogo-easy/suite-02.jpg"
+  ],
+  "BOT-EASY-147": [
+    "/assets/catalog/botafogo-easy-147/sala-01.jpg",
+    "/assets/catalog/botafogo-easy-147/cozinha-01.jpg",
+    "/assets/catalog/botafogo-easy-147/banheiro-suite-01.jpg",
+    "/assets/catalog/botafogo-easy-147/suite-01.jpg",
+    "/assets/catalog/botafogo-easy-147/banheiro-01.jpg",
+    "/assets/catalog/botafogo-easy-147/banheiro-verde-01.jpg",
+    "/assets/catalog/botafogo-easy-147/banheiro-verde-02.jpg",
+    "/assets/catalog/botafogo-easy-147/cozinha-02.jpg",
+    "/assets/catalog/botafogo-easy-147/escritorio-01.jpg",
+    "/assets/catalog/botafogo-easy-147/escritorio-02.jpg",
+    "/assets/catalog/botafogo-easy-147/lavabo-01.jpg",
+    "/assets/catalog/botafogo-easy-147/lavabo-02.jpg",
+    "/assets/catalog/botafogo-easy-147/quarto-01.jpg",
+    "/assets/catalog/botafogo-easy-147/quarto-02.jpg",
+    "/assets/catalog/botafogo-easy-147/quarto-03.jpg",
+    "/assets/catalog/botafogo-easy-147/sala-02.jpg",
+    "/assets/catalog/botafogo-easy-147/suite-closet-01.jpg",
+    "/assets/catalog/botafogo-easy-147/varanda-gourmet-01.jpg",
+    "/assets/catalog/botafogo-easy-147/varanda-gourmet-02.jpg"
+  ],
+  "BAR-ORYGEM-151": [
+    "/assets/catalog/orygem-acqua-home-venice-151/sala-01.jpg",
+    "/assets/catalog/orygem-acqua-home-venice-151/cozinha-01.jpg",
+    "/assets/catalog/orygem-acqua-home-venice-151/banheiro-suite-01.jpg",
+    "/assets/catalog/orygem-acqua-home-venice-151/suite-01.jpg",
+    "/assets/catalog/orygem-acqua-home-venice-151/banheiro-social-01.jpg",
+    "/assets/catalog/orygem-acqua-home-venice-151/banheiro-suite-02.jpg",
+    "/assets/catalog/orygem-acqua-home-venice-151/cozinha-02.jpg",
+    "/assets/catalog/orygem-acqua-home-venice-151/escritorio-01.jpg",
+    "/assets/catalog/orygem-acqua-home-venice-151/escritorio-02.jpg",
+    "/assets/catalog/orygem-acqua-home-venice-151/jantar-01.jpg",
+    "/assets/catalog/orygem-acqua-home-venice-151/quarto-infantil-01.jpg",
+    "/assets/catalog/orygem-acqua-home-venice-151/sala-02.jpg",
+    "/assets/catalog/orygem-acqua-home-venice-151/suite-02.jpg",
+    "/assets/catalog/orygem-acqua-home-venice-151/suite-03.jpg",
+    "/assets/catalog/orygem-acqua-home-venice-151/suite-04.jpg",
+    "/assets/catalog/orygem-acqua-home-venice-151/suite-banheiro-01.jpg",
+    "/assets/catalog/orygem-acqua-home-venice-151/suite-closet-01.jpg",
+    "/assets/catalog/orygem-acqua-home-venice-151/varanda-01.jpg",
+    "/assets/catalog/orygem-acqua-home-venice-151/varanda-gourmet-01.jpg"
+  ]
+};
