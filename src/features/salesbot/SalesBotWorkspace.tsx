@@ -1,3 +1,4 @@
+import { HarpiaBrandMark } from '../../shared/components/HarpiaBrandMark';
 import {
   useEffect,
   useMemo,
@@ -1095,6 +1096,7 @@ export function SalesBotWorkspace({
   if(mode==='library'){
     return <section className="f05-module sb-library-view">
       <header className="f05-module__header">
+        <HarpiaBrandMark compact />
         <div><span className="f05-kicker">SalesBot</span><h2>SalesBots</h2><p>Abra um bot existente ou crie um novo para entrar no construtor.</p></div>
         <div className="sb-library-head-actions">
           <span className="f05-count">{bots.length} bot{bots.length===1?'':'s'}</span>
@@ -1111,6 +1113,7 @@ export function SalesBotWorkspace({
 
   return <section id="salesbotBuilder" className="f05-module sb-builder-view">
     <header className="sb-builder-top">
+      <HarpiaBrandMark compact />
       <div className="sb-builder-title"><button type="button" className="secondary" onClick={()=>{setMode('library');setPicker(null);}}>← SalesBots</button><div><span className="f05-kicker">Construtor</span><input className="sb-builder-name" disabled={!canManage||!selected} value={selected?.name??''} onChange={(event)=>patchBot({name:event.target.value})}/></div></div>
       <div className="sb-builder-tools">
         {selected?<button type="button" className="secondary" onClick={()=>exportSalesBot(selected)}>Exportar</button>:null}

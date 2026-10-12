@@ -1,3 +1,4 @@
+import { HarpiaBrandMark } from '../../shared/components/HarpiaBrandMark';
 import { ChangeEvent, FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import {
   UnavailableInboxAutomationPort,
@@ -631,6 +632,7 @@ export function InboxWorkspace({
 
       <aside className={styles.conversationList} aria-label="Lista de conversas">
         <header>
+          <HarpiaBrandMark compact />
           <div>
             <span className={styles.kicker}>INBOX</span>
             <h1>Conversas</h1>

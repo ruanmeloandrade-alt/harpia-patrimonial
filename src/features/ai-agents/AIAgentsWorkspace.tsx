@@ -1,3 +1,4 @@
+import { HarpiaBrandMark } from '../../shared/components/HarpiaBrandMark';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useF05StorageListener } from '../automations/useF05StorageListener';
 import { listAIProviderProfiles } from '../integrations/aiProviderRepository';
@@ -165,6 +166,7 @@ export function AIAgentsWorkspace({ canManage = false }: { canManage?: boolean }
 
   return <section className="f05-module">
     <header className="f05-module__header">
+      <HarpiaBrandMark compact />
       <div>
         <span className="f05-kicker">Agentes de IA</span>
         <h2>Cérebro e agentes da empresa</h2>

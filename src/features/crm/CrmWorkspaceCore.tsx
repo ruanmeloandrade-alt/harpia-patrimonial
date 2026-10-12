@@ -1,3 +1,4 @@
+import { HarpiaBrandMark } from '../../shared/components/HarpiaBrandMark';
 import {
   DragEvent as ReactDragEvent,
   FormEvent,
@@ -448,6 +449,7 @@ export function CrmWorkspace({
     <section className={styles.workspace} aria-label="Funis de vendas Hárpia">
       <div className={styles.crmPro}>
         <header className={styles.crmTopbar}>
+          <HarpiaBrandMark compact />
           <div className={styles.crmTitlebox}>
             <h1>Funis de vendas</h1>
             <p>Crie, edite, duplique e automatize os funis da operação.</p>
