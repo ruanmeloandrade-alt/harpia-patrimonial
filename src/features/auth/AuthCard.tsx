@@ -19,12 +19,13 @@ export function AuthCard({ eyebrow, title, description, onSubmit, submitLabel, b
   return (
     <main className="auth-page">
       <section className="auth-brand-panel">
-        <div>
+        <img className="brandbook-auth-logo" src="/assets/brand/harpia-logo-horizontal-white-cropped.png" alt="Hárpia Patrimonial & Co." />
+        <div className="brandbook-auth-message">
           <p className="eyebrow">HÁRPIA PATRIMONIAL & CO.</p>
-          <h1>Patrimônio é decisão.</h1>
-          <p className="lead">Uma experiência única para acompanhar oportunidades, serviços e decisões imobiliárias.</p>
+          <h1>Decisões que atravessam gerações.</h1>
+          <p className="lead">Uma tradição familiar desde 1986. Aconselhamos pessoas e famílias com inteligência patrimonial, discrição e visão de longo prazo.</p>
         </div>
-        <p className="tiny">Inteligência patrimonial desde 1986.</p>
+        <p className="tiny">Preservar. Expandir. Perpetuar.</p>
       </section>
       <section className="auth-form-panel">
         <form className="auth-card" onSubmit={onSubmit}>

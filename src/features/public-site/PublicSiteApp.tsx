@@ -1,3 +1,4 @@
+import { HarpiaBrandMark } from '../../shared/components/HarpiaBrandMark';
 import { FormEvent, MouseEvent, useEffect, useRef, useState } from 'react';
 import { ClientArea, type ClientProfileView } from '../client-area/ClientArea';
 import {
@@ -356,7 +357,26 @@ export default function PublicSiteApp({ catalog = emptyPublicCatalogReader, auth
 
       {notice && <div className="integration-notice" role="status"><span>{notice}</span><button type="button" onClick={() => setNotice('')} aria-label="Fechar aviso">×</button></div>}
 
-      {route === '/' && <main className="homepage-stage" aria-label="Página inicial da Hárpia Patrimonial" />}
+      {route === '/' && (
+        <main className="homepage-stage" aria-label="Página inicial da Hárpia Patrimonial">
+          <section className="brandbook-home-hero section-shell">
+            <div className="brandbook-home-hero__copy">
+              <HarpiaBrandMark />
+              <p className="section-kicker">Negócios e Investimentos Imobiliários</p>
+              <h1>Orientamos decisões que atravessam gerações.</h1>
+              <p>Desde 1986, construímos relações de confiança para preservar, expandir e perpetuar patrimônios. Não tratamos apenas de ativos, mas de escolhas com visão de futuro.</p>
+              <div className="hero-actions">
+                <button className="primary-button" type="button" onClick={() => navigate('/imoveis')}>Conhecer oportunidades</button>
+                <button className="secondary-button" type="button" onClick={() => requestService('Atendimento consultivo')}>Falar com a Hárpia</button>
+              </div>
+            </div>
+            <figure className="brandbook-home-hero__art" aria-label="Brasão oficial da Hárpia Patrimonial">
+              <img src="/assets/brand/harpia-crest-dark-green-cropped.png" alt="Brasão da Hárpia Patrimonial & Co." />
+              <figcaption>Tradição familiar desde 1986</figcaption>
+            </figure>
+          </section>
+        </main>
+      )}
 
       {route === '/imoveis' && <CatalogPage items={items} loading={loading} error={catalogError} filters={filters} options={filterOptions} onFilters={setFilters} onOpen={(slug) => navigate(`/imoveis/${encodeURIComponent(slug)}`)} onRetry={reloadCatalog} onFavorite={(item) => { if (!auth?.currentClient) return requestLogin('favoritar-imovel'); if (!favorites) return setNotice('Persistência de favoritos aguarda integração da conta com o catálogo real.'); return favorites.toggle(item); }} isFavorite={(id) => favorites?.isFavorite(id) ?? false} />}
 
@@ -378,7 +398,7 @@ export default function PublicSiteApp({ catalog = emptyPublicCatalogReader, auth
 
       <button className="floating-chat-button" type="button" onClick={() => requestService('Atendimento consultivo')} aria-label="Ser atendido agora">Ser atendido agora!</button>
 
-      <footer className="public-footer"><div><strong>HÁRPIA PATRIMONIAL & CO.</strong><p>Inteligência patrimonial especializada em negócios imobiliários.</p></div><div className="footer-links"><a href="/imoveis" onClick={intercept('/imoveis')}>Imóveis</a><a href="/vender" onClick={intercept('/vender')}>Quero vender meu imóvel</a><a href="/alugar" onClick={intercept('/alugar')}>Quero alugar meu imóvel</a><a href="/cliente" onClick={intercept('/cliente')}>Área do cliente</a></div></footer>
+      <footer className="public-footer"><div><img className="brandbook-footer-logo" src="/assets/brand/harpia-logo-horizontal-white-cropped.png" alt="Hárpia Patrimonial & Co." /><p>Negócios e Investimentos Imobiliários. Tradição familiar desde 1986.</p></div><div className="footer-links"><a href="/imoveis" onClick={intercept('/imoveis')}>Imóveis</a><a href="/vender" onClick={intercept('/vender')}>Quero vender meu imóvel</a><a href="/alugar" onClick={intercept('/alugar')}>Quero alugar meu imóvel</a><a href="/cliente" onClick={intercept('/cliente')}>Área do cliente</a></div></footer>
 
       {retentionOpen && <RetentionDialog onClose={() => setRetentionOpen(false)} onAccept={() => { setRetentionOpen(false); requestService('Retenção de comprador'); }} />}
     </div>
@@ -549,7 +569,7 @@ function PropertyDetail({ slug, catalog, isFavorite, onBack, onNavigate, onFavor
   return <main className="section-shell property-detail"><button className="text-button" type="button" onClick={onBack}>← Voltar ao catálogo</button><div className="detail-hero"><div className="detail-copy"><p className="section-kicker">{item.propertyType} · {item.purpose}</p><h1>{item.title}</h1><p>{item.location}, {item.city}</p><strong className="detail-price">{formatCurrency(item.price)}</strong><div className="hero-actions"><button className="primary-button" type="button" onClick={() => void onService(item)}>Quero atendimento</button><button className="secondary-button" type="button" aria-pressed={isFavorite(item.id)} onClick={() => onFavorite(item)}>{isFavorite(item.id) ? 'Remover dos favoritos' : 'Salvar imóvel'}</button></div></div><div className="detail-cover">{images[0] ? <img src={images[0].url} alt={images[0].alt ?? item.title} /> : <span>Imagem não disponível</span>}</div></div><div className="detail-grid"><article><p className="section-kicker">Sobre o imóvel</p><h2>Características</h2><p>{item.description || 'Descrição ainda não cadastrada no catálogo publicado.'}</p><div className="feature-list">{item.features?.length ? item.features.map((feature) => <span key={feature}>{feature}</span>) : <span>Características detalhadas ainda não cadastradas.</span>}</div></article><aside className="detail-facts"><strong>Informações</strong>{item.privateAreaM2 ? <span>Área privativa: {item.privateAreaM2} m²</span> : null}{item.bedrooms ? <span>Quartos: {item.bedrooms}</span> : null}{item.suites ? <span>Suítes: {item.suites}</span> : null}{item.bathrooms ? <span>Banheiros: {item.bathrooms}</span> : null}{item.parkingSpaces ? <span>Vagas: {item.parkingSpaces}</span> : null}<span>Status: {item.status === 'sold' ? 'Vendido' : 'Publicado'}</span>{item.development ? <span>Empreendimento: {item.development.title}{item.development.unitLabel ? ` · ${item.development.unitLabel}` : ''}</span> : null}</aside></div>{images.length > 1 && <div className="detail-gallery">{images.slice(1).map((image) => <img loading="lazy" key={image.url} src={image.url} alt={image.alt ?? item.title} />)}</div>}{videos.length > 0 && <div className="video-list">{videos.map((video) => <a key={video.url} href={video.url} target="_blank" rel="noreferrer">Abrir vídeo do imóvel</a>)}</div>}<section className="property-related-services"><div><p className="section-kicker">Serviços relacionados</p><h2>Uma decisão imobiliária pode envolver mais do que o imóvel.</h2></div><div>{[['Investimentos', '/investimentos'], ['Assessoria Jurídica', '/assessoria-juridica'], ['Arquitetura', '/arquitetura']].map(([label, path]) => <button type="button" key={path} onClick={() => onNavigate(path)}><strong>{label}</strong><span>Conhecer serviço →</span></button>)}</div></section></main>;
 }
 
-function InstitutionalPage({ page, onService }: { page: InstitutionalPage; onService: () => void }) { return <main className="institutional-page section-shell"><div className="page-intro"><p className="section-kicker">{page.kicker}</p><h1>{page.title}</h1><p className="section-lead">{page.lead}</p></div><div className="institutional-body">{page.body.map((paragraph) => <p key={paragraph}>{paragraph}</p>)}</div><button className="primary-button" type="button" onClick={onService}>Solicitar atendimento</button></main>; }
+function InstitutionalPage({ page, onService }: { page: InstitutionalPage; onService: () => void }) { return <main className="institutional-page section-shell"><div className="page-intro"><HarpiaBrandMark /><p className="section-kicker">{page.kicker}</p><h1>{page.title}</h1><p className="section-lead">{page.lead}</p></div><div className="institutional-body">{page.body.map((paragraph) => <p key={paragraph}>{paragraph}</p>)}</div><button className="primary-button" type="button" onClick={onService}>Solicitar atendimento</button></main>; }
 
 function OwnerCapture({ intent, onSubmit }: { intent: OwnerIntent; onSubmit: (payload: { intent: OwnerIntent; city: string; propertyType: string; contact: { name: string; email: string; whatsapp: string } }) => Promise<boolean>; }) {
   const [status, setStatus] = useState<'idle' | 'busy' | 'success' | 'error'>('idle'); const [feedback, setFeedback] = useState('');
