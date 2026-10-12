@@ -227,3 +227,29 @@ body:has(.hero) .hero{padding-top:156px}
 }
 [data-theme="dark"] .f05-shell .f05-tabs button:not(.is-active),
 [data-theme="dark"] .marketing-shell .marketing-tabs button:not(.is-active){color:var(--harpia-sage)!important;border-color:var(--harpia-sage)!important}
+
+/* Estados particulares mantêm contraste e distinção operacional. */
+.f03-dashboard .f03-metric-card--accent,
+[data-theme="dark"] .f03-dashboard .f03-metric-card--accent{
+  background:#3C4F33!important;color:#EEEEF0!important;border-color:#C3CE94!important;
+}
+.f03-dashboard .f03-metric-card--accent :is(strong,small,.f03-metric-card__top span){
+  color:#EEEEF0!important;
+}
+.f03-dashboard .f03-metric-card--accent .f03-metric-card__top i{background:#C3CE94!important}
+body:not([data-theme="dark"]) :is(.search,.card,.authority-card,.lead-form,.result-item,.client-popup,.drawer,.form-panel,.info-card,.metric-card,.f03-dashboard,.marketing-panel){
+  background-color:#EEEEF0!important;
+}
+body:not([data-theme="dark"]) :is(input,textarea,select){
+  background-color:#EEEEF0;
+}
+.internal-main :is([class*="_workspace_"],[class*="_conversationList_"],[class*="_chatPane_"],[class*="_contextPane_"]){
+  background-color:var(--harpia-paper)!important;
+}
+.internal-main :is([class*="_leadCard_"],[class*="_detailSection_"],[class*="_pipelineBar_"],[class*="_toolbar_"]){
+  border-color:rgba(60,79,51,.26)!important;
+}
+body:not([data-theme="dark"]) :is(.ai-chat,.ai-message.bot,.ai-chat-form,.settings-tabs,.marketing-metric){
+  background-color:#EEEEF0!important;
+}
+.footer-button.primary:has(img){background:transparent!important;color:#C3CE94!important;border-color:rgba(195,206,148,.48)!important}
