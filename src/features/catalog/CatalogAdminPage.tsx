@@ -240,7 +240,7 @@ export function CatalogAdminPage({ access, repository, mediaStorage }: CatalogAd
   }, [canRead, productRepository]);
 
   const normalizedSearch = search.trim().toLocaleLowerCase('pt-BR');
-  const contextItems = items.filter((item) => (
+  const contextItems = items.filter((item) => item.itemType !== 'property' && (
     workspaceMode === 'catalog'
       ? item.catalogId === selectedCatalogId
       : workspaceMode === 'standalone'
@@ -929,7 +929,7 @@ export function CatalogAdminPage({ access, repository, mediaStorage }: CatalogAd
     );
   }
 
-  const standaloneCount = items.filter((item) => item.catalogId === null).length;
+  const standaloneCount = items.filter((item) => item.itemType !== 'property' && item.catalogId === null).length;
 
   const catalogListBlock = loading ? (
     <div className="f03-card f03-empty">Carregando catálogos...</div>
@@ -941,7 +941,7 @@ export function CatalogAdminPage({ access, repository, mediaStorage }: CatalogAd
   ) : (
     <div className="f03-item-list">
       {catalogs.map((catalog) => {
-        const count = items.filter((item) => item.catalogId === catalog.id).length;
+        const count = items.filter((item) => item.itemType !== 'property' && item.catalogId === catalog.id).length;
         return (
           <article className="f03-card f03-item" key={catalog.id}>
             <div className="f03-item-top">
