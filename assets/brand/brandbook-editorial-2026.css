@@ -323,3 +323,31 @@ body:has(.hero) .chat-float,.site-footer .footer-button{box-shadow:none!importan
   #inicio.hero h1{font-size:clamp(38px,10vw,52px)!important}
 }
 @media(prefers-reduced-motion:reduce){.brandbook-home-hero*,.harpia-heritage-mark*{transition:none!important;animation:none!important}}
+
+/* Compatibilidade visual com o bundle React já publicado na gh-pages.
+   :has evita criar um segundo brasão quando o componente React atualizado for implantado. */
+:is(.f03-dashboard-header,.f03-header,.calendar-header,.settings-workspace__header,
+    .marketing-hero,.f05-module__header,.sb-builder-top,
+    [class*="_crmTopbar_"],[class*="_conversationList_"]>header)
+:not(:has(> .harpia-heritage-mark))::before{
+  content:"";display:block;flex:0 0 35px;width:35px;min-width:35px;height:51px;
+  background:url("/assets/brand/harpia-crest-dark-green-cropped.png") center/contain no-repeat;
+  align-self:center;
+}
+[data-theme="dark"] :is(.f03-dashboard-header,.f03-header,.calendar-header,.settings-workspace__header,
+    .marketing-hero,.f05-module__header,.sb-builder-top,
+    [class*="_crmTopbar_"],[class*="_conversationList_"]>header)
+:not(:has(> .harpia-heritage-mark))::before{
+  background-image:url("/assets/brand/harpia-icon-light-green-cropped.png");
+}
+.brandbook-about-emblem{display:block;width:52px;height:72px;object-fit:contain;margin:0 0 22px}
+body:has(#inicio.hero) #inicio.hero .brandbook-home-kicker img{display:block}
+body:has(.story.wrap) .brandbook-about-emblem{width:58px;height:80px}
+body:has(.hero-card) .brandbook-about-emblem{width:45px;height:62px}
+body:has(.status) .brandbook-about-emblem{width:45px;height:62px}
+@media(max-width:650px){
+  :is(.f03-dashboard-header,.f03-header,.calendar-header,.settings-workspace__header,
+    .marketing-hero,.f05-module__header,.sb-builder-top,
+    [class*="_crmTopbar_"],[class*="_conversationList_"]>header)
+  :not(:has(> .harpia-heritage-mark))::before{width:26px;min-width:26px;height:38px}
+}
