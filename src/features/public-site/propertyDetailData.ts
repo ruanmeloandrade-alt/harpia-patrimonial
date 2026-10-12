@@ -135,7 +135,11 @@ export function resolvePropertyVideo(urlString: string): PropertyVideoSource | n
   }
   if (host === 'vimeo.com' || host === 'player.vimeo.com') {
     const id = host === 'player.vimeo.com' && parts[0] === 'video' ? parts[1] : parts[0];
-    if (id && /^\d+$/.test(id)) return { kind: 'vimeo', src: 'https://player.vimeo.com/video/' + id, label: 'Vídeo do imóvel no Vimeo' };
+    if (id && /^\d+$/.test(id)) {
+      const hash = url.searchParams.get('h') || (host === 'vimeo.com' ? parts[1] : null);
+      const suffix = hash && /^[a-zA-Z0-9]+$/.test(hash) ? '?h=' + hash : '';
+      return { kind: 'vimeo', src: 'https://player.vimeo.com/video/' + id + suffix, label: 'Vídeo do imóvel no Vimeo' };
+    }
     return null;
   }
   return { kind: 'file', src: url.href, label: 'Vídeo do imóvel' };
