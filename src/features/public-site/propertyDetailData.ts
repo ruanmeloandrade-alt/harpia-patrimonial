@@ -99,7 +99,13 @@ export function getPropertyPresentation(item: PublicCatalogItem): PropertyPresen
       if (n !== null && numeric[key] === null) numeric[key] = n;
       continue;
     }
-    others.push(trimmed);
+    if (/portaria|concierge|lavanderia|encomenda|fast market|pay-per-use/i.test(trimmed)) {
+      services.push(trimmed);
+    } else if (/piscina|coworking|parque|jogos|academia|churrasqueira|segurança|sauna|brinquedoteca|festas|recarga/i.test(trimmed)) {
+      outdoors.push(trimmed);
+    } else {
+      others.push(trimmed);
+    }
   }
 
   return {
