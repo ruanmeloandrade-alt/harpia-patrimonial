@@ -216,3 +216,14 @@ body:has(.hero) .hero{padding-top:156px}
 [data-theme="dark"] .internal-main :is(input,select,textarea){background:#161616!important;color:#EEEEF0!important;border-color:#C3CE94!important}
 [data-theme="dark"] .internal-main :is(thead th){background:#C3CE94!important;color:#161616!important}
 [data-theme="dark"] .internal-main :is(.alert-error,.f03-alert-error){color:#f2b2a9!important}
+
+/* Proporcao original da assinatura horizontal do brandbook. */
+.harpia-public .brand-logo-official{display:block;width:260px;max-width:min(38vw,260px);height:auto;object-fit:contain}
+@media(max-width:680px){.harpia-public .brand-logo-official{width:184px;max-width:58vw}}
+/* Abas inativas continuam distinguiveis dos comandos primarios. */
+.f05-shell .f05-tabs button:not(.is-active),
+.marketing-shell .marketing-tabs button:not(.is-active){
+  background:transparent!important;color:var(--harpia-forest)!important;border-color:var(--harpia-forest)!important;
+}
+[data-theme="dark"] .f05-shell .f05-tabs button:not(.is-active),
+[data-theme="dark"] .marketing-shell .marketing-tabs button:not(.is-active){color:var(--harpia-sage)!important;border-color:var(--harpia-sage)!important}
