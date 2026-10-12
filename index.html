@@ -61,7 +61,7 @@
 <body>
 <header><div class="wrap nav"><a class="brand" href="/" aria-label="Hárpia Patrimonial & Co."><img src="/assets/brand/harpia-logo-horizontal-white-cropped.png" alt="Hárpia Patrimonial & Co. — Negócios e Investimentos Imobiliários"></a><nav class="navlinks"><a href="#sobre">Sobre</a><a href="/investimentos/">Investimentos</a><a href="/leiloes/">Leilões</a><a href="/assessoria-juridica/">Assessoria Jurídica</a><a href="/arquitetura/">Arquitetura</a><a href="/cliente/" data-open-client>Área Interna</a></nav></div></header>
 <main>
-<section id="inicio" class="hero"><div class="wrap"><div class="kicker">Curadoria de imóveis extraordinários no Rio</div><h1>Encontre um imóvel à altura da sua próxima história.</h1><p>Busca inteligente, seleção criteriosa e atendimento humano para conectar você ao imóvel certo.</p><form class="search" id="home-search" onsubmit="return buscarImoveis(event)">
+<section id="inicio" class="hero"><div class="wrap"><div class="brandbook-home-kicker"><img src="/assets/brand/harpia-icon-light-green-cropped.png" alt="" aria-hidden="true"><span>Inteligência patrimonial · Tradição familiar desde 1986</span></div><h1>Orientamos decisões que atravessam gerações.</h1><p>Enquanto o mercado negocia imóveis, a Hárpia orienta decisões. Preservar, expandir e perpetuar patrimônios é uma responsabilidade construída ao lado de famílias e empresários desde 1986.</p><form class="search" id="home-search" onsubmit="return buscarImoveis(event)">
   <div class="field">
     <label for="finalidade">Finalidade</label>
     <select id="finalidade" name="finalidade">
@@ -136,9 +136,14 @@
       </select>
     </div>
   </div>
-  <button type="submit">⌕ Buscar imóveis</button>
+  <button type="submit">Buscar imóveis</button>
 </form></div></section>
-<section id="imoveis" class="estate-section"><div class="wrap"><div class="section-top"><div><h2 class="title">Imóveis escolhidos para quem<br>procura mais do que metragem.</h2></div><button class="small-link" type="button" data-open-search>Ver todos os imóveis →</button></div><div class="estate-stage"><aside class="estate-filter" aria-label="Busca rápida de imóveis"><h3>Busca refinada para alto padrão.</h3><form class="quick-search" onsubmit="openSearch();return false"><label class="quick-field">Bairro<select name="bairro"><option>Todos</option><option>Barra da Tijuca</option><option>Península</option><option>Leblon</option><option>Ipanema</option><option>Jardim Botânico</option><option>Joá</option></select></label><label class="quick-field">Perfil<select name="perfil"><option>Todos</option><option>Alto padrão</option><option>Vista mar</option><option>Pronto para morar</option><option>Potencial de reforma</option></select></label><label class="quick-field">Faixa<select name="faixa"><option>R$ 3 mi — R$ 20 mi+</option><option>Até R$ 5 mi</option><option>R$ 5 mi a R$ 10 mi</option><option>R$ 10 mi a R$ 20 mi</option><option>Acima de R$ 20 mi</option></select></label><button class="quick-submit" type="submit">Buscar rápido</button><button class="small-link" type="button" data-open-search>Pesquisa premium →</button></form></aside><div class="grid property-grid">
+<section class="brandbook-origin-strip wrap" aria-label="Tradição patrimonial Hárpia">
+  <img src="/assets/brand/harpia-crest-dark-green-cropped.png" alt="" aria-hidden="true">
+  <div><strong>O patrimônio não pertence apenas ao presente.</strong><p>Há gerações orientando decisões com discrição, responsabilidade e inteligência imobiliária. Uma tradição familiar desde 1986.</p></div>
+  <span class="origin-date" aria-hidden="true">1986</span>
+</section>
+<section id="imoveis" class="estate-section"><div class="wrap"><div class="section-top"><div><h2 class="title">Oportunidades avaliadas<br>com critério patrimonial.</h2></div><button class="small-link" type="button" data-open-search>Ver todos os imóveis →</button></div><div class="estate-stage"><aside class="estate-filter" aria-label="Busca rápida de imóveis"><h3>Busque oportunidades com clareza.</h3><form class="quick-search" onsubmit="openSearch();return false"><label class="quick-field">Bairro<select name="bairro"><option>Todos</option><option>Barra da Tijuca</option><option>Península</option><option>Leblon</option><option>Ipanema</option><option>Jardim Botânico</option><option>Joá</option></select></label><label class="quick-field">Perfil<select name="perfil"><option>Todos</option><option>Alto padrão</option><option>Vista mar</option><option>Pronto para morar</option><option>Potencial de reforma</option></select></label><label class="quick-field">Faixa<select name="faixa"><option>R$ 3 mi — R$ 20 mi+</option><option>Até R$ 5 mi</option><option>R$ 5 mi a R$ 10 mi</option><option>R$ 10 mi a R$ 20 mi</option><option>Acima de R$ 20 mi</option></select></label><button class="quick-submit" type="submit">Buscar rápido</button><button class="small-link" type="button" data-open-search>Pesquisa premium →</button></form></aside><div class="grid property-grid">
 <div class="catalog-loading" id="catalog-loading">Carregando imóveis publicados...</div>
 </div></div></div></section>
 
