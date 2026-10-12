@@ -87,7 +87,7 @@ export function PropertyPresentationEditor({ properties, repository, canManage, 
   useEffect(() => {
     if (!properties.some(property => property.id === selectedId)) setSelectedId(properties[0]?.id ?? '');
   }, [properties, selectedId]);
-  useEffect(() => { setForm(item ? formFromItem(item) : null); setError(''); setNotice(''); }, [item?.id, item?.updatedAt]);
+  useEffect(() => { setForm(item ? formFromItem(item) : null); setError(''); setNotice(''); }, [item?.id]);
 
   async function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -101,7 +101,7 @@ export function PropertyPresentationEditor({ properties, repository, canManage, 
       ['IPTU', form.monthlyIptu], ['Condomínio', form.monthlyCondominium],
     ];
     for (const [label, value] of numberFields) {
-      if (value && (!Number.isFinite(Number(value)) || Number(value) < 0)) {
+      if (value && (!/^\\d+(?:[.,]\\d{1,2})?$/.test(value.trim()) || !Number.isFinite(Number(value.replace(',', '.'))))) {
         setError('Informe um valor válido para ' + label + '.');
         return;
       }
