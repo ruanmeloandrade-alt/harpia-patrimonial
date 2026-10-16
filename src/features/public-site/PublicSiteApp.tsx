@@ -1,3 +1,4 @@
+import { PropertyDetailPage } from './PropertyDetailPage';
 import { HarpiaBrandMark } from '../../shared/components/HarpiaBrandMark';
 import { FormEvent, MouseEvent, useEffect, useRef, useState } from 'react';
 import { ClientArea, type ClientProfileView } from '../client-area/ClientArea';
@@ -384,7 +385,7 @@ export default function PublicSiteApp({ catalog = emptyPublicCatalogReader, auth
 
       {propertySlug === null && <main className="section-shell property-detail"><div className="error-state"><strong>Endereço de imóvel inválido.</strong><p>Volte ao catálogo e escolha um imóvel publicado.</p><button className="secondary-button" type="button" onClick={() => navigate('/imoveis')}>Voltar ao catálogo</button></div></main>}
 
-      {typeof propertySlug === 'string' && propertySlug && <PropertyDetail slug={propertySlug} catalog={catalog} isFavorite={(id) => favorites?.isFavorite(id) ?? false} onBack={() => navigate('/imoveis')} onNavigate={navigate} onFavorite={(item) => { if (!auth?.currentClient) return requestLogin('favoritar-imovel'); if (!favorites) return setNotice('Persistência de favoritos aguarda integração da conta com o catálogo real.'); return favorites.toggle(item); }} onService={(item) => emitConversion({ source: 'site-publico', action: 'atendimento-imovel', page: route, service: 'Atendimento consultivo', propertyId: item.id, propertySlug: item.slug })} />}
+      {typeof propertySlug === 'string' && propertySlug && <PropertyDetail slug={propertySlug} catalog={catalog} relatedItems={items} isFavorite={(id) => favorites?.isFavorite(id) ?? false} onBack={() => navigate('/imoveis')} onNavigate={navigate} onFavorite={(item) => { if (!auth?.currentClient) return requestLogin('favoritar-imovel'); if (!favorites) return setNotice('Persistência de favoritos aguarda integração da conta com o catálogo real.'); return favorites.toggle(item); }} onSchedule={(item) => emitConversion({ source: 'site-publico', action: 'agendar-visita-imovel', page: route, service: 'Agendar visita', propertyId: item.id, propertySlug: item.slug })} onService={(item) => emitConversion({ source: 'site-publico', action: 'atendimento-imovel', page: route, service: 'Atendimento consultivo', propertyId: item.id, propertySlug: item.slug })} />}
 
       {productSlug === null && <main className="section-shell property-detail"><div className="error-state"><strong>Endereço de produto inválido.</strong><p>Volte aos produtos e escolha um item publicado.</p><button className="secondary-button" type="button" onClick={() => navigate('/produtos')}>Voltar aos produtos</button></div></main>}
 
@@ -545,7 +546,19 @@ function ProductDetail({ slug, catalog, onBack, onService }: { slug: string; cat
   );
 }
 
-function PropertyDetail({ slug, catalog, isFavorite, onBack, onNavigate, onFavorite, onService }: { slug: string; catalog: PublicCatalogReader; isFavorite: (id: string) => boolean; onBack: () => void; onNavigate: (path: string) => void; onFavorite: (item: PublicCatalogItem) => void | Promise<void>; onService: (item: PublicCatalogItem) => void | Promise<boolean>; }) {
+function PropertyDetail({
+  slug, catalog, relatedItems, isFavorite, onBack, onNavigate, onFavorite, onService, onSchedule,
+}: {
+  slug: string;
+  catalog: PublicCatalogReader;
+  relatedItems: PublicCatalogItem[];
+  isFavorite: (id: string) => boolean;
+  onBack: () => void;
+  onNavigate: (path: string) => void;
+  onFavorite: (item: PublicCatalogItem) => void | Promise<void>;
+  onService: (item: PublicCatalogItem) => void | Promise<boolean>;
+  onSchedule: (item: PublicCatalogItem) => void | Promise<boolean>;
+}) {
   const [item, setItem] = useState<PublicCatalogItem | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -556,7 +569,7 @@ function PropertyDetail({ slug, catalog, isFavorite, onBack, onNavigate, onFavor
     setLoading(true);
     setError('');
     catalog.getPublishedBySlug(slug)
-      .then((result) => { if (active) setItem(result); })
+      .then((result) => { if (active) setItem(result?.itemType === 'property' ? result : null); })
       .catch(() => { if (active) setError('Não foi possível carregar este imóvel.'); })
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
@@ -564,9 +577,25 @@ function PropertyDetail({ slug, catalog, isFavorite, onBack, onNavigate, onFavor
 
   if (loading) return <main className="section-shell"><div className="loading-state">Carregando imóvel…</div></main>;
   if (error) return <main className="section-shell"><div className="error-state"><strong>Não foi possível carregar este imóvel.</strong><span>{error}</span><button className="secondary-button" type="button" onClick={() => setRevision((value) => value + 1)}>Tentar novamente</button><button className="text-button" type="button" onClick={onBack}>Voltar ao catálogo</button></div></main>;
-  if (!item) return <main className="section-shell"><div className="empty-state"><strong>Imóvel não encontrado ou não publicado.</strong><p>O catálogo público só exibe itens reais em estado publicado.</p><button className="secondary-button" type="button" onClick={onBack}>Voltar ao catálogo</button></div></main>;
-  const images = item.media.filter((media) => media.type === 'image'); const videos = item.media.filter((media) => media.type === 'video');
-  return <main className="section-shell property-detail"><button className="text-button" type="button" onClick={onBack}>← Voltar ao catálogo</button><div className="detail-hero"><div className="detail-copy"><p className="section-kicker">{item.propertyType} · {item.purpose}</p><h1>{item.title}</h1><p>{item.location}, {item.city}</p><strong className="detail-price">{formatCurrency(item.price)}</strong><div className="hero-actions"><button className="primary-button" type="button" onClick={() => void onService(item)}>Quero atendimento</button><button className="secondary-button" type="button" aria-pressed={isFavorite(item.id)} onClick={() => onFavorite(item)}>{isFavorite(item.id) ? 'Remover dos favoritos' : 'Salvar imóvel'}</button></div></div><div className="detail-cover">{images[0] ? <img src={images[0].url} alt={images[0].alt ?? item.title} /> : <span>Imagem não disponível</span>}</div></div><div className="detail-grid"><article><p className="section-kicker">Sobre o imóvel</p><h2>Características</h2><p>{item.description || 'Descrição ainda não cadastrada no catálogo publicado.'}</p><div className="feature-list">{item.features?.length ? item.features.map((feature) => <span key={feature}>{feature}</span>) : <span>Características detalhadas ainda não cadastradas.</span>}</div></article><aside className="detail-facts"><strong>Informações</strong>{item.privateAreaM2 ? <span>Área privativa: {item.privateAreaM2} m²</span> : null}{item.bedrooms ? <span>Quartos: {item.bedrooms}</span> : null}{item.suites ? <span>Suítes: {item.suites}</span> : null}{item.bathrooms ? <span>Banheiros: {item.bathrooms}</span> : null}{item.parkingSpaces ? <span>Vagas: {item.parkingSpaces}</span> : null}<span>Status: {item.status === 'sold' ? 'Vendido' : 'Publicado'}</span>{item.development ? <span>Empreendimento: {item.development.title}{item.development.unitLabel ? ` · ${item.development.unitLabel}` : ''}</span> : null}</aside></div>{images.length > 1 && <div className="detail-gallery">{images.slice(1).map((image) => <img loading="lazy" key={image.url} src={image.url} alt={image.alt ?? item.title} />)}</div>}{videos.length > 0 && <div className="video-list">{videos.map((video) => <a key={video.url} href={video.url} target="_blank" rel="noreferrer">Abrir vídeo do imóvel</a>)}</div>}<section className="property-related-services"><div><p className="section-kicker">Serviços relacionados</p><h2>Uma decisão imobiliária pode envolver mais do que o imóvel.</h2></div><div>{[['Investimentos', '/investimentos'], ['Assessoria Jurídica', '/assessoria-juridica'], ['Arquitetura', '/arquitetura']].map(([label, path]) => <button type="button" key={path} onClick={() => onNavigate(path)}><strong>{label}</strong><span>Conhecer serviço →</span></button>)}</div></section></main>;
+  if (!item) return <main className="section-shell"><div className="empty-state"><strong>Imóvel não encontrado ou não publicado.</strong><p>O catálogo público só exibe imóveis reais em estado publicado.</p><button className="secondary-button" type="button" onClick={onBack}>Voltar ao catálogo</button></div></main>;
+
+  const related = relatedItems
+    .filter(candidate => candidate.itemType === 'property' && candidate.id !== item.id && candidate.status === 'published')
+    .sort((a, b) => Number(b.city === item.city && b.location === item.location) - Number(a.city === item.city && a.location === item.location));
+
+  return (
+    <PropertyDetailPage
+      key={item.id}
+      item={item}
+      related={related}
+      onBack={onBack}
+      onOpenRelated={otherSlug => onNavigate(`/imoveis/${encodeURIComponent(otherSlug)}`)}
+      onRequestVisit={() => { void onSchedule(item); }}
+      onRequestService={() => { void onService(item); }}
+      onFavorite={() => onFavorite(item)}
+      isFavorite={isFavorite(item.id)}
+    />
+  );
 }
 
 function InstitutionalPage({ page, onService }: { page: InstitutionalPage; onService: () => void }) { return <main className="institutional-page section-shell"><div className="page-intro"><HarpiaBrandMark /><p className="section-kicker">{page.kicker}</p><h1>{page.title}</h1><p className="section-lead">{page.lead}</p></div><div className="institutional-body">{page.body.map((paragraph) => <p key={paragraph}>{paragraph}</p>)}</div><button className="primary-button" type="button" onClick={onService}>Solicitar atendimento</button></main>; }
