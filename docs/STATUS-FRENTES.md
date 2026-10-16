@@ -260,3 +260,55 @@ O shell disponível não possui checkout do repositório e não resolve GitHub/r
 - [ ] QA visual final desktop/mobile da base React compilada.
 
 Motivo dos itens não verificados: este ambiente não possui checkout completo do repositório e não resolve GitHub/registry via shell. Não foi criada conta fictícia para contornar autenticação.
+
+---
+
+## Portal Privado do Cliente — 16/10/2026
+
+🟠 **IMPLEMENTADO E PUBLICADO, AGUARDANDO QA AUTENTICADO COM CLIENTE REAL**
+
+Referência visual obrigatória: `Harpia_Portal(1).pdf`, 10 telas.
+
+### Implementado
+
+- [x] Visão Geral.
+- [x] Minha Curadoria.
+- [x] Detalhe da Oportunidade.
+- [x] Meu Acompanhamento.
+- [x] Detalhe do Processo.
+- [x] Documentos.
+- [x] Atendimento.
+- [x] Meu Perfil.
+- [x] Primeiro Acesso.
+- [x] Acesso Reservado.
+- [x] autenticação real Supabase no portal publicado; localStorage deixou de ser mecanismo de autenticação;
+- [x] sessão, logout e recuperação de senha integrados;
+- [x] dados reais do cliente via `client-area-data` v3;
+- [x] preferências/onboarding persistidos em `client_portal_preferences`;
+- [x] documentos privados em `client_documents` + bucket `client-documents` com RLS;
+- [x] acompanhamento derivado do CRM real, sem porcentagem fictícia;
+- [x] curadoria individual distinta de catálogo geral;
+- [x] favoritos persistidos continuam usando `client_favorites`;
+- [x] publicação em `gh-pages` no commit `5b34eef37498fb92b80530ad4b924ae34f962c26`;
+- [x] Pages run `38955875351` concluído com sucesso.
+
+### Validação executada
+
+- [x] sintaxe JavaScript da implementação publicada;
+- [x] migration `client_portal_private_area` aplicada;
+- [x] Edge Function `client-area-data` v3 ACTIVE e `verify_jwt=true`;
+- [x] deploy Pages confirmado;
+- [x] ausência de conteúdo operacional demonstrativo embutido na nova implementação.
+
+### Ainda NÃO VERIFICADO
+
+- [ ] inspeção visual direta no domínio após o deploy;
+- [ ] login/cadastro com cliente real;
+- [ ] fluxo autenticado ponta a ponta das 10 telas;
+- [ ] upload/download real de documento pela UI;
+- [ ] confirmação de e-mail e recuperação de senha por navegador real;
+- [ ] `npm run typecheck` e `npm run build` da aplicação React completa.
+
+A base auditada antes desta entrega ainda tinha zero contas de cliente, zero leads, zero documentos e zero itens em `catalog_items`. Portanto, a QA autenticada real depende da entrada de um cliente/registro operacional; não criar mock para mascarar esse estado.
+
+Detalhamento: `docs/PORTAL-CLIENTE-2026-10-16.md`.
