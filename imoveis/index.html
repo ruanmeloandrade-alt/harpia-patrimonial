@@ -1,91 +1,22 @@
 <!doctype html>
 <html lang="pt-BR">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <meta name="theme-color" content="#3c4f33" />
-  <meta name="description" content="Conheça os imóveis e oportunidades da Hárpia Patrimonial & Co." />
-  <link rel="icon" href="/assets/brand/harpia-favicon.png" />
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#3d5033">
+  <meta name="description" content="Conheça os imóveis da Hárpia Patrimonial & Co. Veja fotos, vídeos, características e agende uma visita.">
+  <link rel="icon" href="/assets/brand/harpia-favicon.png">
   <title>Imóvel | Hárpia Patrimonial & Co.</title>
-  <link rel="stylesheet" href="/assets/brand/brand.css" />
-  <link rel="stylesheet" href="/assets/brand/brandbook-2026.css?v=20261012" />
-  <link rel="stylesheet" href="/assets/brand/brandbook-editorial-2026.css?v=20261012" />
-  <link rel="stylesheet" href="/assets/catalog/property-detail-2026.css?v=20261012" />
-  <style>
-    html,body{margin:0;min-height:100%;background:#eeeef0}
-    .hp-public-header{background:#3c4f33;color:#eeeef0;min-height:79px;display:flex;align-items:center;position:relative}
-    .hp-public-header__inner{width:min(1190px,calc(100% - 48px));margin:auto;display:flex;align-items:center;justify-content:space-between;gap:24px}
-    .hp-public-header__brand{display:flex;align-items:center;gap:12px;text-decoration:none}
-    .hp-public-header__brand img{width:260px;max-width:62vw;height:65px;object-fit:contain;display:block}
-    .hp-public-header__links{display:flex;gap:25px}
-    .hp-public-header__links a{color:#eeeef0;text-decoration:none;font-size:12px}
-    .hp-public-header__links a:hover{text-decoration:underline;text-underline-offset:4px}
-    .hp-public-footer{padding:34px max(24px,calc((100vw - 1190px)/2)) 15px;background:#c3ce94;color:#3c4f33;text-align:center}
-    .hp-public-footer>img{display:block;width:min(295px,75vw);height:auto;margin:0 auto 18px}
-    .hp-public-footer__links{display:flex;gap:18px;justify-content:center;flex-wrap:wrap;padding-bottom:22px}
-    .hp-public-footer__links a{font-size:13px;color:#3c4f33;text-decoration:none;font-weight:700}
-    .hp-public-footer__links a:hover{text-decoration:underline;text-underline-offset:3px}
-    .hp-public-footer__legal{border-top:1px solid rgba(60,79,51,.3);padding-top:13px;display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;font-size:11px}
-    .hp-public-footer__legal a{color:inherit}
-    #property-loading{margin:40px auto;padding:35px 24px;width:min(700px,calc(100% - 40px));text-align:center;color:#3c4f33}
-    #property-loading a{color:#3c4f33;font-weight:750}
-    [hidden]{display:none!important}
-    @media(max-width:650px){
-      .hp-public-header__inner{width:calc(100% - 28px)}
-      .hp-public-header__brand img{width:190px;max-width:55vw;height:60px}
-      .hp-public-header__links{gap:12px}
-      .hp-public-header__links a{font-size:10px}
-      .hp-public-footer__legal{flex-direction:column;text-align:center;align-items:center}
-    }
-  </style>
+  <link rel="stylesheet" href="/assets/catalog/property-reference-20261016.css?v=20261016.1">
+  <style>html,body{margin:0;min-height:100%;background:#eeede6}#property-loading{max-width:660px;padding:48px 24px;margin:auto;font:16px/1.6 Arial,sans-serif;color:#3d5033;text-align:center}#property-loading a{color:inherit}[hidden]{display:none!important}</style>
   <script defer src="/assets/catalog/harpia-existing-properties.js"></script>
   <script defer src="/assets/catalog/harpia-existing-media.js"></script>
   <script defer src="/assets/catalog/harpia-property-videos.js"></script>
-  <script defer src="/assets/catalog/property-detail-page.js"></script>
+  <script type="module" src="/assets/catalog/property-reference-boot-20261016.js?v=20261016.1"></script>
 </head>
 <body>
-  <header class="hp-public-header">
-    <div class="hp-public-header__inner">
-      <a class="hp-public-header__brand" href="/" aria-label="Hárpia Patrimonial, início"><img src="/assets/brand/harpia-logo-horizontal-white-cropped.png" alt="Hárpia Patrimonial & Co." /></a>
-      <nav class="hp-public-header__links" aria-label="Navegação principal"><a href="/">Início</a><a href="/#imoveis">Imóveis</a><a href="/#atendimento">Ser Atendido</a></nav>
-    </div>
-  </header>
   <div id="property-loading" role="status" aria-live="polite">Carregando informações do imóvel...</div>
-  <main id="property-details" class="hp-property" aria-labelledby="hp-property-title" hidden>
-    <div class="hp-property__container">
-      <div class="hp-property__breadcrumb"><a href="/#imoveis">← Voltar aos imóveis</a><span id="hp-breadcrumb">Hárpia Patrimonial</span></div>
-      <section class="hp-property__top" aria-label="Vídeo e características">
-        <div class="hp-property__stage" id="hp-stage"></div>
-        <aside class="hp-property__features" id="hp-features"><h2>Características</h2></aside>
-      </section>
-      <section class="hp-property__gallery-section" aria-label="Galeria de fotos e vídeos">
-        <div class="hp-property__gallery" id="hp-gallery"></div>
-        <p class="hp-property__gallery-hint" id="hp-gallery-hint" hidden>Deslize para visualizar todas as fotos e vídeos.</p>
-      </section>
-      <section class="hp-property__information">
-        <p class="hp-property__eyebrow">Hárpia Patrimonial &amp; Co.</p>
-        <h1 id="hp-property-title"></h1>
-        <p id="hp-location" class="hp-property__location"></p>
-        <p id="hp-specs" class="hp-property__specs"></p>
-        <dl id="hp-fees" class="hp-property__fees"></dl>
-        <div class="hp-property__price-panel">
-          <small id="hp-code"></small><strong id="hp-price"></strong><span id="hp-purpose"></span>
-        </div>
-      </section>
-      <section class="hp-property__wellness" aria-label="Índice Wellness">
-        <h2>Índice Wellness</h2><dl id="hp-wellness"></dl>
-      </section>
-      <section class="hp-property__description">
-        <h2>Descrição</h2><div id="hp-description"></div><address id="hp-address"></address>
-        <div class="hp-property__actions"><a id="hp-visit" class="hp-property__cta" href="#" target="_blank" rel="noopener noreferrer">Agendar Visita</a><a id="hp-contact" class="hp-property__cta" href="#" target="_blank" rel="noopener noreferrer">Ser Atendido</a></div>
-      </section>
-      <section class="hp-property__related"><h2>Outras oportunidades da Hárpia</h2><div class="hp-property__related-grid" id="hp-related"></div></section>
-    </div>
-  </main>
-  <footer class="hp-public-footer">
-    <img src="/assets/brand/harpia-logo-horizontal-dark-green.png" alt="Hárpia Patrimonial & Co." />
-    <nav class="hp-public-footer__links" aria-label="Rodapé"><a href="/">Início</a><a href="/#imoveis">Outros imóveis</a><a href="/#atendimento">Atendimento</a></nav>
-    <div class="hp-public-footer__legal"><span>Projeto desenvolvido por RB Mídia</span><a href="/politica-de-privacidade/">Política de Privacidade</a></div>
-  </footer>
+  <div id="property-reference"></div>
+  <noscript>Ative o JavaScript para visualizar os detalhes do imóvel. <a href="/#imoveis">Voltar ao catálogo.</a></noscript>
 </body>
 </html>
