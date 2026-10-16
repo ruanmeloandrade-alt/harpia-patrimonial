@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef } from 'react';
 import type { PublicCatalogItem } from '../public-catalog/contracts';
 import { normalizeReferenceProperty, renderReferenceProperty } from './propertyReference';
+import { mountLandingChrome } from './landingChrome';
 import './property-reference-20261016.css';
 
 type Props = {
@@ -25,7 +26,7 @@ export function PropertyDetailPage(props: Props) {
 
   useEffect(() => {
     if (!host.current) return;
-    return renderReferenceProperty(host.current, {
+    const releaseProperty = renderReferenceProperty(host.current, {
       item: normalizeReferenceProperty(snapshot.item),
       related: snapshot.related.map(item => normalizeReferenceProperty(item)),
       isFavorite: snapshot.isFavorite,
@@ -35,6 +36,8 @@ export function PropertyDetailPage(props: Props) {
       onService: () => actions.current.onRequestService(),
       onFavorite: () => actions.current.onFavorite(),
     });
+    const releaseChrome = mountLandingChrome(host.current);
+    return () => { releaseChrome(); releaseProperty(); };
   }, [snapshot]);
 
   return <div ref={host} className="hp-reference-host" />;
