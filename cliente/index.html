@@ -4,7 +4,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="theme-color" content="#102018" />
-  <title>Área Interna do Cliente | Hárpia Patrimonial & Co.</title>
+  <title>Acesse sua conta | Hárpia Patrimonial & Co.</title>
+  <style id="harpia-access-critical">body.client-access-pending>main#inicio,body.client-access-pending>#logout,body.client-access-pending>#backdrop,body.client-access-pending>#opportunity{display:none!important}#access-gate[hidden],#access-gate [hidden]{display:none!important}</style>
   <style>
     :root{--forest:#102018;--green:#183126;--gold:#c6aa72;--paper:#efeee7;--card:#fbfaf6;--ink:#14231b;--muted:#667067;--line:#ded6c4}
     *{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--paper);color:var(--ink);font-family:Inter,Arial,sans-serif;-webkit-font-smoothing:antialiased}a{text-decoration:none;color:inherit}button,input,select,textarea{font:inherit}.wrap{width:min(1180px,calc(100% - 44px));margin:auto}
@@ -22,10 +23,11 @@
   <link rel="stylesheet" href="/assets/brand/brand.css" />
   <link rel="stylesheet" href="/assets/brand/brandbook-2026.css?v=20261012" />
   <link rel="stylesheet" href="/assets/brand/brandbook-editorial-2026.css?v=20261012" />
+  <link rel="stylesheet" href="/assets/client/access-20261016.css?v=1">
 </head>
-<body>
+<body class="harpia-client client-access-pending">
   <button class="subtle-logout" type="button" id="logout">Sair</button>
-  <main class="wrap" id="inicio">
+  <main class="wrap" id="inicio" hidden inert>
     <section class="hero">
       <div class="hero-card">
         <img class="brandbook-about-emblem" src="/assets/brand/harpia-crest-dark-green-cropped.png" alt="" aria-hidden="true">
@@ -102,27 +104,46 @@
     </section>
   </main>
   <div class="drawer-backdrop" id="backdrop"></div>
-  <aside class="access-gate" id="access-gate" aria-label="Cadastro obrigatório">
-    <div class="gate-card">
-      <div class="eyebrow">Acesso do cliente</div>
-      <h2>Cadastre-se para acessar a área interna.</h2>
-      <p>Informe nome, e-mail, WhatsApp e senha para liberar a ficha, o marketplace e os avisos da Hárpia.</p>
-      <form class="gate-form active" id="gate-signup">
-        <label>Nome<input name="nome" type="text" placeholder="Seu nome" required></label>
-        <label>E-mail<input name="email" type="email" placeholder="seu@email.com" required></label>
-        <label>WhatsApp<input name="whatsapp" type="tel" placeholder="(21) 99999-9999" required></label>
-        <label>Senha<input name="senha" type="password" placeholder="Crie uma senha" required></label>
-        <button class="btn" type="submit">Criar acesso</button>
-        <button class="btn gate-switch" type="button" data-gate-mode="login">Já tenho conta</button>
-      </form>
-      <form class="gate-form" id="gate-login">
-        <label>E-mail<input name="email" type="email" placeholder="seu@email.com" required></label>
-        <label>Senha<input name="senha" type="password" placeholder="Sua senha" required></label>
-        <button class="btn" type="submit">Entrar na área interna</button>
-        <button class="btn gate-switch" type="button" data-gate-mode="signup">Criar uma conta</button>
-      </form>
-    </div>
-  </aside>
+  <main class="access-gate access-page open" id="access-gate" aria-labelledby="access-title">
+    <section class="access-story" aria-label="Hárpia Patrimonial">
+      <a class="access-brand" href="/" aria-label="Hárpia Patrimonial, voltar ao site"><img src="/assets/brand/harpia-logo-horizontal-light-green-cropped.png" alt="Hárpia Patrimonial & Co." width="354" height="76"></a>
+      <div class="access-story-copy">
+        <p class="access-eyebrow">Relacionamento Hárpia</p>
+        <h2>O patrimônio não<br> pertence apenas<br> ao presente.</h2>
+        <p>Discrição, clareza e uma visão de longo prazo para suas decisões.</p>
+      </div>
+      <figure class="access-image"><img src="/assets/catalog/botafogo-easy/sala-cozinha-01.jpg" alt="Ambiente de um imóvel da curadoria Hárpia" width="1200" height="800" fetchpriority="high"></figure>
+      <div class="access-story-end"><span>Negócios imobiliários<br>e gestão patrimonial</span><strong>1986</strong></div>
+    </section>
+    <section class="access-side" aria-label="Acesso do cliente">
+      <nav class="access-utility" aria-label="Navegação de acesso"><a href="/"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12H4m6-6-6 6 6 6"/></svg>Voltar ao site</a><span>Área do cliente</span></nav>
+      <div class="access-form-wrap">
+        <div class="access-switcher" role="group" aria-label="Acessar ou criar uma conta">
+          <button type="button" data-gate-mode="login" aria-pressed="true" aria-controls="gate-login">Acessar minha conta</button>
+          <button type="button" data-gate-mode="signup" aria-pressed="false" aria-controls="gate-signup">Primeiro acesso</button>
+        </div>
+        <h1 id="access-title">Bem-vindo à Hárpia.</h1>
+        <p id="access-description">Acesse seu espaço de relacionamento e acompanhe suas oportunidades.</p>
+        <form class="gate-form active" id="gate-login" aria-label="Acessar minha conta">
+          <label class="access-field" for="access-login-email">E-mail<input id="access-login-email" name="email" type="email" placeholder="Seu e-mail" autocomplete="email" autocapitalize="none" spellcheck="false" required></label>
+          <label class="access-field" for="access-login-password">Senha<span class="access-password"><input id="access-login-password" name="senha" type="password" placeholder="Sua senha" autocomplete="current-password" required><button type="button" data-password-toggle="access-login-password" aria-label="Mostrar senha" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/><path class="eye-slash" d="m3 3 18 18"/></svg></button></span></label>
+          <button class="access-submit" type="submit">Entrar na minha conta<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h16m-6-6 6 6-6 6"/></svg></button>
+        </form>
+        <form class="gate-form" id="gate-signup" aria-label="Criar meu acesso" aria-describedby="access-privacy-note" hidden>
+          <label class="access-field" for="access-signup-name">Nome completo<input id="access-signup-name" name="nome" type="text" placeholder="Como podemos chamar você?" autocomplete="name" required></label>
+          <label class="access-field" for="access-signup-email">E-mail<input id="access-signup-email" name="email" type="email" placeholder="Seu e-mail" autocomplete="email" autocapitalize="none" spellcheck="false" required></label>
+          <label class="access-field" for="access-signup-phone">WhatsApp<input id="access-signup-phone" name="whatsapp" type="tel" inputmode="tel" placeholder="DDD e número" autocomplete="tel" required></label>
+          <label class="access-field" for="access-signup-password">Senha<span class="access-password"><input id="access-signup-password" name="senha" type="password" placeholder="Escolha sua senha" autocomplete="new-password" required><button type="button" data-password-toggle="access-signup-password" aria-label="Mostrar senha" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/><path class="eye-slash" d="m3 3 18 18"/></svg></button></span></label>
+          <button class="access-submit" type="submit">Criar meu acesso<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h16m-6-6 6 6-6 6"/></svg></button>
+          <p class="access-form-note" id="access-privacy-note">Conheça nossa <a href="/politica-de-privacidade/" target="_blank" rel="noopener">Política de Privacidade</a> e nossos <a href="/termos-de-uso/" target="_blank" rel="noopener">Termos de Uso</a>.</p>
+        </form>
+        <p class="access-feedback" id="access-feedback" role="alert" hidden></p>
+        <p class="access-help">Precisa de ajuda para acessar?<br><a href="https://wa.me/5521990135757?text=Ol%C3%A1%2C%20preciso%20de%20ajuda%20para%20acessar%20minha%20conta%20na%20H%C3%A1rpia.%20%5BORIGEM%3Asite%7CPAGINA%3Acliente%7CACAO%3Aajuda-acesso%5D" target="_blank" rel="noopener">Fale com a nossa equipe.</a></p>
+      </div>
+      <footer class="access-side-footer"><span>Hárpia Patrimonial &amp; Co.</span><a href="/politica-de-privacidade/">Política de Privacidade</a></footer>
+    </section>
+    <noscript><p class="access-noscript">Ative o JavaScript para continuar. Você também pode <a href="/">voltar ao site</a> ou falar com nossa equipe.</p></noscript>
+  </main>
   <aside class="opportunity" id="opportunity" aria-hidden="true" aria-label="Detalhes da oportunidade">
     <div class="op-head"><strong>Oportunidade Hárpia</strong><button class="close" type="button" id="close" aria-label="Fechar">×</button></div>
     <div class="op-body">
@@ -163,17 +184,40 @@
       setJson(profileStorageKey,{...profile,nome:account.name,email:account.email,whatsapp:account.whatsapp});
       unlockClientArea();
     }
+    // Presentation only. Existing legacy storage is not server authentication.
     function setGateMode(mode){
-      document.getElementById('gate-signup').classList.toggle('active', mode === 'signup');
-      document.getElementById('gate-login').classList.toggle('active', mode === 'login');
+      const signup = mode === 'signup';
+      const forms = [['gate-signup',signup],['gate-login',!signup]];
+      forms.forEach(([id,active])=>{const form=document.getElementById(id);form.classList.toggle('active',active);form.hidden=!active;});
+      document.querySelectorAll('[data-gate-mode]').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.gateMode === (signup ? 'signup' : 'login'))));
+      document.getElementById('access-title').textContent=signup ? 'Crie seu acesso.' : 'Bem-vindo à Hárpia.';
+      document.getElementById('access-description').textContent=signup ? 'Comece seu relacionamento com a Hárpia. Conte-nos como podemos conhecer você.' : 'Acesse seu espaço de relacionamento e acompanhe suas oportunidades.';
+      document.getElementById('access-feedback').hidden=true;
+      if(!accessGate.hidden) document.title=(signup ? 'Crie seu acesso' : 'Acesse sua conta')+' | Hárpia Patrimonial & Co.';
     }
     function unlockClientArea(){
       const account = getClientAccount();
-      if(!account){accessGate.classList.add('open');return}
-      accessGate.classList.remove('open');
+      const workspace = document.getElementById('inicio');
+      document.body.classList.toggle('client-access-pending',!account);
+      accessGate.hidden=Boolean(account);
+      accessGate.classList.toggle('open',!account);
+      workspace.hidden=!account;
+      workspace.inert=!account;
+      document.getElementById('logout').hidden=!account;
+      if(!account) return;
+      document.title='Área do Cliente | Hárpia Patrimonial & Co.';
       document.getElementById('client-name').textContent = account.name || 'Cadastro ativo';
       loadProfile();
       renderMarketplace();
+    }
+    function handleAccessSubmit(event){
+      event.preventDefault();
+      const form=event.currentTarget;
+      if(!form.reportValidity()) return;
+      const feedback=document.getElementById('access-feedback');
+      feedback.hidden=true;
+      try { saveClientAccount(form); }
+      catch { feedback.textContent='Não foi possível continuar neste navegador. Tente novamente ou fale com a nossa equipe.';feedback.hidden=false; }
     }
     function loadProfile(){
       const account = getClientAccount() || {};
@@ -274,9 +318,16 @@
     document.getElementById('close-secondary').addEventListener('click',closeOpportunity);
     backdrop.addEventListener('click',closeOpportunity);
     document.getElementById('logout').addEventListener('click',()=>{clearClientAccount();window.location.href='/'});
-    document.getElementById('gate-signup').addEventListener('submit',event=>{event.preventDefault();saveClientAccount(event.currentTarget)});
-    document.getElementById('gate-login').addEventListener('submit',event=>{event.preventDefault();saveClientAccount(event.currentTarget)});
+    document.getElementById('gate-signup').addEventListener('submit',handleAccessSubmit);
+    document.getElementById('gate-login').addEventListener('submit',handleAccessSubmit);
     document.querySelectorAll('[data-gate-mode]').forEach(button=>button.addEventListener('click',()=>setGateMode(button.dataset.gateMode)));
+    document.querySelectorAll('[data-password-toggle]').forEach(button=>button.addEventListener('click',()=>{
+      const input=document.getElementById(button.dataset.passwordToggle);
+      const show=input.type==='password';
+      input.type=show ? 'text' : 'password';
+      button.setAttribute('aria-pressed',String(show));
+      button.setAttribute('aria-label',show ? 'Ocultar senha' : 'Mostrar senha');
+    }));
     document.addEventListener('keydown',event=>{if(event.key==='Escape') closeOpportunity()});
     unlockClientArea();
   </script>

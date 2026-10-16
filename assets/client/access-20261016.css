@@ -1,0 +1,69 @@
+/* Hárpia: full-page client entry. Scoped to /cliente/; no workspace/auth rules are replaced. */
+@font-face{font-family:HarpiaAccessInter;src:url('/assets/fonts/Inter-Regular.ttf') format('truetype');font-weight:400;font-style:normal;font-display:swap}
+@font-face{font-family:HarpiaAccessInter;src:url('/assets/fonts/Inter-SemiBold.ttf') format('truetype');font-weight:600;font-style:normal;font-display:swap}
+@font-face{font-family:HarpiaAccessMermaid;src:url('/assets/fonts/Mermaid1001.ttf') format('truetype');font-weight:400;font-style:normal;font-display:swap}
+body.harpia-client.client-access-pending{margin:0;background:#eeeef0;overflow:auto!important}
+body.harpia-client.client-access-pending>main#inicio,body.harpia-client.client-access-pending>#logout,body.harpia-client.client-access-pending>#backdrop,body.harpia-client.client-access-pending>#opportunity{display:none!important}
+#access-gate[hidden],#access-gate [hidden]{display:none!important}
+#access-gate.access-page{--access-dark:#3d5033;--access-light:#c3ce94;--access-paper:#eeeef0;position:relative!important;inset:auto;z-index:auto;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);align-items:stretch;place-items:stretch;min-height:100vh;min-height:100svh;width:100%;max-width:none;height:auto;margin:0;padding:0;background:var(--access-paper);color:var(--access-dark);border:0;box-shadow:none;opacity:1;transform:none;isolation:isolate;font:400 14px/1.65 HarpiaAccessInter,Arial,sans-serif!important;letter-spacing:normal;text-transform:none}
+#access-gate.access-page,#access-gate.access-page *{box-sizing:border-box}
+#access-gate :where(h1,h2,h3,p,figure){margin:0}
+#access-gate.access-page :is(input,button,a,p,span,label){font-family:HarpiaAccessInter,Arial,sans-serif!important}
+#access-gate.access-page :is(h1,h2){font-family:HarpiaAccessMermaid,Georgia,serif!important;font-weight:400!important;letter-spacing:-.025em;text-transform:none}
+#access-gate a{color:inherit;text-decoration:none}
+#access-gate a:focus-visible,#access-gate button:focus-visible{outline:2px solid var(--access-dark);outline-offset:5px}
+#access-gate .access-story a:focus-visible{outline-color:var(--access-light)}
+#access-gate .access-story{min-width:0;background:var(--access-dark);color:var(--access-paper);padding:40px clamp(30px,4.5vw,88px) 28px;display:flex;flex-direction:column;gap:32px;position:relative;overflow:hidden}
+#access-gate .access-brand{display:block;width:272px;max-width:90%;height:auto;align-self:flex-start}
+#access-gate .access-brand img{display:block;width:100%;height:auto;max-width:100%;margin:0}
+#access-gate .access-story-copy{padding-top:12px;position:relative;z-index:1}
+#access-gate .access-eyebrow{font-size:10px;line-height:1.5;letter-spacing:.2em;text-transform:uppercase;font-weight:400;color:var(--access-dark)}
+#access-gate .access-story .access-eyebrow{color:var(--access-light)}
+#access-gate .access-story h2{font-size:clamp(39px,3.7vw,62px);line-height:1.06;margin:18px 0 20px;max-width:610px;color:var(--access-paper)}
+#access-gate .access-story-copy>p:last-child{font-size:14px;line-height:1.8;max-width:385px;color:#dbe0d6}
+#access-gate .access-image{position:relative;min-height:180px;max-height:290px;height:clamp(180px,26vh,290px);margin-top:auto;flex:1 0 180px;overflow:hidden;background:#293824}
+#access-gate .access-image img{width:100%;height:100%;object-fit:cover;object-position:center;max-width:none;display:block;margin:0}
+#access-gate .access-story-end{display:flex;justify-content:space-between;gap:18px;align-items:center;padding-top:18px;border-top:1px solid #67725b;font-size:9px;line-height:1.6;letter-spacing:.13em;text-transform:uppercase;color:var(--access-light)}
+#access-gate .access-story-end strong{font-family:HarpiaAccessMermaid,Georgia,serif;font-weight:400;font-size:28px;line-height:1;letter-spacing:.14em}
+#access-gate .access-side{min-width:0;background:var(--access-paper);padding:34px clamp(28px,5.5vw,106px) 24px;display:flex;flex-direction:column;align-items:stretch}
+#access-gate .access-utility{display:flex;justify-content:space-between;gap:16px;align-items:center;min-height:28px;color:#626d5e;font-size:11px;line-height:1.5}
+#access-gate .access-utility a{display:inline-flex;align-items:center;gap:10px;padding:6px 0}
+#access-gate .access-utility a:hover{text-decoration:underline;text-underline-offset:4px}
+#access-gate .access-utility svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:1.4}
+#access-gate .access-utility>span{text-transform:uppercase;font-size:9px;letter-spacing:.16em}
+#access-gate .access-form-wrap{width:100%;max-width:440px;margin:auto; padding:50px 0 42px}
+#access-gate .access-switcher{display:flex;gap:30px;border-bottom:1px solid #cbd0c5;margin:0 0 34px}
+#access-gate .access-switcher button{border:0;border-bottom:2px solid transparent;box-shadow:none;background:transparent!important;color:#747d6e!important;padding:0 0 13px;min-height:34px;margin:0 0 -1px;border-radius:0;font-size:12px!important;line-height:1.5;font-weight:400;letter-spacing:.02em;text-transform:none;cursor:pointer}
+#access-gate .access-switcher button[aria-pressed=true]{color:var(--access-dark)!important;border-bottom-color:var(--access-dark);font-weight:600}
+#access-gate #access-title{font-size:clamp(34px,3vw,47px);line-height:1.12;margin:0 0 16px;color:var(--access-dark);max-width:440px}
+#access-gate #access-description{font-size:14px;line-height:1.8;color:#66705f;max-width:400px}
+#access-gate .gate-form{display:none;margin:28px 0 0;padding:0;gap:19px;background:transparent;border:0;box-shadow:none;width:100%}
+#access-gate .gate-form.active{display:grid}
+#access-gate .access-field{display:grid;gap:8px;font-size:11px;line-height:1.5;letter-spacing:.08em;font-weight:600;color:var(--access-dark);text-transform:uppercase}
+#access-gate .access-field input{width:100%;min-width:0;min-height:52px;height:52px;padding:0 16px;border:1px solid #b7c0af!important;border-radius:2px;background:transparent!important;box-shadow:none!important;font-size:15px!important;line-height:1.5;letter-spacing:0;font-weight:400;color:#25351e!important;outline:0;text-transform:none}
+#access-gate .access-field input::placeholder{color:#808777;opacity:1}
+#access-gate .access-field input:focus{border-color:var(--access-dark)!important;outline:2px solid #c3ce94;outline-offset:2px}
+#access-gate .access-field input:-webkit-autofill{-webkit-box-shadow:0 0 0 1000px #eeeef0 inset!important;-webkit-text-fill-color:#25351e}
+#access-gate .access-password{position:relative;display:block;width:100%}
+#access-gate .access-password input{padding-right:55px}
+#access-gate .access-password button{position:absolute;right:5px;top:5px;width:42px;height:42px;min-height:0;border:0!important;border-radius:2px;box-shadow:none!important;background:transparent!important;color:#65715e!important;display:grid;place-items:center;padding:0;cursor:pointer}
+#access-gate .access-password button:hover{background:#e1e4db!important}
+#access-gate .access-password svg{display:block;width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.4;stroke-linecap:round;stroke-linejoin:round}
+#access-gate .access-password button[aria-pressed=true] .eye-slash{display:block}
+#access-gate .eye-slash{display:none}
+#access-gate .access-submit{display:flex;align-items:center;justify-content:space-between;gap:20px;margin-top:5px;padding:16px 20px;min-height:54px;width:100%;border:1px solid var(--access-light)!important;border-radius:2px;background:var(--access-light)!important;box-shadow:none!important;color:var(--access-dark)!important;font-size:12px!important;line-height:1.4;font-weight:600;letter-spacing:.08em;text-transform:uppercase;cursor:pointer}
+#access-gate .access-submit:hover{background:#b7c481!important;border-color:#b7c481!important}
+#access-gate .access-submit svg{height:22px;width:22px;fill:none;stroke:currentColor;stroke-width:1.4;flex:none}
+#access-gate .access-submit:disabled{cursor:wait;opacity:.65}
+#access-gate .access-form-note{font-size:11px;line-height:1.8;color:#737b6b}
+#access-gate .access-form-note a{text-decoration:underline;text-underline-offset:3px}
+#access-gate .access-help{margin-top:28px;padding-top:22px;border-top:1px solid #cbd0c5;color:#737b6b;font-size:12px;line-height:1.9}
+#access-gate .access-help a{font-weight:600;color:var(--access-dark);text-decoration:underline;text-underline-offset:4px;white-space:nowrap}
+#access-gate .access-feedback{margin-top:18px;border-left:2px solid #7d372d;padding:10px 14px;color:#7d372d;font-size:13px;line-height:1.65}
+#access-gate .access-side-footer{width:100%;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px 18px;border-top:1px solid #cbd0c5;padding-top:18px;font-size:10px;line-height:1.6;color:#737b6b}
+#access-gate .access-side-footer a:hover{text-decoration:underline;text-underline-offset:3px}
+#access-gate .access-noscript{padding:20px;grid-column:1/-1;font-size:14px;line-height:1.7;color:var(--access-dark)}
+@media(min-width:1800px){#access-gate .access-story{padding-inline:max(78px,calc((100vw - 1580px)/2)) 80px;gap:42px}#access-gate .access-side{padding-inline:100px max(78px,calc((100vw - 1580px)/2))}#access-gate .access-form-wrap{max-width:460px}#access-gate .access-image{max-height:330px;height:30vh}#access-gate .access-story-copy{padding-top:32px}}
+@media(max-width:1050px) and (min-width:761px){#access-gate .access-story{padding:32px 28px 24px;gap:28px}#access-gate .access-side{padding:28px 32px 22px}#access-gate .access-story h2{font-size:40px}#access-gate .access-brand{width:240px}#access-gate #access-title{font-size:36px}#access-gate .access-utility>span{display:none}}
+@media(max-width:760px){#access-gate.access-page{grid-template-columns:1fr;min-height:100svh}#access-gate .access-story{padding:26px 24px 25px;gap:0}#access-gate .access-brand{width:226px;max-width:84%}#access-gate .access-story-copy{padding:24px 0 0}#access-gate .access-story h2{font-size:31px;line-height:1.13;max-width:430px;margin:0}#access-gate .access-story h2 br{display:none}#access-gate .access-story .access-eyebrow,#access-gate .access-story-copy>p:last-child,#access-gate .access-image,#access-gate .access-story-end{display:none}#access-gate .access-side{padding:18px 24px 25px}#access-gate .access-utility{max-width:440px;width:100%;margin-inline:auto}#access-gate .access-form-wrap{padding:32px 0 36px;max-width:440px}#access-gate .access-switcher{margin-bottom:26px}#access-gate #access-title{font-size:36px;margin-bottom:13px}#access-gate #access-description{font-size:14px}#access-gate .access-field input{font-size:16px!important;height:52px}#access-gate .access-help{margin-top:24px}#access-gate .access-side-footer{max-width:440px;margin-inline:auto;font-size:10px}#access-gate .access-side-footer span{font-size:9px}#access-gate .gate-form{gap:17px;margin-top:25px}}
+@media(prefers-reduced-motion:reduce){body.harpia-client{scroll-behavior:auto}#access-gate *{scroll-behavior:auto;animation:none!important;transition:none!important}}
