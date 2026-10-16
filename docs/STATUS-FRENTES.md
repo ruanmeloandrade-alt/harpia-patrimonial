@@ -289,8 +289,8 @@ Referência visual obrigatória: `Harpia_Portal(1).pdf`, 10 telas.
 - [x] acompanhamento derivado do CRM real, sem porcentagem fictícia;
 - [x] curadoria individual distinta de catálogo geral;
 - [x] favoritos persistidos continuam usando `client_favorites`;
-- [x] publicação em `gh-pages` no commit `5b34eef37498fb92b80530ad4b924ae34f962c26`;
-- [x] Pages run `38955875351` concluído com sucesso.
+- [x] publicação em `gh-pages` no commit `a60826bbcdd76dce83cd2f8d0f052a3744d3bf15`;
+- [x] Pages run final `38956779893` concluído com sucesso.
 
 ### Validação executada
 
