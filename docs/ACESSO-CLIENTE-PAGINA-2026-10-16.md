@@ -6,7 +6,7 @@ Data: 16/10/2026.
 
 O usuário mostrou a abertura de /cliente/ e rejeitou o formulário pequeno sobre o sistema escurecido. Pediu uma página de login/cadastro com apresentação compatível com a Hárpia e seu público de alto patrimônio. A alteração é exclusiva da entrada do cliente, mantendo a home e as páginas dos imóveis.
 
-## Implementação enviada à publicação
+## Implementação publicada
 
 Commit gh-pages: c6c1ac9dee0b8729a1611d8ccc43256ab02ab3ab.
 Base preservada: 62fb563b7174c7a91df5da0f150af4d4f913a78f.
@@ -46,8 +46,8 @@ A rotina legada saveClientAccount desta página grava dados do cadastro no naveg
 
 Antes de usar esta área com dados privados, integrar o login/cadastro à autenticação real e verificar a autorização na camada de dados. Não afirmar que o acesso está seguro ou funcional de ponta a ponta apenas porque a apresentação foi publicada. Esse achado é específico da página cliente/index.html, não uma auditoria de todos os módulos de autenticação do projeto.
 
-## Continuidade
+## Continuidade e publicação confirmada
 
 Preservar a publicação estática da /cliente/ ao integrar futuramente o aplicativo React. O novo CSS está isolado em #access-gate e não substitui estilos do workspace. Os arquivos completos de produção estão na gh-pages e não foram mergeados na main.
 
-A publicação automática já configurada foi iniciada pelo commit (execução 38925411293). No momento deste registro, build e report-build-status estavam concluídos e o deploy ainda em andamento. Consultar a execução para o estado final. Nenhum workflow foi criado, alterado ou disparado manualmente.
+A publicação automática já configurada foi confirmada na execução 38925411293: build, report-build-status e deploy concluídos com status completed e conclusion success. O job de implantação 117055656266 também teve a etapa Deploy to GitHub Pages concluída com sucesso. Nenhum workflow foi criado, alterado ou disparado manualmente.
