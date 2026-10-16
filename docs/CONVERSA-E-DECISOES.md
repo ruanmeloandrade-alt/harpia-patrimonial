@@ -606,3 +606,42 @@ Decisão consolidada em 24/09/2026:
 - Integrações deve exibir WhatsApp e provedores de IA atuais, além de Meta, Gmail/Workspace, SMS, Google Analytics, Google Tag Manager e APIs futuras.
 - Meta, Gmail/Workspace, SMS, Analytics, Tag Manager e o módulo Marketing permanecem identificados como segunda fase quando ainda não estiverem operacionais.
 - Nenhuma preferência que dependa de enforcement de backend pode ser apresentada como ativa apenas porque foi salva na interface. A UI deve deixar explícito quando a configuração está apenas preparada para consumo posterior pelo módulo correspondente.
+
+---
+
+# 28. Portal Privado do Cliente — reformulação aprovada em 16/10/2026
+
+O usuário substituiu a área do cliente enxuta/anterior por um portal privado organizado em múltiplas páginas, usando `Harpia_Portal(1).pdf` como referência visual aprovada e obrigatória.
+
+Decisão: as 10 telas devem seguir o PDF sem liberdade criativa na composição visual:
+
+1. Visão Geral.
+2. Minha Curadoria.
+3. Detalhe da Oportunidade.
+4. Meu Acompanhamento.
+5. Detalhe do Processo.
+6. Documentos.
+7. Atendimento.
+8. Meu Perfil.
+9. Primeiro Acesso.
+10. Acesso Reservado.
+
+A home privada não deve despejar todos os módulos/formulários de uma vez. O cliente deve navegar por áreas separadas.
+
+Regras funcionais confirmadas nesta implementação:
+
+- dados demonstrativos do PDF são apenas referência visual e devem ser substituídos por dados reais;
+- ausência de dados reais usa empty state;
+- catálogo geral e curadoria individual são conceitos diferentes;
+- processo e progresso vêm do CRM real;
+- documentos possuem central própria e estados reais;
+- detalhes do imóvel preservam a referência já aprovada da página pública de imóvel;
+- atendimento continua usando o canal real configurado;
+- perfil e primeiro acesso persistem preferências reais;
+- login/cadastro do portal usam Supabase Auth real;
+- não usar localStorage como autenticação;
+- documentos privados exigem Storage privado e RLS.
+
+A implementação publicada em `gh-pages/cliente/index.html` deve ser preservada até a integração equivalente na aplicação React principal.
+
+Detalhamento técnico: `docs/PORTAL-CLIENTE-2026-10-16.md`.
