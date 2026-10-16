@@ -1,4 +1,5 @@
 /* Existing public catalog transport. No write, account, permission or schema change. */
+import { mountLandingChrome } from './landing-chrome-20261016.js?v=20261016.2';
 import { normalizeReferenceProperty, renderReferenceProperty } from './propertyReference.js?v=20261016.1';
 const endpoint = 'https://desxomqvtjaymwwxivwq.supabase.co';
 const publicKey = 'sb_publishable_wWUVxjkMDMXLOrzE0y3Y_w_k9jXf88B';
@@ -53,7 +54,11 @@ async function start() {
   const item = items.find(v => [v.id, v.code, v.slug].some(value => key(value) === key(code)));
   if (!item) { showMessage('Imóvel não encontrado ou não publicado.'); return; }
   const related = items.filter(v => v.id !== item.id).sort((a, b) => Number(b.location === item.location) - Number(a.location === item.location));
-  cleanup?.(); cleanup = renderReferenceProperty(document.getElementById('property-reference'), { item, related, links });
+  cleanup?.();
+  const host = document.getElementById('property-reference');
+  const releaseProperty = renderReferenceProperty(host, { item, related, links });
+  const releaseChrome = mountLandingChrome(host);
+  cleanup = () => { releaseChrome(); releaseProperty(); };
   document.title = item.title + ' | Hárpia Patrimonial & Co.';
   document.getElementById('property-loading').hidden = true;
 }
