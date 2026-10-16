@@ -23,14 +23,14 @@ Regra obrigatória: textos/dados demonstrativos do PDF não entram como dados op
 Página real publicada em `gh-pages/cliente/index.html`.
 
 Commit de publicação:
-`5b34eef37498fb92b80530ad4b924ae34f962c26`
+`a60826bbcdd76dce83cd2f8d0f052a3744d3bf15`
 
 GitHub Pages:
-- execução automática `38955875351`;
+- execução automática final `38956779893`;
 - status final: `completed`;
 - conclusão: `success`.
 
-A publicação usa um HTML autocontido para impedir dependência de bundle antigo enquanto a integração React final não é promovida à `main`.
+A publicação usa um HTML autocontido para impedir dependência de bundle antigo enquanto a integração React final não é promovida à `main`. A imagem usada na Visão Geral também foi incorporada ao próprio HTML para eliminar referência a asset ausente.
 
 ## Backend real
 
