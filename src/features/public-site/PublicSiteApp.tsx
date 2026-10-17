@@ -345,12 +345,14 @@ export default function PublicSiteApp({ catalog = emptyPublicCatalogReader, auth
       <header className="public-header">
         <a className="brand" href="/" onClick={intercept('/')} aria-label="Hárpia Patrimonial - início"><span className="brand-mark">H</span><span><strong>HÁRPIA</strong><small>PATRIMONIAL & CO.</small></span></a>
         <nav className="public-nav" aria-label="Navegação principal">
-          <a href="/sobre" onClick={intercept('/sobre')}>Sobre</a>
-          <a href="/investimentos" onClick={intercept('/investimentos')}>Investimentos</a>
           <a href="/leiloes" onClick={intercept('/leiloes')}>Leilões</a>
+          <a href="/investimentos" onClick={intercept('/investimentos')}>Investimentos</a>
           <a href="/assessoria-juridica" onClick={intercept('/assessoria-juridica')}>Assessoria Jurídica</a>
           <a href="/arquitetura" onClick={intercept('/arquitetura')}>Arquitetura</a>
-          <a href={internalAreaHref} onClick={internalAreaHref.startsWith('/') ? intercept(internalAreaHref) : undefined}>Área Interna</a>
+          <a href="/vender" onClick={intercept('/vender')}>Anunciar Imóvel</a>
+          <a href="/sobre" onClick={intercept('/sobre')}>Sobre</a>
+          <a href="/imoveis" onClick={intercept('/imoveis')}>Empreendimentos</a>
+          <a href={internalAreaHref} onClick={internalAreaHref.startsWith('/') ? intercept(internalAreaHref) : undefined}>Login</a>
         </nav>
       </header>
 
