@@ -25,3 +25,13 @@
 .home-header .navlinks{gap:calc(13.5 * var(--u));font-size:calc(6.9 * var(--u))}
 .home-header .internal-link{padding-left:calc(18 * var(--u));gap:calc(7 * var(--u))}
 @media(max-width:930px){.home-header .navlinks{display:none}.home-header .mobile-nav{display:block;font-size:12px}.home-header .mobile-nav summary{cursor:pointer;padding:12px 0;list-style:none}.home-header .mobile-nav summary::-webkit-details-marker{display:none}.home-header .mobile-nav nav{position:absolute;left:0;right:0;top:76px;display:grid;padding:20px 24px;background:var(--dark);gap:18px;border-top:1px solid rgba(238,238,240,.2);box-shadow:0 18px 34px rgba(0,0,0,.18)}}
+
+/* Original PNGs supplied by Harpia. Display boxes exclude the transparent canvas padding. */
+.footer-top{grid-template-columns:calc(213.8 * var(--u)) minmax(0,1fr) max-content;gap:clamp(24px,calc(40 * var(--u)),56px)}
+.footer-social{--social-size:52px;display:flex;align-items:center;gap:12px;padding:0;align-self:start;justify-self:end}
+.footer-social a{position:relative;display:block;flex:0 0 var(--social-size);width:var(--social-size);height:var(--social-size);overflow:hidden}
+.footer-social img{position:absolute;display:block;width:calc(var(--social-size) * 1.2755102041);height:calc(var(--social-size) * 1.2755102041);max-width:none;left:calc(var(--social-size) * -.137755102);top:calc(var(--social-size) * -.137755102);filter:none;object-fit:contain;content:normal}
+.footer-social a[aria-label="Instagram"] img{left:calc(var(--social-size) * -.137755102)}
+.footer-social a[aria-label="YouTube"] img{width:calc(var(--social-size) * 1.3089005236);height:calc(var(--social-size) * 1.3089005236);left:calc(var(--social-size) * -.1544502618);top:calc(var(--social-size) * -.1321989529)}
+@media(min-width:761px) and (max-width:1050px){.footer-top{grid-template-columns:calc(213.8 * var(--u)) minmax(0,1fr);gap:24px 32px}.footer-social{grid-column:2;justify-self:start}}
+@media(max-width:760px){.footer-top{grid-template-columns:1fr;gap:24px}.footer-social{--social-size:56px;justify-self:start;gap:12px}.footer-social a{width:var(--social-size);height:var(--social-size)}}
