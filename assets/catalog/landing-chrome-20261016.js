@@ -112,7 +112,7 @@ export function mountLandingChrome(container) {
             const content = copyElement(template[slot]);
             body.append(content);
             html.append(body);
-            shadow.append(reset, stylesheet, html);
+            shadow.append(reset, stylesheet, html);\n            window.HarpiaI18n?.bindRoot?.(shadow);
             const previous = root.querySelector(`:scope > .hp-ref-${slot}`);
             if (previous)
                 previous.replaceWith(mount);
