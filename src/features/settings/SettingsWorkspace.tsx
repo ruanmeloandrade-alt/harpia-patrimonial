@@ -1,3 +1,4 @@
+import { HarpiaBrandMark } from '../../shared/components/HarpiaBrandMark';
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../../core/auth/AuthProvider';
 import { UsersPage } from '../users/UsersPage';
@@ -349,6 +350,7 @@ export function SettingsWorkspace({ credentialVault, initialTab = 'preferences' 
   return (
     <div className="settings-workspace">
       <header className="settings-workspace__header">
+        <HarpiaBrandMark />
         <div>
           <p className="eyebrow dark">CONFIGURAÇÕES</p>
           <h1>Administração da plataforma</h1>

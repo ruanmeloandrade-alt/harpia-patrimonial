@@ -1,3 +1,4 @@
+import { HarpiaBrandMark } from '../../shared/components/HarpiaBrandMark';
 import { useEffect, useMemo, useState } from 'react';
 import { CATALOG_CHANGED_EVENT, LocalCatalogRepository, type CatalogRepository } from '../catalog/catalogRepository';
 import {
@@ -244,9 +245,11 @@ export function DashboardPage({ catalogRepository, commercialProvider }: Dashboa
   return (
     <section className="f03-dashboard">
       <header className="f03-dashboard-header">
+        <HarpiaBrandMark />
         <div>
           <p className="f03-dashboard-kicker">Painel operacional</p>
-          <p>Acompanhe vendas, produtos e movimentações da operação em um só lugar.</p>
+          <h1>Visão da operação</h1>
+          <p>Acompanhe vendas, produtos e relacionamentos com clareza, critério e visão patrimonial de longo prazo.</p>
         </div>
 
         <div className="f03-dashboard-header__actions">

@@ -1,0 +1,358 @@
+/* HÁRPIA PATRIMONIAL & CO.
+   Composição editorial fiel ao BRANDBOOK 2026, pp. 1-4, 5-7, 9-18, 21-22.
+   NÃO é redesign livre. Todas as artes são arquivos oficiais presentes no projeto.
+   Apenas apresentação visual. Sem alterar navegação, persistência ou eventos.
+*/
+:root{
+  --harpia-origin:#3c4f33;
+  --harpia-leaf:#c3ce94;
+  --harpia-charcoal:#161616;
+  --harpia-off:#eeeef0;
+  --harpia-rule:rgba(60,79,51,.25);
+  --harpia-rhythm:clamp(22px,2.6vw,40px);
+}
+body{font-family:"Harpia Inter",Inter,Arial,sans-serif}
+:where(.harpia-heritage-mark){
+  flex:0 0 auto;display:inline-flex;align-items:center;gap:12px;min-width:0;
+  color:var(--harpia-origin);padding:2px 12px 2px 0;
+}
+.harpia-heritage-mark>img{display:block;width:40px;max-height:59px;height:auto;object-fit:contain;flex:0 0 auto}
+.harpia-heritage-mark__copy{display:grid;gap:4px;padding-left:12px;border-left:1px solid var(--harpia-rule);line-height:1.3}
+.harpia-heritage-mark__eyebrow{font:400 16px/1.08 "Harpia Mermaid",Georgia,serif;white-space:nowrap}
+.harpia-heritage-mark__copy small{font:600 9px/1.2 "Harpia Inter",Inter,sans-serif;letter-spacing:.07em;color:var(--harpia-origin);text-transform:uppercase}
+.harpia-heritage-mark--compact>img{width:29px;max-height:42px}
+.harpia-heritage-mark--compact .harpia-heritage-mark__eyebrow{font-size:13px}
+.harpia-heritage-mark--compact .harpia-heritage-mark__copy small{font-size:8px}
+[data-theme="dark"] .harpia-heritage-mark{color:#c3ce94}
+[data-theme="dark"] .harpia-heritage-mark>img{content:url("/assets/brand/harpia-icon-light-green-cropped.png")}
+[data-theme="dark"] .harpia-heritage-mark__copy small{color:#c3ce94}
+[data-theme="dark"] .harpia-heritage-mark__copy{border-color:rgba(195,206,148,.35)}
+/* Painel, operacional: hierarquia, respiro e presença da assinatura em um único ponto. */
+.f03-dashboard-header{
+  display:grid!important;grid-template-columns:auto minmax(240px,1fr) auto;
+  align-items:center;gap:clamp(18px,2vw,34px);
+  padding:10px 0 30px;border-bottom:1px solid var(--harpia-rule);
+  margin-bottom:26px;
+}
+.f03-dashboard-header>div:nth-child(2){min-width:0;max-width:690px}
+.f03-dashboard-header h1{font:400 clamp(32px,3.5vw,53px)/1.04 "Harpia Mermaid",Georgia,serif!important;margin:2px 0 12px}
+.f03-dashboard-header .f03-dashboard-kicker{color:var(--harpia-origin)!important;font-size:10px;letter-spacing:.18em}
+.f03-dashboard-header__actions{justify-self:end;align-self:center;max-width:370px}
+.f03-dashboard-panel{border:1px solid var(--harpia-rule)!important;border-radius:12px!important;box-shadow:none!important}
+.f03-metric-card{border:1px solid var(--harpia-rule)!important;border-radius:10px!important;box-shadow:none!important}
+.f03-metric-card--accent{background:#3c4f33!important}
+.f03-metric-card--accent :is(strong,span,small){color:#eeeef0!important}
+.f03-metric-card strong{font-weight:600;letter-spacing:-.025em}
+.f03-empty-visual{background:#eeeef0!important;border:1px dashed var(--harpia-rule)!important}
+.f03-empty-visual__art{background-image:url("/assets/brand/harpia-crest-dark-green-cropped.png");background-position:center;background-repeat:no-repeat;background-size:contain;opacity:.12}
+.f03-empty-visual__art>*{visibility:hidden}
+/* Os cabeçalhos gerados por CSS modules recebem a mesma composição, sem alterar lógica. */
+[class*="_crmTopbar_"]{
+  display:grid!important;grid-template-columns:auto minmax(190px,1fr) auto;
+  align-items:center!important;column-gap:20px;row-gap:16px;
+  padding:18px 0 24px!important;border-bottom:1px solid var(--harpia-rule);
+}
+[class*="_crmTitlebox_"]{min-width:0}
+[class*="_crmTitlebox_"] h1{font:400 clamp(30px,3.4vw,46px)/1.05 "Harpia Mermaid",Georgia,serif!important;letter-spacing:0!important;color:var(--harpia-origin)!important}
+[class*="_crmTopbar_"] [class*="_crmActions_"]{justify-self:end}
+[class*="_crmPipelineTabs_"]{border-bottom:1px solid var(--harpia-rule);padding-top:13px;padding-bottom:13px;gap:8px}
+[class*="_crmPipelineTabActive_"]{background:#c3ce94!important;color:#161616!important;border-color:#3c4f33!important}
+[class*="_crmPipelineTab_"]:focus-visible{outline:2px solid #3c4f33}
+[class*="_kanban_"]{scrollbar-color:#3c4f33 #eeeef0}
+[class*="_stageColumn_"],[class*="_leadCard_"]{box-shadow:none!important;border-color:var(--harpia-rule)!important}
+[class*="_crmModalCard_"]{border-radius:12px!important;border:1px solid var(--harpia-rule)!important}
+[class*="_crmModalHead_"]{border-bottom:1px solid var(--harpia-rule)}
+/* Inbox: hierarquia estreita e funções sempre prioritárias ao brasão. */
+[class*="_conversationList_"]>header{display:grid!important;grid-template-columns:auto minmax(0,1fr) auto;gap:11px;align-items:center;min-height:80px}
+[class*="_conversationList_"]>header .harpia-heritage-mark{padding:0}
+[class*="_conversationList_"]>header .harpia-heritage-mark__copy{display:none}
+[class*="_conversationList_"]>header .harpia-heritage-mark>img{width:27px;height:39px}
+[class*="_conversationList_"]>header h1{font:400 29px/1.1 "Harpia Mermaid",Georgia,serif!important;letter-spacing:0!important}
+[class*="_conversationList_"],[class*="_contextPane_"],[class*="_chatPane_"]{background-color:#eeeef0!important}
+[class*="_conversationButton_"]{border-bottom:1px solid var(--harpia-rule)!important;border-radius:0!important}
+[class*="_chatHeader_"]{border-bottom:1px solid var(--harpia-rule)}
+[class*="_profileHeader_"]{border-bottom:1px solid var(--harpia-rule)}
+[class*="_conversationEmpty_"]{padding:30px 22px!important;background-image:url("/assets/brand/harpia-crest-dark-green-cropped.png");background-repeat:no-repeat;background-position:right 10px bottom 10px;background-size:auto 90px}
+[class*="_composer_"]{border-top:1px solid var(--harpia-rule)}
+/* Catálogos, Calendário e demais áreas operacionais. */
+.f03-header,.calendar-header,.settings-workspace__header,.marketing-hero,.f05-module__header{
+  display:flex;align-items:center;gap:18px;
+  padding:10px 0 25px;border-bottom:1px solid var(--harpia-rule);
+  margin-bottom:24px;
+}
+.f03-header>.harpia-heritage-mark,.calendar-header>.harpia-heritage-mark,
+.settings-workspace__header>.harpia-heritage-mark,.marketing-hero>.harpia-heritage-mark,
+.f05-module__header>.harpia-heritage-mark{align-self:flex-start}
+.f03-header>div:not(.harpia-heritage-mark__copy),.calendar-header>div,.settings-workspace__header>div,
+.marketing-hero>div,.f05-module__header>div{min-width:0}
+.f03-header>div:nth-of-type(1),.calendar-header>div:nth-of-type(1),
+.settings-workspace__header>div:nth-of-type(1),.marketing-hero>div:nth-of-type(1),
+.f05-module__header>div:nth-of-type(1){flex:1}
+.f03-header h1,.calendar-header h1,.settings-workspace__header h1,.marketing-hero h1{
+  font:400 clamp(30px,3.4vw,52px)/1.08 "Harpia Mermaid",Georgia,serif!important;letter-spacing:0!important;
+  color:var(--harpia-origin)!important;
+}
+.f03-header-metric,.marketing-hero-status,.settings-summary{margin-left:auto;flex:0 0 auto;max-width:310px;box-shadow:none!important;border-radius:8px!important}
+.f03-header-metric{background:#3c4f33!important;color:#eeeef0!important}
+.f03-header-metric :is(strong,span){color:#eeeef0!important}
+.f03-card,.calendar-board,.calendar-agenda,.settings-summary,.marketing-panel{box-shadow:none!important}
+.calendar-toolbar,.calendar-weekdays{background:#eeeef0!important}
+.calendar-day{background:#eeeef0!important;border-color:var(--harpia-rule)!important}
+.calendar-day--today{box-shadow:inset 0 0 0 2px #3c4f33!important;background:#c3ce94!important;color:#161616!important}
+.calendar-day-number{font-variant-numeric:tabular-nums}
+.settings-workspace{max-width:1600px;margin:0 auto}
+.settings-tabs{border-radius:8px!important;border-color:var(--harpia-rule)!important}
+.settings-tabs button{border-radius:5px!important}
+.settings-section,.settings-summary{border-radius:9px!important}
+.settings-tabs button.is-active{background:#c3ce94!important;color:#161616!important}
+.marketing-shell .marketing-tabs button{border-radius:5px!important}
+.marketing-panel,.f05-module{border-radius:10px!important}
+.f05-module__header h2,.marketing-section-heading h2,.f03-panel-heading h2,
+.settings-section h2,.f05-card h3{font-family:"Harpia Mermaid",Georgia,serif!important;font-weight:400!important;letter-spacing:0}
+.f05-module__header h2{font-size:clamp(26px,2.6vw,39px)}
+.f05-shell :is(.f05-card,.f05-module),.marketing-shell :is(.marketing-panel,.marketing-metric){
+  box-shadow:none!important;
+}
+.f05-module,.f05-card,.sb-library-card,.marketing-panel,.marketing-metric{border-radius:9px!important;border-color:var(--harpia-rule)!important}
+.f05-tabs button.is-active,.marketing-tabs button.is-active{background:#c3ce94!important;color:#161616!important;border-color:#3c4f33!important}
+.sb-builder-top{display:grid!important;grid-template-columns:auto minmax(180px,1fr) auto;align-items:center;gap:16px;border-bottom:1px solid var(--harpia-rule);margin-bottom:15px;padding:12px 0 20px}
+.sb-library-card{background:#eeeef0!important;border-bottom-width:1px!important}
+.sb-canvas-area{background-color:#eeeef0!important;background-image:radial-gradient(rgba(60,79,51,.24) .8px,transparent .8px)!important}
+.sb-node{box-shadow:0 2px 8px rgba(22,22,22,.08)!important}
+:is(.calendar-workspace,.f05-shell,.marketing-shell) :is(.f05-empty,.marketing-empty){
+  border:1px dashed var(--harpia-rule);padding:24px;
+  background:#eeeef0 url("/assets/brand/harpia-crest-dark-green-cropped.png") no-repeat right 18px bottom 14px;
+  background-size:auto 52px;
+}
+[data-theme="dark"] :is(.f03-empty-visual__art,[class*="_conversationEmpty_"]){background-image:url("/assets/brand/harpia-icon-light-green-cropped.png")}
+/* Autenticação: composición vertical, bastão e lettering da própria identidade. */
+.auth-page{grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;background:#eeeef0!important}
+.auth-brand-panel{
+  background:#3c4f33!important;position:relative;isolation:isolate;overflow:hidden;
+  padding:clamp(36px,5vw,86px)!important;
+  display:flex;flex-direction:column;justify-content:space-between;gap:42px;
+}
+.auth-brand-panel::before{
+  content:"";position:absolute;inset:8% -16% auto auto;height:65%;width:84%;
+  background:url("/assets/brand/harpia-icon-light-green-cropped.png") center/contain no-repeat;
+  opacity:.065;z-index:-1;pointer-events:none;
+}
+.auth-brand-panel::after{
+  content:"";position:absolute;bottom:-12%;left:-12%;height:40%;width:96%;
+  background:url("/assets/brand/harpia-lettering-light-green-cropped.png") center/contain no-repeat;
+  opacity:.09;z-index:-1;pointer-events:none;
+}
+.brandbook-auth-logo{display:block;width:min(320px,82%);max-height:95px;height:auto;object-fit:contain;align-self:flex-start}
+.auth-brand-panel .brandbook-auth-message{max-width:600px}
+.auth-brand-panel .brandbook-auth-message h1{
+  font:400 clamp(44px,5.2vw,86px)/1.03 "Harpia Mermaid",Georgia,serif!important;
+  color:#eeeef0;margin:16px 0 26px;
+}
+.auth-brand-panel .brandbook-auth-message .lead{max-width:46ch;color:#eeeef0!important;line-height:1.72}
+.auth-brand-panel .tiny{color:#c3ce94!important;font-weight:600;letter-spacing:.08em;text-transform:uppercase}
+.auth-form-panel{background:#eeeef0!important}
+.auth-card{padding:clamp(16px,2.4vw,44px);border-top:3px solid #3c4f33}
+.auth-card h2{font-family:"Harpia Mermaid",Georgia,serif!important;font-size:clamp(31px,3vw,44px);line-height:1.08}
+.auth-card .button-primary{border-radius:5px!important}
+/* Cliente: blocos editoriais com iconografia neutra e bordas contidas. */
+.client-gate,.client-area__header{position:relative;isolation:isolate;padding-top:clamp(36px,5vw,72px)}
+.client-gate>.harpia-heritage-mark,.client-area__header>.harpia-heritage-mark{margin-bottom:18px}
+.client-gate h1,.client-area__header h1{font:400 clamp(37px,4.6vw,66px)/1.08 "Harpia Mermaid",Georgia,serif!important}
+.client-area__header{display:grid!important;grid-template-columns:auto minmax(240px,1fr) minmax(180px,280px);gap:22px;align-items:center}
+.client-area__header .profile-card{justify-self:end;min-width:0;max-width:280px}
+.client-panel,.profile-card{border:1px solid var(--harpia-rule)!important;border-radius:9px!important;box-shadow:none!important}
+.client-panel h2{font:400 27px/1.1 "Harpia Mermaid",Georgia,serif!important}
+.client-area .empty-state{background:#eeeef0 url("/assets/brand/harpia-crest-dark-green-cropped.png") no-repeat right 20px bottom 14px;background-size:auto 68px}
+/* Home renderizada pelo React: uma composição de arquivo, sem fantasia. */
+.harpia-public .brandbook-home-hero{
+  display:grid;grid-template-columns:minmax(0,1.18fr) minmax(250px,.82fr);
+  align-items:stretch;gap:clamp(28px,5vw,75px);
+  width:min(1280px,calc(100% - 44px));min-height:min(720px,calc(100svh - 80px));
+  margin:0 auto;padding:clamp(66px,7vw,120px) 0;
+}
+.brandbook-home-hero__copy{display:flex;flex-direction:column;align-items:flex-start;justify-content:center;min-width:0}
+.brandbook-home-hero__copy .harpia-heritage-mark{margin-bottom:40px}
+.brandbook-home-hero h1{max-width:760px;font:400 clamp(50px,5.9vw,92px)/.99 "Harpia Mermaid",Georgia,serif!important;margin:10px 0 24px;color:#3c4f33}
+.brandbook-home-hero__copy>p:not(.section-kicker){max-width:650px;line-height:1.83;font-size:clamp(15px,1.35vw,18px);color:#3c4f33}
+.brandbook-home-hero__art{margin:0;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:30px;
+  background:#c3ce94;border:1px solid var(--harpia-rule);min-height:390px;padding:40px 25px;position:relative;overflow:hidden}
+.brandbook-home-hero__art:before{content:"";position:absolute;inset:0;background:url("/assets/brand/harpia-lettering-light-green-cropped.png") center/95% auto no-repeat;opacity:.065}
+.brandbook-home-hero__art>img{width:min(52%,250px);height:auto;position:relative;object-fit:contain}
+.brandbook-home-hero__art figcaption{font:600 10px/1.5 "Harpia Inter",Inter,sans-serif;text-transform:uppercase;letter-spacing:.15em;position:relative;color:#3c4f33}
+.harpia-public .institutional-page .page-intro{position:relative;padding:56px 0 48px;border-bottom:1px solid var(--harpia-rule);margin-bottom:34px}
+.harpia-public .institutional-page .page-intro .harpia-heritage-mark{display:flex;width:max-content;margin-bottom:35px}
+.harpia-public .institutional-page .page-intro h1{max-width:1000px;margin:18px 0 25px;line-height:1.03}
+.harpia-public .institutional-body{max-width:900px;padding:30px 0;border-left:3px solid #c3ce94;padding-left:clamp(22px,4vw,50px)}
+.harpia-public .institutional-body p{line-height:1.9;max-width:85ch}
+.harpia-public .institutional-page>.primary-button{margin:16px 0 60px}
+.harpia-public .brandbook-footer-logo{width:min(290px,100%);height:auto;max-height:94px;object-fit:contain;display:block}
+.harpia-public .public-footer{background:#3c4f33!important;color:#eeeef0!important;display:flex;gap:40px;justify-content:space-between;padding:52px max(20px,calc((100vw - 1180px)/2))}
+.harpia-public .public-footer p,.harpia-public .public-footer a{color:#eeeef0!important}
+.harpia-public .public-footer .footer-links{display:flex;gap:16px;flex-wrap:wrap;align-content:center}
+.harpia-public .public-footer .footer-links a:hover{text-decoration:underline;text-underline-offset:5px}
+/* Site publicado em HTML: conteúdo e hierarquia cumprem o mesmo manual. */
+body:has(#inicio.hero) .hero>.wrap{position:relative;isolation:isolate}
+body:has(#inicio.hero) #inicio.hero{
+  min-height:clamp(590px,79vh,850px)!important;
+  padding:clamp(156px,18vw,235px) 0 90px!important;
+  background-position:center!important;
+}
+#inicio.hero .brandbook-home-kicker{display:flex;align-items:center;gap:14px;margin:0 0 24px;color:#c3ce94;font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase}
+#inicio.hero .brandbook-home-kicker img{width:30px;max-height:42px;object-fit:contain}
+#inicio.hero h1{font:400 clamp(42px,6.8vw,94px)/1.02 "Harpia Mermaid",Georgia,serif!important;max-width:810px!important;margin:0 0 24px;color:#eeeef0}
+#inicio.hero p{max-width:590px;line-height:1.8!important;color:#eeeef0!important;font-size:clamp(14px,1.3vw,18px)!important}
+#inicio.hero .search{margin-top:48px!important;background:#eeeef0!important;border-radius:9px!important}
+#inicio.hero .search label{color:#3c4f33!important}
+#inicio.hero .search button,#inicio.hero .search .green-btn{display:inline-flex;align-items:center;justify-content:center;gap:8px}
+#inicio.hero .search button:before,.quick-submit:before{
+  content:"";display:inline-block;width:19px;height:19px;flex:none;
+  background:url("/assets/brand/icons/black/08-busca.svg") center/contain no-repeat;
+}
+#inicio.hero .search select,#inicio.hero .search input{background:transparent!important}
+.brandbook-origin-strip{
+  display:grid;grid-template-columns:76px minmax(0,1fr) auto;gap:clamp(16px,2.5vw,40px);
+  align-items:center;margin:0 auto;max-width:1180px;padding:26px 0;
+  border-bottom:1px solid var(--harpia-rule);
+}
+.brandbook-origin-strip img{display:block;width:65px;height:88px;object-fit:contain}
+.brandbook-origin-strip strong{font:400 clamp(25px,3.7vw,42px)/1 "Harpia Mermaid",Georgia,serif;color:#3c4f33;display:block}
+.brandbook-origin-strip p{margin:10px 0 0;font-size:12px;max-width:620px;line-height:1.6;color:#3c4f33}
+.brandbook-origin-strip .origin-date{font:400 clamp(38px,5vw,65px)/1 "Harpia Mermaid",Georgia,serif;opacity:.7;color:#3c4f33}
+.about-home .about-copy{position:relative;isolation:isolate}
+.about-home .about-copy:before{
+  content:"";position:absolute;inset:auto 0 14% auto;width:75%;height:50%;
+  background:url("/assets/brand/harpia-lettering-light-green-cropped.png") center/contain no-repeat;
+  opacity:.06;pointer-events:none;z-index:-1;
+}
+.about-home .about-copy :is(h2,.title),.decision-editorial .title,.journey .title,
+.lead-section .title,.estate-section .title{
+  font:400 clamp(32px,4.3vw,62px)/1.04 "Harpia Mermaid",Georgia,serif!important;
+  letter-spacing:0!important;
+}
+.about-home .about-media{border:1px solid var(--harpia-rule);overflow:hidden;max-width:100%}
+.about-home .about-media img{object-fit:cover;object-position:center;filter:saturate(.92) contrast(1.03)}
+.about-home .about-metrics{border-top:1px solid var(--harpia-rule);padding-top:16px}
+.about-home .about-metrics strong{font-family:"Harpia Mermaid",Georgia,serif!important;font-size:clamp(28px,3vw,40px)}
+.estate-filter{border:1px solid var(--harpia-rule)!important;background:#eeeef0!important;box-shadow:none!important}
+.image-card-link{box-shadow:none!important;border:1px solid var(--harpia-rule)!important}
+.decision-editorial{background:#c3ce94!important}
+.journey{background:#3c4f33!important}
+.lead-section{background:#eeeef0!important}
+.lead-form{background:#eeeef0!important;border-radius:9px!important;box-shadow:none!important}
+.site-footer{background:#3c4f33!important}
+.site-footer .footer-brand img{max-height:95px}
+body:has(.story.wrap) .story{position:relative;gap:clamp(35px,4vw,75px)!important}
+body:has(.story.wrap) .story>.quote{border-left:3px solid #c3ce94;padding:22px 0 22px 28px!important;font-family:"Harpia Mermaid",Georgia,serif!important}
+body:has(.story.wrap) .hero h1{font-family:"Harpia Mermaid",Georgia,serif!important}
+body:has(.story.wrap) .hero{position:relative}
+body:has(.story.wrap) .hero .brandbook-about-emblem{width:54px;height:78px;object-fit:contain;margin-bottom:22px}
+body:has(.story.wrap) .hero:after{
+  content:"";position:absolute;right:2%;top:10%;bottom:12%;width:38%;
+  background:url("/assets/brand/harpia-crest-dark-green-cropped.png") center/contain no-repeat;
+  opacity:.08;pointer-events:none;
+}
+body:has(.story.wrap) .hero :is(h1,p){position:relative;z-index:1}
+body:has(.hero) .chat-float,.site-footer .footer-button{box-shadow:none!important}
+/* Ícones oficiais: preservam texto, foco e feedback. */
+.favorite-button{
+  background-image:url("/assets/brand/icons/black/02-favorito.svg")!important;
+  background-position:center!important;background-repeat:no-repeat!important;background-size:21px!important;
+}
+.floating-chat-button:before{
+  content:"";display:inline-block;width:20px;height:20px;margin-right:10px;
+  background:url("/assets/brand/icons/white/03-comentarios.svg") center/contain no-repeat;
+}
+.harpia-public .property-meta [class*="location"]{background-image:url("/assets/brand/icons/black/01-localizacao.svg")}
+/* Modais e formulários usam espaçamento previsível e sem efeito exuberante. */
+:is(.crmModalCard,.modal,[role="dialog"],.client-popup,.drawer){box-shadow:0 10px 36px rgba(22,22,22,.13)!important}
+:is(.crmModalCard,.modal,[role="dialog"],.client-popup,.drawer) :is(h1,h2,h3){font-family:"Harpia Mermaid",Georgia,serif!important;font-weight:400}
+:is(.internal-main,.harpia-public) :is(button,a,select,input,textarea):focus-visible{outline:3px solid #3c4f33!important;outline-offset:3px}
+:is(.internal-main,.harpia-public) :is(button,a):disabled{opacity:.48!important;cursor:not-allowed!important}
+@media(max-width:1180px){
+  .f03-dashboard-header,.f03-header,.calendar-header,.settings-workspace__header,.marketing-hero,.f05-module__header{flex-wrap:wrap}
+  .f03-dashboard-header{grid-template-columns:auto minmax(160px,1fr);grid-template-rows:auto auto}
+  .f03-dashboard-header__actions{grid-column:2;justify-self:start;max-width:none}
+  [class*="_crmTopbar_"]{grid-template-columns:auto minmax(190px,1fr)}
+  [class*="_crmTopbar_"] [class*="_crmActions_"]{grid-column:2;justify-self:start}
+  .client-area__header{grid-template-columns:auto minmax(0,1fr)}
+  .client-area__header .profile-card{grid-column:2;justify-self:start}
+  .sb-builder-top{grid-template-columns:auto minmax(0,1fr)}
+  .sb-builder-tools{grid-column:1 / -1}
+}
+@media(max-width:780px){
+  .f03-dashboard-header{gap:13px}
+  .f03-dashboard-header .harpia-heritage-mark__copy,
+  .calendar-header .harpia-heritage-mark__copy,
+  .settings-workspace__header .harpia-heritage-mark__copy,
+  .marketing-hero .harpia-heritage-mark__copy,
+  .f05-module__header .harpia-heritage-mark__copy,
+  .f03-header .harpia-heritage-mark__copy{display:none}
+  .harpia-heritage-mark{padding:0}
+  .harpia-heritage-mark>img{width:31px}
+  .harpia-public .brandbook-home-hero{grid-template-columns:minmax(0,1fr);min-height:auto;padding:55px 0}
+  .brandbook-home-hero__art{min-height:270px}
+  .brandbook-home-hero__art>img{width:min(32%,160px)}
+  .harpia-public .public-footer{flex-direction:column;align-items:flex-start;padding:36px 22px}
+  .auth-page{grid-template-columns:1fr!important}
+  .auth-brand-panel{min-height:280px!important;padding:38px!important}
+  .auth-brand-panel .brandbook-auth-message h1{font-size:clamp(40px,8vw,62px)}
+  .auth-brand-panel .brandbook-auth-message .lead{font-size:14px}
+  .client-area__header{grid-template-columns:1fr}
+  .client-area__header .profile-card{grid-column:1}
+  .brandbook-origin-strip{grid-template-columns:50px minmax(0,1fr)}
+  .brandbook-origin-strip img{width:45px;height:64px}
+  .brandbook-origin-strip .origin-date{grid-column:2;font-size:32px}
+  body:has(.story.wrap) .hero:after{width:20%;opacity:.04}
+}
+@media(max-width:520px){
+  .f03-dashboard-header{grid-template-columns:36px minmax(0,1fr);gap:9px}
+  .f03-dashboard-header__actions{grid-column:1 / -1}
+  [class*="_crmTopbar_"]{grid-template-columns:36px minmax(0,1fr)}
+  [class*="_crmTopbar_"] [class*="_crmActions_"]{grid-column:1 / -1}
+  [class*="_conversationList_"]>header{grid-template-columns:30px minmax(0,1fr) auto;gap:8px}
+  .f03-header,.calendar-header,.settings-workspace__header,.marketing-hero,.f05-module__header{gap:12px}
+  .f03-header-metric,.settings-summary,.marketing-hero-status{width:100%;max-width:100%;margin-left:0}
+  .sb-builder-top{grid-template-columns:30px 1fr}
+  .harpia-heritage-mark__copy{display:none}
+  .brandbook-origin-strip{padding:22px 14px}
+  .brandbook-origin-strip strong{font-size:27px}
+  .client-area__header .profile-card{max-width:100%}
+  .harpia-public .brandbook-home-hero{width:calc(100% - 32px)}
+  .brandbook-home-hero h1{font-size:clamp(40px,10vw,54px)}
+  .brandbook-home-hero__art{min-height:220px}
+  #inicio.hero h1{font-size:clamp(38px,10vw,52px)!important}
+}
+@media(prefers-reduced-motion:reduce){.brandbook-home-hero*,.harpia-heritage-mark*{transition:none!important;animation:none!important}}
+
+/* Compatibilidade visual com o bundle React já publicado na gh-pages.
+   :has evita criar um segundo brasão quando o componente React atualizado for implantado. */
+:is(.f03-dashboard-header,.f03-header,.calendar-header,.settings-workspace__header,
+    .marketing-hero,.f05-module__header,.sb-builder-top,
+    [class*="_crmTopbar_"],[class*="_conversationList_"]>header):not(:has(> .harpia-heritage-mark))::before{
+  content:"";display:block;flex:0 0 35px;width:35px;min-width:35px;height:51px;
+  background:url("/assets/brand/harpia-crest-dark-green-cropped.png") center/contain no-repeat;
+  align-self:center;
+}
+[data-theme="dark"] :is(.f03-dashboard-header,.f03-header,.calendar-header,.settings-workspace__header,
+    .marketing-hero,.f05-module__header,.sb-builder-top,
+    [class*="_crmTopbar_"],[class*="_conversationList_"]>header):not(:has(> .harpia-heritage-mark))::before{
+  background-image:url("/assets/brand/harpia-icon-light-green-cropped.png");
+}
+.brandbook-about-emblem{display:block;width:52px;height:72px;object-fit:contain;margin:0 0 22px}
+body:has(#inicio.hero) #inicio.hero .brandbook-home-kicker img{display:block}
+body:has(.story.wrap) .brandbook-about-emblem{width:58px;height:80px}
+body:has(.hero-card) .brandbook-about-emblem{width:45px;height:62px}
+body:has(.status) .brandbook-about-emblem{width:45px;height:62px}
+@media(max-width:650px){
+  :is(.f03-dashboard-header,.f03-header,.calendar-header,.settings-workspace__header,
+    .marketing-hero,.f05-module__header,.sb-builder-top,
+    [class*="_crmTopbar_"],[class*="_conversationList_"]>header):not(:has(> .harpia-heritage-mark))::before{width:26px;min-width:26px;height:38px}
+}
+
+/* Ícone original substitui coração textual sem modificar a ação funcional.
+   No bundle antigo, o glifo é ocultado e o SVG oficial permanece acessível pelo aria-label. */
+.favorite-button{font-size:0!important}
+.favorite-button:has(img){background-image:none!important}
+.favorite-button img{display:block;width:21px;height:21px;object-fit:contain}
+.favorite-button[aria-pressed="true"]{background-color:#c3ce94!important;border:1px solid #3c4f33!important}
+.favorite-button[aria-pressed="false"]{background-color:#eeeef0!important;border:1px solid rgba(60,79,51,.25)!important}

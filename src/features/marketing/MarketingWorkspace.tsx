@@ -1,3 +1,4 @@
+import { HarpiaBrandMark } from '../../shared/components/HarpiaBrandMark';
 import { useState } from 'react';
 import './marketing.css';
 
@@ -316,6 +317,7 @@ export function MarketingWorkspace() {
   return (
     <div className="marketing-shell">
       <header className="marketing-hero">
+        <HarpiaBrandMark />
         <div>
           <span className="marketing-kicker">Hárpia Patrimonial</span>
           <div className="marketing-title-row">

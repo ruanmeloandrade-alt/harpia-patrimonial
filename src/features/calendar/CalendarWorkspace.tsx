@@ -1,3 +1,4 @@
+import { HarpiaBrandMark } from '../../shared/components/HarpiaBrandMark';
 import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
 import type { AssigneeOption } from '../crm/CrmWorkspace';
 import {
@@ -364,6 +365,7 @@ export function CalendarWorkspace({ assignees, canManage }: CalendarWorkspacePro
   return (
     <section className="calendar-workspace">
       <header className="calendar-header">
+        <HarpiaBrandMark />
         <div>
           <span className="calendar-kicker">Agenda operacional</span>
           <h1>Calendário</h1>

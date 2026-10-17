@@ -1,3 +1,4 @@
+import { HarpiaBrandMark } from '../../shared/components/HarpiaBrandMark';
 import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from 'react';
 import { CATALOG_CHANGED_EVENT, LocalCatalogRepository, type CatalogRepository } from './catalogRepository';
 import type { CatalogMediaStorage } from './catalogMediaStorage';
@@ -825,6 +826,7 @@ export function CatalogAdminPage({ access, repository, mediaStorage }: CatalogAd
     return (
       <section className="f03-shell">
         <header className="f03-header">
+          <HarpiaBrandMark compact />
           <div>
             <button className="f03-button f03-button-ghost" type="button" onClick={() => void goRoot()}>
               Voltar para catálogos
@@ -875,6 +877,7 @@ export function CatalogAdminPage({ access, repository, mediaStorage }: CatalogAd
     return (
       <section className="f03-shell">
         <header className="f03-header">
+          <HarpiaBrandMark compact />
           <div>
             <button className="f03-button f03-button-ghost" type="button" onClick={() => void goRoot()}>
               Voltar para catálogos
@@ -1000,6 +1003,7 @@ export function CatalogAdminPage({ access, repository, mediaStorage }: CatalogAd
   return (
     <section className="f03-shell">
       <header className="f03-header">
+          <HarpiaBrandMark compact />
         <div>
           <p className="f03-kicker">Operação comercial</p>
           <h1>Produtos</h1>

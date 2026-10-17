@@ -1,3 +1,4 @@
+import { HarpiaBrandMark } from '../../shared/components/HarpiaBrandMark';
 import { createContext, PropsWithChildren, useContext } from 'react';
 import type { PublicCatalogItem } from '../public-catalog/contracts';
 
@@ -93,6 +94,7 @@ export function ClientArea({
   if (!profile) {
     return (
       <section className="client-gate section-shell" aria-labelledby="client-gate-title">
+        <HarpiaBrandMark />
         <p className="section-kicker">Área do cliente</p>
         <h1 id="client-gate-title">Seu patrimônio, interesses e imóveis salvos em um só lugar.</h1>
         <p className="section-lead">
@@ -108,6 +110,7 @@ export function ClientArea({
   return (
     <section className="client-area section-shell" aria-labelledby="client-area-title">
       <header className="client-area__header">
+        <HarpiaBrandMark />
         <div>
           <p className="section-kicker">Área do cliente</p>
           <h1 id="client-area-title">Olá, {profile.name}.</h1>
