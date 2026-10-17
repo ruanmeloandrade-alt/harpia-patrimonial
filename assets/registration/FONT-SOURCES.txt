@@ -1,0 +1,33 @@
+Official font sources for Harpia property registration
+Retrieved: 2026-10-17
+All supplied font binaries are unmodified upstream files under SIL Open Font License 1.1.
+
+File: EBGaramond08-Regular.ttf
+Family/style: EB Garamond 08 Regular
+Upstream version: nightly-next-d04d0f9, 18 April 2023
+Official archive: https://github.com/georgd/EB-Garamond/releases/download/nightly/EBGaramond.zip
+Archive member: EBGaramond08-Regular.ttf
+SHA-256: 7bf5b4bb50d68c23453c924b982493fa9a9193e04d8a4492d66f350723e839d1
+License: EB-Garamond-OFL.txt
+
+File: Inter-Medium.ttf
+Family/style: Inter Medium
+Upstream version: 3.3;20b39288a
+Official archive: https://github.com/rsms/inter/releases/download/v3.3/Inter-3.3.zip
+Archive member: Inter (TTF)/Inter-Medium.ttf
+SHA-256: 8a3aa252bfb90aa5360c87f7fd2a1134bf94efdb6b8fd8b13ed374a179881d57
+License: Inter-OFL.txt
+
+File: Inter-ExtraBold.ttf
+Family/style: Inter ExtraBold
+Upstream version: 3.3;20b39288a
+Official archive: https://github.com/rsms/inter/releases/download/v3.3/Inter-3.3.zip
+Archive member: Inter (TTF)/Inter-ExtraBold.ttf
+SHA-256: 7f558e3a2cc83a5c5419a113f819983d34e264a053bbf4aaf7309779fed4f038
+License: Inter-OFL.txt
+
+Compatibility validation:
+EB Garamond 08 has 1,250 mapped characters, including all Portuguese letters and all decimal digits.
+All 55 characters retained by the PDF subset have identical horizontal metrics and decomposed vector outlines in this full font.
+Units per em, hhea ascent/descent/line gap, OS/2 typographic ascent/descent and Windows ascent/descent match the PDF subset exactly.
+Inter Medium and ExtraBold come from the same unhinted Inter 3.3 release whose Regular binary matches the existing site font byte for byte.
