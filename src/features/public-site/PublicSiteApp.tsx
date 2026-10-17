@@ -1,4 +1,4 @@
-import { FormEvent, MouseEvent, useEffect, useRef, useState } from 'react';
+import { MouseEvent, useEffect, useRef, useState } from 'react';
 import { ClientArea, type ClientProfileView } from '../client-area/ClientArea';
 import {
   emptyPublicCatalogReader,
@@ -49,7 +49,6 @@ interface PublicSiteAppProps {
   internalAreaHref?: string;
 }
 
-type OwnerIntent = 'vender' | 'alugar';
 type InstitutionalPageKey = 'sobre' | 'investimentos' | 'leiloes' | 'assessoria-juridica' | 'arquitetura';
 
 type InstitutionalPage = {
@@ -303,6 +302,11 @@ export default function PublicSiteApp({ catalog = emptyPublicCatalogReader, auth
 
   const navigate = (path: string) => {
     const target = new URL(path, window.location.origin);
+    const targetPath = normalizeFront02PublicPath(target.pathname);
+    if (targetPath === '/vender' || targetPath === '/alugar') {
+      window.location.assign(`/vender/${target.search}${target.hash}`);
+      return;
+    }
     const current = `${window.location.pathname}${window.location.search}`;
     const next = `${target.pathname}${target.search}`;
     if (current === next) return;
@@ -349,7 +353,7 @@ export default function PublicSiteApp({ catalog = emptyPublicCatalogReader, auth
           <a href="/investimentos" onClick={intercept('/investimentos')}>Investimentos</a>
           <a href="/assessoria-juridica" onClick={intercept('/assessoria-juridica')}>Assessoria Jurídica</a>
           <a href="/arquitetura" onClick={intercept('/arquitetura')}>Arquitetura</a>
-          <a href="/vender" onClick={intercept('/vender')}>Anunciar Imóvel</a>
+          <a href="/vender/">Anunciar Imóvel</a>
           <a href="/sobre" onClick={intercept('/sobre')}>Sobre</a>
           <a href="/imoveis" onClick={intercept('/imoveis')}>Empreendimentos</a>
           <a href={internalAreaHref} onClick={internalAreaHref.startsWith('/') ? intercept(internalAreaHref) : undefined}>Login</a>
@@ -374,13 +378,13 @@ export default function PublicSiteApp({ catalog = emptyPublicCatalogReader, auth
 
       {(['sobre', 'investimentos', 'leiloes', 'assessoria-juridica', 'arquitetura'] as InstitutionalPageKey[]).map((key) => route === `/${key}` && <InstitutionalPage key={key} page={institutionalPages[key]} onService={() => requestService(institutionalPages[key].kicker)} />)}
 
-      {(route === '/vender' || route === '/alugar') && <OwnerCapture intent={route === '/vender' ? 'vender' : 'alugar'} onSubmit={(payload) => emitConversion({ source: 'captacao-proprietario', action: payload.intent, page: route, service: payload.intent === 'vender' ? 'Venda de imóvel' : 'Locação de imóvel', contact: payload.contact, metadata: { city: payload.city, propertyType: payload.propertyType } })} />}
+      {(route === '/vender' || route === '/alugar') && <OwnerRegistrationRedirect />}
 
       {(route === '/cliente' || route === '/sistema') && <ClientArea profile={auth?.currentClient ?? null} favorites={favorites?.items ?? []} onRequestLogin={() => requestLogin('area-do-cliente')} onOpenProperty={(slug) => navigate(`/imoveis/${encodeURIComponent(slug)}`)} onGoToCatalog={() => navigate('/imoveis')} onRequestService={requestService} />}
 
       <button className="floating-chat-button" type="button" onClick={() => requestService('Atendimento consultivo')} aria-label="Ser atendido agora">Ser atendido agora!</button>
 
-      <footer className="public-footer"><div><strong>HÁRPIA PATRIMONIAL & CO.</strong><p>Inteligência patrimonial especializada em negócios imobiliários.</p></div><div className="footer-links"><a href="/imoveis" onClick={intercept('/imoveis')}>Imóveis</a><a href="/vender" onClick={intercept('/vender')}>Quero vender meu imóvel</a><a href="/alugar" onClick={intercept('/alugar')}>Quero alugar meu imóvel</a><a href="/cliente" onClick={intercept('/cliente')}>Área do cliente</a></div></footer>
+      <footer className="public-footer"><div><strong>HÁRPIA PATRIMONIAL & CO.</strong><p>Inteligência patrimonial especializada em negócios imobiliários.</p></div><div className="footer-links"><a href="/imoveis" onClick={intercept('/imoveis')}>Imóveis</a><a href="/vender/">Quero vender meu imóvel</a><a href="/alugar/">Quero alugar meu imóvel</a><a href="/cliente" onClick={intercept('/cliente')}>Área do cliente</a></div></footer>
 
       {retentionOpen && <RetentionDialog onClose={() => setRetentionOpen(false)} onAccept={() => { setRetentionOpen(false); requestService('Retenção de comprador'); }} />}
     </div>
@@ -553,8 +557,10 @@ function PropertyDetail({ slug, catalog, isFavorite, onBack, onNavigate, onFavor
 
 function InstitutionalPage({ page, onService }: { page: InstitutionalPage; onService: () => void }) { return <main className="institutional-page section-shell"><div className="page-intro"><p className="section-kicker">{page.kicker}</p><h1>{page.title}</h1><p className="section-lead">{page.lead}</p></div><div className="institutional-body">{page.body.map((paragraph) => <p key={paragraph}>{paragraph}</p>)}</div><button className="primary-button" type="button" onClick={onService}>Solicitar atendimento</button></main>; }
 
-function OwnerCapture({ intent, onSubmit }: { intent: OwnerIntent; onSubmit: (payload: { intent: OwnerIntent; city: string; propertyType: string; contact: { name: string; email: string; whatsapp: string } }) => Promise<boolean>; }) {
-  const [status, setStatus] = useState<'idle' | 'busy' | 'success' | 'error'>('idle'); const [feedback, setFeedback] = useState('');
-  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => { event.preventDefault(); const form = event.currentTarget; const data = new FormData(form); setStatus('busy'); setFeedback(''); const accepted = await onSubmit({ intent, city: String(data.get('city') ?? '').trim(), propertyType: String(data.get('propertyType') ?? '').trim(), contact: { name: String(data.get('name') ?? '').trim(), email: String(data.get('email') ?? '').trim(), whatsapp: String(data.get('whatsapp') ?? '').trim() } }); if (!accepted) { setStatus('error'); setFeedback('A solicitação ainda não foi encaminhada. Tente novamente quando o atendimento estiver disponível.'); return; } form.reset(); setStatus('success'); setFeedback('Solicitação registrada com sucesso. A equipe poderá continuar o atendimento com o contexto enviado.'); };
-  return <main className="owner-page section-shell"><div className="page-intro"><p className="section-kicker">Captação de proprietário</p><h1>Quero {intent === 'vender' ? 'vender' : 'alugar'} meu imóvel</h1><p className="section-lead">Envie os dados iniciais. Nesta primeira versão, a equipe Hárpia conduz o processo manualmente.</p></div><form className="owner-form" onSubmit={handleSubmit} aria-busy={status === 'busy'}><label>Nome<input name="name" autoComplete="name" required disabled={status === 'busy'} /></label><label>E-mail <small>opcional</small><input name="email" type="email" autoComplete="email" disabled={status === 'busy'} /></label><label>WhatsApp<input name="whatsapp" inputMode="tel" autoComplete="tel" required disabled={status === 'busy'} /></label><label>Cidade<input name="city" required disabled={status === 'busy'} /></label><label>Tipo de imóvel<input name="propertyType" required disabled={status === 'busy'} /></label><button className="primary-button" type="submit" disabled={status === 'busy'}>{status === 'busy' ? 'Enviando…' : 'Enviar solicitação'}</button>{feedback ? <p className={status === 'error' ? 'form-feedback form-feedback--error' : 'form-feedback'} role={status === 'error' ? 'alert' : 'status'}>{feedback}</p> : null}</form></main>;
+function OwnerRegistrationRedirect() {
+  const destination = `/vender/${window.location.search}${window.location.hash}`;
+  useEffect(() => {
+    window.location.replace(destination);
+  }, [destination]);
+  return <main className="owner-page section-shell"><p role="status">Abrindo o cadastro do imóvel...</p><a className="primary-button" href={destination}>Ir para o cadastro do imóvel</a></main>;
 }

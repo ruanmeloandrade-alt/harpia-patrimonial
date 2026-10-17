@@ -62,6 +62,18 @@ function normalizeInterest(value: unknown) {
   };
 }
 
+function normalizeWhatsapp(value: unknown) {
+  const raw = clean(value, 40);
+  if (!raw) return '';
+  if (/[A-Za-z]/.test(raw)) return '';
+  let digits = raw.replace(/\D/g, '');
+  const explicitInternational = /^\s*(\+|00)/.test(raw);
+  if (digits.startsWith('00')) digits = digits.slice(2);
+  if (!explicitInternational && (digits.length === 10 || digits.length === 11)) digits = '55' + digits;
+  if (digits.length < 8 || digits.length > 15) return '';
+  return digits;
+}
+
 function normalizeOccurredAt(value: unknown) {
   const candidate = clean(value, 80);
   if (!candidate) return new Date().toISOString();
@@ -82,7 +94,7 @@ Deno.serve(async (req) => {
   const contact = body.contact && typeof body.contact === 'object' ? body.contact as Record<string, unknown> : {};
   const name = clean(contact.name, 180);
   const email = clean(contact.email, 320);
-  const whatsapp = clean(contact.whatsapp, 40);
+  const whatsapp = normalizeWhatsapp(contact.whatsapp);
   const origin = clean(body.origin || 'site', 120) || 'site';
   const action = clean(body.action, 120);
   const page = clean(body.page, 500);
@@ -93,6 +105,33 @@ Deno.serve(async (req) => {
 
   if (!name || !whatsapp) return response({ ok: false, message: 'Nome e WhatsApp são obrigatórios.' }, 400);
   if (email && !/^\S+@\S+\.\S+$/.test(email)) return response({ ok: false, message: 'E-mail inválido.' }, 400);
+
+  // Preserve the two long text fields defined in the approved owner registration.
+  // All other conversion metadata retains the existing 500-character limit.
+  if (action === 'owner-property-registration') {
+    const raw = body.metadata && typeof body.metadata === 'object' && !Array.isArray(body.metadata)
+      ? body.metadata as Record<string, unknown> : {};
+    const propertyTypes = new Set(['Casa', 'Apartamento', 'Flat', 'Terreno', 'Comercial', 'Galpão', 'Studio', 'Loft', 'Cobertura', 'Ilha']);
+    if (!propertyTypes.has(String(raw.propertyType)) || !['venda', 'locacao'].includes(String(raw.intent))) {
+      return response({ ok: false, message: 'Confira o tipo e a finalidade do imóvel.' }, 400);
+    }
+    if (raw.consent !== true) return response({ ok: false, message: 'Autorize a utilização dos dados e o contato antes de enviar.' }, 400);
+    if (typeof raw.expectedValue !== 'number' || !Number.isFinite(raw.expectedValue) || raw.expectedValue <= 0 || raw.expectedValue > 999999999999.99) {
+      return response({ ok: false, message: 'Confira a previsão de valor do imóvel.' }, 400);
+    }
+    if (String(contact.name ?? '').trim().length > 180) return response({ ok: false, message: 'O nome do proprietário deve ter até 180 caracteres.' }, 400);
+    for (const [key, max, label] of [['description', 12000, 'descrição'], ['propertyAddress', 1500, 'endereço']] as const) {
+      const value = typeof raw[key] === 'string' ? raw[key].trim() : '';
+      if (!value || value.length > max) return response({ ok: false, message: `Confira o campo ${label}. O limite é de ${max} caracteres.` }, 400);
+      metadata[key] = value;
+    }
+    const secondaryPhone = normalizeWhatsapp(raw.secondaryPhone);
+    if (raw.secondaryPhone && !secondaryPhone) return response({ ok: false, message: 'Confira o segundo celular ou deixe o campo vazio.' }, 400);
+    metadata.secondaryPhone = secondaryPhone;
+    metadata.expectedValue = Math.round(raw.expectedValue * 100) / 100;
+    metadata.currency = 'BRL';
+    metadata.commissionIncluded = true;
+  }
 
   const authorization = req.headers.get('Authorization');
   if (authorization && publicKey) {

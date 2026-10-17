@@ -72,12 +72,12 @@ const routeMetadata: Record<string, { title: string; description: string }> = {
     description: 'Arquitetura, reformas e soluções relacionadas ao patrimônio, ao espaço e ao bem viver.',
   },
   '/vender': {
-    title: 'Quero vender meu imóvel | Hárpia Patrimonial & Co.',
-    description: 'Envie os dados iniciais do seu imóvel para iniciar um atendimento de venda com a equipe Hárpia.',
+    title: 'Anuncie seu imóvel | Hárpia Patrimonial & Co.',
+    description: 'Apresente seu imóvel em seis etapas para análise e contato posterior da equipe Hárpia.',
   },
   '/alugar': {
-    title: 'Quero alugar meu imóvel | Hárpia Patrimonial & Co.',
-    description: 'Envie os dados iniciais do seu imóvel para iniciar um atendimento de locação com a equipe Hárpia.',
+    title: 'Anuncie seu imóvel | Hárpia Patrimonial & Co.',
+    description: 'Apresente seu imóvel para venda ou aluguel, com análise e contato posterior da equipe Hárpia.',
   },
   '/cliente': {
     title: 'Área do cliente | Hárpia Patrimonial & Co.',
@@ -106,6 +106,12 @@ function metadataForPath(path: string) {
 }
 
 function navigatePublic(path: string) {
+  const target = new URL(path, window.location.origin);
+  const targetPath = normalizeFront02PublicPath(target.pathname);
+  if (targetPath === '/vender' || targetPath === '/alugar') {
+    window.location.assign(`/vender/${target.search}${target.hash}`);
+    return;
+  }
   window.history.pushState({}, '', path);
   emitFront02LocationChange();
   window.scrollTo({ top: 0, behavior: 'smooth' });

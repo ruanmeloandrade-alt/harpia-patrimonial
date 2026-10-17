@@ -260,3 +260,21 @@ O shell disponível não possui checkout do repositório e não resolve GitHub/r
 - [ ] QA visual final desktop/mobile da base React compilada.
 
 Motivo dos itens não verificados: este ambiente não possui checkout completo do repositório e não resolve GitHub/registry via shell. Não foi criada conta fictícia para contornar autenticação.
+
+
+## Cadastro público de imóvel conforme PDF, 17/10/2026
+
+Implementação da jornada de **Anuncie seu imóvel** sincronizada em `public/vender/index.html`, com `/alugar/` como endereço de compatibilidade. A navegação React abre o documento `/vender/`, incluindo os caminhos programáticos e a recuperação das rotas antigas. A referência do PDF substitui o formulário anterior e seu redirecionamento para WhatsApp; a confirmação depende da persistência real do lead.
+
+Validações executadas neste checkout:
+
+- `npm run typecheck`: aprovado.
+- `npm run build`: aprovado, 220 módulos processados. Permanece o aviso de chunk principal acima de 500 kB.
+- `git diff --check`: aprovado.
+- HTML de cadastro copiado da página publicada em preparação, preservando `ownerName` com `maxlength="180"`.
+
+O checkout não contém lockfile. As dependências fixadas em `package.json` foram instaladas sem criar lockfile ou alterar o manifesto.
+
+**🟢 Publicado e integrado:** ícones originais no rodapé e cadastro em `/vender/`, com persistência no CRM e apresentação dos dados nas observações da ficha. A página pública foi percorrida no navegador em desktop. Validações, commits, limites de QA e instruções para evitar regressão estão em `docs/HANDOFF-CADASTRO-IMOVEL-20261017.md`.
+
+**🟠 Verificações restantes:** inspeção visual em navegador móvel e envio de um cadastro real do proprietário. Não foram criados atendimentos fictícios persistentes nem disparadas comunicações de teste.

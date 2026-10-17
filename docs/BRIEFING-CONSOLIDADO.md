@@ -146,12 +146,14 @@ A experiência pública deve contemplar:
 
 ## 11. Captação de proprietário
 
-Na primeira versão, `Quero vender meu imóvel` e `Quero alugar meu imóvel` serão jornadas manuais:
+Conforme a decisão de 17/10/2026, o PDF `Harpia_Anuncie_Seu_Imovel_Paleta_Corrigida` define exatamente a página **Anuncie seu imóvel**. Essa referência substitui o fluxo anterior que redirecionava o formulário para WhatsApp.
 
-1. visitante clica na ação;
-2. preenche formulário;
-3. segue para WhatsApp com contexto da solicitação;
-4. equipe conduz o processo.
+1. O visitante abre `/vender/`; `/alugar/` permanece como endereço de compatibilidade para a mesma página.
+2. Preenche as seis etapas: perfil do imóvel, descrição, endereço, previsão de valor com comissão, contato e revisão com consentimento.
+3. Envia os dados para registro real do lead. A confirmação só aparece após o serviço confirmar a persistência; falhas preservam os dados e permitem tentar novamente.
+4. A equipe analisa as informações e entra em contato posteriormente. Criar o lead não envia mensagens automaticamente.
+
+A página deve reproduzir as oito telas do PDF, incluindo entrada e confirmação, sem campos adicionais, opções previamente marcadas ou dados fictícios no resumo.
 
 Não implementar nesta primeira fase um modelo self-service no estilo OLX em que o proprietário publica sozinho.
 

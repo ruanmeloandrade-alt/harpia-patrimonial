@@ -237,17 +237,19 @@ Prever estrutura para:
 
 ## 7.1. Quero vender meu imóvel
 
-Fluxo inicial:
+Fluxo definido pelo PDF `Harpia_Anuncie_Seu_Imovel_Paleta_Corrigida`, confirmado em 17/10/2026:
 
-1. CTA no site.
-2. Formulário enxuto.
-3. Captura de dados.
-4. Redirecionamento para WhatsApp com contexto.
-5. Atendimento manual pela equipe.
+1. CTA abre a página completa `/vender/`.
+2. Entrada e seis etapas seguem exatamente o PDF: perfil, descrição, endereço, valor com comissão, contato e revisão com consentimento.
+3. Dados são enviados para persistência de um lead real.
+4. A tela de confirmação aparece somente após o registro bem-sucedido; erros mantêm os dados preenchidos.
+5. A equipe analisa o cadastro e conduz o atendimento posteriormente, sem publicação de imóvel ou envio de mensagens automáticos.
+
+O PDF substitui a orientação anterior de redirecionar o envio para WhatsApp. Não acrescentar campos nem alterar o conteúdo, os ativos ou a composição visual definidos nessa referência.
 
 ## 7.2. Quero alugar meu imóvel
 
-Mesmo padrão da jornada de venda.
+`/alugar/` redireciona para `/vender/`, preservando query string e fragmento. A mesma página permite selecionar Venda ou Aluguel, sem seleção prévia.
 
 ## 7.3. Fora do escopo atual
 

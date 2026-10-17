@@ -606,3 +606,17 @@ Decisão consolidada em 24/09/2026:
 - Integrações deve exibir WhatsApp e provedores de IA atuais, além de Meta, Gmail/Workspace, SMS, Google Analytics, Google Tag Manager e APIs futuras.
 - Meta, Gmail/Workspace, SMS, Analytics, Tag Manager e o módulo Marketing permanecem identificados como segunda fase quando ainda não estiverem operacionais.
 - Nenhuma preferência que dependa de enforcement de backend pode ser apresentada como ativa apenas porque foi salva na interface. A UI deve deixar explícito quando a configuração está apenas preparada para consumo posterior pelo módulo correspondente.
+
+---
+
+# 28. Cadastro de imóvel conforme PDF
+
+Decisão confirmada em 17/10/2026:
+
+- O PDF `Harpia_Anuncie_Seu_Imovel_Paleta_Corrigida` é a referência exata de conteúdo, composição, paleta e ativos das oito telas de **Anuncie seu imóvel**. Não criar alternativas visuais nem adicionar campos.
+- Essa decisão substitui a orientação anterior de encaminhar o proprietário para WhatsApp após o formulário, inclusive as referências antigas nos documentos do projeto.
+- A rota canônica é `/vender/`; `/alugar/` continua acessível como redirecionamento para a mesma jornada, sem pré-selecionar a finalidade.
+- A página está em `public/vender/index.html`, com os recursos em `public/assets/registration/`. A navegação React abre esse documento completo e o build do Vite copia os recursos públicos.
+- As seis etapas recolhem perfil e finalidade, descrição, endereço, valor previsto incluindo comissão, contato e consentimento na revisão. O resumo usa apenas os dados preenchidos.
+- A confirmação depende do retorno bem-sucedido do serviço após persistir o lead. Um erro deve manter os dados; o botão ocupado impede envio duplicado.
+- O envio não publica um anúncio nem dispara mensagens. A equipe analisa o imóvel e conduz o contato posteriormente.
