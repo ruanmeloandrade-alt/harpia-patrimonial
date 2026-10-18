@@ -356,3 +356,9 @@ th { color: var(--muted); font-size: 10px; text-transform: uppercase; letter-spa
   color: #7f877e;
   opacity: 1;
 }
+
+/* Empty-state messages must remain clear of decorative brand backgrounds. */
+[class*="_conversationEmpty_"],
+.f05-module:has(> .ai-workspace-tabs) > .f05-split .f05-empty {
+  background-image: none !important;
+}

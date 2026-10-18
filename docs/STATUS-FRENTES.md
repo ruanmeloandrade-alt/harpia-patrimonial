@@ -278,3 +278,18 @@ O checkout não contém lockfile. As dependências fixadas em `package.json` for
 **🟢 Publicado e integrado:** ícones originais no rodapé e cadastro em `/vender/`, com persistência no CRM e apresentação dos dados nas observações da ficha. A página pública foi percorrida no navegador em desktop. Validações, commits, limites de QA e instruções para evitar regressão estão em `docs/HANDOFF-CADASTRO-IMOVEL-20261017.md`.
 
 **🟠 Verificações restantes:** inspeção visual em navegador móvel e envio de um cadastro real do proprietário. Não foram criados atendimentos fictícios persistentes nem disparadas comunicações de teste.
+
+## Legibilidade dos estados vazios do Inbox e Agentes IA, 17/10/2026
+
+Removidas as imagens decorativas de fundo que cobriam o texto do estado vazio
+de conversas e os dois quadros “Nenhum agente criado” e “Crie ou selecione um
+agente”. A regra abrange os temas claro e escuro e os dois bundles publicados.
+O escopo é apenas esses estados vazios; os componentes de marca e suas imagens
+de navegação/cabeçalhos não fazem parte dos seletores alterados.
+
+Publicação: `8408cc869b6354a75fec43a5fd8dfcc7d63b7bb2` em `gh-pages`.
+O arquivo `assets/empty-state-logo-cleanup-20261018.css` é carregado por último
+nos pontos de entrada do aplicativo. A correção equivalente está em
+`src/styles.css` para futuras compilações. Conferidos os seletores nos bundles,
+a regra do tema escuro e a ordem dos estilos. A revisão se baseou nas capturas
+do usuário e no código; não constitui uma captura autenticada depois do ajuste.
