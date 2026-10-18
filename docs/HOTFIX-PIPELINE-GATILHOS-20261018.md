@@ -52,3 +52,28 @@ Esses testes são de execução isolada dos componentes. A sessão do navegador
 disponível nesta tarefa abriu a tela de login e não permitiu uma conferência
 visual autenticada da pipeline. Isso não deve ser descrito como teste na
 conta do usuário.
+
+## Ajuste de altura e acesso ao botão Pronto
+
+Após o retorno do usuário sobre precisar reduzir o zoom para 75%, foi
+identificado outro problema: o topo calculado junto à etapa podia superar
+200 px, enquanto a altura máxima continuava sendo quase a viewport inteira.
+O painel e o botão Pronto podiam terminar abaixo da janela.
+
+A publicação `c494f1ae2a0a4b97b7df81295d725eda16349d71` fixa o topo em
+48 px e limita a altura a `100dvh - 56px`, com fallback em `100vh`. Assim
+restam 8 px entre o painel e a borda inferior. O `box-sizing: border-box`
+inclui as bordas nesse limite. A área de campos mantém rolagem interna; o
+rodapé permanece na segunda linha do grid, fora dessa rolagem. O botão
+Pronto continua sendo o submit do mesmo formulário.
+
+`assets/trigger-config-viewport-20261018.css` cobre os dois hashes de CSS
+dos bundles publicados e é carregado após os estilos existentes em todos
+os seus pontos de entrada, incluindo o fallback 404. A regra correspondente
+também foi incorporada em `src/features/crm/crm.module.css`, inclusive no
+breakpoint mobile. A largura, as cores e o tamanho dos textos permanecem
+conforme o componente existente.
+
+A revisão conferiu os seletores publicados, a ordem de carregamento, a
+separação do rodapé e a conta de altura. Não é uma captura visual de uma
+sessão autenticada.

@@ -2199,9 +2199,13 @@
 /* Configurador de gatilho, referência MarketOn */
 .triggerConfigPanel {
   position: fixed;
+  /* Keep the panel and its action row inside the viewport at normal zoom. */
+  top: 48px !important;
   z-index: 3720;
   width: 320px;
-  max-height: calc(100vh - 54px);
+  box-sizing: border-box;
+  max-height: calc(100vh - 56px);
+  max-height: calc(100dvh - 56px);
   display: grid;
   grid-template-rows: minmax(0, 1fr) auto;
   overflow: hidden;
@@ -2647,6 +2651,7 @@
     left: 8px !important;
     top: 48px !important;
     max-height: calc(100vh - 56px);
+    max-height: calc(100dvh - 56px);
   }
 }
 
