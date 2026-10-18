@@ -555,12 +555,29 @@ export function CrmWorkspace({
                   >
                     <div className={styles.columnHeader}>
                       <div>
-                        <strong>{stage.name}</strong>
-                        <span>
-                          {automationOpen
-                            ? `${stageTriggers.length} gatilho${stageTriggers.length === 1 ? '' : 's'}`
-                            : `${leads.length} lead${leads.length === 1 ? '' : 's'}`}
-                        </span>
+                        {automationOpen && canManage ? (
+                          <button
+                            type="button"
+                            aria-label={`Adicionar gatilho em ${stage.name}`}
+                            style={{ display: 'flex', alignItems: 'center', gap: 'inherit', border: 0, padding: 0, background: 'transparent', color: 'inherit', font: 'inherit', textAlign: 'left', cursor: 'pointer' }}
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              openTriggerPicker(stage.id);
+                            }}
+                          >
+                            <strong>{stage.name}</strong>
+                            <span>{stageTriggers.length} gatilho{stageTriggers.length === 1 ? '' : 's'}</span>
+                          </button>
+                        ) : (
+                          <>
+                            <strong>{stage.name}</strong>
+                            <span>
+                              {automationOpen
+                                ? `${stageTriggers.length} gatilho${stageTriggers.length === 1 ? '' : 's'}`
+                                : `${leads.length} lead${leads.length === 1 ? '' : 's'}`}
+                            </span>
+                          </>
+                        )}
                       </div>
                       {canManage && automationOpen ? (
                         <div className={styles.stageActions}>
@@ -573,13 +590,36 @@ export function CrmWorkspace({
                     </div>
 
                     {automationOpen ? (
-                      <div className={styles.stageAutomationBody}>
+                      <div
+                        className={styles.stageAutomationBody}
+                        onClick={(event) => {
+                          if (canManage && event.target === event.currentTarget) {
+                            openTriggerPicker(stage.id);
+                          }
+                        }}
+                      >
                         <div className={styles.stageTriggerList}>
                           {stageTriggers.length === 0 ? (
-                            <div className={styles.stageTriggerEmpty}>
-                              <strong>Sem gatilhos nesta etapa</strong>
-                              <span>Adicione o primeiro gatilho aqui.</span>
-                            </div>
+                            canManage ? (
+                              <button
+                                className={styles.stageTriggerEmpty}
+                                type="button"
+                                aria-label={`Adicionar o primeiro gatilho em ${stage.name}`}
+                                style={{ cursor: 'pointer', font: 'inherit' }}
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  openTriggerPicker(stage.id);
+                                }}
+                              >
+                                <strong>Sem gatilhos nesta etapa</strong>
+                                <span>Adicione o primeiro gatilho aqui.</span>
+                              </button>
+                            ) : (
+                              <div className={styles.stageTriggerEmpty}>
+                                <strong>Sem gatilhos nesta etapa</strong>
+                                <span>Adicione o primeiro gatilho aqui.</span>
+                              </div>
+                            )
                           ) : stageTriggers.map((item) => {
                             const meta = item.pipeline;
                             if (!meta) return null;
