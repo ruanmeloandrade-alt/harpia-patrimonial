@@ -1,6 +1,2 @@
-/* Remove decorative backgrounds that cover Inbox and AI agent empty messages.
-   Keep the branding in navigation and module headers. Covers both themes. */
-[class*="_conversationEmpty_"],
-.f05-module:has(> .ai-workspace-tabs) > .f05-split .f05-empty {
-  background-image: none !important;
-}
+/* Compatibility for cached entrypoints: the rule now covers all internal modules. */
+@import url("/assets/internal-branding-sidebar-only-20261018.css");
