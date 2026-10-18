@@ -1,0 +1,9 @@
+/* Keep trigger configuration and its footer visible at 100% browser zoom.
+   Both currently published application bundles are covered. */
+._triggerConfigPanel_1nlly_4563,
+._triggerConfigPanel_1y1gr_4399 {
+  top: 48px !important;
+  box-sizing: border-box;
+  max-height: calc(100vh - 56px);
+  max-height: calc(100dvh - 56px);
+}
