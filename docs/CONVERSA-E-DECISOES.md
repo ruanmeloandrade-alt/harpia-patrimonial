@@ -620,3 +620,23 @@ Decisão confirmada em 17/10/2026:
 - As seis etapas recolhem perfil e finalidade, descrição, endereço, valor previsto incluindo comissão, contato e consentimento na revisão. O resumo usa apenas os dados preenchidos.
 - A confirmação depende do retorno bem-sucedido do serviço após persistir o lead. Um erro deve manter os dados; o botão ocupado impede envio duplicado.
 - O envio não publica um anúncio nem dispara mensagens. A equipe analisa o imóvel e conduz o contato posteriormente.
+
+---
+
+# 29. Brasão somente no menu lateral do sistema interno
+
+Decisão expressa do usuário em 18/10/2026:
+
+- Exibir a logo/brasão do sistema interno somente no menu lateral esquerdo.
+- Remover as inserções decorativas de todos os módulos, incluindo cabeçalhos,
+  fundos e estados vazios. O escopo abrange a área operacional inteira, e não
+  apenas as telas ou caixas mostradas nas capturas anteriores.
+- Retirar também as colunas e espaços reservados aos brasões removidos, nos
+  temas claro e escuro e em telas menores.
+- A marca do menu pode alternar entre as variantes expandida e recolhida, no
+  mesmo lugar. Não criar novas aplicações da marca no conteúdo operacional.
+- Essa decisão substitui a composição editorial que espalhava brasões pelos
+  módulos e a limpeza anterior limitada ao Inbox e aos quadros de Agentes IA.
+- Imagens de imóveis, anexos, QR Codes, ícones de ações e a prévia do arquivo
+  enviado em Configurações são elementos funcionais, não brasões decorativos.
+  O site público e a área do cliente mantêm suas apresentações próprias.

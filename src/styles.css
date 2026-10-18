@@ -357,8 +357,95 @@ th { color: var(--muted); font-size: 10px; text-transform: uppercase; letter-spa
   opacity: 1;
 }
 
-/* Empty-state messages must remain clear of decorative brand backgrounds. */
-[class*="_conversationEmpty_"],
-.f05-module:has(> .ai-workspace-tabs) > .f05-split .f05-empty {
+/* Internal workspace: the sidebar is the only decorative brand placement.
+   Scope every rule to its sibling .internal-main so the sidebar stays visible. */
+.internal-main .harpia-heritage-mark,
+.internal-main .f03-empty-visual__art {
+  display: none !important;
+}
+
+.internal-main :is(
+  .f03-dashboard-header,
+  .f03-header,
+  .calendar-header,
+  .settings-workspace__header,
+  .marketing-hero,
+  .f05-module__header,
+  .sb-builder-top,
+  [class*="_crmTopbar_"],
+  [class*="_conversationList_"] > header
+)::before {
+  content: none !important;
+  display: none !important;
   background-image: none !important;
+}
+
+.internal-main :is(
+  .f03-empty-visual__art,
+  [class*="_conversationEmpty_"],
+  .f05-empty,
+  .marketing-empty
+) {
+  background-image: none !important;
+}
+
+/* Remove the grid track formerly occupied by the generated crest. */
+.internal-main :is(
+  .f03-dashboard-header,
+  [class*="_crmTopbar_"],
+  .sb-builder-top
+) {
+  display: grid !important;
+  grid-template-columns: minmax(180px, 1fr) auto !important;
+  grid-template-rows: auto !important;
+}
+
+.internal-main :is(
+  .f03-dashboard-header,
+  [class*="_crmTopbar_"],
+  .sb-builder-top
+) > div {
+  min-width: 0;
+}
+
+.internal-main :is(
+  .f03-dashboard-header__actions,
+  [class*="_crmActions_"],
+  .sb-builder-tools
+) {
+  grid-column: 2 !important;
+}
+
+.internal-main [class*="_conversationList_"] > header {
+  grid-template-columns: minmax(0, 1fr) auto !important;
+}
+
+/* Preserve the established minimum widths of the desktop titles. */
+.internal-main .f03-dashboard-header {
+  grid-template-columns: minmax(240px, 1fr) auto !important;
+}
+
+.internal-main [class*="_crmTopbar_"] {
+  grid-template-columns: minmax(190px, 1fr) auto !important;
+}
+
+/* Titles and actions occupy the full width on smaller screens. */
+@media (max-width: 1180px) {
+  .internal-main :is(
+    .f03-dashboard-header,
+    [class*="_crmTopbar_"],
+    .sb-builder-top
+  ) {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .internal-main :is(
+    .f03-dashboard-header__actions,
+    [class*="_crmActions_"],
+    .sb-builder-tools
+  ) {
+    grid-column: 1 / -1 !important;
+    justify-self: start !important;
+    justify-content: flex-start;
+  }
 }

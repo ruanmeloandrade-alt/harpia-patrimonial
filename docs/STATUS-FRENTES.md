@@ -281,6 +281,9 @@ O checkout não contém lockfile. As dependências fixadas em `package.json` for
 
 ## Legibilidade dos estados vazios do Inbox e Agentes IA, 17/10/2026
 
+**Registro histórico: o escopo abaixo foi substituído pela decisão de
+18/10/2026, de manter o brasão somente no menu lateral de toda a área interna.**
+
 Removidas as imagens decorativas de fundo que cobriam o texto do estado vazio
 de conversas e os dois quadros “Nenhum agente criado” e “Crie ou selecione um
 agente”. A regra abrange os temas claro e escuro e os dois bundles publicados.
@@ -293,3 +296,42 @@ nos pontos de entrada do aplicativo. A correção equivalente está em
 `src/styles.css` para futuras compilações. Conferidos os seletores nos bundles,
 a regra do tema escuro e a ordem dos estilos. A revisão se baseou nas capturas
 do usuário e no código; não constitui uma captura autenticada depois do ajuste.
+
+## Brasão somente no menu lateral interno, 18/10/2026
+
+**🟢 Correção publicada e entrega dos arquivos verificada.** A decisão expressa
+do usuário abrange todos os módulos internos. O único ponto decorativo da marca
+é o menu lateral esquerdo, incluindo sua variante recolhida.
+
+- Removidos os brasões dos nove tipos de cabeçalho usados por Dashboard, CRM,
+  Inbox, catálogo, Calendário, Configurações, Marketing, módulos de automação/IA
+  e construtor SalesBot.
+- Removidas as imagens de fundo de estados vazios do Dashboard, Inbox e módulos
+  F05/Marketing. A arte decorativa do Dashboard deixa de ocupar espaço.
+- As regras são restritas a `.internal-main`, irmão da sidebar, e prevalecem
+  nas variantes claras, escuras e móveis do CSS editorial.
+- Retirada a coluna reservada ao brasão de Dashboard, CRM, Inbox e SalesBot.
+  Dashboard e CRM mantêm as larguras mínimas anteriores dos títulos no desktop;
+  abaixo de 1180 px, títulos e ações usam a largura total. Inbox mantém título
+  e contador em duas colunas, inclusive abaixo de 520 px.
+- O arquivo `assets/internal-branding-sidebar-only-20261018.css` substitui o
+  link da correção estreita nos 21 pontos de entrada do aplicativo, incluindo
+  o fallback `404.html`. O endereço antigo importa a regra abrangente para
+  compatibilidade com documentos em cache.
+- A mesma correção está em `public/assets/` e `src/styles.css`. A regra
+  permanente está em `AGENTS.md` e `docs/CONVERSA-E-DECISOES.md`, seção 29.
+
+Publicação em `gh-pages`: `9feea176f71712c533fdd344bebb869571f93943`.
+Integração de estilos compartilhados das frentes 01/03/04/05 autorizada pela
+solicitação de limpeza de toda a área interna. Não há mudança de contrato.
+
+Validações: sintaxe CSS; revisão dos dois bundles publicados e de todos os
+seletores de inserção da marca; ordem dos estilos; diff com os finais CRLF dos
+HTML preservados; HTTP 200 e conteúdo idêntico ao publicado para o novo CSS
+e todos os 21 pontos de entrada no domínio oficial, incluindo as 15 rotas
+internas e `404.html`.
+
+**🟠 NÃO VERIFICADO:** inspeção visual posterior em sessão interna autenticada.
+A verificação acima é de código e arquivos entregues pelo domínio; não é uma
+captura de cada módulo autenticado. Build/TypeScript não foram repetidos nesta
+correção de CSS. Os dois bundles existentes continuam sendo usados.

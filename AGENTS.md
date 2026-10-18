@@ -224,6 +224,16 @@ Preparar estrutura de configurações para integrações, mas deixar as conexõe
 
 Quando houver dúvida entre criar algo sofisticado e entregar algo funcional, escolher o caminho mais simples, estável e extensível que permita cumprir o prazo sem sacrificar a estrutura necessária.
 
+### Marca no sistema interno, decisão de 18/10/2026
+
+O único local de exibição decorativa da logo/brasão no sistema interno é o menu
+lateral esquerdo, incluindo sua variante recolhida. Não inserir brasões nos
+cabeçalhos, fundos, quadros vazios ou demais conteúdos dos módulos internos.
+Essa decisão substitui as inserções decorativas do CSS editorial e a correção
+anterior limitada às capturas do Inbox e Agentes IA. Ao retirar uma marca,
+remover também o espaço reservado por ela. A decisão completa está em
+`docs/CONVERSA-E-DECISOES.md`, seção 29.
+
 ## 20. Regra obrigatória das cinco frentes
 
 O projeto está dividido oficialmente em cinco frentes de trabalho paralelas.
