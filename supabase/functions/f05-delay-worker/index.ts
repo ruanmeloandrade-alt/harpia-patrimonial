@@ -1,8 +1,9 @@
+import { salesBotNextBlock, salesBotConditionRoute } from '../_shared/salesbot-flow.ts';
 import { createClient } from 'npm:@supabase/supabase-js@2.116.0';
 
 type Json = Record<string, unknown>;
 type Result = { status: 'accepted' | 'rejected' | 'not_configured'; executionId?: string; reason?: string; data?: Json };
-type Block = { id: string; type: string; label?: string; config?: Json };
+type Block = { id: string; type: string; label?: string; config?: Json; nextBlockId?: string | null; falseNextBlockId?: string | null; routes?: Record<string, string | null> };
 type Bot = { id: string; status: string; blocks?: Block[] };
 type Execution = {
   id: string;
@@ -61,8 +62,9 @@ function evaluateCondition(expression: string, context: Json): boolean | null {
   if (!match) return null;
   const actual = getPath(context, match[1]);
   const operator = match[2].toLowerCase();
-  const expected = match[3].trim();
-  if (operator === 'contains') return Array.isArray(actual) ? actual.map(String).includes(expected) : String(actual ?? '').includes(expected);
+  let expected = match[3].trim();
+  try { expected = String(JSON.parse(expected) ?? ''); } catch { expected = expected.replace(/^(['"])(.*)\1$/, '$2'); }
+  if (operator === 'contains') return Array.isArray(actual) ? actual.map(String).includes(expected) : String(actual ?? '').toLocaleLowerCase('pt-BR').includes(expected.toLocaleLowerCase('pt-BR'));
   if (operator === '=' || operator === '==') return String(actual ?? '') === expected;
   if (operator === '!=') return String(actual ?? '') !== expected;
   const a = Number(actual);
@@ -259,10 +261,16 @@ Deno.serve(async (req) => {
     await patchExecution(executionId, { status: 'running', resumeMode: undefined, resumeAt: undefined, resumeClaimToken: undefined, resumeClaimedUntil: undefined, error: undefined, action: 'Execução retomada pelo scheduler.' });
 
     try {
-      for (let index = currentIndex + 1; index < blocks.length; index += 1) {
-        const block = blocks[index];
+      let currentId = salesBotNextBlock(blocks, blocks[currentIndex]);
+      let steps = 0;
+      while (currentId) {
+        if (++steps > 1000) throw new Error('Limite de execução do grafo excedido.');
+        const block = blocks.find((item) => item.id === currentId);
+        if (!block) throw new Error('Conexão aponta para bloco inexistente.');
+        currentId = salesBotNextBlock(blocks, block);
         const config = block.config ?? {};
-        await patchExecution(executionId, { currentBlockId: block.id, action: `Executando: ${block.label ?? block.type}` });
+        const currentExecution = await patchExecution(executionId, { currentBlockId: block.id, action: `Executando: ${block.label ?? block.type}` });
+        if (currentExecution.status !== 'running') return { status: 'accepted', executionId, data: { runtimeStatus: currentExecution.status } };
 
         if (block.type === 'trigger') continue;
         if (block.type === 'finish') {
@@ -271,16 +279,16 @@ Deno.serve(async (req) => {
           return { status: 'accepted', executionId, data: { runtimeStatus: 'completed' } };
         }
         if (block.type === 'condition') {
-          const matched = evaluateCondition(text(config.expression), context);
-          if (matched === null) throw new Error('Condição inválida.');
-          if (!matched) {
-            await patchExecution(executionId, { status: 'completed', finishedAt: nowIso(), runtimeContext: undefined, resumeMode: undefined, resumeAt: undefined, action: 'Condição não atendida; fluxo encerrado.' });
-            await emitSalesBotAutomationEvent('salesbot_done', { ...original, status: 'completed', runtimeContext: context, finishedAt: nowIso() });
-            return { status: 'accepted', executionId, data: { runtimeStatus: 'completed' } };
-          }
+          const result = salesBotConditionRoute(block, context, evaluateCondition);
+          currentId = result.matched ? (result.ruleId ? block.routes?.[result.ruleId] ?? currentId : currentId) : block.falseNextBlockId ?? null;
           continue;
         }
+
         if (block.type === 'delay') {
+          if (text(config.pauseMode) && config.pauseMode !== 'timer') {
+            await patchExecution(executionId, { status: 'paused', resumeMode: 'retry_current', resumeAt: undefined, runtimeContext: context, action: 'Aguardando o evento configurado na pausa.' });
+            return { status: 'not_configured', executionId, reason: 'Esta pausa requer evento de transporte confirmado.' };
+          }
           const duration = delayMs(text(config.duration));
           if (!duration) throw new Error('Duração de espera inválida.');
           const resumeAt = new Date(Date.now() + duration).toISOString();

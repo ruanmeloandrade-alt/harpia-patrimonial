@@ -1,0 +1,71 @@
+const fs=require('node:fs'),assert=require('node:assert/strict'),vm=require('node:vm');
+const parser=require('@babel/parser'),traverse=require('@babel/traverse').default;
+const file=process.argv[2],code=fs.readFileSync(file,'utf8'),ast=parser.parse(code,{sourceType:'module'});
+const bindings=new Map();traverse(ast,{Program(p){for(const [name,b] of Object.entries(p.scope.bindings))bindings.set(name,b.path)}});
+const text=n=>code.slice(n.start,n.end);
+const find=marker=>[...bindings.values()].find(p=>p.isFunctionDeclaration()&&text(p.node).includes(marker));
+const run=find('SalesBot sem bloco inicial.'),execute=find('Aguardando o evento configurado na pausa.'),output=find('label:"Sim"');
+assert(run&&execute&&output);
+const rs=text(run.node),es=text(execute.node);
+const listName=rs.match(/const \w+=(\w+)\(\)\.find/)[1],botName=rs.match(/const \w+=(\w+)\(\w+\.botId\)/)[1];
+const updateName=rs.match(/(\w+)\(\w+,\{status:"running"/)[1],finishName=rs.match(/return (\w+)\(\w+,"failed"/)[1];
+const defaultName=run.node.params[2].right.name;
+const distribution=es.match(/(\w+)\(\w+,\w+\.id,\{config:\{\.\.\.\w+\.config,rotationIndex/)[1];
+let bot,execution;const tasks=[];
+const sandbox={console,Date,Map,Set,Promise};
+sandbox[listName]=()=>[execution];sandbox[botName]=()=>bot;
+sandbox[updateName]=(_id,patch)=>{Object.assign(execution,patch);return execution};
+sandbox[finishName]=(_id,status,error)=>{Object.assign(execution,{status,error,runtimeContext:undefined});return execution};
+sandbox[defaultName]={};sandbox[distribution]=()=>{};
+const emitted=new Set();let chunks=[];
+function include(name){if(emitted.has(name)||name in sandbox)return;emitted.add(name);const p=bindings.get(name);if(!p)throw Error('Missing binding '+name);
+  p.traverse({ReferencedIdentifier(r){const b=r.scope.getBinding(r.node.name);if(b?.scope.path.isProgram())include(r.node.name)}});
+  chunks.push((p.isVariableDeclarator()?'const ':'')+text(p.node)+';');
+}
+include(run.node.id.name);include(output.node.id.name);
+const ctx=vm.createContext(sandbox);vm.runInContext(chunks.join('\n')+`;globalThis.testRun=${run.node.id.name};globalThis.testOutputs=${output.node.id.name};`,ctx);
+let count=0;const check=(name,fn)=>{fn();count++;console.log('PASS',name)};
+const make=(id,type,nextBlockId,config={})=>({id,type,label:id,nextBlockId,config});
+const deps={crm:{createTask:async x=>{tasks.push(x.title);return{status:'accepted'}}},condition:{evaluate:async({expression,context})=>{const m=expression.match(/^message contains "(.*)"$/);return m?{status:'matched',matched:context.message.includes(m[1])}:{status:'failed',reason:expression}}},delay:{schedule:async()=>({status:'accepted'})}};
+async function main(){
+  bot={id:'qa',blocks:[make('start','trigger','condition'),{...make('condition','condition',null,{logic:'any',rules:[{id:'buy',field:'message',operator:'contains',value:'comprar'},{id:'rent',field:'message',operator:'contains',value:'alugar'}]}),routes:{buy:'buy',rent:'rent'},falseNextBlockId:'end'},make('buy','create_task',null,{title:'buy'}),make('rent','create_task',null,{title:'rent'}),make('end','finish',null)]};
+  check('independent OU connectors',()=>assert.equal(ctx.testOutputs(bot.blocks[1])[1].branch,'route:rent'));
+  execution={id:'exec',botId:'qa',status:'running'};
+  await ctx.testRun('exec',{leadId:'lead',data:{message:'alugar'}},deps);
+  check('published OU follows second connection',()=>assert.deepEqual(tasks,['rent']));
+  bot.blocks=[make('start','trigger','p1'),make('p1','delay','t1',{pauseMode:'customer_reply'}),make('t1','create_task','p2',{title:'first'}),make('p2','delay','t2',{pauseMode:'customer_reply'}),make('t2','create_task',null,{title:'second'})];
+  execution={id:'exec',botId:'qa',status:'running'};
+  const resume=async (messageId,messageCreatedAt)=>ctx.testRun('exec',{leadId:'lead',data:{...execution.runtimeContext,salesBotEvent:'message_received',messageId,messageCreatedAt}},deps);
+  await resume('initial');check('published first pause waits',()=>assert.equal(execution.currentBlockId,'p1'));
+  await resume('initial');check('published repeated event stays paused',()=>assert.deepEqual(tasks,['rent']));
+  await resume('older-queued-message','2000-01-01T00:00:00Z');check('published older queued event stays paused',()=>assert.deepEqual(tasks,['rent']));
+  await resume('reply1');check('published fresh event advances one pause',()=>assert.deepEqual(tasks,['rent','first']));
+  check('published second pause waits',()=>assert.equal(execution.currentBlockId,'p2'));
+  await resume('reply1');check('published redelivery cannot release second pause',()=>assert.deepEqual(tasks,['rent','first']));
+  await resume('reply2');check('published next event advances second pause',()=>assert.deepEqual(tasks,['rent','first','second']));
+  bot.blocks=[make('start','trigger','timer'),make('timer','delay','after',{duration:'2h',pauseMode:'timer'}),make('after','create_task',null,{title:'too early'})];
+  execution={id:'exec',botId:'qa',status:'running'};
+  await ctx.testRun('exec',{leadId:'lead'},deps);
+  check('published 2h timer schedules correctly',()=>assert.equal(execution.status,'paused'));
+  await resume('early');check('published inbound cannot bypass timer',()=>assert.deepEqual(tasks,['rent','first','second']));
+  bot.blocks=[make('start','trigger','one'),make('one','create_task','two',{title:'pause now'}),make('two','create_task',null,{title:'must not run'})];
+  execution={id:'exec',botId:'qa',status:'running'};
+  await ctx.testRun('exec',{leadId:'lead'}, {...deps,crm:{createTask:async()=>{execution.status='paused';return{status:'accepted'}}}});
+  check('published manual pause stops next action',()=>assert.equal(execution.status,'paused'));
+  // Execute exact published form handlers with delayed/rejected persistence.
+  for(const marker of ['Campo personalizado criado.','Campo personalizado criado e disponível']) {
+    let arrow;traverse(ast,{StringLiteral(p){if(p.node.value.includes(marker)){const a=p.findParent(n=>n.isArrowFunctionExpression());if(a)arrow=a.node;}}});assert(arrow);
+    const atext=text(arrow),svc=atext.match(/(\w+)\.createCustomField/)[1];let resolve;const pending=new Promise(r=>resolve=r);let reset=0,feedback=0;
+    const globals={FormData:class{constructor(form){this.form=form;}get(key){return this.form.fields[key]??''}}};
+    const isolated=parser.parse('('+atext+')',{sourceType:'module'});traverse(isolated,{ReferencedIdentifier(p){const name=p.node.name;if(!(name in globals)&&!p.scope.hasBinding(name)&&!['Error','String','Boolean','Number'].includes(name))globals[name]=()=>feedback++;}});
+    globals[svc]={createCustomField:()=>{},waitForPersistence:()=>pending};
+    const handler=vm.runInNewContext('('+atext+')',globals),form={fields:{fieldName:'QA',fieldType:'select',fieldOptions:'A,B',name:'QA',type:'select',options:'A,B'},reset(){reset++}};
+    const promise=handler({preventDefault(){},currentTarget:form});
+    check(marker+' waits for backend',()=>assert.equal(reset,0));resolve();await promise;
+    check(marker+' clears only after success',()=>assert.equal(reset,1));
+    globals[svc].waitForPersistence=async()=>{throw Error('QA rejected')};reset=0;await handler({preventDefault(){},currentTarget:form});
+    check(marker+' preserves draft on error',()=>assert.equal(reset,0));
+  }
+  console.log(JSON.stringify({file,tests:count,mode:'exact published functions; isolated adapters, no authenticated browser or production messages'}));
+}
+main().catch(error=>{console.error(error);process.exitCode=1});

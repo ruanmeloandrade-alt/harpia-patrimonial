@@ -11,7 +11,7 @@ type AutomationDefinition = {
   };
 };
 
-const headers = { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' };
+const headers = { 'Content-Type': 'application/json', 'Cache-Control': 'no-store', 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type', 'Access-Control-Allow-Methods': 'POST, OPTIONS' };
 const respond = (body: Json, status = 200) => new Response(JSON.stringify(body), { status, headers });
 
 function namedKey(name: string): string | undefined {
@@ -26,6 +26,7 @@ function namedKey(name: string): string | undefined {
 }
 
 Deno.serve(async (req) => {
+  if (req.method === 'OPTIONS') return new Response('ok', { headers });
   if (req.method !== 'POST') return respond({ ok: false, message: 'Método não permitido.' }, 405);
 
   const supabaseUrl = Deno.env.get('SUPABASE_URL');
@@ -54,6 +55,7 @@ Deno.serve(async (req) => {
 
   const body = await req.json().catch(() => ({})) as Json;
   const automationId = String(body.automationId ?? '').trim();
+  const requestId = String(body.requestId ?? crypto.randomUUID()).slice(0, 120);
   if (!automationId) return respond({ ok: false, message: 'automationId obrigatório.' }, 400);
 
   const { data: storage, error: storageError } = await db
@@ -112,6 +114,7 @@ Deno.serve(async (req) => {
     const payload = {
       kind: 'apply_existing',
       automationId,
+      scheduledKey: `apply|${requestId}`,
       pipelineId: definition.pipeline.pipelineId,
       stageId: definition.pipeline.stageId,
       source: lead.source ?? null,
@@ -134,6 +137,7 @@ Deno.serve(async (req) => {
       conversation_id: conversationByLead.get(leadId) ?? null,
       payload,
     });
+    if (error?.code === '23505') continue;
     if (error) return respond({ ok: false, message: error.message, enqueued }, 500);
     enqueued += 1;
   }
@@ -151,7 +155,7 @@ Deno.serve(async (req) => {
   const workerResult = await worker.json().catch(() => ({})) as Json;
 
   return respond({
-    ok: worker.ok,
+    ok: worker.ok && Number(workerResult.failed ?? 0) === 0,
     enqueued,
     processed: Number(workerResult.processed ?? 0),
     failed: Number(workerResult.failed ?? 0),

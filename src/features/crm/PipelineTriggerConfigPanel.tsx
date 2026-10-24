@@ -635,6 +635,10 @@ export function PipelineTriggerConfigPanel({
 
             {renderTimingDetail()}
 
+            {triggerActionConfig.activeMode === 'custom' ? <div className={styles.triggerConfigActionBox}>
+              <label>Ativo a partir de<input type="time" required value={triggerActionConfig.activeStart ?? ''} onChange={(event) => onConfigChange('activeStart', event.target.value)} /></label>
+              <label>Ativo até<input type="time" required value={triggerActionConfig.activeEnd ?? ''} onChange={(event) => onConfigChange('activeEnd', event.target.value)} /></label>
+            </div> : null}
             {isMessagingAction ? (
               <p className={styles.triggerMessageHint}>
                 A mensagem será enviada aos contatos que se comunicaram com você nos aplicativos de mensagens que você integrou.

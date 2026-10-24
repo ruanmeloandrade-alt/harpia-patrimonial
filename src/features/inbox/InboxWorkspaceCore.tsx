@@ -514,10 +514,11 @@ export function InboxWorkspace({
     }
   };
 
-  const updateCustomField = (fieldId: string, value: CustomFieldValue) => {
+  const updateCustomField = async (fieldId: string, value: CustomFieldValue) => {
     if (!selectedLead) return;
     try {
       crmService.setCustomFieldValue(selectedLead.id, fieldId, value);
+      await crmService.waitForPersistence();
       refresh();
       setFeedback('Campo personalizado atualizado pela Inbox.');
     } catch (error) {
@@ -566,9 +567,10 @@ export function InboxWorkspace({
     }
   };
 
-  const createCustomFieldDefinition = (event: FormEvent<HTMLFormElement>) => {
+  const createCustomFieldDefinition = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const form = new FormData(event.currentTarget);
+    const element = event.currentTarget;
+    const form = new FormData(element);
     const name = String(form.get('name') ?? '').trim();
     const type = String(form.get('type') ?? 'text') as CustomFieldType;
     const optionsText = String(form.get('options') ?? '');
@@ -578,7 +580,8 @@ export function InboxWorkspace({
 
     try {
       crmService.createCustomField({ name, type, options });
-      event.currentTarget.reset();
+      await crmService.waitForPersistence();
+      element.reset();
       refresh();
       setFeedback('Campo personalizado criado e disponível no perfil do lead.');
     } catch (error) {

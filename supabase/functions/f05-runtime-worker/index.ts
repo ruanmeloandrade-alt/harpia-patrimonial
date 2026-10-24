@@ -1,8 +1,9 @@
+import { salesBotNextBlock, salesBotConditionRoute } from '../_shared/salesbot-flow.ts';
 import { createClient } from 'npm:@supabase/supabase-js@2.116.0';
 
 type Json = Record<string, unknown>;
 type Result = { status: 'accepted' | 'rejected' | 'not_configured'; executionId?: string; reason?: string; data?: Json };
-type Block = { id: string; type: string; label?: string; config?: Json };
+type Block = { id: string; type: string; label?: string; config?: Json; nextBlockId?: string | null; falseNextBlockId?: string | null; routes?: Record<string, string | null> };
 type Bot = { id: string; name?: string; status: string; blocks?: Block[] };
 type Agent = { id: string; name?: string; role?: string; instructions?: string; rules?: string; context?: string; status: string; providerProfileId?: string };
 type Provider = { id: string; provider: 'openai' | 'openai_codex' | 'anthropic' | 'google_gemini' | 'custom'; model: string; baseUrl?: string; status: string; apiKeyConfigured?: boolean; secretRef?: string };
@@ -45,8 +46,9 @@ function evaluateCondition(expression: string, context: Json): boolean | null {
   if (!match) return null;
   const actual = getPath(context, match[1]);
   const operator = match[2].toLowerCase();
-  const expected = match[3].trim();
-  if (operator === 'contains') return Array.isArray(actual) ? actual.map(String).includes(expected) : String(actual ?? '').includes(expected);
+  let expected = match[3].trim();
+  try { expected = String(JSON.parse(expected) ?? ''); } catch { expected = expected.replace(/^(['"])(.*)\1$/, '$2'); }
+  if (operator === 'contains') return Array.isArray(actual) ? actual.map(String).includes(expected) : String(actual ?? '').toLocaleLowerCase('pt-BR').includes(expected.toLocaleLowerCase('pt-BR'));
   if (operator === '=' || operator === '==') return String(actual ?? '') === expected;
   if (operator === '!=') return String(actual ?? '') !== expected;
   const a = Number(actual); const b = Number(expected);
@@ -135,8 +137,8 @@ const SUPPORTED_BLOCK_TYPES = new Set([
 
 const REQUIRED_CONFIG: Record<string, string[]> = {
   trigger: ['event'],
-  condition: ['expression'],
-  delay: ['duration'],
+  condition: [],
+  delay: [],
   message: ['message'],
   ai_agent: ['agentId'],
   move_stage: ['stageId'],
@@ -165,7 +167,7 @@ function validateRuntimeBot(bot: Bot): string[] {
     const config = block.config ?? {};
     for (const key of REQUIRED_CONFIG[blockType] ?? []) if (!hasConfigValue(config[key])) issues.push(`${block.label ?? blockType}: configuração ${key} obrigatória.`);
     if (blockType === 'condition' && text(config.expression) && evaluateCondition(text(config.expression), {}) === null) issues.push(`${block.label ?? blockType}: condição inválida.`);
-    if (blockType === 'delay' && text(config.duration) && delayMs(text(config.duration)) === null) issues.push(`${block.label ?? blockType}: duração inválida.`);
+    if (blockType === 'delay' && (!config.pauseMode || config.pauseMode === 'timer') && text(config.duration) && delayMs(text(config.duration)) === null) issues.push(`${block.label ?? blockType}: duração inválida.`);
     if (blockType === 'tag') { const operation = text(config.operation).toLowerCase(); if (operation && operation !== 'add' && operation !== 'remove') issues.push(`${block.label ?? blockType}: operação de tag inválida.`); }
     if (blockType === 'webhook') { const method = (text(config.method) || 'POST').toUpperCase(); if (!['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) issues.push(`${block.label ?? blockType}: método de webhook inválido.`); }
     if (blockType === 'chain_flow' && text(config.botId) === bot.id) issues.push(`${block.label ?? blockType}: o SalesBot não pode encadear a si mesmo.`);
@@ -301,12 +303,27 @@ Deno.serve(async (req) => {
     executions = [execution, ...executions]; await saveList(EXEC_KEY, executions);
     const persist = async (patch: Partial<Execution>) => { executions = await loadList<Execution>(EXEC_KEY); const current = executions.find((item) => item.id === execution.id); if (!current) throw new Error('Execução desapareceu durante o processamento.'); Object.assign(execution, current, patch); await saveList(EXEC_KEY, executions.map((item) => item.id === execution.id ? { ...current, ...patch } : item)); };
     try {
-      for (const block of bot.blocks ?? []) {
+      const blocks = bot.blocks ?? [];
+      let currentId: string | null = blocks.find((item) => item.type === 'trigger')?.id ?? blocks[0]?.id ?? null;
+      let steps = 0;
+      while (currentId) {
+        if (++steps > 1000) throw new Error('Limite de execução do grafo excedido.');
+        const block = blocks.find((item) => item.id === currentId);
+        if (!block) throw new Error('Conexão aponta para bloco inexistente.');
+        currentId = salesBotNextBlock(blocks, block);
         await persist({ currentBlockId: block.id, action: `Executando: ${block.label ?? block.type}` }); const config = block.config ?? {};
+        if (execution.status !== 'running') return { status: 'accepted', executionId: execution.id, data: { runtimeStatus: execution.status } };
         if (block.type === 'trigger') continue;
         if (block.type === 'finish') { await persist({ status: 'completed', finishedAt: nowIso(), runtimeContext: undefined, resumeAt: undefined, resumeMode: undefined, action: 'Execução concluída.' }); return { status: 'accepted', executionId: execution.id, data: { runtimeStatus: 'completed' } }; }
-        if (block.type === 'condition') { const matched = evaluateCondition(text(config.expression), inputContext); if (matched === null) { await persist({ status: 'failed', finishedAt: nowIso(), error: 'Condição inválida.', runtimeContext: undefined }); return { status: 'rejected', executionId: execution.id, reason: 'Condição inválida.' }; } if (!matched) { await persist({ status: 'completed', finishedAt: nowIso(), runtimeContext: undefined, action: 'Condição não atendida; fluxo encerrado.' }); return { status: 'accepted', executionId: execution.id, data: { runtimeStatus: 'completed' } }; } continue; }
-        if (block.type === 'delay') { const duration = delayMs(text(config.duration)); if (!duration) { await persist({ status: 'failed', finishedAt: nowIso(), error: 'Duração de espera inválida.', runtimeContext: undefined }); return { status: 'rejected', executionId: execution.id, reason: 'Duração de espera inválida.' }; } const resumeAt = new Date(Date.now() + duration).toISOString(); await persist({ status: 'paused', resumeMode: 'next_block', resumeAt, runtimeContext: inputContext, action: `Aguardando ${text(config.duration)}.` }); return { status: 'accepted', executionId: execution.id, data: { runtimeStatus: 'paused', resumeAt } }; }
+        if (block.type === 'condition') {
+          const result = salesBotConditionRoute(block, inputContext, evaluateCondition);
+          currentId = result.matched ? (result.ruleId ? block.routes?.[result.ruleId] ?? currentId : currentId) : block.falseNextBlockId ?? null;
+          continue;
+        }
+        if (block.type === 'delay') { if (text(config.pauseMode) && config.pauseMode !== 'timer') {
+          await persist({ status: 'paused', resumeMode: 'retry_current', resumeAt: undefined, runtimeContext: inputContext, action: 'Aguardando o evento configurado na pausa.' });
+          return { status: 'not_configured', executionId: execution.id, reason: 'Esta pausa requer evento de transporte confirmado.' };
+        } const duration = delayMs(text(config.duration)); if (!duration) { await persist({ status: 'failed', finishedAt: nowIso(), error: 'Duração de espera inválida.', runtimeContext: undefined }); return { status: 'rejected', executionId: execution.id, reason: 'Duração de espera inválida.' }; } const resumeAt = new Date(Date.now() + duration).toISOString(); await persist({ status: 'paused', resumeMode: 'next_block', resumeAt, runtimeContext: inputContext, action: `Aguardando ${text(config.duration)}.` }); return { status: 'accepted', executionId: execution.id, data: { runtimeStatus: 'paused', resumeAt } }; }
         let result: Result;
         if (block.type === 'message') result = { status: 'not_configured', reason: 'Canal de mensagem real ainda não conectado.' };
         else if (block.type === 'ai_agent') {
@@ -335,7 +352,7 @@ Deno.serve(async (req) => {
     const executionIds: string[] = [];
     const updated = executions.map((execution) => {
       if (execution.leadId !== runtimeLeadId) return execution;
-      if (execution.status !== 'running') return execution;
+      if (execution.status !== 'running' && !(execution.status === 'paused' && execution.resumeAt)) return execution;
       affected += 1;
       executionIds.push(execution.id);
       return {
@@ -357,7 +374,7 @@ Deno.serve(async (req) => {
     const updated = executions.map((execution) => {
       if (execution.leadId !== runtimeLeadId) return execution;
       if (agentId && execution.aiAgentId !== agentId) return execution;
-      if (execution.status !== 'running') return execution;
+      if (execution.status !== 'running' && !(execution.status === 'paused' && execution.resumeAt)) return execution;
       affected += 1;
       return {
         ...execution,

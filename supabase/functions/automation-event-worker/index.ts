@@ -58,7 +58,8 @@ function getPath(source: Json, path: string): unknown {
 function isPipelineActiveNow(meta: NonNullable<AutomationDefinition['pipeline']>, preferences: Json): boolean {
   const config = meta.actionConfig ?? {};
   const mode = String(config.activeMode ?? 'always');
-  if (mode !== 'business_hours') return true;
+  if (mode === 'always') return true;
+  if (mode !== 'business_hours' && mode !== 'custom') return false;
 
   const regional = preferences.regional && typeof preferences.regional === 'object'
     ? preferences.regional as Json
@@ -81,6 +82,14 @@ function isPipelineActiveNow(meta: NonNullable<AutomationDefinition['pipeline']>
   const weekday = String(parts.find((part) => part.type === 'weekday')?.value ?? '').toLowerCase();
   const hour = Number(parts.find((part) => part.type === 'hour')?.value ?? 0);
   const minute = Number(parts.find((part) => part.type === 'minute')?.value ?? 0);
+  if (mode === 'custom') {
+    const start = String(config.activeStart ?? '');
+    const end = String(config.activeEnd ?? '');
+    if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(start) || !/^([01]\d|2[0-3]):[0-5]\d$/.test(end)) return false;
+    const minutes = (value: string) => Number(value.slice(0, 2)) * 60 + Number(value.slice(3));
+    const first = minutes(start), last = minutes(end), now = hour * 60 + minute;
+    return first <= last ? now >= first && now <= last : now >= first || now <= last;
+  }
   const today = businessHours[weekday] && typeof businessHours[weekday] === 'object'
     ? businessHours[weekday] as Json
     : null;
@@ -110,12 +119,6 @@ function matchesPipeline(definition: AutomationDefinition, event: OutboxEvent, s
   const automationId = String(getPath(source, 'automationId') ?? '');
   const duration = String(getPath(source, 'duration') ?? getPath(source, 'threshold') ?? '');
 
-  if (kind === 'apply_existing') {
-    return automationId === definition.id
-      && (!meta.pipelineId || pipelineId === meta.pipelineId)
-      && (!meta.stageId || stageId === meta.stageId);
-  }
-
   if (!isPipelineActiveNow(meta, preferences)) return false;
 
   if (meta.pipelineId && pipelineId !== meta.pipelineId) return false;
@@ -137,6 +140,7 @@ function matchesPipeline(definition: AutomationDefinition, event: OutboxEvent, s
     if (operator === 'contains' && !String(actual ?? '').includes(expected)) return false;
   }
 
+  if (kind === 'apply_existing') return automationId === definition.id && (!meta.stageId || stageId === meta.stageId);
   if (meta.event === 'enter') return event.event_type === 'lead.stage_changed' && stageId === meta.stageId;
   if (meta.event === 'created_or_moved') {
     return (event.event_type === 'lead.created' || event.event_type === 'lead.stage_changed') && stageId === meta.stageId;

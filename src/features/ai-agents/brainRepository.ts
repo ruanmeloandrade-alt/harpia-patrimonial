@@ -193,6 +193,19 @@ export async function uploadAIBrainFile(file: File, onStage?: (stage: UploadStag
   return ready as AIBrainSource;
 }
 
+export async function editAIBrainSource(source: AIBrainSource): Promise<void> {
+  const title = window.prompt('Título da fonte', source.title);
+  if (title === null) return;
+  const content = window.prompt('Conteúdo da fonte', source.text_content ?? '');
+  if (content === null) return;
+  if (!title.trim() || !content.trim()) throw new Error('Informe título e conteúdo.');
+  const { data, error } = await asUntyped().from('ai_brain_sources')
+    .update({ title: title.trim().slice(0, 200), text_content: content.trim().slice(0, 120000), updated_at: new Date().toISOString() })
+    .eq('id', source.id).eq('updated_at', source.updated_at).select('id').maybeSingle();
+  if (error) throw error;
+  if (!data) throw new Error('Esta fonte mudou em outra sessão. Recarregue antes de editar.');
+}
+
 export async function deleteAIBrainSource(source: AIBrainSource): Promise<void> {
   const client = asUntyped();
 
