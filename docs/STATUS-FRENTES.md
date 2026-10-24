@@ -348,3 +348,9 @@ correção de CSS. Os dois bundles existentes continuam sendo usados.
 - Interface preserva os bundles da gh-pages, que contêm funções mais recentes que main. Publicação estática confirmada: gh-pages 1240675, 21 pontos de entrada e os dois bundles verificados por HTTPS. Sem GitHub Actions. Fonte revisável na PR #34.
 - 🟠 NÃO VERIFICADO: QA visual autenticado e entrega real de mensagens/mídias. Pausas dependentes de transporte permanecem aguardando evento, sem falso sucesso.
 - Detalhes, decisões, testes e arquivos: docs/QA-CRUZADA-20261024.md.
+
+### Teste autenticado e correção do Cérebro — 24/10/2026
+
+Campos multiselect/booleano criados e persistidos pela UI, confirmados após recarga e no banco; SalesBot com duas saídas OU visualmente conferido. Edição do Cérebro revelou prompt incompatível com navegador interno: corrigido em formulário inline, branch fix/brain-inline-qa-20261024, PR #35, gh-pages 4fa8ab8. TypeScript/build, 36 regressões dos bundles e teste isolado do novo formulário aprovados. Os 21 HTMLs atualizados confirmados por HTTPS. Sem alteração de contrato público, schema ou dependências.
+
+🟠 Falta homologar o salvamento visual do novo formulário: confirmação de exclusão do SalesBot prendeu o controle do navegador; intervenção para cancelar solicitada. WhatsApp sem pareamento, envio real para contato autorizado falhou; usuário sem celular. Dados temporários de campos, fonte e bot removidos; contato e mensagem de teste preservados. Ver docs/QA-VISUAL-20261024.md.
