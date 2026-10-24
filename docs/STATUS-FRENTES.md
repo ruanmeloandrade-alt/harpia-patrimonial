@@ -345,7 +345,6 @@ correção de CSS. Os dois bundles existentes continuam sendo usados.
 - 108 verificações automatizadas; typecheck/build; campos e fonte do Cérebro validados sob RLS com rollback.
 - Backend publicado: runtime v8, delay v3, eventos v12, aplicar existentes v2; quatro funções ACTIVE com código relido.
 - Integração F01/F04/F05 necessária para preservar edição de CRM/Inbox durante atualizações F05; sem alteração visual global ou mudança de contrato público.
-- Interface preserva os bundles da gh-pages, que contêm funções mais recentes que main. Publicação estática em preparação, sem GitHub Actions.
+- Interface preserva os bundles da gh-pages, que contêm funções mais recentes que main. Publicação estática confirmada: gh-pages 1240675, 21 pontos de entrada e os dois bundles verificados por HTTPS. Sem GitHub Actions. Fonte revisável na PR #34.
 - 🟠 NÃO VERIFICADO: QA visual autenticado e entrega real de mensagens/mídias. Pausas dependentes de transporte permanecem aguardando evento, sem falso sucesso.
 - Detalhes, decisões, testes e arquivos: docs/QA-CRUZADA-20261024.md.
-

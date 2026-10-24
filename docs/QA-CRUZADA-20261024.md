@@ -52,11 +52,11 @@ Os testes isolados usam adaptadores apenas nos testes. A aplicação mantém Sup
 - Mantidas as proteções internas de autenticação existentes; nenhuma alteração de RLS ou dependência de produção.
 
 ## Interface
-Bundles preparados:
+Bundles publicados e verificados por HTTPS:
 - assets/index-cross-system-1c01837f4ade.js
 - assets/index-cross-system-04e53da082e6.js
 
-21 pontos de entrada HTML passam a referenciar esses arquivos. A publicação e a conferência por HTTPS serão registradas em STATUS-FRENTES.md e no relatório de entrega.
+Publicação gh-pages confirmada no commit 1240675. Os 21 pontos de entrada HTML foram consultados por HTTPS e referenciam os arquivos novos. Os dois bundles entregues pelo domínio foram comparados com o conteúdo publicado e passaram novamente nas 36 verificações das funções extraídas. PR de fonte: https://github.com/ruanmeloandrade-alt/harpia-patrimonial/pull/34.
 
 ## Limites da homologação
 🟢 Código e verificações descritas acima concluídos no escopo.
@@ -97,4 +97,3 @@ Produção estática:
 ## Decisão técnica e responsabilidade
 Esta é uma correção de integração F01/F04/F05, autorizada pela revisão cruzada solicitada. PlatformRuntime é alterado somente para preservar a edição e propagar identidade/horário da mensagem; os demais módulos mantêm suas responsabilidades.
 A publicação preserva os bundles atuais porque substituí-los pelo build de main removeria funções mais recentes. O script verifica hashes de entrada, ocorrência única das substituições, sintaxe e testes dos arquivos resultantes. Não usa GitHub Actions.
-
