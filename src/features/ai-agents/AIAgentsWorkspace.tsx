@@ -4,7 +4,6 @@ import { listAIProviderProfiles } from '../integrations/aiProviderRepository';
 import {
   addAIBrainTextSource,
   deleteAIBrainSource,
-  editAIBrainSource,
   loadAIBrain,
   saveAIBrainContext,
   uploadAIBrainFile,
@@ -13,6 +12,7 @@ import {
 } from './brainRepository';
 import { createAIAgent, deleteAIAgent, listAIAgents, setAIAgentStatus, updateAIAgent } from './repository';
 import type { AIAgentDefinition } from './types';
+import { BrainSourceEditor } from './BrainSourceEditor';
 
 const splitCsv = (value: string) => value.split(',').map((item) => item.trim()).filter(Boolean);
 const errorMessage = (error: unknown, fallback: string) => error instanceof Error ? error.message : fallback;
@@ -289,10 +289,7 @@ export function AIAgentsWorkspace({ canManage = false }: { canManage?: boolean }
                     </span>
                     {source.error_message ? <small>{source.error_message}</small> : null}
                   </div>
-                  {canManage ? <button type="button" disabled={source.status === 'processing'} onClick={async () => {
-                    try { await editAIBrainSource(source); await refreshBrain(); }
-                    catch (error) { setBrainError(errorMessage(error, 'Não foi possível editar a fonte.')); }
-                  }}>Editar</button> : null}
+                  {canManage ? <BrainSourceEditor source={source} onSaved={refreshBrain} onError={setBrainError} /> : null}
                   {canManage ? <button type="button" className="danger" disabled={deletingSourceId === source.id} onClick={() => void removeSource(source)}>
                     {deletingSourceId === source.id ? 'Excluindo...' : 'Excluir'}
                   </button> : null}

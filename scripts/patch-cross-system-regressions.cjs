@@ -106,6 +106,7 @@ function patch(source) {
   const row=deleteButton.text.match(/disabled:\w+===(\w+)\.id/)[1];
   change(deleteButton,`s.jsxs(s.Fragment,{children:[s.jsx("button",{type:"button",disabled:${row}.status==="processing",onClick:async()=>{try{await __harpiaEditBrain(${row});await ${refreshName}()}catch(error){${setError}(error.message??"Não foi possível editar a fonte.")}},children:"Editar"}),${deleteButton.text}]})`);
   s+='\n'+edit;
+  s=require('./patch-brain-inline.cjs').patchBrainEditor(s);
   esbuild.transformSync(s,{loader:'js'});
   return s;
 }
