@@ -149,6 +149,11 @@ function defaultConfig(type: SalesBotBlockType): Record<string, SalesBotBlockCon
 function outputDescriptors(block: SalesBotBlock): OutputDescriptor[] {
   if (block.type === 'finish') return [];
   if (block.type === 'condition') {
+    const rules = asRows(block.config.rules);
+    if (block.config.logic === 'any' && rules.length) return [
+      ...rules.map((rule, index) => ({ branch: `route:${String(rule.id ?? '')}` as OutputBranch, label: `OU ${index + 1}`, tone: 'yes' as const })),
+      { branch: 'false', label: 'Nenhuma', tone: 'no' },
+    ];
     return [
       { branch: 'next', label: 'Sim', tone: 'yes' },
       { branch: 'false', label: 'Não', tone: 'no' },
@@ -1105,7 +1110,7 @@ export function SalesBotWorkspace({
       </header>
       {!canManage ? <div className="f05-readonly-note">Modo leitura: sua permissão permite visualizar SalesBots, mas não alterá-los.</div> : null}
       {error ? <div className="f05-alert">{error}</div> : null}
-      <div className="sb-library-list">{bots.length===0 ? <div className="f05-empty f05-empty--large">Nenhum SalesBot criado.</div> : bots.map((bot)=><article className="sb-library-card" key={bot.id}><div><strong>{bot.name}</strong><span>{bot.blocks.length} blocos · {bot.status}</span></div><div className="sb-library-actions"><button type="button" onClick={()=>openBuilder(bot.id)}>Editar</button><button type="button" className="secondary" onClick={()=>exportSalesBot(bot)}>Exportar</button>{canManage?<button type="button" className="secondary" onClick={()=>{try{const copy=duplicateSalesBot(bot.id);refresh(copy.id);}catch(err){setError(errorMessage(err,'Não foi possível duplicar o SalesBot.'));}}}>Duplicar</button>:null}{canManage?<button type="button" className="danger" onClick={()=>{try{deleteSalesBot(bot.id);refresh();}catch(err){setError(errorMessage(err,'Não foi possível excluir o SalesBot.'));}}}>Excluir</button>:null}</div></article>)}</div>
+      <div className="sb-library-list">{bots.length===0 ? <div className="f05-empty f05-empty--large">Nenhum SalesBot criado.</div> : bots.map((bot)=><article className="sb-library-card" key={bot.id}><div><strong>{bot.name}</strong><span>{bot.blocks.length} blocos · {bot.status}</span></div><div className="sb-library-actions"><button type="button" onClick={()=>openBuilder(bot.id)}>Editar</button><button type="button" className="secondary" onClick={()=>exportSalesBot(bot)}>Exportar</button>{canManage?<button type="button" className="secondary" onClick={()=>{try{const copy=duplicateSalesBot(bot.id);refresh(copy.id);}catch(err){setError(errorMessage(err,'Não foi possível duplicar o SalesBot.'));}}}>Duplicar</button>:null}{canManage?<button type="button" className="danger" onClick={async()=>{if(!window.confirm(`Excluir o SalesBot “${bot.name}”?`))return;try{await deleteSalesBot(bot.id);refresh();}catch(err){setError(errorMessage(err,'Não foi possível excluir o SalesBot.'));}}}>Excluir</button>:null}</div></article>)}</div>
     </section>;
   }
 

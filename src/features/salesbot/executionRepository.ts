@@ -94,6 +94,7 @@ export async function claimPausedExecutionForResume(
 
   const now = input.now ?? new Date();
   const nowMs = now.getTime();
+    if (current.resumeMode === 'next_block' && current.resumeAt && Date.parse(current.resumeAt) > nowMs) return null;
   if (hasActiveResumeClaim(current, nowMs)) return null;
 
   const leaseMs = Math.max(5_000, input.leaseMs ?? DEFAULT_RESUME_CLAIM_MS);

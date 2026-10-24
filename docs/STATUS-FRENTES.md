@@ -335,3 +335,17 @@ internas e `404.html`.
 A verificação acima é de código e arquivos entregues pelo domínio; não é uma
 captura de cada módulo autenticado. Build/TypeScript não foram repetidos nesta
 correção de CSS. Os dois bundles existentes continuam sendo usados.
+
+
+## Revisão cruzada Saúde Slim / Converte Call — 24/10/2026
+
+🟢 Correções implementadas e verificadas em branch isolada: campos persistentes, saídas OU, grafo no servidor/scheduler, pausas e temporizadores, exclusão confirmada, filtros/idempotência de aplicar existentes, horário personalizado e edição de fontes.
+
+- Fonte: fix/harpia-cross-system-qa-20261024, baseada em main 6cf4dc6.
+- 108 verificações automatizadas; typecheck/build; campos e fonte do Cérebro validados sob RLS com rollback.
+- Backend publicado: runtime v8, delay v3, eventos v12, aplicar existentes v2; quatro funções ACTIVE com código relido.
+- Integração F01/F04/F05 necessária para preservar edição de CRM/Inbox durante atualizações F05; sem alteração visual global ou mudança de contrato público.
+- Interface preserva os bundles da gh-pages, que contêm funções mais recentes que main. Publicação estática em preparação, sem GitHub Actions.
+- 🟠 NÃO VERIFICADO: QA visual autenticado e entrega real de mensagens/mídias. Pausas dependentes de transporte permanecem aguardando evento, sem falso sucesso.
+- Detalhes, decisões, testes e arquivos: docs/QA-CRUZADA-20261024.md.
+

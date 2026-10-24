@@ -4,6 +4,7 @@ import { listAIProviderProfiles } from '../integrations/aiProviderRepository';
 import {
   addAIBrainTextSource,
   deleteAIBrainSource,
+  editAIBrainSource,
   loadAIBrain,
   saveAIBrainContext,
   uploadAIBrainFile,
@@ -288,6 +289,10 @@ export function AIAgentsWorkspace({ canManage = false }: { canManage?: boolean }
                     </span>
                     {source.error_message ? <small>{source.error_message}</small> : null}
                   </div>
+                  {canManage ? <button type="button" disabled={source.status === 'processing'} onClick={async () => {
+                    try { await editAIBrainSource(source); await refreshBrain(); }
+                    catch (error) { setBrainError(errorMessage(error, 'Não foi possível editar a fonte.')); }
+                  }}>Editar</button> : null}
                   {canManage ? <button type="button" className="danger" disabled={deletingSourceId === source.id} onClick={() => void removeSource(source)}>
                     {deletingSourceId === source.id ? 'Excluindo...' : 'Excluir'}
                   </button> : null}

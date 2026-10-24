@@ -3,6 +3,7 @@ import {
   FormEvent,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react';
 import {
@@ -116,6 +117,8 @@ export function CrmWorkspace({
   const [automationRevision, setAutomationRevision] = useState(0);
   const [triggerModalStageId, setTriggerModalStageId] = useState('');
   const [editingTriggerId, setEditingTriggerId] = useState('');
+  const savingTrigger = useRef(false);
+  const applyRequestId = useRef(globalThis.crypto.randomUUID());
   const [triggerEvent, setTriggerEvent] = useState<PipelineTriggerEvent>('created_or_moved');
   const [triggerValue, setTriggerValue] = useState('');
   const [triggerDurationAmount, setTriggerDurationAmount] = useState('30');
@@ -216,6 +219,7 @@ export function CrmWorkspace({
   };
 
   const openTriggerModal = (stageId: string, triggerId?: string) => {
+    applyRequestId.current = globalThis.crypto.randomUUID();
     const current = triggerId ? pipelineTriggers.find((item) => item.id === triggerId) : undefined;
     const meta = current?.pipeline;
 
@@ -280,6 +284,8 @@ export function CrmWorkspace({
   const handleAddTrigger = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!selectedPipeline || !canManage || !triggerModalStageId) return;
+    if (savingTrigger.current) return;
+    savingTrigger.current = true;
 
     const value = triggerEvent === 'time'
       ? `${Math.max(1, Number(triggerDurationAmount) || 1)}${triggerDurationUnit}`
@@ -304,14 +310,16 @@ export function CrmWorkspace({
       const saved = editingTriggerId
         ? await updatePipelineAutomationConfirmed(editingTriggerId, input)
         : await createPipelineAutomationConfirmed(input);
+      setEditingTriggerId(saved.id);
 
       if (applyExisting) {
         if (!isSupabaseConfigured || !supabase) throw new Error('Supabase indisponível para aplicar o gatilho aos leads atuais.');
         const { data, error } = await supabase.functions.invoke('automation-apply-existing', {
-          body: { automationId: saved.id },
+          body: { automationId: saved.id, requestId: applyRequestId.current },
         });
         if (error) throw error;
         if (data && data.ok === false) throw new Error(String(data.message ?? 'Não foi possível aplicar o gatilho aos leads atuais.'));
+        if (Number(data?.failed ?? 0) > 0) throw new Error('O gatilho foi salvo, mas houve falhas na aplicação. Verifique o histórico antes de repetir.');
       }
 
       setAutomationRevision((value) => value + 1);
@@ -321,6 +329,8 @@ export function CrmWorkspace({
       closeTriggerModal();
     } catch (error) {
       setFeedback(error instanceof Error ? error.message : 'Não foi possível salvar o gatilho.');
+    } finally {
+      savingTrigger.current = false;
     }
   };
 
@@ -880,9 +890,10 @@ function LeadDetailsPanel({
     ? inboxService.getMessages(inboxConversation.id).slice(-8)
     : [];
 
-  const safeRun = (action: () => void, message: string) => {
+  const safeRun = async (action: () => void, message: string) => {
     try {
       action();
+      await service.waitForPersistence();
       onChanged(message);
     } catch (error) {
       onError(error instanceof Error ? error.message : 'Não foi possível concluir a ação.');
@@ -941,9 +952,10 @@ function LeadDetailsPanel({
     }
   };
 
-  const submitCustomField = (event: FormEvent<HTMLFormElement>) => {
+  const submitCustomField = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const form = new FormData(event.currentTarget);
+    const element = event.currentTarget;
+    const form = new FormData(element);
     const type = String(form.get('fieldType') ?? 'text') as CustomFieldType;
     const options = String(form.get('fieldOptions') ?? '')
       .split(',')
@@ -955,7 +967,8 @@ function LeadDetailsPanel({
         type,
         options: type === 'select' || type === 'multiselect' ? options : undefined,
       });
-      event.currentTarget.reset();
+      await service.waitForPersistence();
+      element.reset();
       onChanged('Campo personalizado criado.');
     } catch (error) {
       onError(error instanceof Error ? error.message : 'Não foi possível criar o campo.');

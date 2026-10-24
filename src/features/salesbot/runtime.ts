@@ -237,7 +237,7 @@ async function evaluateCondition(
   block: SalesBotBlock,
   context: Record<string, unknown>,
   deps: SalesBotRuntimeDependencies,
-): Promise<{ ok: true; matched: boolean } | { ok: false; reason: string; notConfigured?: boolean }> {
+): Promise<{ ok: true; matched: boolean; ruleId?: string } | { ok: false; reason: string; notConfigured?: boolean }> {
   const rules = configRows(block.config.rules);
   if (!rules.length) {
     const expression = stringConfig(block, 'expression');
@@ -254,7 +254,9 @@ async function evaluateCondition(
       return { ok: false, reason: result.reason, notConfigured: result.status === 'not_configured' };
     }
     const operator = String(rule.operator ?? '');
-    matches.push(operator === 'not_contains' ? !result.matched : result.matched);
+    const matched = operator === 'not_contains' ? !result.matched : result.matched;
+    if (block.config.logic === 'any' && matched) return { ok: true, matched: true, ruleId: String(rule.id ?? '') };
+    matches.push(matched);
   }
   return {
     ok: true,
@@ -301,7 +303,7 @@ async function executeBlock(
       if (evaluated.notConfigured) return pauseExecution(executionId, block, evaluated.reason, data);
       return failExecution(executionId, block, evaluated.reason);
     }
-    return { kind: 'continue', nextId: evaluated.matched ? block.nextBlockId ?? null : block.falseNextBlockId ?? null };
+    return { kind: 'continue', nextId: evaluated.matched ? (evaluated.ruleId ? block.routes?.[evaluated.ruleId] ?? block.nextBlockId ?? null : block.nextBlockId ?? null) : block.falseNextBlockId ?? null };
   }
 
   if (block.type === 'validation') {
@@ -315,6 +317,15 @@ async function executeBlock(
     const mode = stringConfig(block, 'pauseMode') || 'timer';
     if (mode !== 'timer') {
       const event = String(data.salesBotEvent ?? data.event ?? '');
+      const eventId = String(data.messageId ?? data.eventId ?? pathValue(data, 'inbound.id') ?? '');
+      const waiting = asRecord(data.salesBotPauseWait);
+      if (waiting.blockId !== block.id) {
+        data.salesBotPauseWait = { blockId: block.id, eventId, startedAt: Date.now() };
+        return pauseExecution(executionId, block, 'Aguardando um novo evento para a pausa.', data);
+      }
+      if (!eventId || eventId === waiting.eventId) return pauseExecution(executionId, block, 'Aguardando um novo evento para a pausa.', data);
+      const occurredAt = Date.parse(String(data.messageCreatedAt ?? ''));
+      if (Number.isFinite(occurredAt) && occurredAt <= Number(waiting.startedAt ?? 0)) return pauseExecution(executionId, block, 'Aguardando um evento posterior ao início da pausa.', data);
       const requiredEvents: Record<string, string[]> = {
         customer_reply: ['customer_reply', 'message_received'],
         audio_open: ['audio_open'],
@@ -327,6 +338,7 @@ async function executeBlock(
       if (!(requiredEvents[mode] ?? []).includes(event)) {
         return pauseExecution(executionId, block, 'Aguardando o evento configurado na pausa.', data);
       }
+      delete data.salesBotPauseWait;
       return { kind: 'continue', nextId: block.nextBlockId ?? null };
     }
 
@@ -484,6 +496,9 @@ export async function runSalesBotExecution(
 ): Promise<SalesBotRunResult> {
   const execution = listSalesBotExecutions().find((item) => item.id === executionId);
   if (!execution) return { status: 'failed', reason: 'Execução não encontrada.' };
+  if (execution.status === 'paused' && execution.resumeMode === 'next_block' && execution.resumeAt && Date.parse(execution.resumeAt) > Date.now()) {
+    return { status: 'paused', blockId: execution.currentBlockId ?? '', reason: 'A duração da pausa ainda não terminou.' };
+  }
   const bot = getSalesBot(execution.botId);
   if (!bot) {
     finishExecution(executionId, 'failed', 'SalesBot não encontrado.');
@@ -524,6 +539,8 @@ export async function runSalesBotExecution(
   const visitCount = new Map<string, number>();
   try {
     while (currentId) {
+      const latest = listSalesBotExecutions().find((item) => item.id === executionId);
+      if (latest?.status === 'paused') return { status: 'paused', blockId: latest.currentBlockId ?? currentId, reason: 'Execução pausada por comando externo.' };
       const block = byId.get(currentId);
       if (!block) {
         const reason = 'O fluxo aponta para um bloco inexistente.';

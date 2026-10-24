@@ -22,7 +22,7 @@ const CONDITION_PATH = '[\\p{L}\\p{N}_.-]+';
 const conditionExistsPrefix = new RegExp(`^exists\\s+${CONDITION_PATH}$`, 'iu');
 const conditionExistsSuffix = new RegExp(`^${CONDITION_PATH}\\s+exists$`, 'iu');
 const conditionComparison = new RegExp(`^${CONDITION_PATH}\\s*(contains|==|!=|>=|<=|=|>|<)\\s*.+$`, 'iu');
-const delayDuration = /^(\\d+)\\s*(s|m|h|d|w)$/i;
+const delayDuration = /^(\d+)\s*(s|m|h|d|w)$/i;
 const DELAY_UNIT_MS: Record<string, number> = {
   s: 1_000,
   m: 60_000,
@@ -134,7 +134,11 @@ export function validateSalesBotBlock(block: SalesBotBlock): string[] {
     if (legacyExpression && !validateSalesBotConditionExpression(legacyExpression)) {
       issues.push('Condição: regra inválida.');
     }
-    if (!block.nextBlockId) issues.push('Condição: conecte a saída Sim.');
+    if (block.config.logic === 'any' && rules.length) {
+      rules.forEach((rule, index) => {
+        if (!block.routes?.[String(rule.id ?? '')] && !block.nextBlockId) issues.push(`Condição: conecte a saída da regra ${index + 1}.`);
+      });
+    } else if (!block.nextBlockId) issues.push('Condição: conecte a saída Sim.');
     if (!block.falseNextBlockId) issues.push('Condição: conecte a saída Não.');
   }
 

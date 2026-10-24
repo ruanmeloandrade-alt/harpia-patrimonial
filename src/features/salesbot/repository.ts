@@ -307,14 +307,14 @@ export function updateSalesBot(
   return updated;
 }
 
-export function deleteSalesBot(id: string): void {
+export async function deleteSalesBot(id: string): Promise<void> {
   const current = getSalesBot(id);
   if (!current) throw new Error('SalesBot não encontrado.');
   const references = findSalesBotReferences(id);
   if (references.length > 0) {
     throw new Error(`Este SalesBot ainda é referenciado por: ${formatF05References(references)}.`);
   }
-  writeStoredList(STORAGE_KEY, listSalesBots().filter((item) => item.id !== id));
+  await writeStoredListConfirmed(STORAGE_KEY, listSalesBots().filter((item) => item.id !== id));
 }
 
 export function duplicateSalesBot(id: string): SalesBotDefinition {

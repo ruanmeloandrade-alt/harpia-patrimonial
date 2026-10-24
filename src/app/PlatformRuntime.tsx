@@ -522,8 +522,11 @@ export function PlatformRuntimeProvider({ children }: PropsWithChildren) {
                     message,
                     text: message,
                     salesBotEvent: 'message_received',
+                    messageId: row.id,
+                    messageCreatedAt: row.created_at,
                     ...(formPayload.buttonId ? { buttonId: formPayload.buttonId } : {}),
                     inbound: {
+                      id: row.id,
                       text: message,
                       ...formPayload,
                     },
@@ -547,7 +550,7 @@ export function PlatformRuntimeProvider({ children }: PropsWithChildren) {
       unsubscribeEvents?.();
       if (channel) void supabase?.removeChannel(channel);
     };
-  }, [aiModelRuntime, auth.user?.id, automationWebhook, canUseCrm, canUseInbox, catalogRepository, f05Revision, whatsappTransport]);
+  }, [aiModelRuntime, auth.user?.id, automationWebhook, canUseCrm, canUseInbox, catalogRepository, whatsappTransport]);
 
   const value = useMemo<PlatformRuntimeValue>(() => ({
     catalogRepository,
